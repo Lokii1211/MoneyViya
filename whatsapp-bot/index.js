@@ -125,13 +125,73 @@ async function startBot() {
         for (const msg of messages) {
             if (!msg.message || msg.key.fromMe) continue;
             if (msg.key.remoteJid === 'status@broadcast' || msg.key.remoteJid?.endsWith('@g.us')) continue;
-            const text = msg.message.conversation || msg.message.extendedTextMessage?.text || msg.message.imageMessage?.caption || '';
-            if (!text) continue;
+
             const jid = msg.key.remoteJid;
             const userId = jid.replace(/@s\.whatsapp\.net$/, '');
             const name = msg.pushName || 'Friend';
             stats.received++;
-            console.log(`[${name}] ${text.substring(0, 50)}`);
+
+            // ─── Handle Image Messages (Layer 3: Screenshot Parser) ───
+            const imageMsg = msg.message.imageMessage;
+            if (imageMsg) {
+                try {
+                    console.log(`[${name}] 📸 Image received — parsing...`);
+                    const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
+                    const buffer = await downloadMediaMessage(msg, 'buffer', {});
+                    const base64 = buffer.toString('base64');
+                    const caption = imageMsg.caption || '';
+
+                    // Send to screenshot parser API
+                    try {
+                        const r = await axios.post(`${API_URL}/api/moneyview/parse-image`, {
+                            phone: userId,
+                            image_base64: base64,
+                            caption: caption,
+                            sender_name: name
+                        }, { timeout: 30000 });
+
+                        if (r.data?.reply) {
+                            await sock.sendMessage(jid, { text: r.data.reply });
+                            stats.sent++;
+                        }
+                    } catch (apiErr) {
+                        console.log(`[API] Image parse error: ${apiErr.message}`);
+                        // Fallback — process caption as text if available
+                        if (caption) {
+                            const reply = await processMessage(userId, caption, name);
+                            if (reply) { await sock.sendMessage(jid, { text: reply }); stats.sent++; }
+                        } else {
+                            await sock.sendMessage(jid, { text: "📸 I can see your image! To log a payment, just type the amount.\nExample: 'spent 500 on food'" });
+                            stats.sent++;
+                        }
+                    }
+                } catch (dlErr) {
+                    console.log(`[Image] Download error: ${dlErr.message}`);
+                    const caption = imageMsg.caption || '';
+                    if (caption) {
+                        const reply = await processMessage(userId, caption, name);
+                        if (reply) { await sock.sendMessage(jid, { text: reply }); stats.sent++; }
+                    }
+                }
+                continue;
+            }
+
+            // ─── Handle Text Messages ───
+            let text = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
+            if (!text) continue;
+
+            // ─── Detect Forwarded Messages (Layer 3: Forward Parser) ───
+            const contextInfo = msg.message.extendedTextMessage?.contextInfo || {};
+            const isForwarded = contextInfo.isForwarded || msg.message.extendedTextMessage?.contextInfo?.isForwarded;
+
+            if (isForwarded) {
+                // Tag as forwarded so API can route to the forwarded message parser
+                text = `[FORWARDED] ${text}`;
+                console.log(`[${name}] ↪️ Forwarded: ${text.substring(0, 60)}`);
+            } else {
+                console.log(`[${name}] ${text.substring(0, 50)}`);
+            }
+
             const reply = await processMessage(userId, text, name);
             if (reply) { await sock.sendMessage(jid, { text: reply }); stats.sent++; }
         }

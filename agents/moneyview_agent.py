@@ -275,7 +275,7 @@ class MoneyViyaAgent:
         return income, expenses
     
     def _add_transaction(self, phone: str, txn_type: str, amount: float, 
-                        category: str, description: str = ""):
+                        category: str, description: str = "", source: str = "whatsapp"):
         if phone not in self.transaction_store:
             self.transaction_store[phone] = []
         
@@ -284,7 +284,8 @@ class MoneyViyaAgent:
             "amount": amount,
             "category": category,
             "description": description,
-            "date": self._get_ist_time().isoformat()
+            "date": self._get_ist_time().isoformat(),
+            "source": source  # whatsapp, web, sms_auto, screenshot, forwarded
         })
         self._save_data()  # Auto-save transactions
     

@@ -2,9 +2,10 @@
 MoneyViya API - FastAPI Endpoints
 ===================================
 API endpoints for MoneyViya Personal Financial Agent
+With Auto-Capture: SMS Parsing, Screenshot Parser, Forwarded Message Parser
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict
 from datetime import datetime, timedelta
@@ -13,6 +14,18 @@ import asyncio
 # Import MoneyViya Agent
 from agents.moneyview_agent import moneyview_agent, process_message
 from services.stock_market_service import get_market_update, get_investment_advice
+
+# Auto-Capture Services (Layers 1, 3, 5)
+try:
+    from services.auto_capture_service import sms_parser, screenshot_parser, smart_cash_prompter
+    AUTO_CAPTURE_AVAILABLE = True
+    print("[MoneyViya API] Auto-Capture services loaded ✅")
+except Exception as e:
+    print(f"[MoneyViya API] Auto-Capture not available: {e}")
+    sms_parser = None
+    screenshot_parser = None
+    smart_cash_prompter = None
+    AUTO_CAPTURE_AVAILABLE = False
 
 try:
     import pytz
@@ -44,18 +57,73 @@ class UserSummary(BaseModel):
     message: str
 
 
+class ImageParseRequest(BaseModel):
+    phone: str
+    image_base64: str
+    caption: Optional[str] = ""
+    sender_name: Optional[str] = "Friend"
+
+
+class SMSParseRequest(BaseModel):
+    phone: str
+    sms_text: str
+    sender_id: Optional[str] = ""
+
+
 # ==================== MESSAGE PROCESSING ====================
 
 @moneyview_router.post("/process", response_model=MessageResponse)
 async def process_whatsapp_message(request: MessageRequest):
     """
-    Process incoming WhatsApp message through MoneyViya Agent
-    This handles: onboarding, expense tracking, income, goals, etc.
+    Process incoming WhatsApp message through MoneyViya Agent.
+    Also handles [FORWARDED] tagged messages via Layer 3 parser.
     """
     try:
+        message = request.message
+        
+        # ─── Layer 3: Forwarded Message Detection ───
+        if message.startswith("[FORWARDED]") and AUTO_CAPTURE_AVAILABLE and screenshot_parser:
+            forwarded_text = message.replace("[FORWARDED]", "").strip()
+            parsed = screenshot_parser.parse_forwarded_text(forwarded_text)
+            
+            if parsed.get("is_financial") and parsed.get("amount"):
+                # Auto-log the transaction
+                user = moneyview_agent._get_user(request.phone)
+                txn_type = "income" if parsed["type"] == "credit" else "expense"
+                
+                moneyview_agent._add_transaction(
+                    request.phone,
+                    txn_type,
+                    parsed["amount"],
+                    parsed.get("category", "uncategorized"),
+                    f"Forwarded: {parsed.get('merchant', 'Unknown')}",
+                    source="forwarded"
+                )
+                
+                emoji = "💰" if txn_type == "income" else "✅"
+                merchant = parsed.get("merchant", "Unknown")
+                category = parsed.get("category", "uncategorized").replace("_", " ").title()
+                today_income, today_expense = moneyview_agent._get_today_transactions(request.phone)
+                budget_left = user.get("daily_budget", 1000) - today_expense
+                
+                reply = f"""{emoji} *Auto-logged from forwarded message!*
+
+💸 ₹{int(parsed['amount']):,} → {category} ({merchant})
+📱 Source: {parsed.get('source', 'forwarded').replace('_', ' ').title()}"""
+
+                if txn_type == "expense" and budget_left > 0:
+                    reply += f"\n💰 Budget left today: ₹{int(budget_left):,}"
+                elif txn_type == "expense":
+                    reply += f"\n⚠️ Over budget by ₹{int(abs(budget_left)):,}"
+                
+                reply += "\n\n_Wrong? Just type the correct amount._"
+                
+                return MessageResponse(success=True, reply=reply, phone=request.phone)
+        
+        # Normal message processing
         reply = await process_message(
             phone=request.phone,
-            message=request.message,
+            message=message,
             sender_name=request.sender_name
         )
         
@@ -72,7 +140,226 @@ async def process_whatsapp_message(request: MessageRequest):
         )
 
 
+# ==================== AUTO-CAPTURE ENDPOINTS ====================
+
+@moneyview_router.post("/parse-image")
+async def parse_image(request: ImageParseRequest):
+    """
+    Layer 3: Parse payment screenshot using OpenAI Vision API.
+    Called by WhatsApp bot when user sends an image.
+    """
+    if not AUTO_CAPTURE_AVAILABLE or not screenshot_parser:
+        # Fallback: process caption if available
+        if request.caption:
+            reply = await process_message(request.phone, request.caption, request.sender_name)
+            return {"success": True, "reply": reply}
+        return {"success": False, "error": "Auto-capture not available", 
+                "reply": "📸 I received your image! To log a payment, type: 'spent 500 on food'"}
+    
+    try:
+        user = moneyview_agent._get_user(request.phone)
+        
+        # Parse screenshot with AI Vision
+        parsed = screenshot_parser.parse_screenshot_base64(request.image_base64, user)
+        
+        if parsed.get("is_financial") and parsed.get("amount"):
+            # Check status — only log successful payments
+            if parsed.get("status") == "failed":
+                return {"success": True, "reply": "❌ This payment looks like it *failed*. Not logging it.\nIf it actually went through, type: 'spent [amount] on [category]'"}
+            
+            if parsed.get("status") == "pending":
+                return {"success": True, "reply": "⏳ This payment looks *pending*. I'll wait for confirmation.\nOnce it goes through, forward the success screenshot!"}
+            
+            # Auto-log the transaction
+            txn_type = "income" if parsed.get("type") == "credit" else "expense"
+            
+            moneyview_agent._add_transaction(
+                request.phone,
+                txn_type,
+                parsed["amount"],
+                parsed.get("category", "uncategorized"),
+                f"Screenshot: {parsed.get('merchant', 'Unknown')} via {parsed.get('app', 'unknown')}",
+                source="screenshot"
+            )
+            
+            today_income, today_expense = moneyview_agent._get_today_transactions(request.phone)
+            budget_left = user.get("daily_budget", 1000) - today_expense
+            
+            emoji = "💰" if txn_type == "income" else "✅"
+            merchant = parsed.get("merchant", "Unknown")
+            category = parsed.get("category", "uncategorized").replace("_", " ").title()
+            app_name = parsed.get("app", "unknown").replace("_", " ").title()
+            
+            reply = f"""{emoji} *Auto-logged from screenshot!*
+
+💸 ₹{int(parsed['amount']):,} → {category} ({merchant})
+📱 App: {app_name}
+🔍 Confidence: {int(parsed.get('confidence', 0.8) * 100)}%"""
+            
+            if txn_type == "expense" and budget_left > 0:
+                reply += f"\n💰 Budget left today: ₹{int(budget_left):,}"
+            elif txn_type == "expense":
+                reply += f"\n⚠️ Over budget by ₹{int(abs(budget_left)):,}"
+            
+            reply += "\n\n_Wrong category? Reply 'fix'. Wrong amount? Just type the correct one._"
+            
+            return {"success": True, "reply": reply, "parsed": parsed}
+        
+        # Not a payment screenshot
+        if request.caption:
+            reply = await process_message(request.phone, request.caption, request.sender_name)
+            return {"success": True, "reply": reply}
+        
+        return {"success": True, "reply": """📸 *I couldn't find a payment in this image.*
+
+If this is a payment screenshot, make sure it shows:
+• The amount (₹...)
+• Payment status (Success/Paid)
+
+Or just type: "spent 500 on food" to log manually! 💬"""}
+        
+    except Exception as e:
+        print(f"[parse-image] Error: {e}")
+        if request.caption:
+            reply = await process_message(request.phone, request.caption, request.sender_name)
+            return {"success": True, "reply": reply}
+        return {"success": False, "error": str(e),
+                "reply": "📸 Couldn't parse this image. Type 'spent [amount] on [category]' to log manually!"}
+
+
+@moneyview_router.post("/parse-sms")
+async def parse_sms(request: SMSParseRequest):
+    """
+    Layer 1: Parse bank SMS for auto-capture.
+    Called by Android companion app (future) or manual forwarding.
+    """
+    if not AUTO_CAPTURE_AVAILABLE or not sms_parser:
+        return {"success": False, "error": "SMS parser not available"}
+    
+    try:
+        parsed = sms_parser.parse_sms(request.sms_text)
+        
+        if not parsed.get("is_financial"):
+            return {"success": True, "is_financial": False, "message": "Not a financial SMS"}
+        
+        # Auto-log the transaction
+        user = moneyview_agent._get_user(request.phone)
+        txn_type = "income" if parsed["type"] == "credit" else "expense"
+        
+        moneyview_agent._add_transaction(
+            request.phone,
+            txn_type,
+            parsed["amount"],
+            parsed.get("category", "uncategorized"),
+            f"SMS Auto: {parsed.get('merchant', 'Bank')} via {parsed.get('payment_method', 'unknown')}",
+            source="sms_auto"
+        )
+        
+        # Calculate budget remaining
+        today_income, today_expense = moneyview_agent._get_today_transactions(request.phone)
+        budget_left = user.get("daily_budget", 1000) - today_expense
+        
+        # Format WhatsApp confirmation
+        reply = sms_parser.format_whatsapp_message(parsed, user, budget_left)
+        
+        return {
+            "success": True,
+            "is_financial": True,
+            "parsed": parsed,
+            "reply": reply,
+            "budget_remaining": budget_left
+        }
+        
+    except Exception as e:
+        print(f"[parse-sms] Error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@moneyview_router.get("/smart-prompt/{phone}")
+async def get_smart_prompt(phone: str):
+    """
+    Layer 5: Generate smart cash expense prompt for a user.
+    Called by scheduler or n8n at specific times.
+    """
+    if not AUTO_CAPTURE_AVAILABLE or not smart_cash_prompter:
+        return {"success": False, "error": "Smart prompter not available"}
+    
+    try:
+        user = moneyview_agent._get_user(phone)
+        if not user.get("onboarding_complete"):
+            return {"success": False, "message": "User not onboarded"}
+        
+        now = datetime.now(IST) if IST else datetime.now()
+        current_hour = now.hour
+        
+        # Get today's transactions for context
+        today_txns = moneyview_agent.transaction_store.get(phone, [])
+        today_str = now.strftime("%Y-%m-%d")
+        today_only = [t for t in today_txns if t.get("date", "").startswith(today_str)]
+        
+        # Calculate cash gap
+        today_income, today_expense = moneyview_agent._get_today_transactions(phone)
+        daily_budget = user.get("daily_budget", 1000)
+        cash_gap = max(0, daily_budget - today_expense) if today_expense < daily_budget * 0.5 else 0
+        
+        prompt = smart_cash_prompter.generate_prompt(
+            user=user,
+            current_hour=current_hour,
+            today_transactions=today_only,
+            cash_gap=cash_gap,
+            last_prompt_time=user.get("last_cash_prompt")
+        )
+        
+        if prompt and prompt.get("should_prompt"):
+            # Update last prompt time
+            user["last_cash_prompt"] = now.isoformat()
+            moneyview_agent._save_data()
+            
+            return {
+                "success": True,
+                "prompt": prompt,
+                "phone": phone,
+                "user_name": user.get("name", "Friend")
+            }
+        
+        return {"success": False, "message": "No prompt needed right now"}
+        
+    except Exception as e:
+        print(f"[smart-prompt] Error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@moneyview_router.get("/auto-capture-status")
+async def auto_capture_status():
+    """Check status of all auto-capture layers"""
+    import os
+    return {
+        "auto_capture_available": AUTO_CAPTURE_AVAILABLE,
+        "layers": {
+            "layer_1_sms": {
+                "status": "ready" if sms_parser else "unavailable",
+                "description": "Bank SMS Parser — parses debit/credit alerts from all Indian banks"
+            },
+            "layer_3_screenshot": {
+                "status": "ready" if screenshot_parser else "unavailable",
+                "requires_openai": True,
+                "openai_configured": bool(os.getenv("OPENAI_API_KEY", "")),
+                "description": "Screenshot Parser — reads payment success screens via AI Vision"
+            },
+            "layer_3_forward": {
+                "status": "ready" if screenshot_parser else "unavailable",
+                "description": "Forwarded Message Parser — auto-logs forwarded payment confirmations"
+            },
+            "layer_5_smart_prompt": {
+                "status": "ready" if smart_cash_prompter else "unavailable",
+                "description": "Smart Cash Prompter — context-aware prompts for cash expenses"
+            }
+        }
+    }
+
+
 # ==================== SCHEDULED MESSAGES ====================
+
 
 @moneyview_router.get("/morning-briefing")
 async def get_morning_briefings():
