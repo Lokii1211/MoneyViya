@@ -124,6 +124,14 @@ if MONEYVIEW_AVAILABLE:
     app.include_router(moneyview_router)
     print("[STARTUP] MoneyViya API router included")
 
+# Include Dashboard Sync API
+try:
+    from routes.dashboard_api import router as dashboard_router
+    app.include_router(dashboard_router)
+    print("[STARTUP] Dashboard Sync API included")
+except Exception as e:
+    print(f"[STARTUP] Dashboard API not available: {e}")
+
 
 # Root redirect to new dashboard
 @app.get("/")
