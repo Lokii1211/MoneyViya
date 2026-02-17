@@ -1,4 +1,5 @@
 services:
+  # ===== Service 1: MoneyViya API (Python) =====
   - type: web
     name: moneyviya-api
     runtime: python
@@ -10,14 +11,23 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.0"
-      - key: RENDER_EXTERNAL_URL
-        generateValue: false
-        # Auto-set by Render — used for self-ping keep-alive
       - key: OPENAI_API_KEY
-        sync: false
-      - key: WHATSAPP_CLOUD_TOKEN
-        sync: false
-      - key: WHATSAPP_PHONE_NUMBER_ID
         sync: false
       - key: WHATSAPP_VERIFY_TOKEN
         value: "moneyviya_webhook_2024"
+
+  # ===== Service 2: WhatsApp Bot (Node.js Baileys) =====
+  - type: web
+    name: moneyviya-bot
+    runtime: node
+    region: singapore
+    plan: free
+    rootDir: whatsapp-bot
+    buildCommand: npm install
+    startCommand: node index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20.11.0"
+      - key: API_URL
+        value: "https://moneyviya-api.onrender.com"
