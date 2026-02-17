@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoneyViya — India का Personal Financial Advisor | WhatsApp AI</title>
+    <meta name="description" content="Track expenses, build goals, get investment advice — all through WhatsApp. In Tamil, Hindi, Telugu, Kannada, or English. Free forever.">
+    <meta name="theme-color" content="#00A86B">
+    <link rel="icon" href="logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00A86B;
+            --primary-dark: #007A4E;
+            --primary-light: #E8F9F2;
+            --secondary: #1A1A2E;
+            --accent-gold: #FFB703;
+            --accent-orange: #FF6B35;
+            --danger: #E63946;
+            --n50: #F8FAFB; --n100: #F0F4F7; --n200: #E1E8EE;
+            --n400: #94A3B8; --n600: #475569; --n800: #1E293B; --n900: #0F172A;
+        }
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; color: var(--n800); background: #fff; overflow-x: hidden; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+        /* ===== HERO ===== */
+        .hero { min-height: 100vh; display: flex; align-items: center; padding: 80px 0 60px; background: #fff; background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h40v40H0z' fill='none'/%3E%3Cpath d='M0 40V0h1v40zm40 0V0h1v40zM0 0h40v1H0zm0 40h40v1H0z' fill='%23E8F9F2' fill-opacity='.5'/%3E%3C/svg%3E"); }
+        .hero .container { display: grid; grid-template-columns: 55% 45%; gap: 48px; align-items: center; }
+        .hero-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--primary-light); color: var(--primary); font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 100px; margin-bottom: 24px; }
+        .hero h1 { font-family: 'Sora', sans-serif; font-size: 52px; line-height: 1.15; font-weight: 800; margin-bottom: 20px; }
+        .hero h1 .line1 { color: var(--n800); font-weight: 600; font-size: 40px; display: block; }
+        .hero h1 .line2 { background: linear-gradient(135deg, var(--primary), #00D48A); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .hero-sub { font-size: 18px; color: var(--n600); line-height: 1.6; margin-bottom: 16px; }
+        .social-proof { font-size: 14px; color: var(--n400); font-weight: 500; margin-bottom: 28px; }
+        .cta-primary { display: inline-flex; align-items: center; gap: 10px; background: var(--primary); color: #fff; padding: 16px 36px; border-radius: 12px; font-size: 17px; font-weight: 600; text-decoration: none; border: none; cursor: pointer; transition: all .3s; box-shadow: 0 4px 16px rgba(0,168,107,.3); }
+        .cta-primary:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,168,107,.4); }
+        .cta-note { font-size: 13px; color: var(--n400); margin-top: 12px; }
+        .lang-row { display: flex; gap: 16px; margin-top: 20px; flex-wrap: wrap; font-size: 13px; color: var(--n600); }
+
+        /* Phone mockup */
+        .hero-visual { position: relative; display: flex; justify-content: center; }
+        .phone-frame { width: 300px; background: #f0f0f0; border-radius: 36px; padding: 12px; box-shadow: 0 24px 64px rgba(0,0,0,.15); position: relative; z-index: 2; }
+        .phone-screen { background: #ECE5DD; border-radius: 24px; overflow: hidden; height: 500px; }
+        .wa-header { background: #075E54; color: #fff; padding: 14px 16px; font-weight: 600; font-size: 16px; display: flex; align-items: center; gap: 10px; }
+        .wa-header .dot { width: 8px; height: 8px; background: #25D366; border-radius: 50%; }
+        .wa-chat { padding: 16px; display: flex; flex-direction: column; gap: 10px; height: 440px; overflow: hidden; }
+        .wa-msg { max-width: 85%; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; animation: fadeUp .5s ease forwards; opacity: 0; }
+        .wa-msg.user { background: #DCF8C6; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .wa-msg.bot { background: #fff; align-self: flex-start; border-bottom-left-radius: 4px; }
+        @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } from { opacity: 0; transform: translateY(12px); } }
+        .wa-msg:nth-child(1) { animation-delay: .5s; }
+        .wa-msg:nth-child(2) { animation-delay: 1.2s; }
+        .wa-msg:nth-child(3) { animation-delay: 2.2s; }
+        .wa-msg:nth-child(4) { animation-delay: 3s; }
+
+        /* Floating cards */
+        .float-card { position: absolute; background: #fff; padding: 10px 16px; border-radius: 12px; font-size: 12px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.1); z-index: 3; animation: floatY 3s ease-in-out infinite; white-space: nowrap; }
+        .float-card:nth-child(2) { top: 60px; right: -20px; animation-delay: 0s; }
+        .float-card:nth-child(3) { top: 200px; left: -30px; animation-delay: 1s; }
+        .float-card:nth-child(4) { bottom: 80px; right: -10px; animation-delay: 2s; }
+        @keyframes floatY { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+        /* ===== PROBLEM SECTION ===== */
+        .problems { background: var(--n900); color: #fff; padding: 96px 0; position: relative; }
+        .problems h2 { font-family: 'Sora', sans-serif; font-size: 40px; font-weight: 700; margin-bottom: 12px; }
+        .problems .sub { color: var(--n400); font-size: 18px; margin-bottom: 56px; }
+        .pain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .pain-card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 32px; transition: all .3s; }
+        .pain-card:hover { border-color: rgba(0,168,107,.4); box-shadow: 0 0 24px rgba(0,168,107,.1); }
+        .pain-icon { font-size: 32px; margin-bottom: 16px; }
+        .pain-text { color: var(--danger); font-weight: 600; margin-bottom: 8px; }
+        .fix-text { color: var(--primary); font-size: 15px; }
+
+        /* ===== HOW IT WORKS ===== */
+        .how { padding: 96px 0; text-align: center; }
+        .how h2 { font-family: 'Sora', sans-serif; font-size: 40px; font-weight: 700; color: var(--n800); margin-bottom: 8px; }
+        .how .sub { color: var(--n600); font-size: 18px; margin-bottom: 56px; }
+        .steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 40px; text-align: center; }
+        .step-num { width: 48px; height: 48px; background: var(--primary); color: #fff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-family: 'Sora'; font-weight: 700; font-size: 20px; margin-bottom: 16px; }
+        .step-icon { font-size: 48px; margin-bottom: 12px; display: block; }
+        .step h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; color: var(--n800); }
+        .step p { font-size: 15px; color: var(--n600); line-height: 1.6; }
+        .step .micro { font-size: 12px; color: var(--primary); margin-top: 8px; font-weight: 600; }
+
+        /* ===== TESTIMONIALS ===== */
+        .testimonials { background: var(--n50); padding: 80px 0; }
+        .testimonials h2 { font-family: 'Sora'; font-size: 36px; font-weight: 700; text-align: center; margin-bottom: 48px; color: var(--n800); }
+        .test-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
+        .test-card { background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.06); transition: all .3s; }
+        .test-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,168,107,.12); }
+        .test-header { background: #075E54; color: #fff; padding: 12px 16px; font-size: 14px; display: flex; justify-content: space-between; }
+        .test-header .lang-badge { background: rgba(255,255,255,.2); padding: 2px 10px; border-radius: 100px; font-size: 11px; }
+        .test-chat { padding: 16px; background: #ECE5DD; min-height: 120px; }
+        .test-chat .u { background: #DCF8C6; padding: 8px 12px; border-radius: 10px; font-size: 13px; margin-bottom: 8px; max-width: 80%; margin-left: auto; border-bottom-right-radius: 4px; }
+        .test-chat .b { background: #fff; padding: 8px 12px; border-radius: 10px; font-size: 13px; line-height: 1.5; max-width: 85%; border-bottom-left-radius: 4px; }
+        .test-result { padding: 16px; text-align: center; }
+        .test-result .badge { display: inline-block; background: linear-gradient(135deg, #FFB703, #FF8C00); color: #fff; padding: 6px 16px; border-radius: 100px; font-size: 13px; font-weight: 600; }
+        .test-result .stars { color: #FFB703; margin-top: 8px; font-size: 16px; }
+
+        /* Stats bar */
+        .stats-bar { display: grid; grid-template-columns: repeat(4,1fr); gap: 0; background: #fff; border-top: 1px solid var(--n200); border-bottom: 1px solid var(--n200); padding: 40px 0; margin-top: 48px; text-align: center; }
+        .stat-item .num { font-family: 'JetBrains Mono'; font-size: 36px; font-weight: 700; color: var(--n800); }
+        .stat-item .lbl { font-size: 14px; color: var(--n400); margin-top: 4px; }
+
+        /* ===== PRICING ===== */
+        .pricing { padding: 96px 0; text-align: center; }
+        .pricing h2 { font-family: 'Sora'; font-size: 36px; font-weight: 700; margin-bottom: 8px; }
+        .pricing .sub { color: var(--n600); margin-bottom: 48px; }
+        .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 800px; margin: 0 auto; }
+        .price-card { border-radius: 20px; padding: 40px 32px; text-align: left; position: relative; }
+        .price-card.free { border: 2px solid var(--n200); background: #fff; }
+        .price-card.pro { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; box-shadow: 0 16px 48px rgba(0,168,107,.25); }
+        .price-card .tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 100px; margin-bottom: 16px; }
+        .price-card.free .tag { background: var(--n100); color: var(--n600); }
+        .price-card.pro .tag { background: rgba(255,255,255,.2); color: #fff; }
+        .price-card h3 { font-family: 'Sora'; font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+        .price-card .price { font-family: 'JetBrains Mono'; font-size: 42px; font-weight: 700; }
+        .price-card .period { font-size: 16px; font-weight: 400; opacity: .7; }
+        .price-card .below { font-size: 14px; opacity: .7; margin-bottom: 24px; }
+        .price-card ul { list-style: none; margin-bottom: 28px; }
+        .price-card ul li { padding: 8px 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+        .price-card ul li::before { content: '✅'; font-size: 14px; }
+        .price-card.pro ul li::before { content: '⭐'; }
+        .price-card .btn { display: block; text-align: center; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: 600; text-decoration: none; transition: all .3s; border: none; cursor: pointer; width: 100%; }
+        .price-card.free .btn { border: 2px solid var(--primary); color: var(--primary); background: transparent; }
+        .price-card.pro .btn { background: #fff; color: var(--primary); }
+
+        /* ===== FAQ ===== */
+        .faq { padding: 80px 0; max-width: 800px; margin: 0 auto; }
+        .faq h2 { font-family: 'Sora'; font-size: 32px; font-weight: 700; margin-bottom: 40px; }
+        .faq-item { border-bottom: 1px solid var(--n200); }
+        .faq-q { padding: 24px 0; font-size: 18px; font-weight: 600; color: var(--n800); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .faq-q .icon { font-size: 24px; transition: transform .3s; color: var(--primary); }
+        .faq-a { max-height: 0; overflow: hidden; transition: max-height .3s ease; color: var(--n600); font-size: 16px; line-height: 1.6; }
+        .faq-item.open .faq-a { max-height: 200px; padding-bottom: 24px; }
+        .faq-item.open .icon { transform: rotate(45deg); }
+
+        /* ===== FINAL CTA ===== */
+        .final-cta { background: var(--n900); padding: 96px 24px; text-align: center; color: #fff; }
+        .final-cta .emoji { font-size: 64px; margin-bottom: 24px; }
+        .final-cta h2 { font-family: 'Sora'; font-size: 40px; font-weight: 700; margin-bottom: 12px; }
+        .final-cta .sub { color: var(--n400); font-size: 18px; margin-bottom: 32px; }
+        .final-cta .cta-primary { font-size: 18px; padding: 18px 48px; }
+        .final-cta .langs { margin-top: 24px; font-size: 16px; color: var(--n400); }
+        .final-cta .count { margin-top: 16px; font-size: 13px; color: var(--n400); }
+
+        /* Footer */
+        footer { background: var(--n900); border-top: 1px solid rgba(255,255,255,.05); padding: 32px 24px; text-align: center; color: var(--n400); font-size: 13px; }
+        footer a { color: var(--n400); text-decoration: none; margin: 0 12px; }
+        footer a:hover { color: var(--primary); }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .hero .container { grid-template-columns: 1fr; text-align: center; }
+            .hero-visual { order: -1; margin-bottom: 32px; }
+            .hero h1 { font-size: 32px; }
+            .hero h1 .line1 { font-size: 24px; }
+            .float-card { display: none; }
+            .phone-frame { width: 260px; }
+            .phone-screen { height: 400px; }
+            .pain-grid { grid-template-columns: 1fr; }
+            .steps { grid-template-columns: 1fr; gap: 32px; }
+            .test-grid { grid-template-columns: 1fr; }
+            .stats-bar { grid-template-columns: 1fr 1fr; gap: 24px; }
+            .price-grid { grid-template-columns: 1fr; }
+            .problems h2, .how h2, .final-cta h2 { font-size: 28px; }
+            .lang-row { justify-content: center; }
+            .cta-primary { width: 100%; justify-content: center; }
+            .social-proof { text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+    <div class="container">
+        <div class="hero-content">
+            <div class="hero-chip">🤖 AI-Powered • WhatsApp-Native • Free to Start</div>
+            <h1>
+                <span class="line1">India का Personal</span>
+                <span class="line2">Financial Advisor</span>
+            </h1>
+            <p class="hero-sub">Track expenses, build goals, get investment advice — all through WhatsApp.<br>In Tamil, Hindi, Telugu, Kannada, or English.</p>
+            <p class="social-proof">⭐ 4.9 rating  •  50,000+ users  •  ₹12 Crore saved</p>
+            <a href="https://wa.me/919003360494?text=Hi%20Viya!" class="cta-primary" id="hero-cta">💬 Start on WhatsApp — Free</a>
+            <p class="cta-note">No app download. No credit card. No signup form.</p>
+            <div class="lang-row">
+                <span>🇮🇳 Hindi</span><span>🇮🇳 Tamil</span><span>🇮🇳 Telugu</span><span>🇮🇳 Kannada</span><span>🇬🇧 English</span>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="float-card">🎯 Bike Goal: 67% ▓▓▓▓▓▓░░░</div>
+            <div class="float-card">📈 NIFTY +0.8% today</div>
+            <div class="float-card">🔥 14 day streak!</div>
+            <div class="phone-frame">
+                <div class="phone-screen">
+                    <div class="wa-header"><div class="dot"></div> MoneyViya</div>
+                    <div class="wa-chat">
+                        <div class="wa-msg user">Spent 500 on lunch</div>
+                        <div class="wa-msg bot">✅ ₹500 logged! 🍛<br>Budget left today: ₹833<br>You're 2 days closer to your Goa trip 🏖️</div>
+                        <div class="wa-msg user">How much have I saved this month?</div>
+                        <div class="wa-msg bot">📊 February so far:<br>💰 Saved: ₹4,200<br>🎯 Goal progress: 42%<br>Keep going! 💪</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- PROBLEMS -->
+<section class="problems">
+    <div class="container">
+        <h2>Managing money is hard.<br>We made it human.</h2>
+        <p class="sub">Most apps make you feel guilty. MoneyViya makes you feel capable.</p>
+        <div class="pain-grid">
+            <div class="pain-card"><div class="pain-icon">📱</div><p class="pain-text">Finance apps feel like homework</p><p class="fix-text">MoneyViya lives in WhatsApp. Just chat.</p></div>
+            <div class="pain-card"><div class="pain-icon">🗣️</div><p class="pain-text">Everything is in English, nothing makes sense</p><p class="fix-text">Viya speaks Tamil, Hindi, Telugu, Kannada, English</p></div>
+            <div class="pain-card"><div class="pain-icon">📊</div><p class="pain-text">I know I should save. I forget, then feel ashamed.</p><p class="fix-text">Morning nudges. Evening check-ins. Zero judgment.</p></div>
+            <div class="pain-card"><div class="pain-icon">💸</div><p class="pain-text">I can't afford a financial advisor</p><p class="fix-text">AI-powered advice. Free forever. CA: ₹5,000/hr vs MoneyViya: ₹0</p></div>
+        </div>
+    </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how">
+    <div class="container">
+        <h2>Start in 60 seconds.</h2>
+        <p class="sub">No forms. No downloads. No complexity.</p>
+        <div class="steps">
+            <div class="step"><div class="step-num">1</div><span class="step-icon">💬</span><h3>Say Hi on WhatsApp</h3><p>Scan the QR code or click the button. Viya greets you immediately.</p><p class="micro">🔒 Your data is encrypted</p></div>
+            <div class="step"><div class="step-num">2</div><span class="step-icon">🗣️</span><h3>Tell Viya about yourself</h3><p>Answer 10 quick questions in your language. Takes less than 2 minutes.</p><p class="micro">Available in 5 languages</p></div>
+            <div class="step"><div class="step-num">3</div><span class="step-icon">✨</span><h3>Your financial plan, instantly</h3><p>Viya creates a personalized plan and starts managing your money.</p><p class="micro">₹0 cost to start</p></div>
+        </div>
+    </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="testimonials">
+    <div class="container">
+        <h2>Real conversations. Real results.</h2>
+        <div class="test-grid">
+            <div class="test-card">
+                <div class="test-header"><span>Meena T. ✓ • Homemaker, Chennai</span><span class="lang-badge">Tamil</span></div>
+                <div class="test-chat"><div class="u">வீட்டு செலவு 2000 ரூபாய்</div><div class="b">✅ ₹2,000 மளிகை சேமித்தது! இந்த மாதம் நீங்கள் ₹3,200 சேமித்தீர்கள் 🎉</div></div>
+                <div class="test-result"><span class="badge">Family saved ₹18,000 in 2 months 🏆</span><div class="stars">★★★★★</div></div>
+            </div>
+            <div class="test-card">
+                <div class="test-header"><span>Rahul K. • Student, Bhopal</span><span class="lang-badge">Hindi</span></div>
+                <div class="test-chat"><div class="u">bhai aaj 300 barbaad ho gaye</div><div class="b">Haha Rahul, ₹300 logged! 😄 Aaj ka budget: ₹450 bacha hai. Kal wapas on track!</div></div>
+                <div class="test-result"><span class="badge">Cleared ₹15,000 debt in 5 months</span><div class="stars">★★★★★</div></div>
+            </div>
+            <div class="test-card">
+                <div class="test-header"><span>Divya R. • Freelancer, Bengaluru</span><span class="lang-badge">English</span></div>
+                <div class="test-chat"><div class="u">Received payment 25000 from client</div><div class="b">🎉 ₹25,000 income logged!<br>Tax set aside: ₹7,500 (30%)<br>Goal: ₹5,000 → Laptop fund<br>Free: ₹12,500</div></div>
+                <div class="test-result"><span class="badge">Started first SIP ₹2,000/month</span><div class="stars">★★★★★</div></div>
+            </div>
+        </div>
+        <div class="stats-bar">
+            <div class="stat-item"><div class="num" data-target="50000">0</div><div class="lbl">Users</div></div>
+            <div class="stat-item"><div class="num" data-target="12">0</div><div class="lbl">Crore Saved (₹)</div></div>
+            <div class="stat-item"><div class="num" data-target="49">0</div><div class="lbl">★ Rating (4.9)</div></div>
+            <div class="stat-item"><div class="num" data-target="5">0</div><div class="lbl">Languages</div></div>
+        </div>
+    </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+    <div class="container">
+        <h2>Simple, honest pricing.</h2>
+        <p class="sub">Start free. Upgrade when you're ready.</p>
+        <div class="price-grid">
+            <div class="price-card free">
+                <span class="tag">Start Here</span>
+                <h3>Viya Free</h3>
+                <div class="price">₹0 <span class="period">/ Forever</span></div>
+                <p class="below">&nbsp;</p>
+                <ul>
+                    <li>Unlimited expense tracking</li>
+                    <li>2 active goals</li>
+                    <li>Daily & weekly summaries</li>
+                    <li>WhatsApp-native</li>
+                    <li>5 language support</li>
+                    <li>Basic market updates</li>
+                </ul>
+                <button class="btn" onclick="window.open('https://wa.me/919003360494?text=Hi%20Viya!')">Start Free — No Card Needed</button>
+            </div>
+            <div class="price-card pro">
+                <span class="tag">⭐ Most Popular</span>
+                <h3>Viya Pro</h3>
+                <div class="price">₹99 <span class="period">/ month</span></div>
+                <p class="below">Less than ₹3/day</p>
+                <ul>
+                    <li>Everything in Free</li>
+                    <li>Unlimited goals</li>
+                    <li>Personalized investment advice</li>
+                    <li>Family sharing (4 members)</li>
+                    <li>Tax estimation & reports</li>
+                    <li>PDF financial reports</li>
+                    <li>Receipt scanning</li>
+                    <li>Priority support</li>
+                </ul>
+                <button class="btn">Start 14-Day Free Trial</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq" id="faq">
+    <h2>Questions we get a lot</h2>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Is my financial data safe? <span class="icon">+</span></div><div class="faq-a">Your data is encrypted end-to-end. We never see your bank passwords. MoneyViya stores only what you share in chat — your income, expenses, and goals. DPDP compliant.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Do I need to download anything? <span class="icon">+</span></div><div class="faq-a">No. MoneyViya lives inside WhatsApp. You already have it.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Will it work in my language? <span class="icon">+</span></div><div class="faq-a">Yes. MoneyViya speaks Tamil, Hindi, Telugu, Kannada, and English. Type in any — Viya understands.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Is this really free? <span class="icon">+</span></div><div class="faq-a">Yes. The free plan has everything you need to start tracking. Pro is optional for advanced features.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">I'm not good with money. Will I understand this? <span class="icon">+</span></div><div class="faq-a">That's exactly who MoneyViya is built for. If you can chat on WhatsApp, you can use MoneyViya.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What if my income is irregular? <span class="icon">+</span></div><div class="faq-a">MoneyViya handles irregular income — freelancers, farmers, business owners all use it.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Does MoneyViya give investment advice? <span class="icon">+</span></div><div class="faq-a">Viya gives personalized financial guidance based on your risk profile and goals. For large investments, we recommend verifying with a registered advisor.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Can my family also use it? <span class="icon">+</span></div><div class="faq-a">Pro plan includes family sharing for up to 4 members. Shared budgets, individual privacy.</div></div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta">
+    <div class="emoji">💬</div>
+    <h2>Your financial advisor is waiting.</h2>
+    <p class="sub">Free. WhatsApp. Your language.</p>
+    <a href="https://wa.me/919003360494?text=Hi%20Viya!" class="cta-primary">Open MoneyViya on WhatsApp →</a>
+    <p class="langs">हिंदी • தமிழ் • తెలుగు • ಕನ್ನಡ • English</p>
+    <p class="count">Join 50,000+ people managing money smarter</p>
+</section>
+
+<!-- FOOTER -->
+<footer>
+    <p>💰 MoneyViya — Made with ❤️ in India</p>
+    <p style="margin-top:12px"><a href="#">Privacy Policy</a> | <a href="#">Terms</a> | <a href="#">Contact</a> | © 2026 MoneyViya</p>
+</footer>
+
+<script>
+// Count-up animation
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.querySelectorAll('.num[data-target]').forEach(el => {
+                const target = +el.dataset.target;
+                const dur = 2000;
+                const start = performance.now();
+                const tick = (now) => {
+                    const p = Math.min((now - start) / dur, 1);
+                    const ease = 1 - Math.pow(1 - p, 3);
+                    el.textContent = Math.floor(ease * target).toLocaleString('en-IN') + (target > 100 ? '+' : '');
+                    if (p < 1) requestAnimationFrame(tick);
+                };
+                requestAnimationFrame(tick);
+            });
+            observer.unobserve(entry.target);
+        }
+    });
+}, { threshold: 0.3 });
+document.querySelectorAll('.stats-bar').forEach(el => observer.observe(el));
+
+// Scroll reveal
+const revealObs = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.style.opacity = '1'; e.target.style.transform = 'translateY(0)'; } });
+}, { threshold: 0.1 });
+document.querySelectorAll('.pain-card, .step, .test-card').forEach(el => {
+    el.style.opacity = '0'; el.style.transform = 'translateY(30px)'; el.style.transition = 'all .6s ease';
+    revealObs.observe(el);
+});
+</script>
+</body>
+</html>

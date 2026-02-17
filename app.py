@@ -130,6 +130,11 @@ if MONEYVIEW_AVAILABLE:
 async def root():
     return RedirectResponse(url="/static/index.html")
 
+# Landing page (the conversion machine)
+@app.get("/landing")
+async def landing():
+    return RedirectResponse(url="/static/landing.html")
+
 # Health check and debug endpoint
 @app.get("/health")
 async def health_check():
