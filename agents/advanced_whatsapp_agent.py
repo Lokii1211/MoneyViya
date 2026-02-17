@@ -1322,17 +1322,54 @@ TONE CALIBRATION (based on {personality_info['name']}):
 {personality_info['motivation']}"""
     
     def _handle_fallback(self, message: str, user_data: Dict, entities: Dict, context: Dict) -> str:
-        """Handle unrecognized messages using the Master System Prompt (Strategy Prompt 1)"""
+        """Universal AI Fallback — Handles ANY message (financial or general)
         
+        Strategy: Financial → Master System Prompt
+                  General → Research via OpenAI + subtle MoneyViya connection
+        """
         name = user_data.get("name", "Friend")
         lang = user_data.get("language", "en")
+        msg_lower = message.lower()
         
-        # Use OpenAI with the FULL Master System Prompt
+        # Detect emotional tone for response calibration
+        tone = self.detect_emotional_tone(message, user_data)
+        
+        # Check if it's a financial question or general question
+        financial_keywords = [
+            "money", "spend", "save", "invest", "budget", "loan", "emi", "sip",
+            "mutual fund", "stocks", "fd", "bank", "salary", "income", "expense",
+            "paisa", "rupee", "₹", "lakh", "crore", "tax", "gst", "insurance",
+            "gold", "ppf", "nps", "credit", "debit", "upi", "payment",
+            "paise", "kharcha", "bachat", "nivesh", "kamaai"
+        ]
+        is_financial = any(kw in msg_lower for kw in financial_keywords)
+        
         if openai_service.is_available():
             try:
                 import requests
-                system_prompt = self._build_master_system_prompt(user_data)
                 
+                if is_financial:
+                    # FINANCIAL — Use Master System Prompt
+                    system_prompt = self._build_master_system_prompt(user_data)
+                else:
+                    # GENERAL — Universal AI with MoneyViya personality
+                    lang_name = {"en": "English", "hi": "Hindi", "ta": "Tamil", "te": "Telugu", "kn": "Kannada"}.get(lang, "English")
+                    system_prompt = f"""You are Viya, MoneyViya's AI assistant. You're talking to {name}.
+
+You can answer ANY question — you're not limited to finance. Be helpful, knowledgeable, and friendly.
+
+RULES:
+1. Answer the user's question accurately and helpfully
+2. Keep response under 150 words (WhatsApp format)
+3. Use emojis naturally
+4. At the END, add ONE subtle connection back to MoneyViya if relevant
+   Examples: "By the way, want to track today's expenses? 💰" or 
+   "Speaking of that, let me know if you need any financial help! 📊"
+5. If it's a greeting, be warm and ask how their finances are going
+6. If they're upset/frustrated, lead with empathy
+7. Write in {lang_name}
+8. Never say "I can't help with that" — always engage"""
+
                 response = requests.post(
                     "https://api.openai.com/v1/chat/completions",
                     headers={"Authorization": f"Bearer {self.openai_key}", "Content-Type": "application/json"},
@@ -1343,14 +1380,20 @@ TONE CALIBRATION (based on {personality_info['name']}):
                             {"role": "user", "content": message}
                         ],
                         "temperature": 0.7,
-                        "max_tokens": 250
+                        "max_tokens": 300
                     },
                     timeout=15
                 )
                 if response.ok:
-                    return response.json()["choices"][0]["message"]["content"].strip()
+                    reply = response.json()["choices"][0]["message"]["content"].strip()
+                    # Apply multilingual adaptation if non-English
+                    if lang != "en":
+                        reply = openai_service.adapt_multilingual_response(
+                            message, reply, lang, tone
+                        )
+                    return reply
             except Exception as e:
-                print(f"OpenAI Master Prompt Error: {e}")
+                print(f"[Fallback AI] Error: {e}")
 
         # Check if it might be a number (for expense/income)
         if amount := self._extract_amount(message):
@@ -1363,19 +1406,18 @@ Is this an:
 
 Just reply with 1 or 2, or say "spent on food" / "earned from work\""""
         
-        # Generic helpful response
+        # Static fallback (no AI available)
         return f"""🤔 *Hi {name}!*
 
-I'm not fully sure, but I can help you with your finances!
-
-Try these:
+I can help you with anything! Try:
 💸 "Spent 200 on food"
 💵 "Earned 5000"
 📊 "Show balance"
 📈 "Investment advice"
+🎯 "How's my goal?"
 ❓ "Help"
 
-Or ask me any financial question!"""
+Or ask me any question — I'm here for you! 😊"""
     
     def _handle_health_check(self, message: str, user_data: Dict, entities: Dict, context: Dict) -> str:
         """Financial Health Diagnostic (Strategy Prompt 11)"""

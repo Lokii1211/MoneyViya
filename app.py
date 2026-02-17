@@ -754,17 +754,49 @@ def get_monthly_pdf_report(phone: str):
         raise HTTPException(status_code=500, detail="PDF generation failed")
 
 
-# ================= SCHEDULED TASKS =================
+# ================= SCHEDULED TASKS (Production-Grade) =================
 SCHEDULER_AVAILABLE = False
 scheduler = None
 
 try:
     from apscheduler.schedulers.background import BackgroundScheduler
     from apscheduler.triggers.interval import IntervalTrigger
+    from apscheduler.triggers.cron import CronTrigger
     SCHEDULER_AVAILABLE = True
     
     scheduler = BackgroundScheduler()
     
+    # -------------------------------------------------------
+    # JOB 1: Self-Ping Keep-Alive (Prevents Render Free Tier Sleep)
+    # Pings own /health endpoint every 14 minutes
+    # -------------------------------------------------------
+    def self_ping_keepalive():
+        """Self-ping to prevent Render free tier from sleeping"""
+        try:
+            import requests as req
+            render_url = os.getenv("RENDER_EXTERNAL_URL", "")
+            if render_url:
+                resp = req.get(f"{render_url}/health", timeout=10)
+                print(f"[KeepAlive] Self-ping: {resp.status_code}")
+            else:
+                # Ping localhost
+                port = os.getenv("PORT", "8000")
+                resp = req.get(f"http://0.0.0.0:{port}/health", timeout=5)
+                print(f"[KeepAlive] Local ping: {resp.status_code}")
+        except Exception as e:
+            print(f"[KeepAlive] Ping failed (non-critical): {e}")
+    
+    scheduler.add_job(
+        self_ping_keepalive,
+        trigger=IntervalTrigger(minutes=14),
+        id='self_ping_keepalive',
+        name='Self-Ping Keep-Alive (14min)',
+        replace_existing=True
+    )
+    
+    # -------------------------------------------------------
+    # JOB 2: Scheduled Backups (Hourly)
+    # -------------------------------------------------------
     def check_scheduled_backups():
         """Check and run scheduled backups"""
         try:
@@ -775,8 +807,6 @@ try:
         except Exception as e:
             print(f"[Scheduler] Backup check failed: {e}")
     
-    
-    # Add scheduled backup check (runs every hour)
     scheduler.add_job(
         check_scheduled_backups,
         trigger=IntervalTrigger(hours=1),
@@ -784,58 +814,144 @@ try:
         name='Check and run scheduled backups',
         replace_existing=True
     )
-
-    # -------------------------------------------------------
-    # NEW: Daily Reminder Job (Native fallback for N8N)
-    # -------------------------------------------------------
-    from apscheduler.triggers.cron import CronTrigger
     
-    def run_daily_reminders():
-        """Send daily reminders to all active users (8 AM)"""
-        print("[Scheduler] Running daily reminders...")
+    # -------------------------------------------------------
+    # JOB 3: AI-Powered Morning Briefing (8:00 AM IST)
+    # Uses advanced_agent.generate_morning_reminder()
+    # -------------------------------------------------------
+    def run_morning_briefing():
+        """Send AI-powered morning briefings to all active users"""
+        print("[Scheduler] Running AI morning briefings...")
         try:
             users = user_repo.get_all_users()
             count = 0
             for user in users:
-                if user.get("onboarding_complete"):
-                    try:
-                        if moneyview_agent:
-                            msg = f"☀️ Good morning {user.get('name', 'Friend')}! Ready to track today?"
-                        else:
-                            msg = "Good morning! Start tracking your expenses."
-                        phone = user.get("phone", "").replace("+", "")
-                        
-                        # Try Cloud API first
-                        if whatsapp_cloud_service.is_available():
-                            whatsapp_cloud_service.send_text_message(phone, msg)
-                            count += 1
-                        else:
-                            # Log for fallback or N8N to pick up
-                            print(f"[Scheduler] Pending reminder for {phone} (WhatsApp not configured)")
-                            
-                    except Exception as e:
-                        print(f"[Scheduler] Error sending reminder to {user.get('phone')}: {e}")
-            print(f"[Scheduler] Daily reminders sent: {count}")
+                if not user.get("onboarding_complete"):
+                    continue
+                try:
+                    phone = user.get("phone", "").replace("+", "")
+                    # Use AI-powered morning briefing from advanced agent
+                    if advanced_agent:
+                        msg = advanced_agent.generate_morning_reminder(user)
+                    elif moneyview_agent:
+                        msg = f"☀️ Good morning {user.get('name', 'Friend')}! Ready to track today?"
+                    else:
+                        msg = "Good morning! Start tracking your expenses."
+                    
+                    if whatsapp_cloud_service.is_available():
+                        whatsapp_cloud_service.send_text_message(phone, msg)
+                        count += 1
+                    else:
+                        print(f"[Scheduler] Pending morning msg for {phone}")
+                except Exception as e:
+                    print(f"[Scheduler] Morning error for {user.get('phone')}: {e}")
+            print(f"[Scheduler] Morning briefings sent: {count}")
         except Exception as e:
-            print(f"[Scheduler] Daily reminder job failed: {e}")
-
+            print(f"[Scheduler] Morning briefing job failed: {e}")
+    
     scheduler.add_job(
-        run_daily_reminders,
-        trigger=CronTrigger(hour=8, minute=0),
-        id='daily_morning_reminder',
-        name='Daily Morning Reminder',
+        run_morning_briefing,
+        trigger=CronTrigger(hour=8, minute=0, timezone='Asia/Kolkata'),
+        id='daily_morning_briefing',
+        name='AI Morning Briefing (8:00 AM IST)',
+        replace_existing=True
+    )
+    
+    # -------------------------------------------------------
+    # JOB 4: Smart Nudge (2:00 PM IST)
+    # Uses advanced_agent.generate_smart_nudge()
+    # -------------------------------------------------------
+    def run_afternoon_nudge():
+        """Send smart nudges to users who need them"""
+        print("[Scheduler] Running afternoon nudges...")
+        try:
+            users = user_repo.get_all_users()
+            count = 0
+            for user in users:
+                if not user.get("onboarding_complete"):
+                    continue
+                try:
+                    phone = user.get("phone", "").replace("+", "")
+                    # Use smart reminder calibration to decide IF we should send
+                    if advanced_agent:
+                        reminder = advanced_agent.generate_smart_reminder(user)
+                        if not reminder.get("should_send"):
+                            continue
+                        msg = reminder.get("message", "")
+                    else:
+                        continue  # Don't send static nudges
+                    
+                    if msg and whatsapp_cloud_service.is_available():
+                        whatsapp_cloud_service.send_text_message(phone, msg)
+                        count += 1
+                except Exception as e:
+                    print(f"[Scheduler] Nudge error for {user.get('phone')}: {e}")
+            print(f"[Scheduler] Smart nudges sent: {count}")
+        except Exception as e:
+            print(f"[Scheduler] Nudge job failed: {e}")
+    
+    scheduler.add_job(
+        run_afternoon_nudge,
+        trigger=CronTrigger(hour=14, minute=0, timezone='Asia/Kolkata'),
+        id='afternoon_smart_nudge',
+        name='Smart Nudge (2:00 PM IST)',
+        replace_existing=True
+    )
+    
+    # -------------------------------------------------------
+    # JOB 5: AI Evening Check-in (9:00 PM IST)
+    # Uses advanced_agent.generate_evening_checkout()
+    # -------------------------------------------------------
+    def run_evening_checkout():
+        """Send AI-powered evening check-in with Financial Day Score"""
+        print("[Scheduler] Running AI evening check-ins...")
+        try:
+            users = user_repo.get_all_users()
+            count = 0
+            for user in users:
+                if not user.get("onboarding_complete"):
+                    continue
+                try:
+                    phone = user.get("phone", "").replace("+", "")
+                    if advanced_agent:
+                        msg = advanced_agent.generate_evening_checkout(user)
+                    elif moneyview_agent:
+                        msg = f"🌙 Good night {user.get('name', 'Friend')}! Great job tracking today."
+                    else:
+                        msg = "Good evening! Check your expenses for today."
+                    
+                    if whatsapp_cloud_service.is_available():
+                        whatsapp_cloud_service.send_text_message(phone, msg)
+                        count += 1
+                except Exception as e:
+                    print(f"[Scheduler] Evening error for {user.get('phone')}: {e}")
+            print(f"[Scheduler] Evening check-ins sent: {count}")
+        except Exception as e:
+            print(f"[Scheduler] Evening checkout job failed: {e}")
+    
+    scheduler.add_job(
+        run_evening_checkout,
+        trigger=CronTrigger(hour=21, minute=0, timezone='Asia/Kolkata'),
+        id='daily_evening_checkout',
+        name='AI Evening Check-in (9:00 PM IST)',
         replace_existing=True
     )
     
 except ImportError:
-    print("Note: APScheduler not installed. Scheduled backups will run on-demand only.")
+    print("Note: APScheduler not installed. Scheduled tasks will run on-demand only.")
 
 @app.on_event("startup")
 def startup_event():
     """Start scheduler on app startup"""
     if SCHEDULER_AVAILABLE and scheduler:
         scheduler.start()
-        print("[Scheduler] Background scheduler started")
+        print("[Scheduler] Background scheduler started with jobs:")
+        for job in scheduler.get_jobs():
+            print(f"  → {job.name} (next: {job.next_run_time})")
+        print(f"[PRODUCTION] Keep-alive self-ping active (every 14 min)")
+        print(f"[PRODUCTION] Morning briefing: 8:00 AM IST")
+        print(f"[PRODUCTION] Smart nudge: 2:00 PM IST")
+        print(f"[PRODUCTION] Evening check-in: 9:00 PM IST")
     else:
         print("[Scheduler] Running without background scheduler")
 
