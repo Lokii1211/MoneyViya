@@ -46,9 +46,43 @@ except ImportError as e:
 
 class AdvancedWhatsAppAgent:
     """
-    Senior-Level WhatsApp Financial Agent
-    Primary interface for all financial operations
+    Senior-Level WhatsApp Financial Agent v5.0
+    Primary interface for all financial operations.
+    
+    Powered by MoneyViya Product Strategy:
+    - Money Personality System (The "Money Mirror")
+    - Viya Voice Emotional Tone Engine
+    - Smart Nudge Engine
+    - Achievement & Celebration System
+    - Budget Crisis Manager
     """
+    
+    # ===== Money Personality Types =====
+    MONEY_PERSONALITIES = {
+        "warrior": {"emoji": "🦁", "name": "The Warrior", "desc": "Aggressive, goal-driven, wants to dominate debt",
+                    "tone": "challenge", "motivation": "Give them a challenge to overcome"},
+        "protector": {"emoji": "🐢", "name": "The Protector", "desc": "Risk-averse, safety-first, emergency fund obsessed",
+                      "tone": "reassure", "motivation": "Reassure safety, give risk-free path"},
+        "dreamer": {"emoji": "🦋", "name": "The Dreamer", "desc": "Big goals, poor execution, needs structure",
+                    "tone": "inspire", "motivation": "Connect to their big goal, why this matters"},
+        "builder": {"emoji": "🐝", "name": "The Builder", "desc": "Consistent, methodical, compound interest type",
+                    "tone": "compound", "motivation": "Show them the compound effect"},
+        "achiever": {"emoji": "🎯", "name": "The Achiever", "desc": "Competitive, loves progress bars and streaks",
+                     "tone": "compete", "motivation": "Frame as a comeback story, leaderboard recovery"},
+    }
+    
+    # ===== Achievement Badges =====
+    ACHIEVEMENT_BADGES = {
+        "first_expense": {"badge": "📝", "name": "First Step", "desc": "Logged your first expense"},
+        "week_streak": {"badge": "🥉", "name": "Week Warrior", "desc": "7-day tracking streak"},
+        "month_streak": {"badge": "🥈", "name": "Budget Master", "desc": "30-day tracking streak"},
+        "first_goal": {"badge": "🥇", "name": "Goal Crusher", "desc": "First goal achieved"},
+        "first_investment": {"badge": "💎", "name": "Wealth Builder", "desc": "First investment started"},
+        "emergency_fund": {"badge": "🛡️", "name": "Emergency Shield", "desc": "Emergency fund complete"},
+        "savings_10k": {"badge": "⭐", "name": "Star Saver", "desc": "Crossed ₹10,000 savings"},
+        "savings_1l": {"badge": "🏆", "name": "Lakh Legend", "desc": "Crossed ₹1,00,000 savings"},
+        "100_streak": {"badge": "💯", "name": "Centurion", "desc": "100-day tracking streak"},
+    }
     
     def __init__(self):
         self.openai_key = os.getenv("OPENAI_API_KEY", "")
@@ -62,7 +96,7 @@ class AdvancedWhatsAppAgent:
             "log_income": self._handle_income,
             "check_balance": self._handle_balance,
             "view_report": self._handle_report,
-            "set_goal": self._handle_budget,  # Uses same handler as budget_query
+            "set_goal": self._handle_budget,
             "investment_advice": self._handle_investment,
             "budget_query": self._handle_budget,
             "help": self._handle_help,
@@ -70,6 +104,7 @@ class AdvancedWhatsAppAgent:
             "otp_request": self._handle_otp_request,
             "confirmation": self._handle_confirmation,
             "market_update": self._handle_market_update,
+            "health_check": self._handle_health_check,
         }
         
         # Response templates (Multi-language)
@@ -313,6 +348,7 @@ Enter this code on the website to access your dashboard.""",
             "investment": [r"invest|stock|mutual fund|gold|sip|fd|market|share|शेयर"],
             "greeting": [r"^(hi|hello|hey|hola|नमस्ते|வணக்கம்|హాయ్)$"],
             "help": [r"help|menu|मदद|உதவி|సహాయం|what can you do"],
+            "health_check": [r"health|score|financial health|money score|checkup|diagnostic|स्वास्थ्य|ஆரோக்கியம்"],
             "confirmation": {
                 "positive": [r"^(yes|yeah|yep|हां|ஆம்|అవును|ok|okay|done|confirm|correct|sahi)$"],
                 "negative": [r"^(no|nope|नहीं|இல்லை|కాదు|wait|add more|wrong|galat)$"],
@@ -497,6 +533,10 @@ _(Reply with 1, 2, 3, or 4)_"""
         if any(re.search(p, text) for p in self.smart_patterns["investment"]):
             return "investment_advice", entities
         
+        # Check for health check
+        if any(re.search(p, text) for p in self.smart_patterns["health_check"]):
+            return "health_check", entities
+        
         # Check for INCOME logging FIRST (important: before expense!)
         # Income keywords: earned, received, got, income, salary, etc.
         income_keywords = ["earn", "income", "received", "got paid", "salary", "kamai", "mila", "मिला", "கிடைத்தது", "వచ్చింది"]
@@ -627,7 +667,7 @@ _(Reply with 1, 2, 3, or 4)_"""
     # =================== INTENT HANDLERS ===================
     
     def _handle_expense(self, message: str, user_data: Dict, entities: Dict, context: Dict) -> str:
-        """Handle expense logging"""
+        """Handle expense logging with Budget Crisis Detection & Achievements"""
         import pytz
         ist = pytz.timezone('Asia/Kolkata')
         
@@ -658,18 +698,34 @@ _(Reply with 1, 2, 3, or 4)_"""
         daily_budget = user_data.get("daily_budget", 500)
         remaining = max(0, daily_budget - today_total)
         
-        # Spending tip
-        tips = [
-            "💡 Pack lunch tomorrow to save ₹100!",
-            "💡 Compare prices before buying!",
-            "💡 Small savings add up over time!",
-            "💡 Track every expense for better insights!",
-        ]
+        # ===== Budget Crisis Detection (Strategy Prompt 9) =====
+        budget_alert = ""
+        if daily_budget > 0:
+            overage_pct = ((today_total - daily_budget) / daily_budget) * 100 if today_total > daily_budget else 0
+            if overage_pct > 40:
+                budget_alert = "\n\n🔴 *Budget Alert — Reset Mode*\nLife happens, this is fixable. Tomorrow is a fresh start 💪"
+            elif overage_pct > 20:
+                budget_alert = "\n\n🟡 *Budget Alert — Recovery Mode*\nTry to keep the rest of the day low-spend."
+            elif overage_pct > 10:
+                budget_alert = f"\n\n🟠 *Budget Watch:* You've used most of today's budget."
+        
+        # ===== Streak Tracking =====
+        streak = user_data.get("tracking_streak", 0) + 1
+        user_data["tracking_streak"] = streak
+        user_data["last_tracked"] = ist_now.isoformat()
+        user_repo.update_user(phone, user_data)
+        
+        # ===== Achievement Check =====
+        achievement_msg = self._check_achievements(user_data, phone)
+        
+        # Personality-aware spending tip
+        personality = user_data.get("money_personality", "builder")
+        tips = self._get_personality_tip(personality)
         
         lang = user_data.get("language", "en")
         template = self.templates.get(lang, self.templates["en"])["expense_logged"]
         
-        return template.format(
+        response = template.format(
             amount=amount,
             category=category.title(),
             date=ist_now.strftime("%d %b, %I:%M %p"),
@@ -677,6 +733,72 @@ _(Reply with 1, 2, 3, or 4)_"""
             remaining=remaining,
             tip=random.choice(tips)
         )
+        
+        return response + budget_alert + achievement_msg
+    
+    def _get_personality_tip(self, personality: str) -> list:
+        """Return tips calibrated to user's money personality"""
+        tips = {
+            "warrior": [
+                "💡 Challenge: Can you beat yesterday's spending?",
+                "💡 Attack that debt — every rupee counts in the war!",
+                "💡 Warriors track every battle. Keep it up!",
+            ],
+            "protector": [
+                "💡 You're building your safety net. Well done!",
+                "💡 Every tracked expense = more control = more safety.",
+                "💡 Your emergency fund is growing because of habits like this.",
+            ],
+            "dreamer": [
+                "💡 This expense is ₹{amount} away from your dream. Worth it?",
+                "💡 Big goals need small daily discipline. You're doing it!",
+                "💡 Imagine your goal achieved — keep that picture in mind!",
+            ],
+            "builder": [
+                "💡 Compound effect: small savings daily = massive wealth.",
+                "💡 Consistency is your superpower. Keep building!",
+                "💡 ₹100 saved daily = ₹36,500/year. Math is on your side.",
+            ],
+            "achiever": [
+                "💡 You're on a streak! Don't break it!",
+                "💡 Track → Analyze → Optimize. You're at step 1!",
+                "💡 Top savers track every single expense. You're one of them now.",
+            ],
+        }
+        return tips.get(personality, tips["builder"])
+    
+    def _check_achievements(self, user_data: Dict, phone: str) -> str:
+        """Check and award achievements (Strategy Prompt 10: Achievement Engine)"""
+        achievements = user_data.get("achievements", [])
+        streak = user_data.get("tracking_streak", 0)
+        new_badge = ""
+        
+        # First expense
+        if "first_expense" not in achievements:
+            achievements.append("first_expense")
+            badge = self.ACHIEVEMENT_BADGES["first_expense"]
+            new_badge = f"\n\n🎉 *Achievement Unlocked!*\n{badge['badge']} *{badge['name']}* — {badge['desc']}"
+        
+        # 7-day streak
+        if streak >= 7 and "week_streak" not in achievements:
+            achievements.append("week_streak")
+            badge = self.ACHIEVEMENT_BADGES["week_streak"]
+            new_badge = f"\n\n🎉 *Achievement Unlocked!*\n{badge['badge']} *{badge['name']}* — {badge['desc']}\n🔥 {streak}-day streak!"
+        
+        # 30-day streak
+        if streak >= 30 and "month_streak" not in achievements:
+            achievements.append("month_streak")
+            badge = self.ACHIEVEMENT_BADGES["month_streak"]
+            new_badge = f"\n\n🏆 *EPIC Achievement!*\n{badge['badge']} *{badge['name']}* — {badge['desc']}\n🔥 {streak}-day streak! You're in the top 5% of users!"
+        
+        # 100-day streak
+        if streak >= 100 and "100_streak" not in achievements:
+            achievements.append("100_streak")
+            badge = self.ACHIEVEMENT_BADGES["100_streak"]
+            new_badge = f"\n\n🏆🏆 *LEGENDARY Achievement!*\n{badge['badge']} *{badge['name']}* — {badge['desc']}\n🔥🔥🔥 {streak} DAYS! You're a financial legend!"
+        
+        user_data["achievements"] = achievements
+        return new_badge
     
     def _handle_income(self, message: str, user_data: Dict, entities: Dict, context: Dict) -> str:
         """Handle income logging"""
@@ -767,25 +889,87 @@ _(Reply with 1, 2, 3, or 4)_"""
         )
     
     def _handle_report(self, message: str, user_data: Dict, entities: Dict, context: Dict) -> str:
-        """Handle report generation request"""
+        """Weekly Report Narrator (Strategy Prompt 6)
+        
+        Not just data — a STORY of their financial week.
+        """
         phone = user_data.get("phone")
         name = user_data.get("name", "Friend")
         lang = user_data.get("language", "en")
-        
-        # Determine report type
-        report_type = "weekly"  # default
-        if "month" in message.lower():
-            report_type = "monthly"
+        personality = user_data.get("money_personality", "builder")
+        streak = user_data.get("tracking_streak", 0)
         
         # Get data
         income = self._get_month_income(phone)
         expenses = self._get_month_expenses(phone)
         savings = income - expenses
+        daily_budget = user_data.get("daily_budget", 500)
+        weekly_budget = daily_budget * 7
         
-        # Category breakdown (simplified)
+        # Category breakdown
         categories = self._get_category_breakdown(phone)
+        cat_text = ", ".join([f"{k}: ₹{v:,}" for k, v in (categories or {}).items()])
         
-        # Report titles by language
+        # Find biggest category
+        biggest_cat = max(categories, key=categories.get) if categories else "none"
+        
+        # Goal info
+        goal = self._get_active_goal(phone)
+        goal_name = goal.get("name", "your goal") if goal else "your goal"
+        goal_progress = self._get_goal_progress(phone)
+        
+        lang_map = {"en": "English", "hi": "Hindi", "ta": "Tamil", "te": "Telugu", "kn": "Kannada"}
+        language = lang_map.get(lang, "English")
+        
+        # Try AI-narrated report
+        try:
+            import os
+            api_key = os.getenv("OPENAI_API_KEY", "")
+            if api_key:
+                prompt = f"""Generate MoneyViya's weekly financial narrative report.
+
+USER: {name} | Personality: {personality}
+Income: ₹{income:,} | Spending: ₹{expenses:,} | Net: ₹{savings:,}
+Weekly Budget: ₹{weekly_budget:,}
+Categories: {cat_text or 'No expenses recorded'}
+Biggest Category: {biggest_cat}
+Goal: {goal_name} — {goal_progress}% complete
+Streak: {streak} days
+
+STRUCTURE (Strategy Prompt 6):
+1. Week headline (newspaper-style, fun: "The Swiggy Week" or "Investment Month Begins!")
+2. The numbers (clean, visual)
+3. Win of the week (ALWAYS find something to celebrate)
+4. Challenge (honest but constructive — never "you failed")
+5. Key insight (one pattern)
+6. Goal progress update
+7. Next week target (one specific action)
+8. Motivation line (calibrated to {personality} personality)
+
+Rules: Max 200 words. WhatsApp format. In {language}."""
+
+                response = requests.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json={
+                        "model": "gpt-4o-mini",
+                        "messages": [
+                            {"role": "system", "content": f"You are Viya, MoneyViya's weekly report narrator. Tell a STORY of their financial week. Always find a win. Never shame. Max 200 words in {language}."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "temperature": 0.7,
+                        "max_tokens": 350
+                    },
+                    timeout=15
+                )
+                if response.ok:
+                    result = response.json()["choices"][0]["message"]["content"].strip()
+                    result += f"\n\n📄 _Type \"PDF report\" for detailed analysis._"
+                    return result
+        except Exception as e:
+            print(f"[Report AI] Error: {e}")
+        
+        # Static fallback
         titles = {
             "en": f"📊 *Weekly Report for {name}*",
             "ta": f"📊 *{name} வாராந்திர அறிக்கை*",
@@ -793,61 +977,30 @@ _(Reply with 1, 2, 3, or 4)_"""
             "te": f"📊 *{name} వారపు నివేదిక*"
         }
         
-        # Labels by language
-        labels = {
-            "en": {"income": "Total Income", "expenses": "Total Expenses", "savings": "Net Savings", 
-                   "categories": "Category Breakdown", "insight": "AI Insight", "pdf": "Get PDF"},
-            "ta": {"income": "மொத்த வருமானம்", "expenses": "மொத்த செலவுகள்", "savings": "நிகர சேமிப்பு",
-                   "categories": "வகை பிரிப்பு", "insight": "AI நுண்ணறிவு", "pdf": "PDF பெறுங்கள்"},
-            "hi": {"income": "कुल आय", "expenses": "कुल खर्च", "savings": "शुद्ध बचत",
-                   "categories": "श्रेणी विवरण", "insight": "AI अंतर्दृष्टि", "pdf": "PDF प्राप्त करें"},
-            "te": {"income": "మొత్తం ఆదాయం", "expenses": "మొత్తం ఖర్చులు", "savings": "నికర పొదుపు",
-                   "categories": "వర్గాల వివరణ", "insight": "AI అంతర్దృష్టి", "pdf": "PDF పొందండి"}
-        }
-        
-        l = labels.get(lang, labels["en"])
-        
         report = f"""{titles.get(lang, titles["en"])}
 ━━━━━━━━━━━━━━━━━━━━
 
-💵 *{l['income']}:* ₹{income:,}
-💸 *{l['expenses']}:* ₹{expenses:,}
-💰 *{l['savings']}:* ₹{savings:,}
+💵 *Income:* ₹{income:,}
+💸 *Expenses:* ₹{expenses:,}
+💰 *Savings:* ₹{savings:,}
 
-📈 *{l['categories']}:*
+📈 *Breakdown:*
 """
         if not categories:
-            no_expense = {
-                "en": "No expenses recorded this period.",
-                "ta": "இந்த காலகட்டத்தில் செலவுகள் பதிவு செய்யப்படவில்லை.",
-                "hi": "इस अवधि में कोई खर्च दर्ज नहीं।",
-                "te": "ఈ కాలంలో ఖర్చులు నమోదు కాలేదు."
-            }
-            report += no_expense.get(lang, no_expense["en"]) + "\n"
+            report += "No expenses recorded this period.\n"
         else:
+            cat_emojis = {"food": "🍽️", "transport": "🚗", "bills": "📱", "shopping": "🛍️",
+                         "entertainment": "🎬", "health": "🏥", "investment": "📈", 
+                         "rent": "🏠", "groceries": "🛒", "other": "📦"}
             for cat, amount in categories.items():
-                emoji = {"food": "🍽️", "transport": "🚗", "bills": "📱", "shopping": "🛍️", "other": "📦"}.get(cat, "📦")
+                emoji = cat_emojis.get(cat.lower(), "📦")
                 report += f"{emoji} {cat.title()}: ₹{amount:,}\n"
         
-        insights = {
-            "en": "Focus on reducing food expenses to hit your savings goal faster!",
-            "ta": "உங்கள் சேமிப்பு இலக்கை விரைவாக அடைய உணவு செலவுகளை குறைக்க கவனம் செலுத்துங்கள்!",
-            "hi": "अपने बचत लक्ष्य को तेजी से हासिल करने के लिए खाने के खर्च कम करें!",
-            "te": "మీ సేవింగ్స్ లక్ష్యాన్ని త్వరగా సాధించడానికి ఆహార ఖర్చులను తగ్గించండి!"
-        }
-        
-        pdf_msg = {
-            "en": 'Type "PDF report" for detailed analysis.',
-            "ta": '"PDF அறிக்கை" என டைப் செய்யுங்கள் விரிவான பகுப்பாய்விற்கு.',
-            "hi": 'विस्तृत विश्लेषण के लिए "PDF रिपोर्ट" टाइप करें।',
-            "te": 'వివరమైన విశ్లేషణ కోసం "PDF నివేదిక" టైప్ చేయండి.'
-        }
-        
         report += f"""
-💡 *{l['insight']}:* {insights.get(lang, insights["en"])}
+🎯 *Goal:* {goal_name} — {goal_progress}% complete
+🔥 *Streak:* {streak} days
 
-📄 *{l['pdf']}:* {pdf_msg.get(lang, pdf_msg["en"])}"""
-        
+📄 _Type \"PDF report\" for detailed analysis._"""
         return report
 
 
@@ -887,8 +1040,11 @@ Based on your profile, consider:
 Type "Invest 10000" for a detailed portfolio plan."""
     
     def _handle_budget(self, message: str, user_data: Dict, entities: Dict, context: Dict) -> str:
-        """Handle budget/goal queries"""
+        """Goal Intelligence Advisor (Strategy Prompt 7)"""
         phone = user_data.get("phone")
+        name = user_data.get("name", "Friend")
+        lang = user_data.get("language", "en")
+        personality = user_data.get("money_personality", "builder")
         goal = self._get_active_goal(phone)
         
         if not goal:
@@ -907,13 +1063,66 @@ Just tell me your goal!"""
         target = goal.get("target_amount", 100000)
         progress = self._get_goal_progress(phone)
         saved = int(target * progress / 100)
+        remaining = target - saved
         days_left = goal.get("days_left", 365)
-        daily_target = int((target - saved) / max(1, days_left))
+        daily_target = int(remaining / max(1, days_left))
+        monthly_savings = daily_target * 30
         
         # Progress bar
         filled = int(progress / 10)
         progress_bar = "█" * filled + "░" * (10 - filled)
         
+        # Try AI Goal Intelligence
+        lang_map = {"en": "English", "hi": "Hindi", "ta": "Tamil", "te": "Telugu", "kn": "Kannada"}
+        language = lang_map.get(lang, "English")
+        
+        try:
+            import os
+            api_key = os.getenv("OPENAI_API_KEY", "")
+            if api_key:
+                prompt = f"""MoneyViya Goal Intelligence Advisor.
+
+USER: {name} | Personality: {personality}
+USER MESSAGE: {message}
+GOAL: {goal_name} | Target: ₹{target:,} | Saved: ₹{saved:,} ({progress}%)
+Remaining: ₹{remaining:,} | Days Left: {days_left} | Daily Need: ₹{daily_target}
+
+GOAL PRIORITIZATION FRAMEWORK:
+1. Emergency Fund (3 months expenses) — ALWAYS priority 1 if not done
+2. High-interest debt repayment
+3. Short-term goals (<1 year)
+4. Medium-term goals (1-3 years)
+5. Long-term goals (3+ years)
+
+Provide:
+1. Current progress visual
+2. Projected timeline at current rate
+3. ONE specific adjustment to speed up
+4. Milestone breakdown (next 25% checkpoint)
+5. Personality-calibrated motivation ({personality})
+
+Max 150 words in {language}. WhatsApp format."""
+
+                response = requests.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json={
+                        "model": "gpt-4o-mini",
+                        "messages": [
+                            {"role": "system", "content": f"You are Viya, MoneyViya's goal intelligence advisor. Give actionable, empathetic goal advice. Non-judgmental. Max 150 words in {language}."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "temperature": 0.7,
+                        "max_tokens": 250
+                    },
+                    timeout=12
+                )
+                if response.ok:
+                    return response.json()["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            print(f"[Goal AI] Error: {e}")
+        
+        # Static fallback
         return f"""🎯 *Goal: {goal_name}*
 
 📊 *Progress:*
@@ -1028,11 +1237,16 @@ Just tell me:
 Or type "done" when finished."""
     
     def _handle_market_update(self, message: str, user_data: Dict, entities: Dict, context: Dict) -> str:
-        """Handle market update request"""
+        """Handle market update request — routes to Market Intelligence Engine (Prompt 8)"""
         try:
-            return investment_service.get_market_analysis()
-        except:
-            return """📈 *Market Update*
+            # Try AI-powered market intelligence first
+            return self.generate_market_intelligence(user_data)
+        except Exception as e:
+            print(f"Market intelligence error: {e}")
+            try:
+                return investment_service.get_market_analysis()
+            except:
+                return """📈 *Market Update*
 
 🟢 *Nifty 50:* Stable
 🟡 *Sensex:* Slight dip
@@ -1043,36 +1257,100 @@ Or type "done" when finished."""
 
 Type "invest" for personalized advice."""
     
-    def _handle_fallback(self, message: str, user_data: Dict, entities: Dict, context: Dict) -> str:
-        """Handle unrecognized messages using AI for smart conversation"""
-        
-        # Try to understand with context
+    def _build_master_system_prompt(self, user_data: Dict) -> str:
+        """Build the Master System Prompt from Product Strategy (Prompt 1)"""
         name = user_data.get("name", "Friend")
-        lang = user_data.get("language", "english")
+        lang_code = user_data.get("language", "en")
+        lang_map = {"en": "English", "hi": "Hindi", "ta": "Tamil", "te": "Telugu"}
+        language = lang_map.get(lang_code, "English")
+        phone = user_data.get("phone", "")
         
-        # Use OpenAI if available for smart chat
+        # Gather financial context
+        income = user_data.get("monthly_income", 0)
+        daily_budget = user_data.get("daily_budget", 500)
+        today_spending = self._get_today_expenses(phone)
+        personality = user_data.get("money_personality", "builder")
+        personality_info = self.MONEY_PERSONALITIES.get(personality, self.MONEY_PERSONALITIES["builder"])
+        
+        goal = self._get_active_goal(phone)
+        goal_name = goal.get("name", "Financial Freedom") if goal else "Not set"
+        goal_progress = self._get_goal_progress(phone)
+        days_left = goal.get("days_left", 0) if goal else 0
+        
+        return f"""You are MoneyViya (Viya for short), a personal AI financial advisor and manager for Indian users.
+You operate exclusively through WhatsApp and are the user's most trusted financial companion.
+
+YOUR IDENTITY:
+- Name: Viya (short for MoneyViya)
+- Personality: Warm, brilliant, non-judgmental, like a CA best friend
+- Tone: Friendly but professional. Celebratory when wins happen. Gentle when mistakes occur. Never preachy.
+- Voice: Speak in {language}. When responding in regional languages, be fluent and NATIVE — not translated English.
+
+YOUR CORE BELIEFS:
+1. Every person deserves great financial guidance regardless of income level
+2. Small consistent actions beat big occasional efforts
+3. Financial health is emotional health — never shame users for spending
+4. Data is only valuable if it changes behavior — always connect numbers to actions
+5. One clear recommendation beats ten good options
+
+YOUR CONSTRAINTS:
+1. You are NOT a SEBI-registered advisor. Provide general financial education.
+2. Never promise specific returns on investments
+3. Never collect bank passwords or OTPs
+4. All advice must be appropriate for the user's risk profile
+
+CURRENT USER CONTEXT:
+Name: {name}
+Language: {language}
+Monthly Income: ₹{income:,}
+Money Personality: {personality_info['emoji']} {personality_info['name']} — {personality_info['desc']}
+Active Goal: {goal_name}
+Goal Progress: {goal_progress}%
+Days to Goal: {days_left}
+Today's Spending: ₹{today_spending}
+Daily Budget: ₹{daily_budget}
+
+RESPONSE FORMAT:
+- Under 150 words unless user asked a detailed question
+- Use emojis sparingly but meaningfully (max 3 per message)
+- Always end with ONE clear next action or question
+- For numbers above 1,000, use Indian numbering (₹1,50,000 not ₹150,000)
+- WhatsApp formatting: *bold* for emphasis, _italic_ for context, no markdown headers
+- If user asks something off-topic, gently guide back to finance
+
+TONE CALIBRATION (based on {personality_info['name']}):
+{personality_info['motivation']}"""
+    
+    def _handle_fallback(self, message: str, user_data: Dict, entities: Dict, context: Dict) -> str:
+        """Handle unrecognized messages using the Master System Prompt (Strategy Prompt 1)"""
+        
+        name = user_data.get("name", "Friend")
+        lang = user_data.get("language", "en")
+        
+        # Use OpenAI with the FULL Master System Prompt
         if openai_service.is_available():
             try:
                 import requests
-                # Simple chat completion for general queries
+                system_prompt = self._build_master_system_prompt(user_data)
+                
                 response = requests.post(
                     "https://api.openai.com/v1/chat/completions",
                     headers={"Authorization": f"Bearer {self.openai_key}", "Content-Type": "application/json"},
                     json={
-                        "model": "gpt-3.5-turbo",
+                        "model": "gpt-4o-mini",
                         "messages": [
-                            {"role": "system", "content": f"You are MoneyViya, a helpful financial advisor on WhatsApp. The user's name is {name}. Keep responses short, friendly, and helpful. Language: {lang}. If valid financial advice is asked, give it. If off-topic, nicely guide back to finance."},
+                            {"role": "system", "content": system_prompt},
                             {"role": "user", "content": message}
                         ],
                         "temperature": 0.7,
-                        "max_tokens": 150
+                        "max_tokens": 250
                     },
-                    timeout=10
+                    timeout=15
                 )
                 if response.ok:
                     return response.json()["choices"][0]["message"]["content"].strip()
             except Exception as e:
-                print(f"OpenAI Chat Error: {e}")
+                print(f"OpenAI Master Prompt Error: {e}")
 
         # Check if it might be a number (for expense/income)
         if amount := self._extract_amount(message):
@@ -1098,6 +1376,78 @@ Try these:
 ❓ "Help"
 
 Or ask me any financial question!"""
+    
+    def _handle_health_check(self, message: str, user_data: Dict, entities: Dict, context: Dict) -> str:
+        """Financial Health Diagnostic (Strategy Prompt 11)"""
+        phone = user_data.get("phone", "")
+        name = user_data.get("name", "Friend")
+        income = user_data.get("monthly_income", 0)
+        
+        month_income = self._get_month_income(phone)
+        month_expenses = self._get_month_expenses(phone)
+        savings = max(0, month_income - month_expenses)
+        
+        # Calculate Health Score (out of 100)
+        score = 0
+        
+        # Emergency Fund (25 pts) - 3 months expenses target
+        if income > 0:
+            emergency_ratio = savings / max(1, month_expenses) if month_expenses > 0 else 3
+            emergency_score = min(25, int(emergency_ratio / 3 * 25))
+            score += emergency_score
+        
+        # Savings Rate (20 pts) - Target 20%
+        if month_income > 0:
+            savings_rate = (savings / month_income) * 100
+            savings_score = min(20, int(savings_rate / 20 * 20))
+            score += savings_score
+        else:
+            savings_rate = 0
+            savings_score = 0
+        
+        # Tracking Consistency (15 pts)
+        streak = user_data.get("tracking_streak", 0)
+        tracking_score = min(15, streak // 2)
+        score += tracking_score
+        
+        # Goal Progress (20 pts)
+        goal_progress = self._get_goal_progress(phone)
+        goal_score = min(20, goal_progress // 5)
+        score += goal_score
+        
+        # Investment (20 pts) - placeholder
+        score += 10  # Base
+        
+        # Score Labels
+        if score >= 91:
+            label = "🏆 Financial Champion"
+        elif score >= 76:
+            label = "🎯 Financial Pro"
+        elif score >= 61:
+            label = "💪 Financial Achiever"
+        elif score >= 41:
+            label = "🌿 Financial Grower"
+        else:
+            label = "🌱 Financial Seedling"
+        
+        return f"""📊 *{name}'s Financial Health Report*
+
+{label}
+*Score: {score}/100*
+━━━━━━━━━━━━━━━━━
+
+✅ *Strongest:* {'Savings Rate' if savings_score >= tracking_score else 'Tracking Consistency'}
+
+📈 *Key Metrics:*
+💰 Savings Rate: {savings_rate:.0f}% {'✅' if savings_rate >= 20 else '⚠️'}
+🛡️ Emergency Fund: {'Building' if emergency_score < 15 else 'Good'}
+🔥 Tracking Streak: {streak} days
+🎯 Goal Progress: {goal_progress}%
+
+💡 *To improve by 5 points:*
+{'Track every expense for a week straight!' if tracking_score < 10 else 'Try to save ₹500 more this month!'}
+
+_Type "balance" for detailed summary_"""
     
     # =================== ONBOARDING ===================
     
@@ -1298,7 +1648,7 @@ What would you like to achieve?
                 }
                 return errors.get(lang, errors["en"])
         
-        elif step == 7:  # Got timeline
+        elif step == 7:  # Got timeline → Now start Money Personality Quiz
             months = self._parse_timeline(message)
             days = months * 30
             lang = user_data.get("language", "en")
@@ -1315,8 +1665,7 @@ What would you like to achieve?
             
             user_data["timeline"] = timeline_str
             user_data["timeline_days"] = days
-            user_data["onboarding_complete"] = True
-            user_data["onboarding_step"] = 8
+            user_data["onboarding_step"] = 8  # Move to personality quiz
             user_data["start_date"] = datetime.now().isoformat()
             
             # Calculate targets
@@ -1324,23 +1673,215 @@ What would you like to achieve?
             monthly_income = user_data.get("monthly_income", 30000)
             daily_target = round(target / max(1, days))
             monthly_target = round(target / max(1, months))
-            
-            # Daily budget = (monthly income / 30) - daily savings target
-            # But ensure minimum budget of ₹200
             daily_budget = max(500, (monthly_income // 30) - daily_target)
             
             user_data["daily_target"] = daily_target
             user_data["daily_budget"] = daily_budget
             user_data["monthly_target"] = monthly_target
+            user_data["personality_answers"] = []
+            
+            user_repo.update_user(phone, user_data)
+            
+            # Start Money Personality Quiz ("Money Mirror" from Strategy)
+            responses = {
+                "en": """✅ Got it!
+
+🪞 *Before we begin — let's discover your Money Personality!*
+_(Just 3 quick questions)_
+
+*Q1: If you got an unexpected ₹10,000 bonus, what would you do?*
+
+A) Save it all 🐢
+B) Invest most, treat yourself a little 🐝
+C) Split between fun and savings 🦋
+D) Use it toward a specific goal 🎯
+E) Invest aggressively 🦁
+
+_(Reply A, B, C, D, or E)_""",
+                "hi": """✅ समझ गया!
+
+🪞 *शुरू करने से पहले — अपनी पैसों की शख्सियत जानें!*
+_(सिर्फ 3 तेज सवाल)_
+
+*Q1: अगर आपको अचानक ₹10,000 बोनस मिले, तो क्या करेंगे?*
+
+A) पूरा बचाऊंगा 🐢
+B) ज्यादातर निवेश, थोड़ा मज़ा 🐝
+C) आधा मज़े में, आधा बचत में 🦋
+D) किसी लक्ष्य में लगाऊंगा 🎯
+E) आक्रामक निवेश 🦁
+
+_(A, B, C, D, या E में जवाब दें)_""",
+                "ta": """✅ புரிந்தது!
+
+🪞 *தொடங்கும் முன் — உங்கள் பண ஆளுமையை கண்டறிவோம்!*
+_(வெறும் 3 கேள்விகள்)_
+
+*Q1: எதிர்பாராமல் ₹10,000 போனஸ் கிடைத்தால் என்ன செய்வீர்கள்?*
+
+A) முழுவதும் சேமிப்பேன் 🐢
+B) பெரும்பாலும் முதலீடு, சிறிது மகிழ்ச்சி 🐝
+C) மகிழ்ச்சிக்கும் சேமிப்புக்கும் பிரிப்பேன் 🦋
+D) ஒரு இலக்கில் பயன்படுத்துவேன் 🎯
+E) தீவிரமாக முதலீடு செய்வேன் 🦁
+
+_(A, B, C, D, அல்லது E பதிலளிக்கவும்)_""",
+                "te": """✅ అర్థమైంది!
+
+🪞 *ప్రారంభించే ముందు — మీ మనీ వ్యక్తిత్వాన్ని కనుగొందాం!*
+_(కేవలం 3 ప్రశ్నలు)_
+
+*Q1: అనుకోకుండా ₹10,000 బోనస్ వస్తే ఏం చేస్తారు?*
+
+A) మొత్తం సేవ్ చేస్తాను 🐢
+B) చాలా వరకు ఇన్వెస్ట్, కొంచెం ఆనందం 🐝
+C) ఆనందం మరియు పొదుపు మధ్య విభజిస్తాను 🦋
+D) ఒక లక్ష్యం కోసం ఉపయోగిస్తాను 🎯
+E) దూకుడుగా ఇన్వెస్ట్ చేస్తాను 🦁
+
+_(A, B, C, D, లేదా E లో సమాధానం ఇవ్వండి)_"""
+            }
+            return responses.get(lang, responses["en"])
+        
+        elif step == 8:  # Money Personality Q1 answer
+            answer = message.strip().upper()
+            lang = user_data.get("language", "en")
+            answers = user_data.get("personality_answers", [])
+            if answer in ["A", "B", "C", "D", "E"]:
+                answers.append(answer)
+            else:
+                answers.append("B")  # Default
+            user_data["personality_answers"] = answers
+            user_data["onboarding_step"] = 9
+            user_repo.update_user(phone, user_data)
+            
+            responses = {
+                "en": """*Q2: When you hear 'investment', you feel:*
+
+A) Worried — what if I lose it? 😟
+B) Curious — tell me more 🤔
+C) Excited — let's do it! 🚀
+D) Overwhelmed — too many options 😵
+
+_(Reply A, B, C, or D)_""",
+                "hi": """*Q2: 'निवेश' सुनकर आपको क्या लगता है:*
+
+A) चिंता — अगर पैसा डूब गया तो? 😟
+B) उत्सुकता — और बताओ 🤔
+C) उत्साह — चलो करते हैं! 🚀
+D) भ्रम — बहुत सारे विकल्प 😵
+
+_(A, B, C, या D में जवाब दें)_""",
+                "ta": """*Q2: 'முதலீடு' என்ற வார்த்தை உங்களுக்கு:*
+
+A) கவலை — இழந்தால் என்ன செய்வது? 😟
+B) ஆர்வம் — மேலும் சொல்லுங்கள் 🤔
+C) உற்சாகம் — செய்வோம்! 🚀
+D) குழப்பம் — நிறைய வழிகள் 😵
+
+_(A, B, C, அல்லது D பதிலளிக்கவும்)_""",
+                "te": """*Q2: 'ఇన్వెస్ట్‌మెంట్' అంటే మీకు:*
+
+A) ఆందోళన — పోతే ఏంటి? 😟
+B) ఆసక్తి — ఇంకా చెప్పండి 🤔
+C) ఉత్సాహం — చేద్దాం! 🚀
+D) గందరగోళం — చాలా ఆప్షన్లు 😵
+
+_(A, B, C, లేదా D లో సమాధానం ఇవ్వండి)_"""
+            }
+            return responses.get(lang, responses["en"])
+        
+        elif step == 9:  # Money Personality Q2 answer
+            answer = message.strip().upper()
+            lang = user_data.get("language", "en")
+            answers = user_data.get("personality_answers", [])
+            if answer in ["A", "B", "C", "D"]:
+                answers.append(answer)
+            else:
+                answers.append("B")
+            user_data["personality_answers"] = answers
+            user_data["onboarding_step"] = 10
+            user_repo.update_user(phone, user_data)
+            
+            responses = {
+                "en": """*Q3: Your biggest money challenge is usually:*
+
+A) Spending too much on small things 🍕
+B) Not knowing where to start investing 📊
+C) Irregular income makes planning hard 🎢
+D) Too many goals, don't know which first 🎯
+E) I save well but don't grow money 🌱
+
+_(Reply A, B, C, D, or E)_""",
+                "hi": """*Q3: पैसों की सबसे बड़ी चुनौती:*
+
+A) छोटी चीज़ों पर ज़्यादा खर्च 🍕
+B) निवेश कहां करें, पता नहीं 📊
+C) अनियमित आय से योजना मुश्किल 🎢
+D) बहुत सारे लक्ष्य, पहले कौन 🎯
+E) बचत अच्छी, पर पैसा बढ़ाना नहीं आता 🌱
+
+_(A, B, C, D, या E में जवाब दें)_""",
+                "ta": """*Q3: உங்கள் மிகப்பெரிய பண சவால்:*
+
+A) சிறிய விஷயங்களில் அதிகம் செலவழிப்பது 🍕
+B) முதலீடு எங்கு தொடங்குவது தெரியாது 📊
+C) ஒழுங்கற்ற வருமானம் திட்டமிடலை கடினமாக்குகிறது 🎢
+D) பல இலக்குகள், எது முதலில் தெரியாது 🎯
+E) சேமிப்பது நல்லது, ஆனால் பணம் வளர்ப்பது இல்லை 🌱
+
+_(A, B, C, D, அல்லது E பதிலளிக்கவும்)_""",
+                "te": """*Q3: మీ అతిపెద్ద డబ్బు సవాలు:*
+
+A) చిన్న విషయాలపై ఎక్కువ ఖర్చు 🍕
+B) ఇన్వెస్ట్ ఎక్కడ మొదలుపెట్టాలో తెలియదు 📊
+C) అస్థిర ఆదాయం ప్లానింగ్‌ను కష్టతరం చేస్తుంది 🎢
+D) చాలా లక్ష్యాలు, ఏది ముందు తెలియదు 🎯
+E) సేవ్ బాగా చేస్తాను కానీ డబ్బు పెరగదు 🌱
+
+_(A, B, C, D, లేదా E లో సమాధానం ఇవ్వండి)_"""
+            }
+            return responses.get(lang, responses["en"])
+        
+        elif step == 10:  # Money Personality Q3 answer → Complete onboarding!
+            answer = message.strip().upper()
+            lang = user_data.get("language", "en")
+            answers = user_data.get("personality_answers", [])
+            if answer in ["A", "B", "C", "D", "E"]:
+                answers.append(answer)
+            else:
+                answers.append("B")
+            user_data["personality_answers"] = answers
+            
+            # ===== Determine Money Personality =====
+            personality = self._calculate_money_personality(answers)
+            personality_info = self.MONEY_PERSONALITIES.get(personality, self.MONEY_PERSONALITIES["builder"])
+            user_data["money_personality"] = personality
+            
+            # Mark onboarding complete
+            user_data["onboarding_complete"] = True
+            user_data["onboarding_step"] = 11
+            user_data["tracking_streak"] = 0
+            user_data["achievements"] = []
             
             user_repo.update_user(phone, user_data)
             
             name = user_data.get('name', 'Friend')
             work = user_data.get('occupation', 'User')
             goal = user_data.get('goal_type', 'Savings')
+            monthly_income = user_data.get("monthly_income", 30000)
+            target = user_data.get("target_amount", 100000)
+            timeline_str = user_data.get("timeline", "12 Months")
+            daily_target = user_data.get("daily_target", 200)
+            monthly_target = user_data.get("monthly_target", 6000)
+            daily_budget = user_data.get("daily_budget", 500)
             
             responses = {
-                "en": f"""🎉 *Your profile is ready!*
+                "en": f"""🎉 *Your MoneyViya profile is ready!*
+
+🪞 *Your Money Personality:*
+{personality_info['emoji']} *{personality_info['name']}*
+_{personality_info['desc']}_
 
 📊 *Your Financial Plan:*
 ━━━━━━━━━━━━━━━━━
@@ -1357,38 +1898,17 @@ What would you like to achieve?
 💸 *Daily Budget:* ₹{daily_budget:,}
 
 I'll send you:
-⏰ Morning reminder at 6 AM
-📊 Daily summary at 8 PM
+⏰ Morning briefing at 6 AM
+📊 Evening check-in at 8 PM
 📈 Weekly progress report
 
-*Type "help" anytime for assistance!*
-*Start tracking: "Spent 50 on tea"*""",
+*Start tracking: "Spent 50 on tea"* ☕""",
 
-                "ta": f"""🎉 *உங்கள் சுயவிவரம் தயார்!*
+                "hi": f"""🎉 *आपकी MoneyViya प्रोफ़ाइल तैयार!*
 
-📊 *உங்கள் நிதி திட்டம்:*
-━━━━━━━━━━━━━━━━━
-👤 பெயர்: {name}
-💼 வேலை: {work}
-💰 வருமானம்: ₹{monthly_income:,}/மாதம்
-🎯 இலக்கு: {goal}
-💵 இலக்கு தொகை: ₹{target:,}
-📅 காலம்: {timeline_str}
-━━━━━━━━━━━━━━━━━
-
-📈 *தினசரி இலக்கு:* ₹{daily_target:,}
-📅 *மாதாந்திர இலக்கு:* ₹{monthly_target:,}
-💸 *தினசரி பட்ஜெட்:* ₹{daily_budget:,}
-
-நான் அனுப்புவேன்:
-⏰ காலை நினைவூட்டல் 6 AM
-📊 தினசரி சுருக்கம் 8 PM
-📈 வாராந்திர முன்னேற்ற அறிக்கை
-
-*எப்போது வேண்டுமானாலும் "help" என டைப் செய்யுங்கள்!*
-*தொடங்குங்கள்: "டீக்கு 50 செலவழித்தேன்"*""",
-
-                "hi": f"""🎉 *आपकी प्रोफ़ाइल तैयार है!*
+🪞 *आपकी पैसों की शख्सियत:*
+{personality_info['emoji']} *{personality_info['name']}*
+_{personality_info['desc']}_
 
 📊 *आपकी वित्तीय योजना:*
 ━━━━━━━━━━━━━━━━━
@@ -1401,18 +1921,36 @@ I'll send you:
 ━━━━━━━━━━━━━━━━━
 
 📈 *दैनिक लक्ष्य:* ₹{daily_target:,}
-📅 *मासिक लक्ष्य:* ₹{monthly_target:,}
 💸 *दैनिक बजट:* ₹{daily_budget:,}
 
-मैं भेजूंगा:
-⏰ सुबह 6 बजे याद दिलाना
-📊 रात 8 बजे दैनिक सारांश
-📈 साप्ताहिक प्रगति रिपोर्ट
+*शुरू करें: "चाय पर 50 खर्च किए"* ☕""",
 
-*कभी भी मदद के लिए "help" टाइप करें!*
-*शुरू करें: "चाय पर 50 खर्च किए"*""",
+                "ta": f"""🎉 *உங்கள் MoneyViya சுயவிவரம் தயார்!*
 
-                "te": f"""🎉 *మీ ప్రొఫైల్ సిద్ధంగా ఉంది!*
+🪞 *உங்கள் பண ஆளுமை:*
+{personality_info['emoji']} *{personality_info['name']}*
+_{personality_info['desc']}_
+
+📊 *உங்கள் நிதி திட்டம்:*
+━━━━━━━━━━━━━━━━━
+👤 பெயர்: {name}
+💼 வேலை: {work}
+💰 வருமானம்: ₹{monthly_income:,}/மாதம்
+🎯 இலக்கு: {goal}
+💵 இலக்கு தொகை: ₹{target:,}
+📅 காலம்: {timeline_str}
+━━━━━━━━━━━━━━━━━
+
+📈 *தினசரி இலக்கு:* ₹{daily_target:,}
+💸 *தினசரி பட்ஜெட்:* ₹{daily_budget:,}
+
+*தொடங்குங்கள்: "டீக்கு 50 செலவழித்தேன்"* ☕""",
+
+                "te": f"""🎉 *మీ MoneyViya ప్రొఫైల్ సిద్ధం!*
+
+🪞 *మీ మనీ వ్యక్తిత్వం:*
+{personality_info['emoji']} *{personality_info['name']}*
+_{personality_info['desc']}_
 
 📊 *మీ ఆర్థిక ప్రణాళిక:*
 ━━━━━━━━━━━━━━━━━
@@ -1425,21 +1963,37 @@ I'll send you:
 ━━━━━━━━━━━━━━━━━
 
 📈 *రోజువారీ లక్ష్యం:* ₹{daily_target:,}
-📅 *నెలవారీ లక్ష్యం:* ₹{monthly_target:,}
 💸 *రోజువారీ బడ్జెట్:* ₹{daily_budget:,}
 
-నేను పంపుతాను:
-⏰ ఉదయం 6 గంటలకు రిమైండర్
-📊 రాత్రి 8 గంటలకు సారాంశం
-📈 వారపు ప్రగతి నివేదిక
-
-*సహాయం కోసం ఎప్పుడైనా "help" టైప్ చేయండి!*
-*ప్రారంభించండి: "టీకి 50 ఖర్చు"*"""
+*ప్రారంభించండి: "టీకి 50 ఖర్చు"* ☕"""
             }
             
             return responses.get(lang, responses["en"])
         
         return self._handle_help(message, user_data, {}, context)
+    
+    def _calculate_money_personality(self, answers: list) -> str:
+        """Calculate money personality from quiz answers (Strategy: Money Mirror)"""
+        # Scoring: Q1 (A-E), Q2 (A-D), Q3 (A-E)
+        scores = {"warrior": 0, "protector": 0, "dreamer": 0, "builder": 0, "achiever": 0}
+        
+        # Q1: Bonus question
+        if len(answers) >= 1:
+            q1_map = {"A": "protector", "B": "builder", "C": "dreamer", "D": "achiever", "E": "warrior"}
+            scores[q1_map.get(answers[0], "builder")] += 2
+        
+        # Q2: Investment feeling
+        if len(answers) >= 2:
+            q2_map = {"A": "protector", "B": "builder", "C": "warrior", "D": "dreamer"}
+            scores[q2_map.get(answers[1], "builder")] += 2
+        
+        # Q3: Biggest challenge
+        if len(answers) >= 3:
+            q3_map = {"A": "dreamer", "B": "protector", "C": "warrior", "D": "achiever", "E": "builder"}
+            scores[q3_map.get(answers[2], "builder")] += 2
+        
+        # Return highest scoring personality
+        return max(scores, key=scores.get)
     
     def _parse_timeline(self, text: str) -> int:
         """Parse timeline from text, returns months"""
@@ -1463,35 +2017,399 @@ I'll send you:
         
         return months
     
+    # =================== STRATEGY ENGINES (Prompts 8, 12, 14 + Features 3, 4) ===================
+    
+    def generate_market_intelligence(self, user_data: Dict) -> str:
+        """Market Intelligence Messenger (Strategy Prompt 8)
+        
+        Risk-profile and knowledge-level aware market updates.
+        """
+        name = user_data.get("name", "Friend")
+        risk = user_data.get("risk_appetite", "Medium")
+        lang = user_data.get("language", "en")
+        income = user_data.get("monthly_income", 0)
+        personality = user_data.get("money_personality", "builder")
+        
+        lang_map = {"en": "English", "hi": "Hindi", "ta": "Tamil", "te": "Telugu", "kn": "Kannada"}
+        language = lang_map.get(lang, "English")
+        
+        # Risk-profile response rules
+        risk_rules = {
+            "Low": "Focus on FD rates, debt funds, RD options. Never recommend direct stocks.",
+            "Medium": "Index funds, balanced funds, blue-chip SIPs. Occasional large-cap mention.",
+            "High": "Can discuss mid-cap, specific stocks, sectoral trends. Always with caveats."
+        }
+        
+        try:
+            import os
+            api_key = os.getenv("OPENAI_API_KEY", "")
+            if api_key:
+                prompt = f"""Generate MoneyViya's market intelligence for user.
+
+USER: {name} | Risk: {risk} | Income: ₹{income:,} | Personality: {personality}
+RISK RULES: {risk_rules.get(risk, risk_rules["Medium"])}
+
+PHILOSOPHY:
+- Market data is only useful if it changes what the user does TODAY
+- Never create FOMO or panic
+- End with ONE action the user can take
+- For non-investors: gentle education, not pressure
+
+Generate a market update in {language}. Max 150 words. WhatsApp format."""
+
+                response = requests.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json={
+                        "model": "gpt-4o-mini",
+                        "messages": [
+                            {"role": "system", "content": f"You are Viya's market intelligence engine. Give personalized, actionable market updates. Risk: {risk}. Max 150 words in {language}."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "temperature": 0.6,
+                        "max_tokens": 250
+                    },
+                    timeout=12
+                )
+                if response.ok:
+                    return response.json()["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            print(f"[Market AI] Error: {e}")
+        
+        # Static fallback
+        return f"""📈 *Market Update for {name}*
+━━━━━━━━━━━━━━━━━━━━
+🇮🇳 Markets are active today.
+
+💡 *For you ({risk} risk):*
+{"• Consider FDs/PPF for safe returns" if risk == "Low" else "• SIP in index funds — steady wealth builder" if risk == "Medium" else "• Watch for dip-buying opportunities in quality stocks"}
+
+🎯 *One action:* {"Start a ₹500 RD today" if risk == "Low" else "Set up a ₹1,000 SIP" if risk == "Medium" else "Research one blue-chip stock"}
+
+_Type \"invest\" for personalized advice._"""
+    
+    def generate_smart_nudge(self, user_data: Dict) -> str:
+        """Smart Nudge Engine (Feature 3)
+        
+        Contextual behavioral coaching — not generic reminders.
+        Pattern-aware, calendar-aware, salary-day aware.
+        """
+        import pytz
+        ist = pytz.timezone('Asia/Kolkata')
+        now = datetime.now(ist)
+        day = now.strftime("%A")
+        hour = now.hour
+        day_of_month = now.day
+        
+        name = user_data.get("name", "Friend")
+        phone = user_data.get("phone")
+        daily_budget = user_data.get("daily_budget", 500)
+        personality = user_data.get("money_personality", "builder")
+        
+        today_expenses = self._get_today_expenses(phone)
+        budget_used_pct = (today_expenses / daily_budget * 100) if daily_budget > 0 else 0
+        
+        # Smart nudge logic
+        
+        # Salary day nudge (1st, 5th, or last day)
+        if day_of_month in [1, 5, 28, 29, 30, 31]:
+            return f"""💰 *Salary Day Alert, {name}!*
+
+Your paycheck is here (or coming)! 🎉
+
+Before you start spending, let's allocate:
+• 50% → Essentials (₹{int(daily_budget * 15):,})
+• 30% → Wants (₹{int(daily_budget * 9):,})
+• 20% → Savings/Goals (₹{int(daily_budget * 6):,})
+
+Want me to auto-set your savings target? 💪"""
+        
+        # Budget checkpoint: >70% used before 6 PM
+        if budget_used_pct > 70 and hour < 18:
+            remaining = max(0, daily_budget - today_expenses)
+            return f"""⚡ *Gentle Heads-up, {name}*
+
+You've used {int(budget_used_pct)}% of today's budget and it's only {now.strftime('%I %p')}.
+
+Remaining: ₹{remaining}
+
+💡 Consider skipping that evening snack/coffee and cooking dinner at home.
+
+You've got this! 💪"""
+        
+        # Friday spending pattern nudge
+        if day == "Friday":
+            return f"""🎉 *Happy Friday, {name}!*
+
+Weekend's here! Quick reminder:
+Your weekend budget = ₹{daily_budget * 2:,} for 2 days.
+
+💡 *Weekend Challenge:* Try one free activity this weekend — walk, home movie, cooking together!
+
+Every ₹200 saved this weekend = closer to your goal! 🎯"""
+        
+        # Month-end nudge  
+        if day_of_month >= 25:
+            month_expenses = self._get_month_expenses(phone)
+            return f"""📅 *Month-End Check, {name}!*
+
+This month so far: ₹{month_expenses:,} spent.
+
+Last {30 - day_of_month} days — let's finish strong!
+
+💡 Focus on essentials only. Your future self will thank you. 🙏"""
+        
+        # Default motivational nudge
+        motivations = {
+            "warrior": f"💪 {name}, today's battle: stay under ₹{daily_budget}. You're a warrior — conquer it!",
+            "protector": f"🛡️ {name}, protecting your money today = protecting your family's future. Budget: ₹{daily_budget}.",
+            "dreamer": f"✨ {name}, every rupee saved today brings your dream closer. Today's budget: ₹{daily_budget}!",
+            "builder": f"🏗️ {name}, brick by brick, rupee by rupee. Today's building budget: ₹{daily_budget}. Keep stacking!",
+            "achiever": f"🎯 {name}, track every expense today. Top achievers miss nothing. Budget: ₹{daily_budget}!"
+        }
+        return motivations.get(personality, motivations["builder"])
+    
+    def detect_emotional_tone(self, message: str, user_data: Dict) -> str:
+        """Viya Voice Emotional Tone Engine (Feature 4 + Prompt 12)
+        
+        5 emotional modes:
+        1. Celebratory — goals hit, savings milestones
+        2. Gentle Coaching — overspending detected
+        3. Urgent Alert — budget critically overrun
+        4. Motivational — losing momentum
+        5. Educational — needs to understand a concept
+        """
+        msg_lower = message.lower()
+        
+        # Detect emotional state from message
+        if any(w in msg_lower for w in ["don't know", "confused", "what is", "kya hai", "explain", "meaning"]):
+            return "educational"
+        
+        if any(w in msg_lower for w in ["achieved", "goal done", "saved", "milestone", "cleared", "paid off"]):
+            return "celebratory"
+        
+        if any(w in msg_lower for w in ["spent everything", "broke", "no money", "overspent", "sab khatam"]):
+            return "gentle_coaching"
+        
+        if any(w in msg_lower for w in ["urgent", "emergency", "crisis", "help me"]):
+            return "urgent_alert"
+        
+        if any(w in msg_lower for w in ["bored", "not helping", "useless", "leaving", "give up"]):
+            return "motivational"
+        
+        # Default based on tracking behavior
+        streak = user_data.get("tracking_streak", 0)
+        if streak == 0:
+            return "motivational"
+        elif streak > 7:
+            return "celebratory"
+        
+        return "gentle_coaching"
+    
+    def generate_smart_reminder(self, user_data: Dict) -> Dict:
+        """Intelligent Reminder Calibration (Strategy Prompt 14)
+        
+        Decides WHEN to remind, WHAT to say, and HOW to say it.
+        Returns: {should_send, reminder_type, message, urgency}
+        """
+        import pytz
+        ist = pytz.timezone('Asia/Kolkata')
+        now = datetime.now(ist)
+        hour = now.hour
+        
+        phone = user_data.get("phone")
+        name = user_data.get("name", "Friend")
+        lang = user_data.get("language", "en")
+        daily_budget = user_data.get("daily_budget", 500)
+        
+        # Check last activity
+        last_active = user_data.get("last_active")
+        inactive_hours = 0
+        if last_active:
+            try:
+                last_time = datetime.fromisoformat(str(last_active))
+                if last_time.tzinfo is None:
+                    last_time = ist.localize(last_time)
+                inactive_hours = (now - last_time).total_seconds() / 3600
+            except:
+                inactive_hours = 0
+        
+        # INACTIVITY RE-ENGAGEMENT (Prompt 14 - Level 4)
+        if inactive_hours > 168:  # 7 days
+            return {
+                "should_send": True,
+                "reminder_type": "re_engagement",
+                "urgency": "low",
+                "message": f"""👋 *Hey {name}!*
+
+We haven't chatted in a while. No judgment at all — life gets busy!
+
+Want a fresh start? Just tell me one expense from today — that's all 👍
+
+_Your data is safe. Pick up right where you left off._"""
+            }
+        
+        if inactive_hours > 72:  # 3 days
+            return {
+                "should_send": True,
+                "reminder_type": "re_engagement",
+                "urgency": "low",
+                "message": f"""💛 *{name}, we miss you!*
+
+Your financial journey doesn't need to be perfect — just consistent.
+
+One small step today: tell me any expense and we're back on track! 💪"""
+            }
+        
+        if inactive_hours > 48:  # 2 days
+            return {
+                "should_send": True,
+                "reminder_type": "gentle_nudge",
+                "urgency": "low",
+                "message": f"""📝 *Quick check-in, {name}!*
+
+Just log one expense today — even "chai 20" counts! ☕
+
+Your streak is waiting for you! 🔥"""
+            }
+        
+        if inactive_hours > 24:  # 1 day
+            return {
+                "should_send": True,
+                "reminder_type": "soft_nudge",
+                "urgency": "low",
+                "message": f"""😊 *Hey {name}*, how was yesterday?
+
+Did you spend anything? Just drop a quick message and I'll log it!
+
+Example: "spent 200 on lunch" ✨"""
+            }
+        
+        # BUDGET CHECKPOINT (>70% used before 6 PM)
+        today_expenses = self._get_today_expenses(phone)
+        budget_pct = (today_expenses / daily_budget * 100) if daily_budget > 0 else 0
+        
+        if budget_pct > 70 and hour < 18:
+            remaining = max(0, daily_budget - today_expenses)
+            return {
+                "should_send": True,
+                "reminder_type": "budget_checkpoint",
+                "urgency": "medium",
+                "message": f"""⚡ *Budget Check, {name}!*
+
+You've used {int(budget_pct)}% of today's ₹{daily_budget} budget.
+Remaining: ₹{remaining}
+
+💡 One tip: skip one non-essential purchase today. 💪"""
+            }
+        
+        # No reminder needed
+        return {
+            "should_send": False,
+            "reminder_type": None,
+            "urgency": None,
+            "message": None
+        }
+    
     # =================== REMINDER GENERATORS ===================
     
     def generate_morning_reminder(self, user_data: Dict) -> str:
-        """Generate personalized morning reminder"""
+        """AI-Powered Morning Briefing (Strategy Prompt 4)
+        
+        The most important touchpoint of the day — sets the financial tone.
+        Day-of-week aware, personality-calibrated, goal-connected.
+        """
         name = user_data.get("name", "Friend")
+        phone = user_data.get("phone")
         daily_budget = user_data.get("daily_budget", 500)
         daily_target = user_data.get("daily_target", 200)
-        
-        # Get yesterday's data
-        phone = user_data.get("phone")
         yesterday_saved = self._get_yesterday_savings(phone)
+        lang = user_data.get("language", "en")
+        personality = user_data.get("money_personality", "builder")
+        streak = user_data.get("tracking_streak", 0)
         
+        # Get goal info
+        goal = self._get_active_goal(phone)
+        goal_name = goal.get("name", "your goal") if goal else "your goal"
+        goal_progress = self._get_goal_progress(phone)
+        
+        # Day-of-week context
+        import pytz
+        ist = pytz.timezone('Asia/Kolkata')
+        now = datetime.now(ist)
+        day_name = now.strftime("%A")
+        date_str = now.strftime("%d %b %Y")
+        
+        day_tones = {
+            "Monday": "Energetic, fresh start, weekly goal setting",
+            "Tuesday": "Steady, progress-focused",
+            "Wednesday": "Steady, mid-week momentum",
+            "Thursday": "Steady, progress-focused",
+            "Friday": "Celebratory of the week, weekend budget reminder",
+            "Saturday": "Relaxed, review-focused, no pressure",
+            "Sunday": "Reflective, weekly summary, next week preview"
+        }
+        
+        lang_map = {"en": "English", "hi": "Hindi", "ta": "Tamil", "te": "Telugu", "kn": "Kannada"}
+        language = lang_map.get(lang, "English")
+        
+        # Try AI-powered briefing
+        try:
+            import os
+            api_key = os.getenv("OPENAI_API_KEY", "")
+            if api_key:
+                prompt = f"""Generate MoneyViya's 6 AM morning briefing.
+
+USER: {name} | {day_name}, {date_str}
+Yesterday: {'Saved ₹' + str(yesterday_saved) if yesterday_saved > 0 else 'Overspent by ₹' + str(abs(yesterday_saved))}
+Today's Budget: ₹{daily_budget} | Savings Target: ₹{daily_target}
+Goal: {goal_name} — {goal_progress}% complete
+Streak: {streak} days | Personality: {personality}
+
+DAY TONE: {day_tones.get(day_name, "Steady")}
+
+RULES:
+- Warm greeting with name + day context
+- Yesterday's performance (1-2 sentences)
+- Today's target (specific ₹ number)
+- One motivational insight tied to THEIR goal
+- One micro-action for today
+- Under 120 words in {language}
+- WhatsApp format (*bold*, emojis sparingly)"""
+
+                response = requests.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json={
+                        "model": "gpt-4o-mini",
+                        "messages": [
+                            {"role": "system", "content": f"You are Viya, MoneyViya's warm AI financial advisor. Generate a morning briefing in {language}. Be personal, not templated. Max 120 words."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "temperature": 0.8,
+                        "max_tokens": 250
+                    },
+                    timeout=12
+                )
+                if response.ok:
+                    return response.json()["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            print(f"[Morning AI] Error: {e}")
+        
+        # Fallback to template
+        template = self.templates.get(lang, self.templates["en"])["morning_reminder"]
         motivations = [
             "💪 \"Small daily savings lead to big dreams!\"",
             "🌟 \"Every rupee saved is a step towards your goal!\"",
             "🔥 \"Consistency beats intensity. Keep going!\"",
             "✨ \"Today is a new opportunity to save!\"",
         ]
-        
         tips = [
             "Pack lunch to save ₹100 today!",
             "Compare prices before buying anything.",
             "Avoid impulse purchases - wait 24 hours.",
             "Use public transport when possible.",
         ]
-        
-        lang = user_data.get("language", "en")
-        template = self.templates.get(lang, self.templates["en"])["morning_reminder"]
-        
         return template.format(
             name=name,
             daily_budget=daily_budget,
@@ -1502,41 +2420,113 @@ I'll send you:
         )
     
     def generate_evening_checkout(self, user_data: Dict) -> str:
-        """Generate evening checkout message"""
+        """AI-Powered Evening Check-in with Financial Day Score (Strategy Prompt 5)
+        
+        Closes the financial day properly with score, summary, and motivation.
+        """
         phone = user_data.get("phone")
         name = user_data.get("name", "Friend")
+        lang = user_data.get("language", "en")
+        personality = user_data.get("money_personality", "builder")
+        streak = user_data.get("tracking_streak", 0)
+        daily_budget = user_data.get("daily_budget", 500)
         
         # Get today's data
         today_income = self._get_today_income(phone)
         today_expenses = self._get_today_expenses(phone)
         net = today_income - today_expenses
         
+        # Financial Day Score (Strategy Prompt 5)
+        if daily_budget > 0:
+            variance_pct = ((today_expenses - daily_budget) / daily_budget) * 100
+        else:
+            variance_pct = 0
+        
+        if variance_pct < -20:
+            score_label = "Outstanding Day 🌟"
+        elif variance_pct < -5:
+            score_label = "Good Day 👍"
+        elif variance_pct <= 5:
+            score_label = "Balanced Day ✅"
+        elif variance_pct <= 20:
+            score_label = "Close Day — recover tomorrow 💪"
+        else:
+            score_label = "Tough Day — let's talk about it"
+        
+        # Check if investment was made today — always add champion badge
+        investment_badge = ""
+        try:
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            txns = transaction_repo.get_transactions(phone)
+            for tx in (txns or []):
+                if (tx.get("category", "").lower() in ["mutual_fund", "stocks", "fd", "rd", "insurance", "ppf", "gold", "sip", "investment"]
+                    and today_str in str(tx.get("created_at", ""))):
+                    investment_badge = "\n🏆 *Investment Champion* — You invested today!"
+                    break
+        except:
+            pass
+        
+        # Streak milestone celebration
+        streak_msg = ""
+        if streak in [7, 14, 21, 30, 50, 100]:
+            streak_msg = f"\n\n🔥🔥 *{streak}-DAY STREAK!* You're in the top {max(1, 100 - streak)}% of trackers! Keep it up!"
+        
         # Get goal info
         goal = self._get_active_goal(phone)
         target = goal.get("target_amount", 100000) if goal else 100000
+        goal_name = goal.get("name", "your goal") if goal else "your goal"
         progress = self._get_goal_progress(phone)
-        saved = int(target * progress / 100)
         
-        # Comparison
-        if net > 0:
-            comparison = f"✅ Great! You saved ₹{net} today!"
-        elif net == 0:
-            comparison = "➖ Break-even day. Try to save tomorrow!"
-        else:
-            comparison = f"⚠️ You overspent by ₹{abs(net)}. Let's plan better tomorrow."
+        # Try AI-powered evening check-in
+        lang_map = {"en": "English", "hi": "Hindi", "ta": "Tamil", "te": "Telugu", "kn": "Kannada"}
+        language = lang_map.get(lang, "English")
         
-        # Progress bar
+        try:
+            import os
+            api_key = os.getenv("OPENAI_API_KEY", "")
+            if api_key:
+                prompt = f"""Generate MoneyViya's 8 PM evening check-in.
+
+USER: {name} | Personality: {personality}
+Today's Score: {score_label}
+Spending: ₹{today_expenses} / Budget ₹{daily_budget} (Variance: {variance_pct:.0f}%)
+Income: ₹{today_income} | Net: ₹{net}
+Goal: {goal_name} — {progress}% complete
+Streak: {streak} days{investment_badge}{streak_msg}
+
+RULES:
+1. Start with today's score: "{score_label}"
+2. Clean day summary (3 lines max)
+3. Ask naturally about any untracked spending
+4. End with tomorrow's budget ₹{daily_budget} and ONE encouraging word
+5. If streak milestone — celebrate big
+6. Max 130 words in {language}. WhatsApp format."""
+
+                response = requests.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json={
+                        "model": "gpt-4o-mini",
+                        "messages": [
+                            {"role": "system", "content": f"You are Viya, MoneyViya's evening check-in engine. Summarize the financial day. Be warm, non-judgmental. Max 130 words in {language}."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "temperature": 0.7,
+                        "max_tokens": 250
+                    },
+                    timeout=12
+                )
+                if response.ok:
+                    return response.json()["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            print(f"[Evening AI] Error: {e}")
+        
+        # Fallback to template
         filled = int(progress / 10)
         progress_bar = "█" * filled + "░" * (10 - filled)
+        saved = int(target * progress / 100)
         
-        # Advice
-        advices = [
-            "💡 Review your spending categories weekly!",
-            "💡 Set aside savings first thing in the morning!",
-            "💡 Every small expense adds up - track them all!",
-        ]
-        
-        lang = user_data.get("language", "en")
+        comparison = score_label
         template = self.templates.get(lang, self.templates["en"])["evening_checkout"]
         
         return template.format(
@@ -1549,7 +2539,7 @@ I'll send you:
             saved=saved,
             target=target,
             progress=progress,
-            advice=random.choice(advices)
+            advice=f"Tomorrow's budget: ₹{daily_budget}. You've got this! 💪{streak_msg}{investment_badge}"
         )
     
     # =================== DATA HELPERS ===================

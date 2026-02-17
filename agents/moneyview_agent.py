@@ -1064,8 +1064,52 @@ _Track every expense to save more!_"""
 _Type "market" for live updates_"""
     
     def _handle_unknown(self, message: str, user: Dict) -> str:
-        """Handle unrecognized messages with smart suggestions"""
-        # Try to understand intent using simple NLP
+        """Handle unrecognized messages with AI Master Prompt (Strategy Prompt 1)"""
+        
+        # Try OpenAI with Master System Prompt
+        if openai_service and openai_service.is_available():
+            try:
+                import requests, os
+                name = user.get("name", "Friend")
+                lang_code = user.get("language", "en")
+                lang_map = {"en": "English", "hi": "Hindi", "ta": "Tamil", "te": "Telugu", "kn": "Kannada"}
+                language = lang_map.get(lang_code, "English")
+                income = user.get("monthly_income", 0)
+                daily_budget = user.get("daily_budget", 500)
+                
+                system_prompt = f"""You are MoneyViya (Viya for short), a personal AI financial advisor for Indian users on WhatsApp.
+Personality: Warm, brilliant, non-judgmental — like a CA best friend.
+Speak in {language}. Keep responses under 120 words, use *bold* for emphasis and emojis sparingly.
+
+USER: {name} | Income: ₹{int(income):,}/mo | Budget: ₹{daily_budget}/day | Risk: {user.get('risk_appetite', 'Medium')}
+
+RULES:
+- Never shame users for spending
+- Connect numbers to actionable next steps
+- If off-topic, gently guide back to finance
+- End with ONE clear next action
+"""
+                api_key = os.getenv("OPENAI_API_KEY", "")
+                response = requests.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json={
+                        "model": "gpt-4o-mini",
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": message}
+                        ],
+                        "temperature": 0.7,
+                        "max_tokens": 200
+                    },
+                    timeout=12
+                )
+                if response.ok:
+                    return response.json()["choices"][0]["message"]["content"].strip()
+            except Exception as e:
+                print(f"[MoneyViya] AI fallback error: {e}")
+        
+        # Static fallback
         msg_lower = message.lower()
         
         # Check if it might be an amount
@@ -1077,43 +1121,14 @@ _Type "market" for live updates_"""
 
 Just add a context to help me understand!"""
         
-        # Check for common typos/variations
-        suggestions = []
-        if any(word in msg_lower for word in ["bal", "sum", "mon"]):
-            suggestions.append('"balance" - View summary')
-        if any(word in msg_lower for word in ["rep", "wee", "month"]):
-            suggestions.append('"report" - Get your report')
-        if any(word in msg_lower for word in ["gol", "tar", "sav"]):
-            suggestions.append('"goals" - View your goals')
-        
-        if suggestions:
-            return f"""💡 Did you mean:
-• {chr(10).join('• ' + s for s in suggestions)}
+        return f"""🤔 *Hi {user.get('name', 'Friend')}!*
 
-Type what you need, I'll try to help!"""
-        
-        return f"""🤔 I'm not sure what you meant by: "{message[:40]}..."
+I'm not sure what you meant, but I can help with finance!
 
-*Here's what I can do:*
-━━━━━━━━━━━━━━━━━━━━━
-💰 *Track Money:*
-• "Spent 500 on food"
-• "Earned 10000 salary"
-
-📊 *View Info:*
-• "Balance" - Daily summary
-• "Profile" - Your details
-• "Goals" - Your targets
-• "Report" - Weekly report
-
-📈 *Get Insights:*
-• "Market" - Stock updates
-• "Tips" - Investment advice
-• "Savings" - Savings overview
-
-🔧 *Others:*
-• "Help" - All commands
-• "Reset" - Start fresh
+💰 *Track:* "Spent 200 on food" or "Earned 5000"
+📊 *View:* "Balance" | "Goals" | "Report"
+📈 *Invest:* "Market" | "Tips"
+❓ *Help:* Type "help" for all commands
 
 Just talk to me naturally! 🤖"""
 

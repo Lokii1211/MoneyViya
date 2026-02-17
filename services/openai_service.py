@@ -66,61 +66,73 @@ class OpenAIService:
             return ""
     
     def understand_message(self, message: str, language: str = "english", context: dict = None) -> Dict[str, Any]:
-        """Use GPT to understand financial messages with better NLP - handles multiple transactions"""
+        """Smart Transaction Parser — Strategy Prompt 3
+        
+        Uses the rich category taxonomy from MoneyViya Product Strategy
+        to intelligently categorize transactions and provide behavioral context.
+        """
         if not self.is_available():
             return self._fallback_parse(message)
         
         try:
-            prompt = f"""You are a financial assistant that understands messages in multiple languages (Hindi, Tamil, Telugu, English, etc.)
+            prompt = f"""You are MoneyViya's transaction understanding engine.
+A user has sent a message that may contain financial information.
 
-Parse this message and extract ALL financial transactions. A single message may contain BOTH income AND expense.
+CATEGORY TAXONOMY:
+Income: salary, freelance, business, interest, rental, gift, bonus, other_income
+Expenses: 
+  - Essentials: rent, groceries, electricity, water, internet, mobile, medicine, school_fees
+  - Transport: fuel, auto, cab, bus, train, flight
+  - Food: restaurant, coffee, snacks, swiggy, zomato, delivery
+  - Shopping: clothing, electronics, household, beauty
+  - Entertainment: movies, streaming, gaming, events
+  - Health: gym, doctor, pharmacy
+  - Investment: mutual_fund, stocks, fd, rd, insurance, ppf, gold
+  - Debt: emi, credit_card, loan_repayment
+  - Savings: bank_transfer, piggy_bank
+
+SMART CATEGORY RULES:
+- "Swiggy", "Zomato", "food delivery" = food (not groceries)
+- "Big Bazaar", "DMart", "vegetables" = groceries
+- "Netflix", "Spotify", "Hotstar" = entertainment (streaming)
+- "SIP", "mutual fund" = investment (POSITIVE — celebrate this)
+- "EMI" = debt (note: this is positive behavior)
+- "Uber", "Ola", "auto" = transport (cab)
 
 User's language: {language}
 Message: "{message}"
 
 IMPORTANT: If message contains BOTH earned/income AND spent/expense, return MULTIPLE_TRANSACTIONS.
 
-Respond ONLY with valid JSON in ONE of these formats:
+Respond ONLY with valid JSON:
 
-For SINGLE transaction:
-{{"intent": "EXPENSE_ENTRY", "amount": 200, "category": "food", "description": "lunch"}}
+Single transaction:
+{{"intent": "EXPENSE_ENTRY", "amount": 200, "category": "food", "description": "lunch", "confidence": 0.95}}
 
-For MULTIPLE transactions (earned AND spent):
+Multiple transactions:
 {{"intent": "MULTIPLE_TRANSACTIONS", "transactions": [
     {{"type": "income", "amount": 500, "category": "salary", "description": "earned"}},
-    {{"type": "expense", "amount": 200, "category": "other", "description": "spent"}}
+    {{"type": "expense", "amount": 200, "category": "food", "description": "lunch"}}
 ]}}
 
-For queries:
-{{"intent": "BALANCE_QUERY"}} or {{"intent": "REPORT_QUERY"}} or {{"intent": "GREETING"}}
+Queries: {{"intent": "BALANCE_QUERY"}} or {{"intent": "REPORT_QUERY"}} or {{"intent": "GREETING"}} or {{"intent": "INVESTMENT_QUERY"}}
 
-Examples:
-- "I earned 700 and spent 300" = MULTIPLE_TRANSACTIONS with income 700 AND expense 300
-- "earned 500, spent 200" = MULTIPLE_TRANSACTIONS
-- "500 kamaya 200 kharch" = MULTIPLE_TRANSACTIONS  
-- "spent 200 on food" = EXPENSE_ENTRY
-- "earned 500" = INCOME_ENTRY
-- "hi" / "hello" = GREETING
-- "balance" / "report" = BALANCE_QUERY / REPORT_QUERY
-
-Categories: salary, freelance, tips, food, transport, shopping, bills, health, entertainment, other
-
-Now parse this message: "{message}"
+Parse: "{message}"
 """
             
             response = requests.post(
                 "https://api.openai.com/v1/chat/completions",
                 headers=self.headers,
                 json={
-                    "model": "gpt-3.5-turbo",
+                    "model": "gpt-4o-mini",
                     "messages": [
-                        {"role": "system", "content": "You are a financial transaction parser. Parse messages for income AND/OR expense. If message contains BOTH, return MULTIPLE_TRANSACTIONS. Always respond with valid JSON only."},
+                        {"role": "system", "content": "You are MoneyViya's Smart Transaction Parser. Parse financial messages in any Indian language (Hindi, Tamil, Telugu, English, etc.). Extract amounts, categories from the taxonomy, and intent. Return ONLY valid JSON. If message contains BOTH income AND expense, return MULTIPLE_TRANSACTIONS."},
                         {"role": "user", "content": prompt}
                     ],
                     "temperature": 0.1,
-                    "max_tokens": 300
+                    "max_tokens": 400
                 },
-                timeout=30
+                timeout=15
             )
             
             if response.ok:
@@ -134,15 +146,15 @@ Now parse this message: "{message}"
                     json_match = re.search(r'\{.*\}', content, re.DOTALL)
                     if json_match:
                         parsed = json.loads(json_match.group())
-                        print(f"[NLP] Parsed: {parsed}")
+                        print(f"[SmartParser] Parsed: {parsed}")
                         return parsed
                 except Exception as e:
-                    print(f"[NLP] JSON parse error: {e}")
+                    print(f"[SmartParser] JSON parse error: {e}")
             
             return self._fallback_parse(message)
             
         except Exception as e:
-            print(f"OpenAI NLP error: {e}")
+            print(f"SmartParser error: {e}")
             return self._fallback_parse(message)
     
     def _fallback_parse(self, message: str) -> Dict[str, Any]:
@@ -184,41 +196,78 @@ Now parse this message: "{message}"
         }
     
     def generate_financial_plan(self, user_data: dict, language: str = "english") -> str:
-        """Generate a personalized financial plan using AI"""
+        """Smart Financial Plan Generator (Strategy Prompt 13)
+        
+        Comprehensive, personalized financial plan with 4 phases:
+        Snapshot → Foundation (0-3mo) → Build (3-12mo) → Grow (1-5yr)
+        """
         if not self.is_available():
             return self._fallback_plan(user_data, language)
         
         try:
             income = user_data.get("monthly_income", 20000)
-            savings = user_data.get("savings_target", int(income * 0.2))
-            goals = user_data.get("financial_goals", ["General Savings"])
+            expenses = user_data.get("monthly_expenses", user_data.get("fixed_expenses", 0))
+            savings = user_data.get("current_savings", 0)
+            surplus = income - expenses
+            goals = user_data.get("financial_goals", user_data.get("goals", ["General Savings"]))
             name = user_data.get("name", "Friend")
+            risk = user_data.get("risk_appetite", "Medium")
+            personality = user_data.get("money_personality", "builder")
+            occupation = user_data.get("occupation", "professional")
             
-            prompt = f"""Create a personalized financial plan in {language} for:
-- Name: {name}
-- Monthly Income: ₹{income}
-- Savings Goal: ₹{savings}/month
-- Financial Goals: {', '.join(goals) if isinstance(goals, list) else goals}
+            # Income-tier specific rules
+            if income < 15000:
+                tier_rules = "Focus on emergency fund, RD, no risky investments"
+            elif income < 30000:
+                tier_rules = "Emergency fund + Index fund SIP (₹500 minimum)"
+            elif income < 60000:
+                tier_rules = "Multi-goal approach, diversified SIPs, some stocks if risk-tolerant"
+            else:
+                tier_rules = "Full diversification, tax planning, wealth accumulation"
+            
+            # Investment recommendations by risk
+            inv_recs = {
+                "Low": "Post Office RD, SBI/HDFC FD, Liquid Mutual Funds, PPF",
+                "Medium": "Nifty 50 Index Fund, Balanced Advantage Fund, Large Cap Fund",
+                "High": "Mid Cap Fund, Small Cap Fund, Direct Stocks (blue chip)"
+            }
+            
+            prompt = f"""Create MoneyViya's personalized financial plan.
 
-Include:
-1. Daily income target (if applicable)
-2. Daily spending limit
-3. Daily savings target
-4. Weekly/Monthly milestones
-5. Motivational message
+USER PROFILE:
+Name: {name} | {occupation} | Personality: {personality}
+Income: ₹{income:,}/mo | Expenses: ₹{expenses:,}/mo | Surplus: ₹{surplus:,}/mo
+Savings: ₹{savings:,} | Risk: {risk}
+Goals: {', '.join(goals) if isinstance(goals, list) else goals}
 
-Keep it concise and use emojis. Respond in {language}."""
+INCOME TIER: {tier_rules}
+RISK-BASED INVESTMENTS: {inv_recs.get(risk, inv_recs["Medium"])}
+
+PLAN STRUCTURE (Prompt 13):
+Section 1: FINANCIAL SNAPSHOT (current status, net surplus, emergency fund status)
+Section 2: THE FOUNDATION (first 3 months — emergency fund, budget tweak, first investment)
+Section 3: THE BUILD (3-12 months — goal allocation, monthly savings split, SIP plan)
+Section 4: THE GROW (1-5 years — projections, goal timeline, wealth strategy)
+
+RULES:
+- WhatsApp format, each section 3-4 lines
+- Under 300 words total
+- End with: "This is your starting point. We build from here together 💪"
+- Write in {language}"""
 
             response = requests.post(
                 "https://api.openai.com/v1/chat/completions",
                 headers=self.headers,
                 json={
-                    "model": "gpt-3.5-turbo",
-                    "messages": [{"role": "user", "content": prompt}],
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                        {"role": "system", "content": f"You are Viya, MoneyViya's financial planner. Create inspiring, non-overwhelming plans. In {language}. Max 300 words. WhatsApp format."},
+                        {"role": "user", "content": prompt}
+                    ],
                     "temperature": 0.7,
                     "max_tokens": 500
                 },
-                timeout=30
+                timeout=15
             )
             
             if response.ok:
@@ -259,6 +308,76 @@ Keep it concise and use emojis. Respond in {language}."""
 • 💾 Savings Target: ₹{daily_savings:,}/day
 
 💪 Small steps, big goals!"""
+    
+    def adapt_multilingual_response(self, message: str, response: str, language: str = "en", emotion: str = None) -> str:
+        """Multilingual Emotional Intelligence (Strategy Prompt 12)
+        
+        Ensures communication is culturally appropriate, emotionally intelligent,
+        and linguistically authentic.
+        """
+        if not self.is_available():
+            return response  # Can't adapt without AI
+        
+        lang_profiles = {
+            "hi": "Hindi — Warm, familial (Aap, respectful forms), aspirational. Use Shabash!, Kya baat hai!, Wah!",
+            "ta": "Tamil — Respectful, community-oriented, achievement-focused. Use Soopar!, Romba nalla irukku!",
+            "te": "Telugu — Formal yet warm, family-first. Use Chala bagundi!, Super!",
+            "kn": "Kannada — Steady, practical, understated celebrations. Use Thumba channagide!, Super!",
+            "en": "English — Professional but friendly, direct. Can use more financial jargon."
+        }
+        
+        emotion_guideline = {
+            "stressed": "Lead with empathy before data",
+            "excited": "Match their energy, celebrate with them",
+            "confused": "Slow down, use analogy, simple language",
+            "frustrated": "Validate their feeling, ask what they need",
+            "ashamed": "Normalize, forward-focus immediately, never judge"
+        }
+        
+        if language == "en":
+            return response  # English doesn't need cultural adaptation
+        
+        try:
+            lang_name = {"hi": "Hindi", "ta": "Tamil", "te": "Telugu", "kn": "Kannada"}.get(language, "English")
+            
+            prompt = f"""Adapt this response for cultural and emotional intelligence.
+
+LANGUAGE PROFILE: {lang_profiles.get(language, lang_profiles["en"])}
+USER MESSAGE: {message}
+DETECTED EMOTION: {emotion or "neutral"}
+EMOTION GUIDELINE: {emotion_guideline.get(emotion, "Default warm tone")}
+
+ORIGINAL RESPONSE:
+{response}
+
+RULES:
+- Adapt to {lang_name} — not translated, NATIVE feeling
+- Apply cultural nuances (respect forms, celebration styles)
+- Keep financial terms in English if user may understand them
+- Maintain the same information and intent
+- Max same length as original"""
+
+            api_response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=self.headers,
+                json={
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                        {"role": "system", "content": f"You are MoneyViya's cultural adaptation engine. Adapt financial messages to be culturally authentic in {lang_name}. Never translate literally — make it NATIVE."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.5,
+                    "max_tokens": 300
+                },
+                timeout=10
+            )
+            
+            if api_response.ok:
+                return api_response.json()["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            print(f"[Multilingual AI] Error: {e}")
+        
+        return response  # Return original if adaptation fails
 
 
 # Global instance
