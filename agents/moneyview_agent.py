@@ -428,7 +428,55 @@ _Type your answer for the current question, or type *reset* to start fresh._"""
                                             "how am i doing", "kaisa chal raha", "my score"]):
                 return self._handle_health_score(phone, user)
             
-            # ─── 14. INCOME — explicit keywords ───
+            # ─── 14. AFFORDABILITY — "Can I afford iPhone?" ───
+            if any(w in msg_lower for w in ["can i afford", "afford", "should i buy", 
+                                            "kya le sakta", "khareedna chahiye", "worth it",
+                                            "budget mein aayega", "afford kar sakta"]):
+                return self._handle_affordability(phone, msg, user)
+            
+            # ─── 15. BILL REMINDERS ───
+            if any(w in msg_lower for w in ["remind", "reminder", "bill remind", "yaad dilao",
+                                            "due date", "don't forget", "bill due",
+                                            "my bills", "upcoming bills"]):
+                return self._handle_bill_reminder(phone, msg, user)
+            
+            # ─── 16. SPENDING PREDICTION ───
+            if any(w in msg_lower for w in ["predict", "prediction", "will i overspend",
+                                            "month end", "salary last", "paisa chalega",
+                                            "budget forecast", "will my money last",
+                                            "paise chalenge", "kab tak chalega"]):
+                return self._handle_spending_prediction(phone, user)
+            
+            # ─── 17. SAVINGS CHALLENGE ───
+            if any(w in msg_lower for w in ["challenge", "savings challenge", "30 day",
+                                            "bachat challenge", "money challenge",
+                                            "save more", "zyada bachao"]):
+                return self._handle_savings_challenge(phone, user)
+            
+            # ─── 18. DEBT TRACKER ───
+            if any(w in msg_lower for w in ["my loan", "my loans", "debt", "total debt",
+                                            "all emi", "loan tracker", "karz", "कर्ज",
+                                            "how much i owe", "total emi", "debt free"]):
+                return self._handle_debt_tracker(phone, user)
+            
+            # ─── 19. SUBSCRIPTION MANAGER ───
+            if any(w in msg_lower for w in ["subscription", "subscriptions", "recurring",
+                                            "monthly charge", "auto debit", "unsubscribe",
+                                            "waste subscription", "cancel subscription"]):
+                return self._handle_subscriptions(phone, user)
+            
+            # ─── 20. MOTIVATION ───
+            if any(w in msg_lower for w in ["motivat", "inspire", "quote", "money quote",
+                                            "i feel broke", "depressed about money",
+                                            "paisa nahi hai", "frustrated", "hopeless"]):
+                return self._handle_motivation(user)
+            
+            # ─── 21. SPLIT BILL ───
+            if any(w in msg_lower for w in ["split", "split bill", "divide", "hissa",
+                                            "baant", "share bill", "who owes"]):
+                return self._handle_split_bill(msg, user)
+            
+            # ─── 22. INCOME — explicit keywords ───
             income_triggers = ["earn", "income", "received", "got paid", "salary", "kamai",
                               "mila", "credited", "कमाया", "मिला", "கிடைத்தது", "వచ్చింది",
                               "आया", "payment received", "freelance payment", "client paid",
@@ -436,14 +484,14 @@ _Type your answer for the current question, or type *reset* to start fresh._"""
             if any(kw in msg_lower for kw in income_triggers):
                 return self._handle_income(phone, message, user)
             
-            # ─── 15. EXPENSE — explicit keywords ───
+            # ─── 23. EXPENSE — explicit keywords ───
             expense_triggers = ["spent", "paid", "bought", "expense", "cost", "kharcha",
                                "kharach", "खर्च", "செலவு", "ఖర్చు", "खरीदा", "bill paid",
                                "recharge", "recharged", "diya", "de diya", "bhara", "bharwaya"]
             if any(kw in msg_lower for kw in expense_triggers):
                 return self._handle_expense(phone, message, user)
             
-            # ─── 16. IMPLICIT EXPENSE — "chai 50", "auto 150", number + category ───
+            # ─── 24. IMPLICIT EXPENSE — "chai 50", "auto 150", number + category ───
             amount = self._extract_amount(msg)
             if amount:
                 # Check if message has an implicit category
@@ -454,7 +502,10 @@ _Type your answer for the current question, or type *reset* to start fresh._"""
                     "recharge", "bill", "rent", "emi", "electricity", "wifi", "mobile",
                     "amazon", "flipkart", "shopping", "clothes", "shoes",
                     "movie", "netflix", "gym", "medicine", "doctor",
-                    "khana", "nashta", "rickshaw", "bijli", "kiraya"
+                    "khana", "nashta", "rickshaw", "bijli", "kiraya",
+                    "doodh", "milk", "sabji", "vegetables", "fruits", "kirana", "grocery",
+                    "water", "gas", "cylinder", "maid", "bai", "parking",
+                    "haircut", "salon", "laundry", "ironing", "temple", "donation"
                 ]
                 if any(w in msg_lower for w in implicit_expense_words):
                     return self._handle_expense(phone, message, user)
@@ -469,7 +520,7 @@ Is this an:
 
 Or just tell me what it was for! 😊"""
             
-            # ─── 17. UNIVERSAL AI FALLBACK — understands ANYTHING ───
+            # ─── 25. UNIVERSAL AI FALLBACK — understands ANYTHING ───
             return self._handle_unknown(message, user)
             
         except Exception as e:
@@ -841,31 +892,44 @@ How can I help today?
         return f"""📚 *{name}, here's everything I can do!*
 
 💰 *Track Money (just talk naturally!):*
-  "chai 50" • "auto 150" • "biryani for 300"
+  "chai 50" • "auto 150" • "biryani 300"
   "spent 500 on food" • "earned 10000 salary"
-  "got 500 cashback" • "paid 2000 rent"
+  "doodh 60" • "sabji 150" • "parking 30"
 
-📊 *View Finances:*
+📊 *View & Analyze:*
   "balance" — Today's summary
-  "report" — Weekly breakdown
-  "health score" — Your financial health
+  "report" — Weekly breakdown  
+  "health score" — Financial health rating
+  "predict" — Will you overspend this month?
 
-🎯 *Goals:*
+🎯 *Goals & Savings:*
   "goals" — View your goals
   "add goal: Buy car, 5 lakh, 2 years"
+  "challenge" — 30-Day Savings Challenge! 🔥
 
-🏦 *Financial Tools:*
+🛒 *Smart Tools:*
+  "can I afford iPhone 70000" — Affordability check
   "EMI calculator" — Calculate loan EMI
+  "split 2000 among 4" — Split bills
   "tax tips" — Tax saving advice
-  "invest tips" — Investment suggestions
 
-📈 *Markets:*
+📋 *Manage Money:*
+  "remind me rent 15000" — Bill reminders
+  "subscriptions" — Track recurring charges
+  "my loans" — Debt tracker dashboard
+
+📈 *Markets & Invest:*
   "market update" • "where to invest"
   "SIP" • "mutual fund" • "FD"
 
-🤔 *Ask Anything:*
-  I can answer general questions too!
-  Just chat with me like a friend 😊
+💪 *Motivation:*
+  "motivate me" — Financial wisdom
+  "I feel broke" — We all do sometimes! 🤗
+
+📸 *Auto-Capture:*
+  Send a payment screenshot 📸
+  Forward a payment message ↪️
+  I'll auto-log it!
 
 ⚙️ *Settings:*
   "profile" • "reset" • "language"
@@ -1366,6 +1430,569 @@ _Type "invest" for investment advice_"""
 {"• Start an SIP investment" if score < 80 else "• You're doing great!"}
 
 _Type "help" to see all commands_"""
+
+    # ═══════════════════════════════════════════════════
+    # NEW LIFE-CHANGING FEATURES
+    # ═══════════════════════════════════════════════════
+    
+    def _handle_affordability(self, phone: str, message: str, user: Dict) -> str:
+        """Affordability Calculator — answers 'Can I afford X?'
+        Uses 60/20/20 rule: 60% needs, 20% wants, 20% savings
+        """
+        name = user.get("name", "Friend")
+        income = user.get("monthly_income", 0)
+        expenses = user.get("monthly_expenses", 0)
+        savings = user.get("current_savings", 0)
+        
+        amount = self._extract_amount(message)
+        
+        if not amount:
+            return f"""🛒 *Affordability Calculator*
+
+{name}, tell me what you want to buy!
+
+*Format:* "Can I afford iPhone 70000"
+Or: "Should I buy laptop 45000"
+
+I'll analyze:
+• Your income vs the purchase
+• Impact on savings goals  
+• Better alternatives if needed
+• EMI option if it makes sense
+
+_Just type the item and price!_ 💡"""
+        
+        if not income:
+            return f"""💡 {name}, I need your income to calculate this!
+
+Type your monthly income: "income 30000"
+Then ask me again! 😊"""
+        
+        # Deep analysis
+        monthly_surplus = income - expenses if expenses else income * 0.4
+        months_to_save = amount / monthly_surplus if monthly_surplus > 0 else float('inf')
+        percent_of_income = (amount / income) * 100
+        percent_of_savings = (amount / savings * 100) if savings > 0 else float('inf')
+        
+        # Decision engine
+        if amount <= monthly_surplus * 0.5:
+            verdict = "✅ *YES — Easily Affordable!*"
+            advice = "This fits well within your budget. Go for it!"
+            emoji = "🎉"
+        elif amount <= monthly_surplus:
+            verdict = "⚠️ *Affordable — But Plan Carefully*"
+            advice = f"You can afford this, but it'll use most of your monthly surplus. Consider saving for {int(months_to_save)} month(s) first."
+            emoji = "🤔"
+        elif amount <= savings * 0.3:
+            verdict = "💰 *Use Savings — It's Reasonable*"
+            advice = f"This is {percent_of_savings:.0f}% of your savings. You have enough, but make sure to replenish."
+            emoji = "💡"
+        elif months_to_save <= 6:
+            verdict = "⏳ *Save First — Achievable in {:.0f} Months*".format(months_to_save)
+            advice = f"Save ₹{int(monthly_surplus):,}/month and you'll have it in {int(months_to_save)} months!"
+            emoji = "📅"
+        else:
+            verdict = "❌ *Out of Budget Right Now*"
+            emi = amount / 12
+            advice = f"Consider EMI: ₹{int(emi):,}/month for 12 months. Or save ₹{int(amount/6):,}/month for 6 months."
+            emoji = "🔄"
+        
+        return f"""{emoji} *Affordability Analysis for {name}*
+
+💰 Item Cost: ₹{int(amount):,}
+📊 Your Monthly Income: ₹{int(income):,}
+💵 Monthly Surplus: ₹{int(monthly_surplus):,}
+🏦 Current Savings: ₹{int(savings):,}
+
+{verdict}
+
+💡 *My Advice:* {advice}
+
+📏 *By the Numbers:*
+• {percent_of_income:.0f}% of monthly income
+• {f'{percent_of_savings:.0f}% of savings' if savings > 0 else 'No savings recorded'}
+• {f'{months_to_save:.1f} months to save' if months_to_save < 100 else 'Long-term goal'}
+
+_Want EMI calculation? Type "EMI {int(amount)}"_"""
+    
+    def _handle_bill_reminder(self, phone: str, message: str, user: Dict) -> str:
+        """Bill Reminder Manager — never miss a payment again"""
+        name = user.get("name", "Friend")
+        msg_lower = message.lower()
+        
+        # Initialize bills storage
+        if "bills" not in user:
+            user["bills"] = []
+        
+        # Adding a new bill
+        add_words = ["add", "set", "new", "remind me", "yaad dilao"]
+        if any(w in msg_lower for w in add_words):
+            amount = self._extract_amount(message)
+            
+            # Detect bill type
+            bill_types = {
+                "rent": ("🏠", "Rent", 1), "electricity": ("💡", "Electricity", 5),
+                "wifi": ("📶", "WiFi/Internet", 1), "broadband": ("📶", "Broadband", 1),
+                "mobile": ("📱", "Mobile Recharge", 28), "phone": ("📱", "Phone Bill", 1),
+                "emi": ("🏦", "EMI", 5), "loan": ("🏦", "Loan EMI", 5),
+                "insurance": ("🛡️", "Insurance", 1), "lic": ("🛡️", "LIC Premium", 1),
+                "gas": ("🔥", "Gas Cylinder", 45), "maid": ("🧹", "Maid Salary", 1),
+                "gym": ("💪", "Gym Membership", 1), "netflix": ("📺", "Netflix", 15),
+                "spotify": ("🎵", "Spotify", 15), "water": ("💧", "Water Bill", 1),
+                "credit card": ("💳", "Credit Card", 15), "sip": ("📈", "SIP Investment", 5),
+            }
+            
+            detected_bill = None
+            for keyword, (emoji, bill_name, default_day) in bill_types.items():
+                if keyword in msg_lower:
+                    detected_bill = (emoji, bill_name, default_day)
+                    break
+            
+            if detected_bill and amount:
+                emoji, bill_name, day = detected_bill
+                user["bills"].append({
+                    "name": bill_name, "amount": amount, "day": day,
+                    "emoji": emoji, "active": True
+                })
+                self._save_user(phone, user)
+                return f"""✅ *Bill Reminder Added!*
+
+{emoji} {bill_name}: ₹{int(amount):,}/month
+📅 Due: {day}th of every month
+
+I'll remind you before the due date! 🔔
+
+_Add more: "remind me rent 15000" or "remind me wifi 800"_"""
+            
+            return f"""📋 *Add a Bill Reminder*
+
+{name}, tell me the bill details:
+
+*Examples:*
+• "remind me rent 15000"
+• "remind me wifi 800"  
+• "remind me emi 12000"
+• "remind me netflix 649"
+
+I'll track it and remind you before due dates! 🔔"""
+        
+        # Show existing bills
+        bills = user.get("bills", [])
+        if not bills:
+            return f"""📋 *{name}, no bills set up yet!*
+
+Add your recurring bills and I'll remind you:
+
+*Examples:*
+• "remind me rent 15000"
+• "remind me electricity 2000"
+• "remind me emi 8000"
+• "remind me wifi 800"
+
+Never pay a late fee again! 🎯"""
+        
+        total_monthly = sum(b["amount"] for b in bills if b.get("active"))
+        income = user.get("monthly_income", 0)
+        
+        bill_list = "\n".join([
+            f"  {b['emoji']} {b['name']}: ₹{int(b['amount']):,} (Due: {b['day']}th)"
+            for b in bills if b.get("active")
+        ])
+        
+        result = f"""📋 *{name}'s Monthly Bills*
+
+{bill_list}
+
+💰 *Total Monthly Bills:* ₹{int(total_monthly):,}"""
+        
+        if income:
+            bills_percent = (total_monthly / income) * 100
+            result += f"\n📊 *{bills_percent:.0f}% of your income* goes to fixed bills"
+            remaining = income - total_monthly
+            result += f"\n💵 *Left after bills:* ₹{int(remaining):,}"
+        
+        result += "\n\n_Add more: 'remind me [bill] [amount]'_"
+        return result
+    
+    def _handle_spending_prediction(self, phone: str, user: Dict) -> str:
+        """Spending Prediction — predicts if user will overspend this month"""
+        name = user.get("name", "Friend")
+        income = user.get("monthly_income", 0)
+        
+        now = self._get_ist_time()
+        day_of_month = now.day
+        days_in_month = 30
+        days_left = days_in_month - day_of_month
+        
+        # Get this month's spending
+        month_str = now.strftime("%Y-%m")
+        txns = self.transaction_store.get(phone, [])
+        month_expenses = sum(t["amount"] for t in txns 
+                           if t["type"] == "expense" and t.get("date", "").startswith(month_str))
+        month_income = sum(t["amount"] for t in txns 
+                          if t["type"] == "income" and t.get("date", "").startswith(month_str))
+        
+        if day_of_month < 3:
+            return f"""📊 *{name}, it's early in the month!*
+
+Track your expenses for a few days and I'll predict your month-end situation.
+
+Start logging: "chai 50" or "spent 200 on food" 📝"""
+        
+        # Burn rate calculation
+        daily_burn = month_expenses / day_of_month if day_of_month > 0 else 0
+        projected_total = daily_burn * days_in_month
+        effective_income = income if income else month_income
+        
+        if effective_income <= 0:
+            return f"""📊 *Spending Report for {name}*
+
+💸 Spent so far: ₹{int(month_expenses):,} ({day_of_month} days)
+📈 Daily average: ₹{int(daily_burn):,}/day
+🔮 Projected month total: ₹{int(projected_total):,}
+
+_Set your income: "income 30000" for full prediction!_"""
+        
+        surplus_or_deficit = effective_income - projected_total
+        burn_rate = (month_expenses / effective_income) * 100
+        
+        # Prediction with emotional context
+        if surplus_or_deficit > effective_income * 0.2:
+            verdict = "✅ *Looking Great!*"
+            emoji = "🎉"
+            tip = f"You're on track to save ₹{int(surplus_or_deficit):,} this month! Keep it up!"
+        elif surplus_or_deficit > 0:
+            verdict = "⚠️ *Tight But Manageable*"
+            emoji = "🤔"
+            daily_budget_left = surplus_or_deficit / max(days_left, 1)
+            tip = f"You have ₹{int(daily_budget_left):,}/day for the next {days_left} days. Be careful with non-essentials."
+        else:
+            verdict = "🚨 *Warning: Overspending!*"
+            emoji = "😰"
+            over_by = abs(surplus_or_deficit)
+            tip = f"At this rate, you'll overspend by ₹{int(over_by):,}! Cut back ₹{int(over_by/max(days_left,1)):,}/day to stay on track."
+        
+        # Progress bar
+        progress = min(int(burn_rate / 5), 20)
+        bar = "🟩" * min(progress, 12) + "🟨" * max(0, min(progress - 12, 4)) + "🟥" * max(0, progress - 16)
+        bar += "⬜" * (20 - len(bar.replace("🟩","x").replace("🟨","x").replace("🟥","x").replace("⬜","x")))
+        
+        return f"""{emoji} *{name}'s Month Prediction*
+
+📅 Day {day_of_month} of {days_in_month} | {days_left} days left
+
+💰 Income: ₹{int(effective_income):,}
+💸 Spent: ₹{int(month_expenses):,} ({burn_rate:.0f}%)
+📈 Daily burn: ₹{int(daily_burn):,}/day
+🔮 Projected: ₹{int(projected_total):,}
+
+{verdict}
+{tip}
+
+💡 *{name}, {f'reduce daily spending to ₹{int((effective_income - month_expenses) / max(days_left, 1)):,} to stay safe' if surplus_or_deficit > 0 else 'every ₹100 saved now helps!'}*
+
+_Check back daily — I update predictions in real-time!_ 📊"""
+    
+    def _handle_savings_challenge(self, phone: str, user: Dict) -> str:
+        """30-Day Savings Challenge — gamified savings"""
+        name = user.get("name", "Friend")
+        
+        # Check if user has an active challenge
+        challenge = user.get("active_challenge")
+        
+        if challenge:
+            # Show progress
+            start_date = datetime.fromisoformat(challenge["start_date"])
+            now = self._get_ist_time()
+            day_num = (now - start_date).days + 1
+            
+            if day_num > 30:
+                total_saved = challenge.get("total_saved", 0)
+                user["active_challenge"] = None
+                self._save_user(phone, user)
+                return f"""🏆 *CHALLENGE COMPLETE!* 🎉
+
+{name}, you finished the 30-Day Savings Challenge!
+
+💰 Total Saved: ₹{int(total_saved):,}
+🌟 That's ₹{int(total_saved * 12):,}/year if you keep going!
+
+You proved you CAN save! Start a new one?
+Type "challenge" to begin again! 🚀"""
+            
+            daily_target = challenge.get("daily_target", 50)
+            total_saved = challenge.get("total_saved", 0)
+            streak = challenge.get("streak", 0)
+            
+            return f"""🔥 *Day {day_num}/30 — Savings Challenge*
+
+📊 *Your Progress:*
+💰 Saved so far: ₹{int(total_saved):,}
+🎯 Today's target: ₹{int(daily_target):,}
+🔥 Current streak: {streak} days
+
+{'🌟' * min(day_num, 30)}{'⭐' * (30 - min(day_num, 30))}
+
+💡 *Today's Task:*
+{self._get_challenge_task(day_num, daily_target)}
+
+_Log savings: "saved {int(daily_target)}"_
+_Type "skip" if you can't save today_ 💪"""
+        
+        # Start new challenge
+        income = user.get("monthly_income", 0)
+        daily_target = max(20, int(income * 0.02)) if income else 50
+        
+        user["active_challenge"] = {
+            "start_date": self._get_ist_time().isoformat(),
+            "daily_target": daily_target,
+            "total_saved": 0,
+            "streak": 0,
+            "best_streak": 0
+        }
+        self._save_user(phone, user)
+        
+        return f"""🚀 *30-Day Savings Challenge Started!*
+
+{name}, here's your challenge:
+💰 Save ₹{int(daily_target):,}/day for 30 days
+
+*If you complete it:*
+🏆 You'll save ₹{int(daily_target * 30):,}!
+📈 That's ₹{int(daily_target * 365):,}/year!
+
+*Today (Day 1):*
+{self._get_challenge_task(1, daily_target)}
+
+*Rules:*
+✅ Log your saving each day: "saved {int(daily_target)}"
+⏭️ Type "skip" if you can't save a day
+🔥 Build streaks for bonus motivation!
+
+_Let's make saving a habit!_ 💪"""
+    
+    def _get_challenge_task(self, day: int, target: int) -> str:
+        """Get daily challenge task"""
+        tasks = {
+            1: f"Skip one chai/coffee and save ₹{target}! ☕",
+            2: f"Pack lunch from home. Save ₹{target}! 🍱",
+            3: f"Walk instead of auto for short distance. Save ₹{target}! 🚶",
+            4: f"No online shopping today! Save ₹{target}! 🛒",
+            5: f"Cook dinner at home. Save ₹{target}! 🍳",
+            6: f"Cancel a subscription you don't use. Save ₹{target}! 📺",
+            7: f"💰 *Week 1 Done!* Keep the momentum! Save ₹{target}!",
+            8: f"Carry water bottle — skip buying water. Save ₹{target}! 💧",
+            9: f"Take the bus instead of cab. Save ₹{target}! 🚌",
+            10: f"No Swiggy/Zomato today! Cook or eat out cheaper. Save ₹{target}! 🍔",
+            14: f"💰 *2 Weeks Done!* You're halfway! Save ₹{target}!",
+            21: f"🔥 *3 Weeks Done!* Almost there! Save ₹{target}!",
+            30: f"🏆 *FINAL DAY!* You did it! Save ₹{target} one last time!",
+        }
+        return tasks.get(day, f"Find a creative way to save ₹{target} today! 💡")
+    
+    def _handle_debt_tracker(self, phone: str, user: Dict) -> str:
+        """Track all debts/loans in one place"""
+        name = user.get("name", "Friend")
+        
+        if "loans" not in user:
+            user["loans"] = []
+            self._save_user(phone, user)
+        
+        loans = user.get("loans", [])
+        
+        if not loans:
+            return f"""🏦 *{name}'s Debt Tracker*
+
+No loans recorded yet. Let's add them!
+
+*Add a loan:*
+"add loan home 30 lakh at 8.5% for 20 years"
+"add loan car 5 lakh at 10% for 5 years"
+"add loan personal 2 lakh at 15% for 3 years"
+
+I'll track:
+📊 Total debt & interest
+📅 Payoff timeline
+💡 Early payoff strategies
+🏆 Debt-free countdown!
+
+_Add your first loan to start tracking!_"""
+        
+        total_debt = sum(l.get("principal", 0) for l in loans)
+        total_emi = sum(l.get("emi", 0) for l in loans)
+        income = user.get("monthly_income", 0)
+        
+        loan_list = "\n".join([
+            f"  {l.get('emoji', '🏦')} {l['name']}: ₹{int(l['principal']):,} @ {l['rate']}% — EMI ₹{int(l['emi']):,}"
+            for l in loans
+        ])
+        
+        result = f"""🏦 *{name}'s Debt Dashboard*
+
+{loan_list}
+
+💰 *Total Debt:* ₹{int(total_debt):,}
+📅 *Total Monthly EMI:* ₹{int(total_emi):,}"""
+        
+        if income:
+            debt_ratio = (total_emi / income) * 100
+            result += f"\n📊 *Debt-to-Income:* {debt_ratio:.0f}%"
+            if debt_ratio > 50:
+                result += "\n⚠️ *Warning:* Over 50% income goes to EMIs!"
+            elif debt_ratio > 35:
+                result += "\n🟡 Manageable but be careful with new loans"
+            else:
+                result += "\n🟢 Healthy debt level!"
+        
+        result += "\n\n_Add more: 'add loan [type] [amount] at [rate]% for [years] years'_"
+        return result
+    
+    def _handle_subscriptions(self, phone: str, user: Dict) -> str:
+        """Subscription Manager — find and track recurring charges"""
+        name = user.get("name", "Friend")
+        
+        # Auto-detect from transactions
+        txns = self.transaction_store.get(phone, [])
+        
+        known_subs = {
+            "netflix": ("📺", 649), "hotstar": ("📺", 299), "prime": ("📦", 179),
+            "spotify": ("🎵", 119), "youtube": ("▶️", 129), "jio cinema": ("🎬", 999),
+            "zee5": ("📺", 599), "sony liv": ("📺", 399),
+            "swiggy one": ("🍔", 149), "zomato pro": ("🍔", 149),
+            "gym": ("💪", 1500), "broadband": ("📶", 999), "wifi": ("📶", 800),
+        }
+        
+        # Detect subs from transaction history
+        detected = []
+        for sub_name, (emoji, typical_cost) in known_subs.items():
+            has_txn = any(sub_name in str(t.get("description", "")).lower() or 
+                        sub_name in str(t.get("category", "")).lower()
+                        for t in txns)
+            if has_txn:
+                detected.append({"name": sub_name.title(), "emoji": emoji, "cost": typical_cost})
+        
+        user_subs = user.get("subscriptions", [])
+        all_subs = detected + user_subs
+        
+        if not all_subs:
+            return f"""📱 *{name}'s Subscription Manager*
+
+No subscriptions detected yet!
+
+*Common subscriptions to track:*
+📺 Netflix (₹649) • Hotstar (₹299) • Prime (₹179)
+🎵 Spotify (₹119) • YouTube Premium (₹129)
+🍔 Swiggy One (₹149) • Zomato Pro (₹149)
+💪 Gym (₹1,500) • 📶 WiFi (₹800)
+
+_Add: "add subscription Netflix 649"_
+
+💡 *Pro Tip:* The average Indian pays ₹3,000/month on subscriptions they barely use!"""
+        
+        total = sum(s.get("cost", 0) for s in all_subs)
+        yearly = total * 12
+        
+        sub_list = "\n".join([f"  {s['emoji']} {s['name']}: ₹{int(s['cost']):,}/month" for s in all_subs])
+        
+        return f"""📱 *{name}'s Subscriptions*
+
+{sub_list}
+
+💰 *Monthly Total:* ₹{int(total):,}
+📅 *Yearly Cost:* ₹{int(yearly):,}
+
+💡 *Think About It:*
+That ₹{int(yearly):,}/year in a SIP @12% for 5 years = ₹{int(yearly * 5 * 1.35):,}! 📈
+
+*Not using something?* Cancel it!
+_Add: 'add subscription [name] [amount]'_"""
+    
+    def _handle_motivation(self, user: Dict) -> str:
+        """Financial Motivation — contextual encouragement"""
+        import random
+        name = user.get("name", "Friend")
+        savings = user.get("current_savings", 0)
+        income = user.get("monthly_income", 0)
+        
+        # Context-aware quotes
+        if savings == 0 and income == 0:
+            quotes = [
+                f"🌱 *{name}, every millionaire started with zero.* The fact that you're tracking your money puts you ahead of 90% of people. Start small — even ₹10/day = ₹3,650/year!",
+                f"💪 *{name}, your money journey starts with one step.* And you already took it by being here! Type 'income [amount]' to set up your profile.",
+                f"🌟 *{name}, you ARE capable of financial freedom.* Most people never even try to understand their money. You're different. Let's start!",
+            ]
+        elif savings > 0 and savings < income:
+            quotes = [
+                f"📈 *{name}, ₹{int(savings):,} in savings is AMAZING progress!* Keep going — compound interest is the 8th wonder of the world!",
+                f"🎯 *{name}, you've saved ₹{int(savings):,}!* That's more than 60% of Indians have in emergency funds. You're ahead!",
+                f"💰 *{name}, imagine where you'll be in 1 year!* At this rate, you could have ₹{int(savings + income * 2):,}+. The key is consistency!",
+            ]
+        else:
+            quotes = [
+                f"🏆 *{name}, financial discipline is a superpower.* Your future self will thank you for every rupee you save today!",
+                f"🚀 *{name}, money gives you choices.* Not luxury — *freedom*. Freedom from stress, from dependency, from 'I can't afford it.'",
+                f"🌟 *{name}, you're not just saving money — you're building a life.* Every ₹100 saved is a step toward your dreams!",
+            ]
+        
+        universal = [
+            f"💡 *Rule of 72:* Divide 72 by your return rate to see when money doubles. FD at 7%? Doubles in ~10 years. SIP at 12%? Doubles in 6!",
+            f"📊 *50-30-20 Rule:* 50% needs, 30% wants, 20% savings. {name}, are you following this?",
+            f"🏦 *Emergency Fund:* Keep 6 months' expenses saved. That's your financial armor against life's surprises.",
+            f"💪 *{name}, inflation is 6%/year.* ₹100 today = ₹94 next year. Saving in FD? You're barely keeping up. Consider SIPs!",
+            f"🎯 *{name}, automate your savings.* Set up an auto-debit on salary day. What you don't see, you don't spend!",
+        ]
+        
+        chosen = random.choice(quotes + universal)
+        
+        return f"""{chosen}
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+_Want more tips? Type "tips"_
+_Start saving? Type "challenge"_
+_Check health? Type "health score"_ 💪"""
+    
+    def _handle_split_bill(self, message: str, user: Dict) -> str:
+        """Quick Bill Splitter"""
+        name = user.get("name", "Friend")
+        amount = self._extract_amount(message)
+        
+        if not amount:
+            return f"""🧮 *Bill Splitter*
+
+{name}, tell me the total and number of people:
+
+*Examples:*
+• "split 2000 among 4" 
+• "split 1500 between 3"
+• "split bill 800 with 2 friends"
+
+_Quick and easy!_ 💰"""
+        
+        # Extract number of people
+        import re
+        people_match = re.search(r'(?:among|between|with|into)\s*(\d+)', message.lower())
+        num_people = int(people_match.group(1)) if people_match else 2
+        
+        # Check for "+ me" or "friends"
+        if "friend" in message.lower():
+            num_people += 1  # Include the user
+        
+        per_person = amount / num_people
+        tip_10 = amount * 0.1
+        tip_15 = amount * 0.15
+        
+        return f"""🧮 *Bill Split*
+
+💰 Total: ₹{int(amount):,}
+👥 People: {num_people}
+━━━━━━━━━━━━━
+💵 *Each pays: ₹{int(per_person):,}*
+
+➕ *With tip:*
+  10% tip → ₹{int((amount + tip_10) / num_people):,} each
+  15% tip → ₹{int((amount + tip_15) / num_people):,} each
+
+_Want to log your share? Type "spent {int(per_person)} on food"_ 🍽️"""
 
     def _handle_unknown(self, message: str, user: Dict) -> str:
         """Universal AI Fallback — handles ANY message intelligently

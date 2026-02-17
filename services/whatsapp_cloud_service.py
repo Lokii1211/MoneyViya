@@ -48,7 +48,7 @@ class WhatsAppCloudAPIService:
         Send text message via WhatsApp Cloud API
         
         Args:
-            phone: Phone number with country code (e.g., 919003360494)
+            phone: Phone number with country code (e.g., 919363324580)
             message: Message text
         """
         if not self.is_available():

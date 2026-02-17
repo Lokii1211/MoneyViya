@@ -94,7 +94,7 @@ class EvolutionAPIService:
         Send text message via WhatsApp
         
         Args:
-            phone: Phone number with country code (e.g., +919003360494 or 919003360494)
+            phone: Phone number with country code (e.g., +919363324580 or 919363324580)
             message: Message text to send
         """
         # Clean phone number
