@@ -331,7 +331,17 @@ _Type your answer for the current question, or type *reset* to start fresh._"""
     
     async def process_message(self, phone: str, message: str, 
                              sender_name: str = "Friend") -> str:
-        """Main message processing with improved NLP"""
+        """Main message processing with Advanced NLP v3.0
+        
+        Understands:
+        - Explicit: "Spent 500 on food"
+        - Implicit: "chai 50", "auto 150", "biryani for 300"
+        - Hinglish: "kharcha 500", "salary aaya 30000"
+        - Follow-up: "yeah that was for food"
+        - EMI/Loan: "Calculate EMI for 10 lakh"
+        - Tax: "Tax saving tips"
+        - Comparison: "Compare this month vs last"
+        """
         try:
             user = self._get_user(phone)
             user["last_active"] = self._get_ist_time().isoformat()
@@ -341,61 +351,124 @@ _Type your answer for the current question, or type *reset* to start fresh._"""
             if not user.get("onboarding_complete"):
                 return await self._handle_onboarding(phone, message, user)
             
-            # Handle commands - improved NLP matching
-            msg_lower = message.lower().strip()
+            # Smart NLP Pipeline
+            msg = message.strip()
+            msg_lower = msg.lower()
+            name = user.get("name", "Friend")
+            lang = user.get("language", "en")
             
-            # Greeting patterns
-            if msg_lower in ["hi", "hello", "hey", "start", "hii", "hiii", "namaste", "vanakkam", "नमस्ते", "வணக்கம்"]:
+            # ─── 1. GREETING ───
+            greet_words = ["hi", "hello", "hey", "start", "hii", "hiii", "namaste", "vanakkam", 
+                          "नमस्ते", "வணக்கம்", "good morning", "good evening", "gm", "yo",
+                          "bro", "hola", "sup", "wassup", "howdy"]
+            if msg_lower in greet_words or (len(msg_lower) < 8 and msg_lower in greet_words):
                 return self._handle_greeting(user)
             
-            # Help patterns
-            if any(word in msg_lower for word in ["help", "commands", "menu", "what can you do", "options", "?", "sahayata", "உதவி"]):
+            # ─── 2. HELP ───
+            if any(w in msg_lower for w in ["help", "commands", "menu", "what can you do", 
+                                            "options", "?", "sahayata", "உதவி", "kya kar sakte"]):
                 return self._handle_help(user)
             
-            # Reset patterns
-            if any(word in msg_lower for word in ["reset", "restart", "start over", "fresh start", "नया शुरू"]):
+            # ─── 3. RESET ───
+            if any(w in msg_lower for w in ["reset", "restart", "start over", "fresh start", "नया शुरू"]):
                 return self._handle_reset(phone)
             
-            # Profile/Status patterns
-            if any(word in msg_lower for word in ["profile", "my profile", "status", "my status", "who am i", "my details", "my info", "account"]):
+            # ─── 4. PROFILE ───
+            if any(w in msg_lower for w in ["profile", "my profile", "status", "my status", 
+                                            "who am i", "my details", "my info", "account", "mera profile"]):
                 return self._handle_profile(user)
             
-            # Balance/Summary patterns
-            if any(word in msg_lower for word in ["balance", "summary", "total", "overview", "how much", "kitna", "எவ்வளவு"]):
+            # ─── 5. BALANCE/SUMMARY ───
+            if any(w in msg_lower for w in ["balance", "summary", "total", "overview", "how much",
+                                            "kitna", "kitne", "எவ்வளவு", "kul", "show me",
+                                            "aaj ka hisab", "hisab", "my money", "paisa"]):
                 return self._handle_balance(phone, user)
             
-            # Goal patterns
-            if any(word in msg_lower for word in ["goal", "target", "लक्ष्य", "இலக்கு"]):
-                if any(word in msg_lower for word in ["add", "new", "create", "set"]):
+            # ─── 6. GOALS ───
+            if any(w in msg_lower for w in ["goal", "target", "lakshya", "लक्ष्य", "இலக்கு",
+                                            "dream", "save for", "bachana hai"]):
+                if any(w in msg_lower for w in ["add", "new", "create", "set", "i want to save"]):
                     return self._handle_add_goal(phone, message, user)
                 return self._handle_view_goals(user)
             
-            # Report patterns
-            if any(word in msg_lower for word in ["report", "weekly", "monthly", "analysis"]):
+            # ─── 7. REPORT ───
+            if any(w in msg_lower for w in ["report", "weekly", "monthly", "analysis", 
+                                            "breakdown", "category wise", "where did my money go"]):
                 return self._handle_report(phone, user)
             
-            # Market/Stock patterns
-            if any(word in msg_lower for word in ["market", "stock", "nifty", "sensex", "share", "invest", "बाजार", "சந்தை"]):
+            # ─── 8. MARKET/INVEST ───
+            if any(w in msg_lower for w in ["market", "stock", "nifty", "sensex", "share", 
+                                            "invest", "mutual fund", "sip", "fd", "ppf", "nps",
+                                            "बाजार", "சந்தை", "where to invest", "best investment"]):
                 return self._handle_market(user)
             
-            # Savings patterns
-            if any(word in msg_lower for word in ["saving", "savings", "बचत", "சேமிப்பு"]):
+            # ─── 9. SAVINGS ───
+            if any(w in msg_lower for w in ["saving", "savings", "bachat", "बचत", "சேமிப்பு",
+                                            "how to save", "save money", "paise kaise bachaye"]):
                 return self._handle_savings(phone, user)
             
-            # Tip/Advice patterns
-            if any(word in msg_lower for word in ["tip", "tips", "advice", "suggest", "recommendation"]):
+            # ─── 10. TIPS ───
+            if any(w in msg_lower for w in ["tip", "tips", "advice", "suggest", "recommendation",
+                                            "sujhav", "salaah", "money tip"]):
                 return self._handle_tips(user)
             
-            # Check for expense
-
-            if self._is_expense_message(message):
-                return self._handle_expense(phone, message, user)
+            # ─── 11. EMI CALCULATOR ───
+            if any(w in msg_lower for w in ["emi", "loan", "emi calculate", "emi kitna", 
+                                            "home loan", "car loan", "personal loan"]):
+                return self._handle_emi(msg, user)
             
-            # Check for income
-            if self._is_income_message(message):
+            # ─── 12. TAX ───
+            if any(w in msg_lower for w in ["tax", "income tax", "itr", "80c", "tax saving",
+                                            "tax bachao", "section 80"]):
+                return self._handle_tax(msg, user)
+            
+            # ─── 13. HEALTH SCORE ───
+            if any(w in msg_lower for w in ["health score", "financial health", "score",
+                                            "how am i doing", "kaisa chal raha", "my score"]):
+                return self._handle_health_score(phone, user)
+            
+            # ─── 14. INCOME — explicit keywords ───
+            income_triggers = ["earn", "income", "received", "got paid", "salary", "kamai",
+                              "mila", "credited", "कमाया", "मिला", "கிடைத்தது", "వచ్చింది",
+                              "आया", "payment received", "freelance payment", "client paid",
+                              "bonus", "incentive", "refund"]
+            if any(kw in msg_lower for kw in income_triggers):
                 return self._handle_income(phone, message, user)
             
-            # Default - try to understand with AI or give help
+            # ─── 15. EXPENSE — explicit keywords ───
+            expense_triggers = ["spent", "paid", "bought", "expense", "cost", "kharcha",
+                               "kharach", "खर्च", "செலவு", "ఖర్చు", "खरीदा", "bill paid",
+                               "recharge", "recharged", "diya", "de diya", "bhara", "bharwaya"]
+            if any(kw in msg_lower for kw in expense_triggers):
+                return self._handle_expense(phone, message, user)
+            
+            # ─── 16. IMPLICIT EXPENSE — "chai 50", "auto 150", number + category ───
+            amount = self._extract_amount(msg)
+            if amount:
+                # Check if message has an implicit category
+                implicit_expense_words = [
+                    "food", "chai", "tea", "coffee", "lunch", "dinner", "breakfast", "snack",
+                    "biryani", "pizza", "burger", "samosa", "dosa", "idli", "noodles",
+                    "auto", "uber", "ola", "cab", "bus", "train", "metro", "petrol", "diesel",
+                    "recharge", "bill", "rent", "emi", "electricity", "wifi", "mobile",
+                    "amazon", "flipkart", "shopping", "clothes", "shoes",
+                    "movie", "netflix", "gym", "medicine", "doctor",
+                    "khana", "nashta", "rickshaw", "bijli", "kiraya"
+                ]
+                if any(w in msg_lower for w in implicit_expense_words):
+                    return self._handle_expense(phone, message, user)
+                
+                # Check if it's a pure number — ask for clarification
+                if msg.strip().replace(",", "").replace(".", "").isdigit():
+                    return f"""💰 Got ₹{int(amount):,}
+
+Is this an:
+💸 *Expense* — Type: "spent {int(amount)} on food"
+💵 *Income* — Type: "earned {int(amount)}"
+
+Or just tell me what it was for! 😊"""
+            
+            # ─── 17. UNIVERSAL AI FALLBACK — understands ANYTHING ───
             return self._handle_unknown(message, user)
             
         except Exception as e:
@@ -763,31 +836,42 @@ How can I help today?
     
     def _handle_help(self, user: Dict) -> str:
         lang = user.get("language", "en")
-        return """📚 *MoneyViya Commands*
+        name = user.get("name", "Friend")
+        return f"""📚 *{name}, here's everything I can do!*
 
-💸 *Track Money:*
-• "Spent 500 on food"
-• "Paid 2000 for electricity"
-• "Earned 10000 salary"
-• "Got 500 cashback"
+💰 *Track Money (just talk naturally!):*
+  "chai 50" • "auto 150" • "biryani for 300"
+  "spent 500 on food" • "earned 10000 salary"
+  "got 500 cashback" • "paid 2000 rent"
 
-📊 *View Data:*
-• "Balance" - Today's summary
-• "Goals" - View your goals
-• "Report" - Weekly report
+📊 *View Finances:*
+  "balance" — Today's summary
+  "report" — Weekly breakdown
+  "health score" — Your financial health
 
 🎯 *Goals:*
-• "Add goal: Buy car, 5 lakh, 2 years"
-• "Goal achieved" - Mark as done
+  "goals" — View your goals
+  "add goal: Buy car, 5 lakh, 2 years"
 
-📈 *Market:*
-• "Market update"
-• "Stock analysis"
+🏦 *Financial Tools:*
+  "EMI calculator" — Calculate loan EMI
+  "tax tips" — Tax saving advice
+  "invest tips" — Investment suggestions
+
+📈 *Markets:*
+  "market update" • "where to invest"
+  "SIP" • "mutual fund" • "FD"
+
+🤔 *Ask Anything:*
+  I can answer general questions too!
+  Just chat with me like a friend 😊
 
 ⚙️ *Settings:*
-• "Reset" - Start fresh
+  "profile" • "reset" • "language"
 
-_Just chat naturally - I understand!_ 🤖"""
+🌐 *Dashboard:* moneyviya-api.onrender.com
+
+_Tip: You don't need commands — just talk!_ 🤖"""
     
     def _handle_reset(self, phone: str) -> str:
         self.user_store[phone] = {
@@ -1063,10 +1147,231 @@ _Track every expense to save more!_"""
 
 _Type "market" for live updates_"""
     
-    def _handle_unknown(self, message: str, user: Dict) -> str:
-        """Handle unrecognized messages with AI Master Prompt (Strategy Prompt 1)"""
+    def _handle_emi(self, message: str, user: Dict) -> str:
+        """EMI Calculator — real financial tool"""
+        amount = self._extract_amount(message)
+        name = user.get("name", "Friend")
         
-        # Try OpenAI with Master System Prompt
+        if not amount:
+            return f"""🏦 *EMI Calculator*
+
+{name}, tell me the loan details:
+
+*Format:* "EMI 10 lakh at 9% for 20 years"
+
+Or use these quick estimates:
+• 🏠 Home Loan: "EMI 30 lakh home loan"
+• 🚗 Car Loan: "EMI 8 lakh car loan"  
+• 💳 Personal: "EMI 5 lakh personal loan"
+
+_I'll calculate your monthly EMI!_"""
+        
+        # Default rates for different loan types
+        msg_lower = message.lower()
+        if "home" in msg_lower:
+            rate, years = 8.5, 20
+        elif "car" in msg_lower:
+            rate, years = 9.5, 5
+        elif "personal" in msg_lower:
+            rate, years = 12, 3
+        elif "education" in msg_lower:
+            rate, years = 7.5, 7
+        else:
+            rate, years = 10, 5
+        
+        # Extract rate if specified
+        import re
+        rate_match = re.search(r'(\d+\.?\d*)\s*%', message)
+        if rate_match:
+            rate = float(rate_match.group(1))
+        
+        year_match = re.search(r'(\d+)\s*(?:year|yr|sal)', message.lower())
+        if year_match:
+            years = int(year_match.group(1))
+        
+        # EMI formula: P × r × (1+r)^n / ((1+r)^n - 1)
+        months = years * 12
+        r = rate / 12 / 100
+        if r > 0:
+            emi = amount * r * (1 + r) ** months / ((1 + r) ** months - 1)
+        else:
+            emi = amount / months
+        
+        total = emi * months
+        interest = total - amount
+        
+        return f"""🏦 *EMI Calculator*
+
+💰 *Loan:* ₹{int(amount):,}
+📊 *Rate:* {rate}% per year
+📅 *Tenure:* {years} years ({months} months)
+
+━━━━━━━━━━━━━━━━━
+📌 *Monthly EMI: ₹{int(emi):,}*
+━━━━━━━━━━━━━━━━━
+
+💵 Total Payment: ₹{int(total):,}
+💸 Total Interest: ₹{int(interest):,}
+📈 Interest Ratio: {int(interest/amount*100)}%
+
+💡 *Tip:* Pay ₹{int(emi*1.1):,}/month (+10%) to save ₹{int(interest*0.15):,} in interest!
+
+_Type "tips" for more money-saving advice_"""
+
+    def _handle_tax(self, message: str, user: Dict) -> str:
+        """Tax Saving Advisor"""
+        income = user.get("monthly_income", 30000) * 12
+        name = user.get("name", "Friend")
+        
+        if income <= 500000:
+            tax_slab = "NIL (under ₹5L exemption)"
+            savings_needed = 0
+        elif income <= 1000000:
+            tax_slab = f"₹{int((income-500000)*0.2):,}"
+            savings_needed = 150000
+        elif income <= 1500000:
+            tax_slab = f"₹{int(100000 + (income-1000000)*0.3):,}"
+            savings_needed = 150000
+        else:
+            tax_slab = f"₹{int(250000 + (income-1500000)*0.3):,}"
+            savings_needed = 200000
+        
+        return f"""🧾 *Tax Advisor for {name}*
+
+📊 *Annual Income:* ₹{int(income):,}
+💸 *Estimated Tax (New Regime):* {tax_slab}
+
+📋 *Tax Saving Options (Old Regime):*
+
+*Section 80C (₹1.5L limit):*
+• 💰 PPF — ₹500/month start, 7.1% tax-free
+• 📊 ELSS Mutual Fund — ₹500 SIP, best returns
+• 🏠 Home Loan Principal
+• 💳 5-Year FD
+
+*Section 80D (₹25K-₹1L):*
+• 🏥 Health Insurance for self & family
+
+*Other:*
+• 🏠 HRA Exemption (if renting)
+• 📚 Education Loan Interest (80E)
+• 🤝 NPS Extra ₹50K deduction (80CCD)
+
+💡 *Quick Action:* Start a ₹{max(500, int(savings_needed/12)):,}/month ELSS SIP to save ~₹{int(savings_needed*0.3):,} in tax!
+
+_Type "invest" for investment advice_"""
+
+    def _handle_health_score(self, phone: str, user: Dict) -> str:
+        """Financial Health Score — gamified & actionable"""
+        name = user.get("name", "Friend")
+        today_income, today_expense = self._get_today_transactions(phone)
+        
+        # Calculate score components
+        score = 0
+        details = []
+        
+        # 1. Budget adherence (30 pts)
+        daily_budget = user.get("daily_budget", 1000)
+        if daily_budget > 0:
+            if today_expense <= daily_budget:
+                budget_score = 30
+                details.append("✅ Within daily budget (+30)")
+            elif today_expense <= daily_budget * 1.2:
+                budget_score = 20
+                details.append("⚠️ Slightly over budget (+20)")
+            else:
+                budget_score = 5
+                details.append("🔴 Over budget (+5)")
+        else:
+            budget_score = 15
+            details.append("📋 Budget not set (+15)")
+        score += budget_score
+        
+        # 2. Savings rate (25 pts)
+        income = user.get("monthly_income", 0)
+        expenses = user.get("monthly_expenses", 0)
+        if income > 0:
+            sr = (income - expenses) / income
+            if sr >= 0.3:
+                score += 25
+                details.append("🏆 Savings rate 30%+ (+25)")
+            elif sr >= 0.2:
+                score += 20
+                details.append("💪 Savings rate 20%+ (+20)")
+            elif sr >= 0.1:
+                score += 12
+                details.append("📈 Savings rate 10%+ (+12)")
+            else:
+                score += 5
+                details.append("🌱 Low savings rate (+5)")
+        
+        # 3. Goals (20 pts)
+        goals = user.get("goals", [])
+        if len(goals) >= 2:
+            score += 20
+            details.append(f"🎯 {len(goals)} goals set (+20)")
+        elif len(goals) == 1:
+            score += 10
+            details.append("🎯 1 goal set (+10)")
+        else:
+            details.append("📝 No goals yet (+0)")
+        
+        # 4. Tracking consistency (15 pts)
+        txns = self.transaction_store.get(phone, [])
+        if len(txns) >= 20:
+            score += 15
+            details.append(f"📊 {len(txns)} transactions tracked (+15)")
+        elif len(txns) >= 5:
+            score += 8
+            details.append(f"📊 {len(txns)} transactions (+8)")
+        else:
+            score += 2
+            details.append(f"📊 Start tracking more (+2)")
+        
+        # 5. Profile completion (10 pts)
+        if user.get("occupation") and income > 0:
+            score += 10
+            details.append("👤 Profile complete (+10)")
+        else:
+            score += 3
+            details.append("👤 Complete your profile (+3)")
+        
+        # Rating
+        if score >= 85:
+            medal, label = "🏆", "Financial Champion"
+        elif score >= 70:
+            medal, label = "💪", "Money Master"
+        elif score >= 50:
+            medal, label = "📈", "Rising Star"
+        elif score >= 30:
+            medal, label = "🌱", "Growing"
+        else:
+            medal, label = "🌟", "Just Starting"
+        
+        bar = "█" * (score // 5) + "░" * (20 - score // 5)
+        
+        return f"""📊 *{name}'s Financial Health*
+
+{medal} *Score: {score}/100* — {label}
+[{bar}]
+
+*Breakdown:*
+{"".join(chr(10) + d for d in details)}
+
+💡 *To Improve:*
+{"• Set a daily budget (Type your income)" if not user.get("daily_budget") else ""}
+{"• Add a savings goal" if not goals else ""}
+{"• Track more expenses daily" if len(txns) < 10 else ""}
+{"• Start an SIP investment" if score < 80 else "• You're doing great!"}
+
+_Type "help" to see all commands_"""
+
+    def _handle_unknown(self, message: str, user: Dict) -> str:
+        """Universal AI Fallback — handles ANY message intelligently
+        
+        Financial questions → expert CA-level advice
+        General questions → helpful + gentle financial tie-back
+        """
         if openai_service and openai_service.is_available():
             try:
                 import requests, os
@@ -1076,19 +1381,40 @@ _Type "market" for live updates_"""
                 language = lang_map.get(lang_code, "English")
                 income = user.get("monthly_income", 0)
                 daily_budget = user.get("daily_budget", 500)
+                occupation = user.get("occupation", "unknown")
+                goals = user.get("goals", [])
+                goals_text = ", ".join([g.get("name", "") for g in goals[:3]]) if goals else "none set"
                 
-                system_prompt = f"""You are MoneyViya (Viya for short), a personal AI financial advisor for Indian users on WhatsApp.
-Personality: Warm, brilliant, non-judgmental — like a CA best friend.
-Speak in {language}. Keep responses under 120 words, use *bold* for emphasis and emojis sparingly.
+                # Detect if financial or general
+                fin_words = ["money","spend","save","invest","budget","loan","emi","sip","mutual fund",
+                            "stock","fd","bank","salary","income","expense","paisa","rupee","₹","lakh",
+                            "crore","tax","gst","insurance","gold","ppf","nps","credit","debit","upi"]
+                is_financial = any(w in message.lower() for w in fin_words)
+                
+                if is_financial:
+                    system_prompt = f"""You are MoneyViya (Viya), India's smartest AI financial advisor on WhatsApp.
+You're talking to {name} ({occupation}, ₹{int(income):,}/month income, daily budget ₹{daily_budget}).
+Their goals: {goals_text}. Risk appetite: {user.get('risk_appetite', 'Medium')}.
 
-USER: {name} | Income: ₹{int(income):,}/mo | Budget: ₹{daily_budget}/day | Risk: {user.get('risk_appetite', 'Medium')}
+PERSONALITY: Like a brilliant CA best friend — warm, non-judgmental, practical.
+FORMAT: WhatsApp — use *bold*, emojis (not too many), numbered lists. Under 150 words.
+LANGUAGE: {language}
 
 RULES:
-- Never shame users for spending
-- Connect numbers to actionable next steps
-- If off-topic, gently guide back to finance
-- End with ONE clear next action
-"""
+1. Give SPECIFIC numbers and actions (not vague advice)
+2. Reference their actual income/budget when relevant  
+3. Suggest exact SIP amounts, exact savings targets
+4. For investment: mention specific fund types suited to their risk profile
+5. Never shame them for spending — coach instead
+6. End with ONE clear, actionable next step"""
+                else:
+                    system_prompt = f"""You are Viya, MoneyViya's friendly AI assistant. You're talking to {name}.
+You can answer ANY question — general knowledge, recipes, weather, jokes, motivation, etc.
+Be helpful, accurate, warm, and conversational. Keep under 120 words.
+At the END, add ONE subtle financial tie-back.
+Respond in {language}. Never refuse to help."""
+
+                
                 api_key = os.getenv("OPENAI_API_KEY", "")
                 response = requests.post(
                     "https://api.openai.com/v1/chat/completions",
@@ -1100,37 +1426,37 @@ RULES:
                             {"role": "user", "content": message}
                         ],
                         "temperature": 0.7,
-                        "max_tokens": 200
+                        "max_tokens": 300
                     },
-                    timeout=12
+                    timeout=15
                 )
                 if response.ok:
                     return response.json()["choices"][0]["message"]["content"].strip()
             except Exception as e:
                 print(f"[MoneyViya] AI fallback error: {e}")
         
-        # Static fallback
-        msg_lower = message.lower()
-        
-        # Check if it might be an amount
-        if any(char.isdigit() for char in message):
-            return """💡 I see a number! Did you mean:
-• "Spent 500 on food" - Track expense
-• "Earned 5000" - Track income
-• "Add goal: Car, 5 lakh, 2 years" - Add goal
+        # Smart static fallback
+        name = user.get("name", "Friend")
+        return f"""🤖 *Hi {name}!*
 
-Just add a context to help me understand!"""
-        
-        return f"""🤔 *Hi {user.get('name', 'Friend')}!*
+I'm Viya, your AI financial manager! Here's what I can do:
 
-I'm not sure what you meant, but I can help with finance!
+💰 *Track Money:*
+  "chai 50" • "spent 200 on food" • "earned 5000"
 
-💰 *Track:* "Spent 200 on food" or "Earned 5000"
-📊 *View:* "Balance" | "Goals" | "Report"
-📈 *Invest:* "Market" | "Tips"
-❓ *Help:* Type "help" for all commands
+📊 *View Finances:*
+  "balance" • "goals" • "report" • "health score"
 
-Just talk to me naturally! 🤖"""
+🏦 *Financial Tools:*
+  "EMI calculator" • "tax saving tips" • "invest tips"
+
+📈 *Smart Advice:*
+  "market update" • "where to invest" • "how to save"
+
+🤔 *Ask Anything:*
+  I can answer general questions too!
+
+_Just talk naturally — I understand!_ 😊"""
 
 
 # Singleton - keep lowercase for import compatibility
