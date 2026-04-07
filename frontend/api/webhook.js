@@ -38,42 +38,83 @@ function processMessage(text) {
   const lower = text.toLowerCase().trim();
   
   // Greetings
-  if (['hi', 'hello', 'hey', 'namaste', 'hii', 'start'].includes(lower)) {
+  if (['hi', 'hello', 'hey', 'namaste', 'hii', 'start', 'hlo'].includes(lower)) {
     return GREETINGS_RESPONSE;
   }
   
-  // Education — check all topics
-  for (const [keyword, response] of Object.entries(EDUCATION)) {
-    if (lower.includes(keyword)) return response;
+  // Help
+  if (lower.includes('help') || lower === 'menu' || lower === '?') {
+    return GREETINGS_RESPONSE;
+  }
+
+  // ===== ACTION INTENTS (check BEFORE education) =====
+  
+  // Reminder
+  if (lower.includes('remind') || lower.includes('alarm') || lower.includes('alert me')) {
+    const timeMatch = text.match(/(\d{1,2}[:\.]?\d{0,2}\s*(?:am|pm|AM|PM)?)/);
+    const taskMatch = text.match(/(?:to|for|about)\s+(.+?)(?:\s+at|\s+on|$)/i);
+    const time = timeMatch ? timeMatch[1] : 'your specified time';
+    const task = taskMatch ? taskMatch[1] : 'your task';
+    return `⏰ *Reminder Set!*\n\n📋 Task: ${task}\n🕐 Time: ${time}\n📅 Date: ${new Date().toLocaleDateString('en-IN')}\n\n_I'll remind you! Stay organized_ ✅`;
+  }
+  
+  // Goal setting
+  if (lower.match(/\b(goal|target|save for|saving for|want to buy|wish)\b/)) {
+    const goalMatch = text.match(/(?:for|buy|goal)\s+(.+?)(?:\s+of|\s+worth|$)/i);
+    const goal = goalMatch ? goalMatch[1] : 'your goal';
+    return `🎯 *Goal Created!*\n\n📋 Goal: ${goal}\n📅 Started: ${new Date().toLocaleDateString('en-IN')}\n\n*Tips to achieve faster:*\n• Set a monthly amount aside\n• Track progress weekly\n• Cut 1 unnecessary expense\n\n_Every ₹100 saved gets you closer!_ 💪`;
   }
   
   // Expense tracking
-  const expenseMatch = lower.match(/(?:spent|paid|bought|expense)\s+(?:rs\.?|₹)?\s*(\d+)\s+(?:on|for)\s+(.+)/i);
+  const expenseMatch = lower.match(/(?:spent|paid|bought|expense|kharcha)\s+(?:rs\.?|₹|inr)?\s*(\d+)\s*(?:on|for|in)?\s*(.*)/i);
   if (expenseMatch) {
     const amount = expenseMatch[1];
-    const category = expenseMatch[2];
-    return `✅ *Expense Recorded!*\n\n💸 Amount: ₹${amount}\n📁 Category: ${category}\n📅 Date: ${new Date().toLocaleDateString('en-IN')}\n\n_Keep tracking! Every rupee counts_ 💪`;
+    const category = expenseMatch[2] || 'general';
+    return `✅ *Expense Recorded!*\n\n💸 Amount: ₹${amount}\n📁 Category: ${category.trim()}\n📅 Date: ${new Date().toLocaleDateString('en-IN')}\n\n_Keep tracking! Every rupee counts_ 💪`;
   }
   
   // Income tracking
-  const incomeMatch = lower.match(/(?:received|got|earned|income|salary)\s+(?:rs\.?|₹)?\s*(\d+)/i);
+  const incomeMatch = lower.match(/(?:received|got|earned|income|salary|credited)\s+(?:rs\.?|₹|inr)?\s*(\d+)/i);
   if (incomeMatch) {
     const amount = incomeMatch[1];
     return `✅ *Income Recorded!*\n\n💰 Amount: ₹${amount}\n📅 Date: ${new Date().toLocaleDateString('en-IN')}\n\nSuggestions:\n• Save 20% = ₹${Math.round(amount * 0.2)}\n• Emergency fund: ₹${Math.round(amount * 0.1)}\n• Invest in SIP: ₹${Math.round(amount * 0.1)}\n\n_Your future self will thank you!_ 🙏`;
   }
+
+  // Balance / Summary
+  if (lower.match(/\b(balance|summary|status|total|how much|kitna)\b/)) {
+    return `📊 *Your Financial Summary*\n\n_Send me your expenses and income to get accurate tracking!_\n\nTry:\n• "spent 200 on food"\n• "received 25000 salary"\n• "what is SIP" to learn investing\n\n_I'll track everything for you_ 📝`;
+  }
+
+  // ===== EDUCATION (word-boundary matching) =====
+  const educationPatterns = [
+    { pattern: /\bsip\b/, key: 'sip' },
+    { pattern: /\bmutual\s*fund/, key: 'mutual fund' },
+    { pattern: /\bemi\b/, key: 'emi' },
+    { pattern: /\bcredit\s*score/, key: 'credit score' },
+    { pattern: /\bfd\b|\bfixed\s*deposit/, key: 'fd' },
+    { pattern: /\btax\b|\btax\s*sav/, key: 'tax' },
+    { pattern: /\binsurance\b|\bterm\s*plan/, key: 'insurance' },
+    { pattern: /\bbudget\b|\b50.?30.?20/, key: 'budget' },
+    { pattern: /\bemergency\s*fund/, key: 'emergency fund' },
+    { pattern: /\bppf\b|\bpublic\s*provident/, key: 'ppf' },
+  ];
   
-  // Help
-  if (lower.includes('help') || lower.includes('menu')) {
-    return GREETINGS_RESPONSE;
+  for (const { pattern, key } of educationPatterns) {
+    if (pattern.test(lower)) return EDUCATION[key];
   }
   
   // Save/savings related
-  if (lower.includes('save') || lower.includes('saving')) {
+  if (lower.match(/\b(save|saving|savings|bachat)\b/)) {
     return EDUCATION['budget'];
   }
+
+  // Thank you
+  if (lower.match(/\b(thanks|thank you|dhanyavaad|shukriya)\b/)) {
+    return `🙏 You're welcome! Happy to help.\n\nRemember: _Financial freedom is built one smart decision at a time!_ 💰\n\nType "help" anytime you need me.`;
+  }
   
-  // Default
-  return `🤔 I'm learning to understand that better!\n\nTry these:\n• "what is SIP" — learn about investments\n• "spent 500 on food" — track expenses\n• "received 30000 salary" — record income\n• "help" — see all options\n\n_I'll get smarter every day!_ 🧠`;
+  // Default — smart suggestions
+  return `🤔 I'm learning to understand that better!\n\nTry these:\n• "what is SIP" — learn about investments\n• "spent 500 on food" — track expenses\n• "received 30000 salary" — record income\n• "set reminder 6:30 AM call mom" — reminders\n• "save for vacation" — set goals\n• "help" — see all options\n\n_I'll get smarter every day!_ 🧠`;
 }
 
 // ===== WHATSAPP CLOUD API =====
