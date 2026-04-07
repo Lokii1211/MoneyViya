@@ -1,61 +1,106 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Supabase (when configured)
 const url = import.meta.env.VITE_SUPABASE_URL || ''
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-export const supabase = url ? createClient(url, key) : null
+export const supabase = (url && key) ? createClient(url, key) : null
 
-// API Base — empty string uses Vite proxy (/api/* → localhost:8000)
 const API = import.meta.env.VITE_API_URL || ''
 
-// Helper
 async function post(path, body) {
-  const r = await fetch(API + path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  })
-  return r.json()
+  try {
+    const r = await fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    return r.ok ? r.json() : { success: false, reply: 'Server unavailable' }
+  } catch { return { success: false, reply: 'Cannot reach server' } }
 }
 async function get(path) {
-  const r = await fetch(API + path)
-  return r.ok ? r.json() : null
+  try { const r = await fetch(API + path); return r.ok ? r.json() : null } catch { return null }
+}
+
+// Direct Supabase queries (works on Vercel without backend)
+const db = {
+  async getUser(phone) {
+    if (!supabase) return null
+    const { data } = await supabase.from('users').select('*').eq('phone', phone).single()
+    return data
+  },
+  async createUser(phone, hash) {
+    if (!supabase) return null
+    const { data } = await supabase.from('users').upsert({ phone, password_hash: hash }).select().single()
+    return data
+  },
+  async getTransactions(phone, limit = 30) {
+    if (!supabase) return []
+    const { data } = await supabase.from('transactions').select('*').eq('phone', phone).order('created_at', { ascending: false }).limit(limit)
+    return data || []
+  },
+  async addTransaction(phone, type, amount, category, desc) {
+    if (!supabase) return null
+    const { data } = await supabase.from('transactions').insert({ phone, type, amount, category, description: desc }).select().single()
+    return data
+  },
+  async getGoals(phone) {
+    if (!supabase) return []
+    const { data } = await supabase.from('goals').select('*').eq('phone', phone).eq('status', 'active')
+    return data || []
+  },
+  async getHabits(phone) {
+    if (!supabase) return []
+    const { data } = await supabase.from('habits').select('*').eq('phone', phone)
+    return data || []
+  },
+  async getNotifications(phone) {
+    if (!supabase) return []
+    const { data } = await supabase.from('notifications').select('*').eq('phone', phone).order('created_at', { ascending: false }).limit(20)
+    return data || []
+  }
 }
 
 export const api = {
-  base: API,
+  base: API, db, supabase,
 
-  // ===== AUTH =====
-  login: (phone, password) => post('/api/auth/login', { phone, password }),
-  register: (phone, password) => post('/api/auth/register', { phone, password }),
+  // AUTH — Try API first, fallback to Supabase direct
+  async login(phone, password) {
+    const r = await post('/api/auth/login', { phone, password })
+    if (r.success) return r
+    // Fallback: check Supabase directly
+    const user = await db.getUser(phone)
+    if (user && user.password_hash === password) return { success: true, token: 'local_' + phone, user }
+    return { success: false, message: 'Invalid credentials' }
+  },
+  async register(phone, password) {
+    const r = await post('/api/auth/register', { phone, password })
+    if (r.success) return r
+    // Fallback
+    const existing = await db.getUser(phone)
+    if (existing) return { success: false, message: 'Account exists' }
+    await db.createUser(phone, password)
+    return { success: true, message: 'Account created! Sign in now.' }
+  },
 
-  // ===== CORE =====
-  getUser: (phone) => get(`/api/moneyview/user/${phone}`),
+  // CORE — Try API first, fallback to Supabase
+  async getUser(phone) {
+    const r = await get(`/api/moneyview/user/${phone}`)
+    if (r) return r
+    const user = await db.getUser(phone)
+    if (user) {
+      const txns = await db.getTransactions(phone, 10)
+      return { ...user, recent_transactions: txns }
+    }
+    return null
+  },
   chat: (phone, message) => post('/api/moneyview/process', { phone, message, sender_name: 'App' }),
 
-  // ===== LIFE AGENTS =====
-  getHabits: (phone) => get(`/api/moneyview/life/habits/${phone}`),
-  getGoals: (phone) => get(`/api/moneyview/life/goals/${phone}`),
-  getReview: (phone, period) => post('/api/moneyview/process', { phone, message: `${period} review`, sender_name: 'App' }),
+  getHabits: (phone) => db.getHabits(phone),
+  getGoals: (phone) => db.getGoals(phone),
+  getTransactions: (phone) => db.getTransactions(phone),
+  getNotifications: (phone) => db.getNotifications(phone),
 
-  // ===== TRANSACTIONS =====
   addExpense: (phone, amount, category, note) =>
     post('/api/moneyview/process', { phone, message: `spent ${amount} on ${category} ${note || ''}`.trim(), sender_name: 'App' }),
-  addIncome: (phone, amount, source) =>
-    post('/api/moneyview/process', { phone, message: `received ${amount} as ${source}`, sender_name: 'App' }),
-  getTransactions: (phone) => get(`/api/moneyview/user/${phone}`),
 
-  // ===== FOUNDER EDITION =====
+  // FOUNDER
   subscriptionAudit: (phone) => get(`/api/moneyview/founder/subscriptions/${phone}`),
   explainConcept: (concept) => post('/api/moneyview/founder/explain', { concept }),
-  purchaseDecision: (phone, item, price) => post('/api/moneyview/founder/purchase-decision', { phone, item, price }),
   morningBrief: (phone) => get(`/api/moneyview/founder/morning/${phone}`),
-  eveningCheckin: (phone) => get(`/api/moneyview/founder/evening/${phone}`),
-  salaryDetect: (phone, amount) => post('/api/moneyview/founder/salary-detect', { phone, amount }),
-  getReminders: (phone) => get(`/api/moneyview/founder/reminders/${phone}`),
-  coupleLink: (phone1, phone2) => post('/api/moneyview/founder/couple', { phone1, phone2, action: 'link' }),
-  coupleStatus: (phone) => post('/api/moneyview/founder/couple', { phone1: phone, phone2: '', action: 'status' }),
-
-  // ===== HEALTH =====
   health: () => get('/api/moneyview/health'),
 }
