@@ -1,9 +1,7 @@
 {
   "rewrites": [
-    {
-      "source": "/((?!assets/).*)",
-      "destination": "/index.html"
-    }
+    { "source": "/api/webhook", "destination": "/api/webhook.js" },
+    { "source": "/((?!api|assets).*)", "destination": "/index.html" }
   ],
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
