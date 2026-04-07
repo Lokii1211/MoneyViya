@@ -27,6 +27,16 @@ except Exception as e:
     smart_cash_prompter = None
     AUTO_CAPTURE_AVAILABLE = False
 
+# Founder Edition Specialist Agents
+try:
+    from services.founder_agents import founder_agents
+    FOUNDER_AGENTS_AVAILABLE = True
+    print("[MoneyViya API] Founder Edition agents loaded ✅")
+except Exception as e:
+    print(f"[MoneyViya API] Founder agents not available: {e}")
+    founder_agents = None
+    FOUNDER_AGENTS_AVAILABLE = False
+
 try:
     import pytz
     IST = pytz.timezone('Asia/Kolkata')
@@ -120,7 +130,59 @@ async def process_whatsapp_message(request: MessageRequest):
                 
                 return MessageResponse(success=True, reply=reply, phone=request.phone)
         
-        # Normal message processing
+        # ─── Founder Agent Smart Routing (before LLM) ───
+        if FOUNDER_AGENTS_AVAILABLE and founder_agents:
+            try:
+                msg_lower = message.lower().strip()
+                user_ctx = moneyview_agent._get_user(request.phone)
+                founder_reply = None
+                
+                # Subscription triggers
+                if any(kw in msg_lower for kw in ["subscription", "subscriptions", "recurring", "netflix", "spotify", "gym membership", "cancel subscription"]):
+                    founder_reply = founder_agents.subscription_audit(user_ctx)
+                
+                # Financial education triggers
+                elif any(term in msg_lower for term in ["what is sip", "what is mutual fund", "what is fd", "what is nps", 
+                         "what is credit score", "explain sip", "explain mutual", "explain fd", "eli5",
+                         "sip kya hai", "mutual fund kya", "credit score kya"]):
+                    concept = msg_lower.replace("what is ", "").replace("explain ", "").replace("kya hai ", "")
+                    founder_reply = founder_agents.explain_concept(concept)
+                
+                # Purchase decision triggers
+                elif any(kw in msg_lower for kw in ["should i buy", "can i afford", "buy or not"]):
+                    item = msg_lower.split("buy")[-1].strip() if "buy" in msg_lower else "item"
+                    founder_reply = founder_agents.purchase_decision(user_ctx, item, user_ctx.get("daily_budget", 1000) * 30)
+                
+                # Emergency triggers
+                elif any(kw in msg_lower for kw in ["emergency", "urgent money", "medical bill", "accident", "hospital bill"]):
+                    founder_reply = founder_agents.emergency_response(user_ctx, "Financial emergency", 10000)
+                
+                # Family obligation triggers
+                elif any(kw in msg_lower for kw in ["family needs money", "parents need", "dad needs", "mom needs", 
+                                                      "sister wedding", "brother needs"]):
+                    founder_reply = founder_agents.family_obligation(user_ctx, 20000, "family")
+                
+                # Social pressure triggers
+                elif any(kw in msg_lower for kw in ["dinner invite", "friends asking", "party tonight", 
+                                                      "should i go out", "friends plan", "outing invite"]):
+                    founder_reply = founder_agents.social_pressure_defense(user_ctx, message)
+                
+                # Morning/Evening proactive
+                elif "morning briefing" in msg_lower or "morning brief" in msg_lower:
+                    founder_reply = founder_agents.morning_briefing(user_ctx)
+                elif "evening checkin" in msg_lower or "evening check" in msg_lower:
+                    founder_reply = founder_agents.evening_checkin(user_ctx)
+                
+                # Share triggers
+                elif msg_lower.strip() == "share" or "share my progress" in msg_lower:
+                    founder_reply = founder_agents.generate_share_message(user_ctx)
+                
+                if founder_reply:
+                    return MessageResponse(success=True, reply=founder_reply, phone=request.phone)
+            except Exception as fe:
+                print(f"[Founder] Agent error: {fe}")
+        
+        # Normal message processing (LLM-based)
         reply = await process_message(
             phone=request.phone,
             message=message,
@@ -140,9 +202,278 @@ async def process_whatsapp_message(request: MessageRequest):
         )
 
 
+# ==================== VOICE TRANSCRIPTION ====================
+
+class TranscribeRequest(BaseModel):
+    phone: str
+    audio_base64: str
+    sender_name: Optional[str] = "Friend"
+
+@moneyview_router.post("/transcribe")
+async def transcribe_voice(request: TranscribeRequest):
+    """
+    Transcribe voice note and process as text message.
+    Uses OpenAI Whisper or falls back to text processing.
+    """
+    import base64, tempfile, os
+    try:
+        # Decode audio
+        audio_bytes = base64.b64decode(request.audio_base64)
+        
+        # Save temp file
+        temp_path = os.path.join(tempfile.gettempdir(), f"voice_{request.phone}_{int(datetime.now().timestamp())}.ogg")
+        with open(temp_path, 'wb') as f:
+            f.write(audio_bytes)
+        
+        transcription = None
+        
+        # Try OpenAI Whisper transcription
+        try:
+            import openai
+            client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
+            with open(temp_path, "rb") as audio_file:
+                result = client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                    language="hi"  # Hindi primary, auto-detects
+                )
+                transcription = result.text
+        except Exception as whisper_err:
+            print(f"[Whisper] {whisper_err}")
+        
+        # Cleanup temp file
+        try: os.unlink(temp_path)
+        except: pass
+        
+        if transcription and transcription.strip():
+            # Process transcribed text through main agent
+            reply = await process_message(request.phone, transcription, request.sender_name)
+            return {
+                "success": True,
+                "transcription": transcription,
+                "reply": f"🎤 _\"{transcription}\"_\n\n{reply}"
+            }
+        else:
+            return {
+                "success": False,
+                "reply": "🎤 Couldn't understand the voice note. Please try typing your message!"
+            }
+    except Exception as e:
+        print(f"[Transcribe] Error: {e}")
+        return {
+            "success": False, 
+            "reply": "🎤 Voice processing unavailable. Please type your message!"
+        }
+
+
+# ==================== FOUNDER AGENT SMART ROUTER ====================
+
+class FounderRequest(BaseModel):
+    phone: str
+    message: str
+    context: Optional[Dict] = None
+
+@moneyview_router.post("/founder/smart-route")
+async def founder_smart_route(request: FounderRequest):
+    """
+    Smart router that detects which founder agent to invoke based on message content.
+    This is called by the main process flow to enhance responses.
+    """
+    if not FOUNDER_AGENTS_AVAILABLE:
+        return {"handled": False}
+    
+    msg = request.message.lower()
+    user = moneyview_agent._get_user(request.phone)
+    
+    # Subscription audit triggers
+    if any(kw in msg for kw in ["subscription", "subscriptions", "cancel", "recurring", "netflix", "spotify", "gym membership"]):
+        if "cancel" in msg:
+            return {"handled": True, "reply": founder_agents.subscription_audit(user)}
+        return {"handled": True, "reply": founder_agents.subscription_audit(user)}
+    
+    # Financial education triggers
+    edu_terms = ["what is sip", "what is mutual fund", "what is fd", "what is nps", "what is credit score",
+                 "explain sip", "explain mutual", "explain fd", "eli5", "what does sip mean",
+                 "kya hai sip", "sip kya hai", "mutual fund kya"]
+    if any(term in msg for term in edu_terms):
+        concept = msg.replace("what is ", "").replace("explain ", "").replace("kya hai ", "").replace("eli5 ", "")
+        return {"handled": True, "reply": founder_agents.explain_concept(concept)}
+    
+    # Purchase decision triggers
+    if any(kw in msg for kw in ["should i buy", "can i afford", "purchase decision", "buy or not"]):
+        return {"handled": True, "reply": founder_agents.purchase_decision(
+            user, msg.split("buy")[-1].strip() if "buy" in msg else "item", 
+            user.get("daily_budget", 1000) * 30
+        )}
+    
+    # Emergency triggers
+    if any(kw in msg for kw in ["emergency", "urgent money", "medical bill", "accident", "hospital"]):
+        return {"handled": True, "reply": founder_agents.emergency_response(
+            user, "Financial emergency", 10000
+        )}
+    
+    # Family obligation triggers
+    if any(kw in msg for kw in ["family needs money", "parents need", "dad needs", "mom needs", 
+                                 "sister wedding", "brother needs", "relative needs"]):
+        return {"handled": True, "reply": founder_agents.family_obligation(
+            user, 20000, "family"
+        )}
+    
+    # Social pressure triggers
+    if any(kw in msg for kw in ["dinner invite", "friends asking", "party tonight", "should i go out",
+                                 "friends plan", "outing"]):
+        return {"handled": True, "reply": founder_agents.social_pressure_defense(
+            user, msg
+        )}
+    
+    # Morning/Evening proactive
+    if "morning briefing" in msg or "morning brief" in msg:
+        return {"handled": True, "reply": founder_agents.morning_briefing(user)}
+    if "evening checkin" in msg or "evening check" in msg:
+        return {"handled": True, "reply": founder_agents.evening_checkin(user)}
+    
+    # Share/viral triggers
+    if msg.strip() == "share" or "share my" in msg:
+        return {"handled": True, "reply": founder_agents.generate_share_message(user)}
+    
+    return {"handled": False}
+
+
+# ==================== COUPLE MODE ====================
+
+class CoupleRequest(BaseModel):
+    phone1: str
+    phone2: str
+    action: str  # "link", "unlink", "status"
+
+@moneyview_router.post("/founder/couple")
+async def couple_mode(request: CoupleRequest):
+    """Couple mode — link two accounts for shared financial management."""
+    if not FOUNDER_AGENTS_AVAILABLE:
+        return {"success": False, "reply": "Feature not available"}
+    
+    import json, os
+    couple_file = "data/founder/couples.json"
+    os.makedirs("data/founder", exist_ok=True)
+    
+    couples = {}
+    if os.path.exists(couple_file):
+        with open(couple_file) as f:
+            couples = json.load(f)
+    
+    if request.action == "link":
+        couple_id = f"{min(request.phone1, request.phone2)}_{max(request.phone1, request.phone2)}"
+        couples[couple_id] = {
+            "partner1": request.phone1,
+            "partner2": request.phone2,
+            "linked_at": datetime.now().isoformat(),
+            "shared_goals": [],
+            "alert_threshold": 5000  # Alert partner for purchases above this
+        }
+        with open(couple_file, 'w') as f:
+            json.dump(couples, f, indent=2)
+        
+        return {
+            "success": True,
+            "reply": f"💑 *Couple Mode Activated!*\n\nYou and your partner are now linked.\n\n"
+                     f"*What this means:*\n"
+                     f"• Shared budget tracking\n"
+                     f"• Monthly couple check-in\n"
+                     f"• Big purchase alerts (>₹5,000)\n"
+                     f"• Individual spending stays private\n\n"
+                     f"To set shared goals, say: 'couple goal save 5 lakh for house'"
+        }
+    
+    elif request.action == "status":
+        for cid, data in couples.items():
+            if request.phone1 in [data["partner1"], data["partner2"]]:
+                user1 = moneyview_agent._get_user(data["partner1"])
+                user2 = moneyview_agent._get_user(data["partner2"])
+                name1 = user1.get("name", "Partner 1")
+                name2 = user2.get("name", "Partner 2")
+                
+                return {
+                    "success": True,
+                    "reply": f"💑 *Couple Finance Status*\n━━━━━━━━━━━━━━━━\n\n"
+                             f"👤 {name1}: ₹{user1.get('monthly_expenses', 0):,}/mo\n"
+                             f"👤 {name2}: ₹{user2.get('monthly_expenses', 0):,}/mo\n"
+                             f"🏠 Combined: ₹{user1.get('monthly_expenses', 0) + user2.get('monthly_expenses', 0):,}/mo\n\n"
+                             f"Everything on track! No surprises 💚"
+                }
+        return {"success": False, "reply": "Not in couple mode. Link with: 'couple link [partner phone]'"}
+    
+    return {"success": False, "reply": "Unknown action"}
+
+
+# ==================== SALARY DETECTION & BILL REMINDERS ====================
+
+@moneyview_router.post("/founder/salary-detect")
+async def detect_salary(request: Request):
+    """Detect salary credit and trigger auto-allocation."""
+    data = await request.json()
+    phone = data.get("phone", "")
+    amount = data.get("amount", 0)
+    
+    user = moneyview_agent._get_user(phone)
+    name = user.get("name", "there")
+    monthly_income = user.get("monthly_income", amount)
+    
+    # Auto-allocation based on 50/30/20 rule
+    needs = int(amount * 0.50)
+    wants = int(amount * 0.30)
+    savings = int(amount * 0.20)
+    
+    # Check for active goals
+    goals = user.get("goals", [])
+    goal_allocation = ""
+    if goals:
+        goal = goals[0] if isinstance(goals, list) else {}
+        goal_name = goal.get("name", "Savings Goal")
+        goal_amount = min(savings, goal.get("target", 10000) - goal.get("current", 0))
+        goal_allocation = f"✅ {goal_name}: ₹{goal_amount:,}\n"
+    
+    reply = (
+        f"💰 *Salary Credited: ₹{amount:,}!*\n━━━━━━━━━━━━━━━━\n\n"
+        f"*AUTO-ALLOCATION (50/30/20 Rule):*\n\n"
+        f"🏠 Needs (rent, bills, food): ₹{needs:,}\n"
+        f"🎉 Wants (fun, shopping): ₹{wants:,}\n"
+        f"💰 Savings & Goals: ₹{savings:,}\n"
+        f"{goal_allocation}\n"
+        f"[Auto-allocate now] [I'll do it manually]"
+    )
+    
+    return {"success": True, "reply": reply}
+
+
+@moneyview_router.get("/founder/reminders/{phone}")
+async def get_reminders(phone: str):
+    """Get upcoming bill reminders for user."""
+    import json, os
+    reminder_file = f"data/founder/reminders_{phone}.json"
+    
+    if not os.path.exists(reminder_file):
+        return {
+            "reminders": [],
+            "reply": "📋 No reminders set yet.\n\nSet one: 'remind me to pay rent on 1st of every month'"
+        }
+    
+    with open(reminder_file) as f:
+        reminders = json.load(f)
+    
+    if not reminders:
+        return {"reminders": [], "reply": "📋 All clear! No upcoming reminders."}
+    
+    msg = "🔔 *Upcoming Reminders*\n━━━━━━━━━━━━━━━━\n\n"
+    for r in reminders[:5]:
+        msg += f"📅 {r.get('text', '?')} — {r.get('time', '?')}\n"
+    
+    return {"reminders": reminders, "reply": msg}
+
+
 # ==================== AUTO-CAPTURE ENDPOINTS ====================
 
 @moneyview_router.post("/parse-image")
+
 async def parse_image(request: ImageParseRequest):
     """
     Layer 3: Parse payment screenshot using OpenAI Vision API.
@@ -1181,6 +1512,93 @@ async def get_transactions(phone: str, limit: int = 50):
     return {"transactions": sorted_txns, "count": len(sorted_txns)}
 
 
+# ==================== LIFE INTELLIGENCE ENDPOINTS ====================
+
+# Import life agents
+try:
+    from services.life_agents import (
+        habit_agent, pain_detector, daily_engine,
+        weekly_reflection, goal_synthesizer
+    )
+    LIFE_AGENTS_API = True
+except:
+    LIFE_AGENTS_API = False
+
+
+@moneyview_router.get("/life/morning-briefing/{phone}")
+async def life_morning_briefing(phone: str):
+    """Get personalized morning briefing for a user"""
+    if not LIFE_AGENTS_API:
+        return {"success": False, "error": "Life agents not available"}
+    
+    user = moneyview_agent.user_store.get(phone)
+    if not user:
+        return {"success": False, "error": "User not found"}
+    
+    briefing = daily_engine.morning_briefing(user)
+    return {"success": True, "briefing": briefing}
+
+
+@moneyview_router.get("/life/evening-checkin/{phone}")
+async def life_evening_checkin(phone: str):
+    """Get evening check-in for a user"""
+    if not LIFE_AGENTS_API:
+        return {"success": False, "error": "Life agents not available"}
+    
+    user = moneyview_agent.user_store.get(phone)
+    if not user:
+        return {"success": False, "error": "User not found"}
+    
+    checkin = daily_engine.evening_checkin(user)
+    return {"success": True, "checkin": checkin}
+
+
+@moneyview_router.get("/life/weekly-review/{phone}")
+async def life_weekly_review(phone: str):
+    """Get weekly review for a user"""
+    if not LIFE_AGENTS_API:
+        return {"success": False, "error": "Life agents not available"}
+    
+    user = moneyview_agent.user_store.get(phone)
+    if not user:
+        return {"success": False, "error": "User not found"}
+    
+    review = weekly_reflection.generate_review(user)
+    return {"success": True, "review": review}
+
+
+@moneyview_router.get("/life/habits/{phone}")
+async def life_habits(phone: str):
+    """Get habit status for a user"""
+    if not LIFE_AGENTS_API:
+        return {"success": False, "error": "Life agents not available"}
+    
+    user = moneyview_agent.user_store.get(phone)
+    if not user:
+        return {"success": False, "error": "User not found"}
+    
+    habits = user.get("habits", [])
+    return {
+        "success": True,
+        "habits": habits,
+        "total_streak_points": sum(h.get("streak", 0) for h in habits)
+    }
+
+
+@moneyview_router.get("/life/goals/{phone}")
+async def life_goals(phone: str):
+    """Get goal status for a user"""
+    if not LIFE_AGENTS_API:
+        return {"success": False, "error": "Life agents not available"}
+    
+    user = moneyview_agent.user_store.get(phone)
+    if not user:
+        return {"success": False, "error": "User not found"}
+    
+    goals = user.get("goals", [])
+    return {"success": True, "goals": goals}
+
+
 # ==================== HEALTH CHECK ====================
 
 
@@ -1191,8 +1609,10 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "MoneyViya API",
-        "version": "2.1.0",
+        "version": "6.0.0-founder",
         "user_count": user_count,
+        "life_agents": LIFE_AGENTS_API,
+        "founder_agents": FOUNDER_AGENTS_AVAILABLE,
         "features": [
             "onboarding",
             "expense_tracking",
@@ -1202,6 +1622,75 @@ async def health_check():
             "scheduled_messages",
             "multilingual",
             "profile_editing",
-            "dashboard_sync"
+            "dashboard_sync",
+            "habit_tracking",
+            "daily_briefings",
+            "weekly_reviews",
+            "goal_synthesis",
+            "pain_detection",
+            "founder_social_pressure_defense",
+            "founder_emotional_spending_detector",
+            "founder_subscription_detective",
+            "founder_micro_spending_alert",
+            "founder_emergency_response",
+            "founder_family_obligation_manager",
+            "founder_purchase_decision_assistant",
+            "founder_financial_educator",
+            "founder_proactive_messaging",
+            "founder_viral_moments"
         ]
     }
+
+
+# ==================== FOUNDER EDITION ENDPOINTS ====================
+
+
+@moneyview_router.get("/founder/subscriptions/{phone}")
+async def subscription_audit(phone: str):
+    """Run subscription audit for user"""
+    if not FOUNDER_AGENTS_AVAILABLE:
+        return {"reply": "Founder agents not available"}
+    user = moneyview_agent._get_user(phone)
+    return {"reply": founder_agents.subscription_audit(user)}
+
+
+@moneyview_router.post("/founder/explain")
+async def explain_concept(request: Request):
+    """ELI5 financial concept"""
+    if not FOUNDER_AGENTS_AVAILABLE:
+        return {"reply": "Founder agents not available"}
+    data = await request.json()
+    concept = data.get("concept", "")
+    return {"reply": founder_agents.explain_concept(concept)}
+
+
+@moneyview_router.post("/founder/purchase-decision")
+async def purchase_decision(request: Request):
+    """Help with big purchase decisions"""
+    if not FOUNDER_AGENTS_AVAILABLE:
+        return {"reply": "Founder agents not available"}
+    data = await request.json()
+    phone = data.get("phone", "")
+    item = data.get("item", "")
+    price = data.get("price", 0)
+    user = moneyview_agent._get_user(phone)
+    return {"reply": founder_agents.purchase_decision(user, item, price)}
+
+
+@moneyview_router.get("/founder/morning/{phone}")
+async def morning_brief(phone: str):
+    """Generate morning briefing"""
+    if not FOUNDER_AGENTS_AVAILABLE:
+        return {"reply": "Founder agents not available"}
+    user = moneyview_agent._get_user(phone)
+    return {"reply": founder_agents.morning_briefing(user)}
+
+
+@moneyview_router.get("/founder/evening/{phone}")
+async def evening_checkin_endpoint(phone: str):
+    """Generate evening check-in"""
+    if not FOUNDER_AGENTS_AVAILABLE:
+        return {"reply": "Founder agents not available"}
+    user = moneyview_agent._get_user(phone)
+    return {"reply": founder_agents.evening_checkin(user)}
+

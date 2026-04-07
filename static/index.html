@@ -1,1406 +1,637 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-    <title>MoneyViya — Your AI Financial Manager</title>
-    <meta name="theme-color" content="#00A86B">
+    <title>MoneyViya 2.0 — Private Wealth Manager</title>
+    <meta name="description" content="MoneyViya 2.0 — Your AI-powered Digital Private Wealth Manager. Track money, build habits, grow income, all from WhatsApp.">
+    <meta name="theme-color" content="#0A0A0F">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="logo.png">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
-        rel="stylesheet">
+    <link rel="stylesheet" href="design-system.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        :root {
-            --p: #00A86B;
-            --pd: #007A4E;
-            --pl: #E8F9F2;
-            --sec: #1A1A2E;
-            --gold: #FFB703;
-            --danger: #E63946;
-            --n50: #F8FAFB;
-            --n100: #F0F4F7;
-            --n200: #E1E8EE;
-            --n400: #94A3B8;
-            --n600: #475569;
-            --n800: #1E293B;
-            --n900: #0F172A;
-            --r: 16px
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box
-        }
-
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: var(--n50);
-            color: var(--n800);
-            min-height: 100vh;
-            overflow-x: hidden
-        }
-
-        .mono {
-            font-family: 'JetBrains Mono', monospace
-        }
-
-        .sora {
-            font-family: 'Sora', sans-serif
-        }
-
-        .hidden {
-            display: none !important
-        }
-
-        .green {
-            color: var(--p)
-        }
-
-        .red {
-            color: var(--danger)
-        }
-
-        .gold {
-            color: var(--gold)
-        }
-
-        button {
-            font-family: inherit;
-            cursor: pointer
-        }
-
-        /* AUTH */
-        #auth {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, var(--p), var(--pd));
-            padding: 24px
-        }
-
-        .auth-c {
-            background: #fff;
-            border-radius: 24px;
-            padding: 40px;
-            max-width: 420px;
-            width: 100%;
-            text-align: center;
-            box-shadow: 0 16px 48px rgba(0, 0, 0, .12)
-        }
-
-        .auth-c img {
-            width: 64px;
-            margin-bottom: 12px
-        }
-
-        .auth-c h1 {
-            font-family: 'Sora';
-            font-size: 26px;
-            font-weight: 700;
-            margin-bottom: 4px
-        }
-
-        .auth-c .sub {
-            color: var(--n400);
-            font-size: 13px;
-            margin-bottom: 24px
-        }
-
-        .fg {
-            text-align: left;
-            margin-bottom: 14px
-        }
-
-        .fg label {
-            display: block;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--n600);
-            margin-bottom: 4px
-        }
-
-        .fg input,
-        .fg select {
-            width: 100%;
-            height: 48px;
-            padding: 0 14px;
-            border: 1.5px solid var(--n200);
-            border-radius: 10px;
-            font-size: 14px;
-            font-family: inherit;
-            transition: border .3s
-        }
-
-        .fg input:focus {
-            outline: none;
-            border-color: var(--p);
-            box-shadow: 0 0 0 3px rgba(0, 168, 107, .12)
-        }
-
-        .btn-p {
-            width: 100%;
-            height: 48px;
-            background: var(--p);
-            color: #fff;
-            border: none;
-            border-radius: 10px;
-            font-size: 15px;
-            font-weight: 600;
-            transition: all .3s
-        }
-
-        .btn-p:hover {
-            background: var(--pd)
-        }
-
-        .btn-p:disabled {
-            opacity: .5;
-            cursor: not-allowed
-        }
-
-        .btn-s {
-            width: 100%;
-            height: 44px;
-            background: transparent;
-            color: var(--p);
-            border: 2px solid var(--p);
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 600;
-            margin-top: 10px
-        }
-
-        .link {
-            color: var(--p);
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 13px;
-            margin-top: 14px;
-            display: inline-block;
-            cursor: pointer
-        }
-
-        .divider {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin: 16px 0;
-            font-size: 12px;
-            color: var(--n400)
-        }
-
-        .divider::before,
-        .divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--n200)
-        }
-
-        .otp-row {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            margin: 16px 0
-        }
-
-        .otp-row input {
-            width: 52px;
-            height: 52px;
-            text-align: center;
-            font-size: 22px;
-            font-family: 'JetBrains Mono';
-            font-weight: 700;
-            border: 2px solid var(--n200);
-            border-radius: 12px
-        }
-
-        .otp-row input:focus {
-            border-color: var(--p);
-            outline: none
-        }
-
-        .tab-r {
-            display: flex;
-            gap: 0;
-            background: var(--n100);
-            border-radius: 10px;
-            padding: 3px;
-            margin-bottom: 20px
-        }
-
-        .tab-r button {
-            flex: 1;
-            height: 38px;
-            border: none;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            background: transparent;
-            color: var(--n600);
-            transition: all .2s
-        }
-
-        .tab-r button.active {
-            background: #fff;
-            color: var(--p);
-            box-shadow: 0 1px 4px rgba(0, 0, 0, .08)
-        }
-
-        /* ONBOARDING */
-        .ob-step {
-            display: none
-        }
-
-        .ob-step.active {
-            display: block
-        }
-
-        .dots {
-            display: flex;
-            gap: 6px;
-            justify-content: center;
-            margin-bottom: 20px
-        }
-
-        .dots .d {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--n200);
-            transition: all .3s
-        }
-
-        .dots .d.on {
-            background: var(--p);
-            width: 20px;
-            border-radius: 4px
-        }
-
-        .opt-grid {
-            display: grid;
-            gap: 8px;
-            margin-bottom: 16px
-        }
-
-        .opt-grid.cols-2 {
-            grid-template-columns: 1fr 1fr
-        }
-
-        .opt-btn {
-            height: 52px;
-            border: 2px solid var(--n200);
-            border-radius: 10px;
-            background: #fff;
-            font-size: 14px;
-            transition: all .2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px
-        }
-
-        .opt-btn:hover,
-        .opt-btn.sel {
-            border-color: var(--p);
-            background: var(--pl)
-        }
-
-        /* DASHBOARD */
-        #dash {
-            display: none
-        }
-
-        .top {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: rgba(255, 255, 255, .92);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--n200);
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center
-        }
-
-        .top .br {
-            display: flex;
-            align-items: center;
-            gap: 8px
-        }
-
-        .top .br img {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px
-        }
-
-        .top .br span {
-            font-family: 'Sora';
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--p)
-        }
-
-        .top .ri {
-            display: flex;
-            gap: 8px;
-            align-items: center
-        }
-
-        .av {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--p), #00D48A);
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 14px
-        }
-
-        .ib {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            border: 1px solid var(--n200);
-            background: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--n600);
-            font-size: 14px;
-            transition: all .2s
-        }
-
-        .ib:hover {
-            border-color: var(--p);
-            color: var(--p)
-        }
-
-        .db {
-            padding: 16px;
-            max-width: 1100px;
-            margin: 0 auto
-        }
-
-        /* Health */
-        .hc {
-            background: linear-gradient(135deg, var(--p), var(--pd));
-            border-radius: 20px;
-            padding: 24px;
-            color: #fff;
-            display: flex;
-            gap: 24px;
-            align-items: center;
-            margin-bottom: 16px;
-            position: relative;
-            overflow: hidden
-        }
-
-        .hc::after {
-            content: '';
-            position: absolute;
-            right: -30px;
-            top: -30px;
-            width: 120px;
-            height: 120px;
-            background: rgba(255, 255, 255, .06);
-            border-radius: 50%
-        }
-
-        .hr {
-            position: relative;
-            width: 80px;
-            height: 80px;
-            flex-shrink: 0
-        }
-
-        .hr svg {
-            transform: rotate(-90deg)
-        }
-
-        .hr .sc {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-family: 'JetBrains Mono';
-            font-size: 26px;
-            font-weight: 700
-        }
-
-        .hr .sc small {
-            font-size: 10px;
-            font-weight: 400;
-            opacity: .8
-        }
-
-        .hm {
-            flex: 1;
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap
-        }
-
-        .hm .it {
-            text-align: center;
-            min-width: 70px
-        }
-
-        .hm .it .v {
-            font-family: 'JetBrains Mono';
-            font-size: 18px;
-            font-weight: 700
-        }
-
-        .hm .it .l {
-            font-size: 11px;
-            opacity: .8
-        }
-
-        .hb {
-            width: 140px;
-            text-align: right
-        }
-
-        .hb .bar {
-            width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, .2);
-            border-radius: 100px;
-            margin-top: 6px;
-            overflow: hidden
-        }
-
-        .hb .bf {
-            height: 100%;
-            background: #fff;
-            border-radius: 100px;
-            transition: width 1s
-        }
-
-        /* Stats */
-        .sr {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin-bottom: 16px
-        }
-
-        .sc2 {
-            background: #fff;
-            border-radius: var(--r);
-            padding: 16px;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, .04);
-            border: 1px solid transparent;
-            transition: all .3s
-        }
-
-        .sc2:hover {
-            border-color: var(--p);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(0, 168, 107, .1)
-        }
-
-        .sc2 .tp {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px
-        }
-
-        .sc2 .ic {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 15px
-        }
-
-        .sc2 .lb {
-            font-size: 12px;
-            color: var(--n400)
-        }
-
-        .sc2 .vl {
-            font-family: 'JetBrains Mono';
-            font-size: 22px;
-            font-weight: 700
-        }
-
-        /* Two col */
-        .tc {
-            display: grid;
-            grid-template-columns: 58% 1fr;
-            gap: 16px;
-            margin-bottom: 16px
-        }
-
-        .card {
-            background: #fff;
-            border-radius: var(--r);
-            padding: 20px;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, .04)
-        }
-
-        .card-h {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px
-        }
-
-        .card-h h3 {
-            font-family: 'Sora';
-            font-size: 15px;
-            font-weight: 700
-        }
-
-        .card-h .act {
-            color: var(--p);
-            font-size: 12px;
-            cursor: pointer;
-            font-weight: 600
-        }
-
-        /* Donut */
-        .dw {
-            display: flex;
-            align-items: center;
-            gap: 20px
-        }
-
-        .dc {
-            position: relative;
-            width: 160px;
-            height: 160px;
-            flex-shrink: 0
-        }
-
-        .dc canvas {
-            width: 160px;
-            height: 160px
-        }
-
-        .dc .ct {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center
-        }
-
-        .dc .ct .tot {
-            font-family: 'JetBrains Mono';
-            font-size: 16px;
-            font-weight: 700
-        }
-
-        .dc .ct .lb {
-            font-size: 10px;
-            color: var(--n400)
-        }
-
-        .dl {
-            flex: 1
-        }
-
-        .li {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 0;
-            font-size: 12px
-        }
-
-        .li .dt {
-            width: 8px;
-            height: 8px;
-            border-radius: 2px;
-            flex-shrink: 0
-        }
-
-        .li .am {
-            margin-left: auto;
-            font-family: 'JetBrains Mono';
-            font-weight: 600;
-            font-size: 12px
-        }
-
-        /* Goals */
-        .gi {
-            padding: 12px;
-            border: 1px solid var(--n200);
-            border-radius: 10px;
-            margin-bottom: 8px;
-            transition: all .3s
-        }
-
-        .gi:hover {
-            border-color: var(--p)
-        }
-
-        .gi .gt {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px
-        }
-
-        .gi .gt .nm {
-            font-weight: 700;
-            font-size: 13px
-        }
-
-        .gi .gt .pc {
-            font-family: 'JetBrains Mono';
-            font-weight: 700;
-            font-size: 13px;
-            color: var(--p)
-        }
-
-        .gi .gb {
-            height: 6px;
-            background: var(--n200);
-            border-radius: 100px;
-            overflow: hidden;
-            margin-bottom: 6px
-        }
-
-        .gi .gb .gf {
-            height: 100%;
-            background: linear-gradient(90deg, var(--p), #00D48A);
-            border-radius: 100px;
-            transition: width 1s
-        }
-
-        .gi .gm {
-            font-size: 11px;
-            color: var(--n400);
-            display: flex;
-            justify-content: space-between
-        }
-
-        /* Txns */
-        .tl {
-            max-height: 380px;
-            overflow-y: auto
-        }
-
-        .ti {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 0;
-            border-bottom: 1px solid var(--n100)
-        }
-
-        .ti:last-child {
-            border: none
-        }
-
-        .ti .tc2 {
-            width: 34px;
-            height: 34px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px
-        }
-
-        .ti .tinf {
-            flex: 1
-        }
-
-        .ti .tinf .td {
-            font-weight: 600;
-            font-size: 13px
-        }
-
-        .ti .tinf .tdt {
-            font-size: 11px;
-            color: var(--n400)
-        }
-
-        .ti .ta {
-            font-family: 'JetBrains Mono';
-            font-weight: 700;
-            font-size: 14px
-        }
-
-        /* Modal */
-        .mo {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, .4);
-            z-index: 200;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px
-        }
-
-        .mo.show {
-            display: flex
-        }
-
-        .mc {
-            background: #fff;
-            border-radius: 20px;
-            padding: 28px;
-            max-width: 400px;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto
-        }
-
-        .mc h2 {
-            font-family: 'Sora';
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 16px
-        }
-
-        /* Toast */
-        .toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #fff;
-            border-left: 4px solid var(--p);
-            border-radius: 10px;
-            padding: 14px 20px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, .1);
-            z-index: 300;
-            transform: translateX(120%);
-            transition: transform .3s;
-            font-size: 13px;
-            font-weight: 600;
-            max-width: 320px
-        }
-
-        .toast.show {
-            transform: translateX(0)
-        }
-
-        .toast.err {
-            border-left-color: var(--danger)
-        }
-
-        /* Bottom nav */
-        .bn {
-            display: none;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: #fff;
-            border-top: 1px solid var(--n200);
-            z-index: 100;
-            padding: 6px 0;
-            padding-bottom: env(safe-area-inset-bottom)
-        }
-
-        .bn .tabs {
-            display: flex;
-            justify-content: space-around
-        }
-
-        .bn .tab {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
-            font-size: 10px;
-            color: var(--n400);
-            border: none;
-            background: none;
-            padding: 4px 10px;
-            font-family: inherit
-        }
-
-        .bn .tab.ac {
-            color: var(--p)
-        }
-
-        .bn .tab i {
-            font-size: 18px
-        }
-
-        /* Responsive */
-        @media(max-width:1024px) {
-            .sr {
-                grid-template-columns: 1fr 1fr
-            }
-
-            .tc {
-                grid-template-columns: 1fr
-            }
-        }
-
-        @media(max-width:768px) {
-            .sr {
-                grid-template-columns: 1fr 1fr
-            }
-
-            .hc {
-                flex-direction: column;
-                text-align: center
-            }
-
-            .hm {
-                justify-content: center
-            }
-
-            .hb {
-                width: 100%;
-                text-align: center
-            }
-
-            .hb .bar {
-                margin: 6px auto 0
-            }
-
-            .bn {
-                display: block
-            }
-
-            .db {
-                padding: 12px;
-                padding-bottom: 80px
-            }
-
-            .dw {
-                flex-direction: column
-            }
-
-            .top .bl {
-                display: none
-            }
-        }
-
-        @media(max-width:480px) {
-            .sr {
-                grid-template-columns: 1fr
-            }
-
-            .auth-c {
-                padding: 28px 20px
-            }
-        }
+    /* ═══ AUTH SCREEN ═══ */
+    #auth-screen {
+        min-height:100vh; display:flex; align-items:center; justify-content:center;
+        background: var(--grad-hero); padding:24px; position:relative; overflow:hidden;
+    }
+    #auth-screen::before {
+        content:''; position:absolute; width:400px; height:400px;
+        background:radial-gradient(circle, rgba(139,92,246,0.12), transparent 70%);
+        top:-100px; right:-100px; border-radius:50%;
+    }
+    #auth-screen::after {
+        content:''; position:absolute; width:300px; height:300px;
+        background:radial-gradient(circle, rgba(6,182,212,0.08), transparent 70%);
+        bottom:-80px; left:-80px; border-radius:50%;
+    }
+    .auth-box {
+        background:var(--bg-card); border:1px solid var(--border);
+        border-radius:var(--radius-xl); padding:40px 32px; max-width:400px;
+        width:100%; text-align:center; position:relative; z-index:1;
+        box-shadow:var(--shadow-lg);
+    }
+    .auth-logo { width:56px; height:56px; margin:0 auto 16px;
+        background:var(--grad-accent); border-radius:var(--radius-md);
+        display:flex; align-items:center; justify-content:center; font-size:24px;
+    }
+    .auth-title { font-size:22px; font-weight:700; margin-bottom:4px; }
+    .auth-subtitle { font-size:13px; color:var(--text-secondary); margin-bottom:28px; }
+    .auth-tabs { display:flex; gap:4px; background:var(--surface-1); border-radius:var(--radius-full);
+        padding:3px; margin-bottom:24px; }
+    .auth-tab { flex:1; padding:10px; border-radius:var(--radius-full); font-size:13px;
+        font-weight:600; color:var(--text-secondary); transition:var(--transition-fast); }
+    .auth-tab.active { background:var(--accent); color:#fff; }
+    .auth-form { display:flex; flex-direction:column; gap:12px; }
+    .auth-input-wrap { position:relative; }
+    .auth-input-wrap i { position:absolute; left:14px; top:50%; transform:translateY(-50%);
+        color:var(--text-muted); font-size:14px; }
+    .auth-input { width:100%; padding:14px 14px 14px 42px; background:var(--bg-input);
+        border:1px solid var(--border); border-radius:var(--radius-md); color:var(--text-primary);
+        font-size:14px; outline:none; transition:var(--transition-fast); }
+    .auth-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
+    .auth-btn { width:100%; padding:14px; background:var(--grad-accent); color:#fff;
+        border-radius:var(--radius-full); font-weight:700; font-size:15px; margin-top:8px;
+        transition:var(--transition-normal); box-shadow:0 4px 16px rgba(139,92,246,0.3); }
+    .auth-btn:hover { transform:translateY(-1px); box-shadow:0 6px 24px rgba(139,92,246,0.4); }
+    .auth-error { color:var(--danger-light); font-size:12px; text-align:left; min-height:18px; }
+    .auth-divider { display:flex; align-items:center; gap:12px; margin:16px 0; color:var(--text-muted); font-size:12px; }
+    .auth-divider::before,.auth-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+    .auth-whatsapp { width:100%; padding:12px; background:rgba(37,211,102,0.1); color:#25D366;
+        border:1px solid rgba(37,211,102,0.2); border-radius:var(--radius-full); font-weight:600; font-size:14px;
+        display:flex; align-items:center; justify-content:center; gap:8px; transition:var(--transition-fast); }
+    .auth-whatsapp:hover { background:rgba(37,211,102,0.15); }
+
+    /* ═══ MAIN APP ═══ */
+    #app-screen { display:none; min-height:100vh; background:var(--bg-primary); padding-bottom:80px; }
+    
+    /* Header */
+    .app-header {
+        padding:16px 20px 12px; display:flex; align-items:center; justify-content:space-between;
+        position:sticky; top:0; z-index:100; background:rgba(10,10,15,0.92);
+        backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+        border-bottom:1px solid var(--border);
+    }
+    .header-left { display:flex; align-items:center; gap:12px; }
+    .header-avatar { width:36px; height:36px; border-radius:var(--radius-full);
+        background:var(--grad-accent); display:flex; align-items:center; justify-content:center;
+        font-weight:700; font-size:14px; color:#fff; }
+    .header-name { font-size:15px; font-weight:600; }
+    .header-sub { font-size:11px; color:var(--text-tertiary); }
+    .header-right { display:flex; gap:12px; }
+    .header-icon { width:36px; height:36px; border-radius:var(--radius-full);
+        background:var(--surface-2); display:flex; align-items:center; justify-content:center;
+        color:var(--text-secondary); font-size:14px; transition:var(--transition-fast);
+        border:1px solid var(--border); }
+    .header-icon:hover { background:var(--surface-3); color:var(--text-primary); }
+
+    /* Wealth Summary Card */
+    .wealth-card {
+        margin:16px 16px 0; padding:24px; border-radius:var(--radius-xl);
+        background:var(--grad-hero); border:1px solid var(--border-accent);
+        position:relative; overflow:hidden;
+    }
+    .wealth-card::before {
+        content:''; position:absolute; width:200px; height:200px;
+        background:radial-gradient(circle, rgba(139,92,246,0.15), transparent 70%);
+        top:-60px; right:-40px; border-radius:50%;
+    }
+    .wealth-label { font-size:12px; color:var(--text-tertiary); letter-spacing:1px;
+        text-transform:uppercase; font-weight:600; margin-bottom:4px; }
+    .wealth-amount { font-family:'JetBrains Mono',monospace; font-size:32px;
+        font-weight:700; letter-spacing:-1px; }
+    .wealth-change { display:inline-flex; align-items:center; gap:4px; padding:4px 10px;
+        border-radius:var(--radius-full); font-size:12px; font-weight:600; margin-top:8px; }
+    .wealth-change.up { background:var(--success-glow); color:var(--success-light); }
+    .wealth-change.down { background:var(--danger-glow); color:var(--danger-light); }
+    .wealth-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:20px;
+        padding-top:16px; border-top:1px solid var(--border); }
+    .wealth-stat-label { font-size:10px; color:var(--text-tertiary); text-transform:uppercase;
+        letter-spacing:0.5px; margin-bottom:2px; }
+    .wealth-stat-val { font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600; }
+
+    /* Quick Actions Grid */
+    .quick-actions { padding:20px 16px 8px; }
+    .quick-actions-title { font-size:13px; color:var(--text-tertiary); font-weight:600;
+        text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; }
+    .qa-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    .qa-item { display:flex; flex-direction:column; align-items:center; gap:8px;
+        padding:14px 8px; background:var(--surface-2); border-radius:var(--radius-lg);
+        border:1px solid var(--border); transition:var(--transition-fast); }
+    .qa-item:hover { background:var(--surface-3); border-color:var(--border-hover); transform:translateY(-2px); }
+    .qa-icon { width:36px; height:36px; border-radius:var(--radius-md);
+        display:flex; align-items:center; justify-content:center; font-size:16px; }
+    .qa-icon.violet { background:var(--accent-glow); color:var(--accent-light); }
+    .qa-icon.green { background:var(--success-glow); color:var(--success-light); }
+    .qa-icon.gold { background:var(--warning-glow); color:var(--warning-light); }
+    .qa-icon.cyan { background:var(--info-glow); color:var(--info); }
+    .qa-icon.rose { background:var(--danger-glow); color:var(--danger-light); }
+    .qa-label { font-size:11px; font-weight:500; color:var(--text-secondary); text-align:center; }
+
+    /* Section */
+    .section { padding:20px 16px 8px; }
+    .section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .section-title { font-size:15px; font-weight:700; }
+    .section-more { font-size:12px; color:var(--accent-light); font-weight:500; }
+
+    /* Life Score */
+    .life-score-card {
+        margin:0 16px; padding:20px; border-radius:var(--radius-lg);
+        background:var(--surface-2); border:1px solid var(--border);
+    }
+    .life-score-ring { width:100px; height:100px; margin:0 auto 12px; position:relative; }
+    .life-score-ring svg { width:100%; height:100%; transform:rotate(-90deg); }
+    .life-score-ring circle { fill:none; stroke-width:6; stroke-linecap:round; }
+    .life-score-ring .bg { stroke:var(--surface-4); }
+    .life-score-ring .fill { stroke:var(--accent); transition:stroke-dashoffset 1s ease; }
+    .life-score-val { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+        font-family:'JetBrains Mono',monospace; font-size:28px; font-weight:700; }
+    .life-score-label { text-align:center; font-size:13px; color:var(--text-secondary); }
+    .life-pillars { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:16px; }
+    .pillar-item { text-align:center; padding:10px 4px; background:var(--surface-3);
+        border-radius:var(--radius-md); }
+    .pillar-emoji { font-size:18px; margin-bottom:4px; }
+    .pillar-name { font-size:10px; color:var(--text-tertiary); }
+    .pillar-score { font-size:14px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+
+    /* Habit Streaks */
+    .habit-card { display:flex; align-items:center; gap:12px; padding:14px 16px;
+        background:var(--surface-2); border-radius:var(--radius-lg); border:1px solid var(--border);
+        margin-bottom:8px; transition:var(--transition-fast); }
+    .habit-card:hover { background:var(--surface-3); }
+    .habit-emoji { font-size:24px; }
+    .habit-info { flex:1; }
+    .habit-name { font-size:14px; font-weight:600; }
+    .habit-streak { font-size:11px; color:var(--text-tertiary); }
+    .habit-fire { font-size:14px; color:var(--warning); }
+    .habit-check { width:32px; height:32px; border-radius:var(--radius-full);
+        border:2px solid var(--accent); display:flex; align-items:center; justify-content:center;
+        color:transparent; transition:var(--transition-fast); }
+    .habit-check.done { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+    /* Transactions */
+    .txn-item { display:flex; align-items:center; gap:12px; padding:14px 0;
+        border-bottom:1px solid var(--border); }
+    .txn-item:last-child { border-bottom:none; }
+    .txn-icon { width:40px; height:40px; border-radius:var(--radius-md);
+        background:var(--surface-3); display:flex; align-items:center; justify-content:center; font-size:18px; }
+    .txn-info { flex:1; }
+    .txn-name { font-size:14px; font-weight:500; }
+    .txn-cat { font-size:11px; color:var(--text-tertiary); }
+    .txn-amount { font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:600; }
+    .txn-amount.expense { color:var(--danger-light); }
+    .txn-amount.income { color:var(--success-light); }
+
+    /* Goals */
+    .goal-card { padding:16px; background:var(--surface-2); border-radius:var(--radius-lg);
+        border:1px solid var(--border); margin-bottom:10px; }
+    .goal-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+    .goal-name { font-size:14px; font-weight:600; }
+    .goal-pct { font-size:12px; font-weight:700; color:var(--accent-light); font-family:'JetBrains Mono',monospace; }
+    .goal-bar { width:100%; height:6px; background:var(--surface-4); border-radius:var(--radius-full);
+        overflow:hidden; margin-bottom:6px; }
+    .goal-fill { height:100%; border-radius:var(--radius-full); background:var(--grad-accent);
+        transition:width 0.8s ease; }
+    .goal-meta { display:flex; justify-content:space-between; font-size:11px; color:var(--text-tertiary); }
+
+    /* Bottom Nav */
+    .bottom-nav {
+        position:fixed; bottom:0; left:0; right:0;
+        background:rgba(10,10,15,0.95); backdrop-filter:blur(16px);
+        border-top:1px solid var(--border); padding:8px 0 calc(8px + env(safe-area-inset-bottom));
+        display:flex; justify-content:space-around; z-index:200;
+    }
+    .nav-item { display:flex; flex-direction:column; align-items:center; gap:4px;
+        padding:6px 12px; color:var(--text-muted); font-size:10px; font-weight:500;
+        transition:var(--transition-fast); border-radius:var(--radius-sm); }
+    .nav-item.active { color:var(--accent-light); }
+    .nav-item i { font-size:18px; }
+    .nav-item.active i { filter:drop-shadow(0 0 6px rgba(139,92,246,0.4)); }
+    .nav-fab { width:48px; height:48px; border-radius:var(--radius-full);
+        background:var(--grad-accent); display:flex; align-items:center; justify-content:center;
+        color:#fff; font-size:20px; margin-top:-20px; box-shadow:0 4px 16px rgba(139,92,246,0.4);
+        transition:var(--transition-normal); }
+    .nav-fab:hover { transform:scale(1.08); }
+
+    /* Chat Panel */
+    #chat-panel { display:none; position:fixed; bottom:72px; left:8px; right:8px;
+        max-height:65vh; background:var(--bg-card); border:1px solid var(--border-accent);
+        border-radius:var(--radius-xl); overflow:hidden; z-index:300;
+        box-shadow:var(--shadow-lg), var(--shadow-glow); animation:fadeInUp 0.3s ease; }
+    .chat-header { padding:14px 16px; display:flex; align-items:center; justify-content:space-between;
+        border-bottom:1px solid var(--border); }
+    .chat-header-left { display:flex; align-items:center; gap:10px; }
+    .chat-avatar { width:32px; height:32px; border-radius:var(--radius-full);
+        background:var(--grad-accent); display:flex; align-items:center; justify-content:center;
+        font-size:14px; }
+    .chat-title { font-size:14px; font-weight:700; }
+    .chat-status { font-size:10px; color:var(--success); }
+    .chat-close { color:var(--text-muted); font-size:18px; }
+    .chat-messages { height:300px; overflow-y:auto; padding:12px 16px; display:flex;
+        flex-direction:column; gap:8px; }
+    .chat-msg { max-width:85%; padding:10px 14px; border-radius:var(--radius-lg); font-size:13px; line-height:1.5; }
+    .chat-msg.bot { background:var(--surface-3); align-self:flex-start;
+        border-bottom-left-radius:4px; color:var(--text-primary); }
+    .chat-msg.user { background:var(--accent-dark); align-self:flex-end;
+        border-bottom-right-radius:4px; color:#fff; }
+    .chat-input-area { display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--border); }
+    .chat-input { flex:1; padding:10px 14px; background:var(--bg-input); border:1px solid var(--border);
+        border-radius:var(--radius-full); color:var(--text-primary); font-size:13px; outline:none; }
+    .chat-input:focus { border-color:var(--accent); }
+    .chat-send { width:36px; height:36px; border-radius:var(--radius-full); background:var(--accent);
+        color:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; }
+
+    /* Responsive */
+    @media(max-width:380px) { .qa-grid { grid-template-columns:repeat(3,1fr); } }
     </style>
 </head>
-
 <body>
 
-    <!-- AUTH -->
-    <div id="auth">
-        <div class="auth-c">
-            <img src="logo.png" alt="MoneyViya">
-            <h1 class="sora">MoneyViya</h1>
-            <p class="sub">Your AI Financial Manager • Track • Save • Grow</p>
+<!-- ═══════════ AUTH SCREEN ═══════════ -->
+<div id="auth-screen">
+    <div class="auth-box animate-in">
+        <div class="auth-logo">💎</div>
+        <h1 class="auth-title">MoneyViya</h1>
+        <p class="auth-subtitle">Your Digital Private Wealth Manager</p>
 
-            <div class="tab-r" id="auth-tabs">
-                <button class="active" onclick="showAuth('login')">Login</button>
-                <button onclick="showAuth('register')">Register</button>
+        <div class="auth-tabs">
+            <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Sign In</button>
+            <button class="auth-tab" id="tab-register" onclick="switchTab('register')">Register</button>
+        </div>
+
+        <form class="auth-form" id="login-form" onsubmit="handleLogin(event)">
+            <div class="auth-input-wrap">
+                <i class="fas fa-phone"></i>
+                <input class="auth-input" type="tel" id="login-phone" placeholder="Phone number" required>
             </div>
-
-            <!-- Login -->
-            <div id="auth-login">
-                <div class="fg"><label>📱 Phone Number</label><input type="tel" id="l-phone"
-                        placeholder="10-digit phone"></div>
-                <div class="fg"><label>🔑 Password</label><input type="password" id="l-pass"
-                        placeholder="Your password"></div>
-                <button class="btn-p" onclick="doLogin()">Sign In</button>
-                <div class="divider">or</div>
-                <button class="btn-s" onclick="requestOTP('login')"
-                    style="border-color:var(--gold);color:var(--gold)"><i class="fas fa-sms"
-                        style="margin-right:6px"></i>Login with OTP</button>
+            <div class="auth-input-wrap">
+                <i class="fas fa-lock"></i>
+                <input class="auth-input" type="password" id="login-pass" placeholder="Password" required>
             </div>
+            <div class="auth-error" id="login-error"></div>
+            <button type="submit" class="auth-btn" id="login-btn">Sign In</button>
+        </form>
 
-            <!-- Register -->
-            <div id="auth-register" class="hidden">
-                <div class="fg"><label>😊 Your Name</label><input type="text" id="r-name"
-                        placeholder="What should Viya call you?"></div>
-                <div class="fg"><label>📱 Phone Number</label><input type="tel" id="r-phone"
-                        placeholder="10-digit phone"></div>
-                <div class="fg"><label>🔑 Create Password</label><input type="password" id="r-pass"
-                        placeholder="Min 6 characters"></div>
-                <button class="btn-p" onclick="doRegister()">Create Account</button>
-                <div class="divider">or</div>
-                <button class="btn-s" onclick="requestOTP('register')"
-                    style="border-color:var(--gold);color:var(--gold)"><i class="fas fa-sms"
-                        style="margin-right:6px"></i>Register with OTP</button>
+        <form class="auth-form hidden" id="register-form" onsubmit="handleRegister(event)">
+            <div class="auth-input-wrap">
+                <i class="fas fa-phone"></i>
+                <input class="auth-input" type="tel" id="reg-phone" placeholder="Phone number" required>
             </div>
-
-            <!-- OTP -->
-            <div id="auth-otp" class="hidden">
-                <h2 class="sora" style="font-size:18px">Enter OTP</h2>
-                <p class="sub">Sent to <span id="otp-phone-display"></span></p>
-                <div class="otp-row">
-                    <input type="text" maxlength="1" id="o1" oninput="otpNext(this,2)">
-                    <input type="text" maxlength="1" id="o2" oninput="otpNext(this,3)">
-                    <input type="text" maxlength="1" id="o3" oninput="otpNext(this,4)">
-                    <input type="text" maxlength="1" id="o4" oninput="verifyOTP()">
-                </div>
-                <p style="font-size:12px;color:var(--n400);margin-top:8px">OTP valid for 5 minutes</p>
-                <span class="link" onclick="showAuth('login')">← Back to login</span>
+            <div class="auth-input-wrap">
+                <i class="fas fa-lock"></i>
+                <input class="auth-input" type="password" id="reg-pass" placeholder="Create password (6+ chars)" required minlength="6">
             </div>
+            <div class="auth-input-wrap">
+                <i class="fas fa-lock"></i>
+                <input class="auth-input" type="password" id="reg-pass2" placeholder="Confirm password" required>
+            </div>
+            <div class="auth-error" id="reg-error"></div>
+            <button type="submit" class="auth-btn" id="reg-btn">Create Account</button>
+        </form>
 
-            <!-- Onboarding -->
-            <div id="auth-onboard" class="hidden">
-                <div class="dots">
-                    <div class="d on"></div>
-                    <div class="d"></div>
-                    <div class="d"></div>
-                    <div class="d"></div>
-                </div>
-                <div class="ob-step active" id="os-1">
-                    <h2 class="sora" style="font-size:18px;margin-bottom:4px">🌐 Pick your language</h2>
-                    <p class="sub">Viya speaks your language</p>
-                    <div class="opt-grid">
-                        <button class="opt-btn" onclick="obSet('language','hi',this)">🇮🇳 हिंदी</button>
-                        <button class="opt-btn" onclick="obSet('language','ta',this)">🇮🇳 தமிழ்</button>
-                        <button class="opt-btn" onclick="obSet('language','te',this)">🇮🇳 తెలుగు</button>
-                        <button class="opt-btn" onclick="obSet('language','kn',this)">🇮🇳 ಕನ್ನಡ</button>
-                        <button class="opt-btn" onclick="obSet('language','en',this)">🇬🇧 English</button>
-                    </div>
-                </div>
-                <div class="ob-step" id="os-2">
-                    <h2 class="sora" style="font-size:18px;margin-bottom:4px">💼 What do you do?</h2>
-                    <div class="opt-grid cols-2">
-                        <button class="opt-btn" onclick="obSet('occupation','Salaried',this)">👨‍💼 Salaried</button>
-                        <button class="opt-btn" onclick="obSet('occupation','Student',this)">🎓 Student</button>
-                        <button class="opt-btn" onclick="obSet('occupation','Freelancer',this)">💻 Freelancer</button>
-                        <button class="opt-btn" onclick="obSet('occupation','Business',this)">🏪 Business</button>
-                        <button class="opt-btn" onclick="obSet('occupation','Homemaker',this)">🏠 Homemaker</button>
-                        <button class="opt-btn" onclick="obSet('occupation','Retired',this)">👴 Retired</button>
-                    </div>
-                </div>
-                <div class="ob-step" id="os-3">
-                    <h2 class="sora" style="font-size:18px;margin-bottom:4px">💰 Monthly income?</h2>
-                    <div class="opt-grid">
-                        <button class="opt-btn" onclick="obSet('monthly_income',10000,this)">Under ₹10,000</button>
-                        <button class="opt-btn" onclick="obSet('monthly_income',25000,this)">₹10K – ₹25K</button>
-                        <button class="opt-btn" onclick="obSet('monthly_income',50000,this)">₹25K – ₹50K</button>
-                        <button class="opt-btn" onclick="obSet('monthly_income',100000,this)">₹50K – ₹1L</button>
-                        <button class="opt-btn" onclick="obSet('monthly_income',200000,this)">Above ₹1 Lakh</button>
-                    </div>
-                </div>
-                <div class="ob-step" id="os-4">
-                    <h2 class="sora" style="font-size:18px;margin-bottom:4px">🎯 Your top goal?</h2>
-                    <div class="opt-grid cols-2">
-                        <button class="opt-btn" onclick="obSet('primary_goal','Buy a Home',this)">🏠 Home</button>
-                        <button class="opt-btn" onclick="obSet('primary_goal','Buy a Vehicle',this)">🚗 Vehicle</button>
-                        <button class="opt-btn" onclick="obSet('primary_goal','Education',this)">🎓 Education</button>
-                        <button class="opt-btn" onclick="obSet('primary_goal','Travel',this)">🌴 Travel</button>
-                        <button class="opt-btn" onclick="obSet('primary_goal','Emergency Fund',this)">🛡️
-                            Emergency</button>
-                        <button class="opt-btn" onclick="obSet('primary_goal','Start Investing',this)">💰
-                            Invest</button>
-                    </div>
-                    <div class="fg" style="margin-top:12px"><label>Goal Amount (₹)</label><input type="number"
-                            id="ob-amt" placeholder="e.g. 80000"></div>
-                    <button class="btn-p" onclick="finishOnboard()">Start My Journey 🚀</button>
-                </div>
+        <div class="auth-divider">or continue with</div>
+        <button class="auth-whatsapp" onclick="window.open('https://wa.me/919876543210?text=Hi%20MoneyViya','_blank')">
+            <i class="fab fa-whatsapp"></i> WhatsApp
+        </button>
+    </div>
+</div>
+
+<!-- ═══════════ MAIN APP ═══════════ -->
+<div id="app-screen">
+
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="header-avatar" id="user-avatar">V</div>
+            <div>
+                <div class="header-name" id="user-name-display">MoneyViya</div>
+                <div class="header-sub">Private Wealth Manager</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="header-icon" onclick="location.reload()"><i class="fas fa-sync-alt"></i></button>
+            <button class="header-icon" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </header>
+
+    <!-- Wealth Summary -->
+    <div class="wealth-card animate-in">
+        <div class="wealth-label">Net Worth</div>
+        <div class="wealth-amount" id="net-worth">₹0</div>
+        <div class="wealth-change up" id="net-change"><i class="fas fa-arrow-up"></i> +0% this month</div>
+        <div class="wealth-stats">
+            <div>
+                <div class="wealth-stat-label">Income</div>
+                <div class="wealth-stat-val" id="stat-income" style="color:var(--success-light)">₹0</div>
+            </div>
+            <div>
+                <div class="wealth-stat-label">Expenses</div>
+                <div class="wealth-stat-val" id="stat-expense" style="color:var(--danger-light)">₹0</div>
+            </div>
+            <div>
+                <div class="wealth-stat-label">Budget Left</div>
+                <div class="wealth-stat-val" id="stat-budget" style="color:var(--accent-light)">₹0</div>
             </div>
         </div>
     </div>
 
-    <!-- DASHBOARD -->
-    <div id="dash">
-        <div class="top">
-            <div class="br"><img src="logo.png" alt=""><span>MoneyViya</span></div>
-            <div class="ri">
-                <button class="ib" onclick="showAddTxn()" title="Add"><i class="fas fa-plus"></i></button>
-                <button class="ib" onclick="refresh()" title="Sync"><i class="fas fa-sync-alt"></i></button>
-                <button class="ib" onclick="window.open('https://wa.me/919363324580')" title="WhatsApp"
-                    style="color:#25D366;border-color:#25D366"><i class="fab fa-whatsapp"></i></button>
-                <div class="av" id="av">U</div>
-                <button class="ib bl" onclick="logout()" title="Logout"
-                    style="color:var(--danger);border-color:var(--danger)"><i class="fas fa-sign-out-alt"></i></button>
-            </div>
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <div class="quick-actions-title">Quick Actions</div>
+        <div class="qa-grid">
+            <button class="qa-item" onclick="openChat('Log my expenses today')">
+                <div class="qa-icon violet"><i class="fas fa-plus"></i></div>
+                <span class="qa-label">Add Expense</span>
+            </button>
+            <button class="qa-item" onclick="openChat('morning briefing')">
+                <div class="qa-icon cyan"><i class="fas fa-sun"></i></div>
+                <span class="qa-label">Briefing</span>
+            </button>
+            <button class="qa-item" onclick="openChat('habit check')">
+                <div class="qa-icon green"><i class="fas fa-fire"></i></div>
+                <span class="qa-label">Habits</span>
+            </button>
+            <button class="qa-item" onclick="openChat('passive income ideas')">
+                <div class="qa-icon gold"><i class="fas fa-coins"></i></div>
+                <span class="qa-label">Earn More</span>
+            </button>
+            <button class="qa-item" onclick="openChat('goal progress')">
+                <div class="qa-icon rose"><i class="fas fa-bullseye"></i></div>
+                <span class="qa-label">Goals</span>
+            </button>
+            <button class="qa-item" onclick="openChat('weekly review')">
+                <div class="qa-icon cyan"><i class="fas fa-chart-line"></i></div>
+                <span class="qa-label">Review</span>
+            </button>
+            <button class="qa-item" onclick="openChat('tax saving tips')">
+                <div class="qa-icon green"><i class="fas fa-landmark"></i></div>
+                <span class="qa-label">Tax Save</span>
+            </button>
+            <button class="qa-item" onclick="openChat('plan my day')">
+                <div class="qa-icon violet"><i class="fas fa-calendar-check"></i></div>
+                <span class="qa-label">Plan Day</span>
+            </button>
         </div>
-        <div class="db">
-            <div class="hc">
-                <div class="hr">
-                    <svg width="80" height="80" viewBox="0 0 100 100">
-                        <circle cx="50" cy="50" r="42" stroke="rgba(255,255,255,.2)" fill="none" stroke-width="7" />
-                        <circle id="h-arc" cx="50" cy="50" r="42" stroke="#fff" fill="none" stroke-width="7"
-                            stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="264" />
-                    </svg>
-                    <div class="sc"><span id="h-sc">0</span><small id="h-lb">Loading</small></div>
-                </div>
-                <div class="hm">
-                    <div class="it">
-                        <div class="v" id="h-sv">₹0</div>
-                        <div class="l">Saved</div>
-                    </div>
-                    <div class="it">
-                        <div class="v" id="h-gl">0</div>
-                        <div class="l">Goals</div>
-                    </div>
-                    <div class="it">
-                        <div class="v" id="h-tx">0</div>
-                        <div class="l">Transactions</div>
-                    </div>
-                </div>
-                <div class="hb">
-                    <div style="font-size:12px" id="h-mn">Budget</div>
-                    <div style="font-size:11px;opacity:.8" id="h-bt">₹0 / ₹0</div>
-                    <div class="bar">
-                        <div class="bf" id="h-bf" style="width:0%"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="sr">
-                <div class="sc2">
-                    <div class="tp">
-                        <div class="ic" style="background:rgba(0,168,107,.1);color:var(--p)"><i
-                                class="fas fa-arrow-down"></i></div><span class="lb">Income</span>
-                    </div>
-                    <div class="vl mono green" id="s-in">₹0</div>
-                </div>
-                <div class="sc2">
-                    <div class="tp">
-                        <div class="ic" style="background:rgba(230,57,70,.1);color:var(--danger)"><i
-                                class="fas fa-arrow-up"></i></div><span class="lb">Spent</span>
-                    </div>
-                    <div class="vl mono red" id="s-ex">₹0</div>
-                </div>
-                <div class="sc2">
-                    <div class="tp">
-                        <div class="ic" style="background:rgba(0,168,107,.1);color:var(--p)"><i
-                                class="fas fa-piggy-bank"></i></div><span class="lb">Net</span>
-                    </div>
-                    <div class="vl mono green" id="s-sv">₹0</div>
-                </div>
-                <div class="sc2">
-                    <div class="tp">
-                        <div class="ic" style="background:rgba(255,183,3,.1);color:var(--gold)"><i
-                                class="fas fa-chart-line"></i></div><span class="lb">All-Time</span>
-                    </div>
-                    <div class="vl mono" id="s-at">₹0</div>
-                </div>
-            </div>
-            <div class="tc">
-                <div>
-                    <div class="card" style="margin-bottom:16px">
-                        <div class="card-h">
-                            <h3>Where did your money go?</h3>
-                        </div>
-                        <div class="dw">
-                            <div class="dc"><canvas id="donut" width="160" height="160"></canvas>
-                                <div class="ct">
-                                    <div class="tot mono" id="d-tot">₹0</div>
-                                    <div class="lb">Total Spent</div>
-                                </div>
-                            </div>
-                            <div class="dl" id="d-leg"></div>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-h">
-                            <h3>Recent Transactions</h3><span class="act" onclick="showAddTxn()">+ Add</span>
-                        </div>
-                        <div class="tl" id="txn-list">
-                            <p style="color:var(--n400);text-align:center;padding:24px">Loading...</p>
-                        </div>
-                    </div>
-                </div>
-                <div>
-                    <div class="card" style="margin-bottom:16px">
-                        <div class="card-h">
-                            <h3>Your Goals</h3><span class="act"
-                                onclick="window.open('https://wa.me/919363324580?text=Set%20a%20goal')">+ Add</span>
-                        </div>
-                        <div id="goal-list">
-                            <p style="color:var(--n400);text-align:center;padding:24px">Loading...</p>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-h">
-                            <h3>Quick Actions</h3>
-                        </div>
-                        <div style="display:grid;gap:8px">
-                            <button class="btn-p" onclick="showAddTxn()" style="height:40px;font-size:13px"><i
-                                    class="fas fa-plus" style="margin-right:6px"></i>Log Expense</button>
-                            <button class="btn-s"
-                                onclick="window.open('https://wa.me/919363324580?text=Show%20balance')"
-                                style="height:40px;font-size:13px"><i class="fab fa-whatsapp"
-                                    style="margin-right:6px"></i>Ask Viya</button>
-                            <button class="btn-s"
-                                onclick="window.open('https://wa.me/919363324580?text=Investment%20advice')"
-                                style="height:40px;font-size:13px"><i class="fas fa-chart-line"
-                                    style="margin-right:6px"></i>Invest Tips</button>
-                            <button class="btn-s"
-                                onclick="window.open('https://wa.me/919363324580?text=Weekly%20report')"
-                                style="height:40px;font-size:13px"><i class="fas fa-file-alt"
-                                    style="margin-right:6px"></i>Get Report</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    </div>
+
+    <!-- Life Score -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-title">🧠 Life Intelligence Score</span>
+            <button class="btn-ghost" onclick="openChat('how am I doing')">Details</button>
         </div>
-        <div class="bn">
-            <div class="tabs">
-                <button class="tab ac"><i class="fas fa-home"></i>Home</button>
-                <button class="tab" onclick="showAddTxn()"><i class="fas fa-plus-circle"></i>Add</button>
-                <button class="tab" onclick="window.open('https://wa.me/919363324580')"><i
-                        class="fab fa-whatsapp"></i>Viya</button>
-                <button class="tab"><i class="fas fa-bullseye"></i>Goals</button>
-                <button class="tab" onclick="logout()"><i class="fas fa-user"></i>Me</button>
+        <div class="life-score-card">
+            <div class="life-score-ring">
+                <svg viewBox="0 0 100 100">
+                    <circle class="bg" cx="50" cy="50" r="42"/>
+                    <circle class="fill" cx="50" cy="50" r="42"
+                        stroke-dasharray="264" stroke-dashoffset="79" id="score-ring"/>
+                </svg>
+                <div class="life-score-val" id="life-score">72</div>
+            </div>
+            <div class="life-score-label">Your wealth intelligence this week</div>
+            <div class="life-pillars">
+                <div class="pillar-item"><div class="pillar-emoji">💰</div><div class="pillar-name">Finance</div><div class="pillar-score" style="color:var(--success-light)">78</div></div>
+                <div class="pillar-item"><div class="pillar-emoji">🔥</div><div class="pillar-name">Habits</div><div class="pillar-score" style="color:var(--warning-light)">65</div></div>
+                <div class="pillar-item"><div class="pillar-emoji">📈</div><div class="pillar-name">Career</div><div class="pillar-score" style="color:var(--accent-light)">74</div></div>
+                <div class="pillar-item"><div class="pillar-emoji">🎓</div><div class="pillar-name">Learning</div><div class="pillar-score" style="color:var(--info)">68</div></div>
+                <div class="pillar-item"><div class="pillar-emoji">⚡</div><div class="pillar-name">Productivity</div><div class="pillar-score" style="color:var(--success-light)">80</div></div>
+                <div class="pillar-item"><div class="pillar-emoji">🎯</div><div class="pillar-name">Goals</div><div class="pillar-score" style="color:var(--warning-light)">62</div></div>
             </div>
         </div>
     </div>
 
-    <!-- Modal -->
-    <div class="mo" id="txn-mo">
-        <div class="mc">
-            <h2 class="sora">Log Transaction</h2>
-            <div class="fg"><label>Amount (₹)</label><input type="number" id="t-amt" placeholder="500"></div>
-            <div class="fg"><label>Category</label><select id="t-cat">
-                    <option value="Food">🍛 Food</option>
-                    <option value="Transport">🚗 Transport</option>
-                    <option value="Shopping">🛍️ Shopping</option>
-                    <option value="Bills">💡 Bills</option>
-                    <option value="Health">💊 Health</option>
-                    <option value="Entertainment">🎬 Entertainment</option>
-                    <option value="Education">📚 Education</option>
-                    <option value="Other">📁 Other</option>
-                </select></div>
-            <div class="fg"><label>Description</label><input type="text" id="t-desc" placeholder="Lunch at cafe"></div>
-            <div class="fg"><label>Type</label><select id="t-type">
-                    <option value="expense">💸 Expense</option>
-                    <option value="income">💵 Income</option>
-                </select></div>
-            <button class="btn-p" onclick="addTxn()">Save</button>
-            <button class="btn-s" onclick="hideModal()">Cancel</button>
+    <!-- Habit Streaks -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-title">🔥 Habit Streaks</span>
+            <button class="btn-ghost" onclick="openChat('start habit')">+ New</button>
+        </div>
+        <div id="habits-list">
+            <div class="habit-card"><div class="habit-emoji">📝</div><div class="habit-info"><div class="habit-name">Log Expenses</div><div class="habit-streak">🔥 12 day streak</div></div><button class="habit-check done" onclick="this.classList.toggle('done')"><i class="fas fa-check"></i></button></div>
+            <div class="habit-card"><div class="habit-emoji">🏋️</div><div class="habit-info"><div class="habit-name">Exercise</div><div class="habit-streak">🔥 5 day streak</div></div><button class="habit-check" onclick="this.classList.toggle('done')"><i class="fas fa-check"></i></button></div>
+            <div class="habit-card"><div class="habit-emoji">📚</div><div class="habit-info"><div class="habit-name">Read 20 Pages</div><div class="habit-streak">🔥 8 day streak</div></div><button class="habit-check done" onclick="this.classList.toggle('done')"><i class="fas fa-check"></i></button></div>
         </div>
     </div>
-    <div class="toast" id="toast"></div>
 
-    <script>
-        const API = window.location.origin;
-        let phone = null, token = null, data = null, obData = {};
-        let otpMode = '', otpPhone = '';
+    <!-- Goals -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-title">🎯 Active Goals</span>
+            <button class="btn-ghost" onclick="openChat('set goal')">+ Add</button>
+        </div>
+        <div id="goals-list">
+            <div class="goal-card"><div class="goal-top"><span class="goal-name">Emergency Fund</span><span class="goal-pct">45%</span></div><div class="goal-bar"><div class="goal-fill" style="width:45%"></div></div><div class="goal-meta"><span>₹45,000 / ₹1,00,000</span><span>Dec 2026</span></div></div>
+            <div class="goal-card"><div class="goal-top"><span class="goal-name">New Laptop</span><span class="goal-pct">72%</span></div><div class="goal-bar"><div class="goal-fill" style="width:72%"></div></div><div class="goal-meta"><span>₹54,000 / ₹75,000</span><span>Aug 2026</span></div></div>
+        </div>
+    </div>
 
-        // AUTH
-        function showAuth(tab) {
-            document.getElementById('auth-login').classList.toggle('hidden', tab !== 'login');
-            document.getElementById('auth-register').classList.toggle('hidden', tab !== 'register');
-            document.getElementById('auth-otp').classList.toggle('hidden', tab !== 'otp');
-            document.getElementById('auth-onboard').classList.toggle('hidden', tab !== 'onboard');
-            document.getElementById('auth-tabs').classList.toggle('hidden', tab === 'otp' || tab === 'onboard');
-            document.querySelectorAll('#auth-tabs button').forEach((b, i) => b.classList.toggle('active', tab === 'login' ? i === 0 : i === 1));
+    <!-- Recent Transactions -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-title">💳 Recent Transactions</span>
+            <button class="btn-ghost" onclick="openChat('report')">See All</button>
+        </div>
+        <div id="txn-list" style="padding:0 4px">
+            <div class="txn-item"><div class="txn-icon">🍕</div><div class="txn-info"><div class="txn-name">Swiggy Order</div><div class="txn-cat">Food & Dining • Today</div></div><div class="txn-amount expense">-₹342</div></div>
+            <div class="txn-item"><div class="txn-icon">🚗</div><div class="txn-info"><div class="txn-name">Uber Ride</div><div class="txn-cat">Transport • Today</div></div><div class="txn-amount expense">-₹189</div></div>
+            <div class="txn-item"><div class="txn-icon">💰</div><div class="txn-info"><div class="txn-name">Freelance Payment</div><div class="txn-cat">Income • Yesterday</div></div><div class="txn-amount income">+₹15,000</div></div>
+            <div class="txn-item"><div class="txn-icon">☕</div><div class="txn-info"><div class="txn-name">Starbucks</div><div class="txn-cat">Food & Dining • Yesterday</div></div><div class="txn-amount expense">-₹480</div></div>
+        </div>
+    </div>
+
+    <div style="height:40px"></div>
+</div>
+
+<!-- Bottom Navigation -->
+<nav class="bottom-nav hidden" id="bottom-nav">
+    <button class="nav-item active" onclick="switchView('home',this)"><i class="fas fa-home"></i><span>Home</span></button>
+    <button class="nav-item" onclick="switchView('habits',this)"><i class="fas fa-fire"></i><span>Habits</span></button>
+    <button class="nav-fab" onclick="toggleChat()" id="chat-fab"><i class="fas fa-comment-dots"></i></button>
+    <button class="nav-item" onclick="switchView('goals',this)"><i class="fas fa-bullseye"></i><span>Goals</span></button>
+    <button class="nav-item" onclick="switchView('profile',this)"><i class="fas fa-user"></i><span>Profile</span></button>
+</nav>
+
+<!-- Chat Panel -->
+<div id="chat-panel">
+    <div class="chat-header">
+        <div class="chat-header-left">
+            <div class="chat-avatar">🤖</div>
+            <div>
+                <div class="chat-title">Viya AI</div>
+                <div class="chat-status">● Online</div>
+            </div>
+        </div>
+        <button class="chat-close" onclick="toggleChat()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="chat-messages" id="chat-messages">
+        <div class="chat-msg bot">Hey! 👋 I'm Viya, your AI wealth manager. Ask me anything about money, habits, goals, or career!</div>
+    </div>
+    <div class="chat-input-area">
+        <input class="chat-input" id="chat-input" placeholder="Ask Viya anything..." onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="chat-send" onclick="sendChat()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+</div>
+
+<script>
+// ═══════════ STATE ═══════════
+const API = window.location.origin;
+let currentUser = null;
+let chatOpen = false;
+
+// ═══════════ AUTH ═══════════
+function switchTab(tab) {
+    document.getElementById('tab-login').classList.toggle('active', tab==='login');
+    document.getElementById('tab-register').classList.toggle('active', tab==='register');
+    document.getElementById('login-form').classList.toggle('hidden', tab!=='login');
+    document.getElementById('register-form').classList.toggle('hidden', tab!=='register');
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+    const phone = document.getElementById('login-phone').value.trim();
+    const pass = document.getElementById('login-pass').value;
+    const btn = document.getElementById('login-btn');
+    const err = document.getElementById('login-error');
+    btn.textContent = 'Signing in...'; btn.disabled = true; err.textContent = '';
+    try {
+        const r = await fetch(`${API}/api/auth/login`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({phone, password:pass})
+        });
+        const d = await r.json();
+        if(d.success) {
+            localStorage.setItem('mv_phone', phone.replace(/\+/g,'').replace(/\s/g,''));
+            localStorage.setItem('mv_token', d.token);
+            localStorage.setItem('mv_user', JSON.stringify(d.user||{}));
+            currentUser = d.user;
+            showApp();
+        } else { err.textContent = d.error || 'Login failed'; }
+    } catch(ex) { err.textContent = 'Network error'; }
+    btn.textContent = 'Sign In'; btn.disabled = false;
+}
+
+async function handleRegister(e) {
+    e.preventDefault();
+    const phone = document.getElementById('reg-phone').value.trim();
+    const pass = document.getElementById('reg-pass').value;
+    const pass2 = document.getElementById('reg-pass2').value;
+    const btn = document.getElementById('reg-btn');
+    const err = document.getElementById('reg-error');
+    if(pass !== pass2) { err.textContent = 'Passwords do not match'; return; }
+    btn.textContent = 'Creating...'; btn.disabled = true; err.textContent = '';
+    try {
+        const r = await fetch(`${API}/api/auth/register`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({phone, password:pass})
+        });
+        const d = await r.json();
+        if(d.success) { switchTab('login'); document.getElementById('login-phone').value = phone;
+            document.getElementById('login-error').textContent = '✅ Account created! Sign in now.';
+            document.getElementById('login-error').style.color = 'var(--success)';
+        } else { err.textContent = d.error; }
+    } catch(ex) { err.textContent = 'Network error'; }
+    btn.textContent = 'Create Account'; btn.disabled = false;
+}
+
+function handleLogout() {
+    localStorage.removeItem('mv_phone'); localStorage.removeItem('mv_token'); localStorage.removeItem('mv_user');
+    currentUser = null;
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app-screen').style.display = 'none';
+    document.getElementById('bottom-nav').classList.add('hidden');
+}
+
+// ═══════════ APP INIT ═══════════
+function showApp() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+    document.getElementById('bottom-nav').classList.remove('hidden');
+    const u = JSON.parse(localStorage.getItem('mv_user')||'{}');
+    const name = u.name || 'User';
+    document.getElementById('user-name-display').textContent = name;
+    document.getElementById('user-avatar').textContent = name.charAt(0).toUpperCase();
+    loadDashboardData();
+}
+
+async function loadDashboardData() {
+    const phone = localStorage.getItem('mv_phone');
+    if(!phone) return;
+    try {
+        const r = await fetch(`${API}/api/moneyview/user/${phone}`);
+        if(r.ok) {
+            const d = await r.json();
+            if(d.name) document.getElementById('user-name-display').textContent = d.name;
+            const income = d.monthly_income || 0;
+            const expenses = d.monthly_expenses || 0;
+            const savings = d.current_savings || 0;
+            const budget = d.daily_budget || 1000;
+            document.getElementById('net-worth').textContent = '₹' + savings.toLocaleString('en-IN');
+            document.getElementById('stat-income').textContent = '₹' + income.toLocaleString('en-IN');
+            document.getElementById('stat-expense').textContent = '₹' + expenses.toLocaleString('en-IN');
+            document.getElementById('stat-budget').textContent = '₹' + budget.toLocaleString('en-IN');
         }
+    } catch(e) { console.log('Dashboard data load error:', e); }
+}
 
-        async function doLogin() {
-            const ph = document.getElementById('l-phone').value.replace(/\D/g, '');
-            const pw = document.getElementById('l-pass').value;
-            if (!ph || !pw) { toast('Enter phone & password', 'err'); return }
-            try {
-                const r = await fetch(`${API}/api/dashboard/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: ph, password: pw }) });
-                const d = await r.json();
-                if (!r.ok) { toast(d.detail || 'Login failed', 'err'); return }
-                phone = d.phone; token = d.token;
-                localStorage.setItem('mv_phone', phone); localStorage.setItem('mv_token', token);
-                loadDash();
-            } catch (e) { toast('Connection error', 'err') }
-        }
+// ═══════════ CHAT ═══════════
+function toggleChat() {
+    chatOpen = !chatOpen;
+    document.getElementById('chat-panel').style.display = chatOpen ? 'block' : 'none';
+    const fab = document.getElementById('chat-fab');
+    fab.innerHTML = chatOpen ? '<i class="fas fa-times"></i>' : '<i class="fas fa-comment-dots"></i>';
+    if(chatOpen) document.getElementById('chat-input').focus();
+}
 
-        async function doRegister() {
-            const nm = document.getElementById('r-name').value;
-            const ph = document.getElementById('r-phone').value.replace(/\D/g, '');
-            const pw = document.getElementById('r-pass').value;
-            if (!nm || !ph || !pw) { toast('Fill all fields', 'err'); return }
-            if (pw.length < 6) { toast('Password min 6 chars', 'err'); return }
-            try {
-                const r = await fetch(`${API}/api/dashboard/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: ph, password: pw, name: nm }) });
-                const d = await r.json();
-                if (!r.ok) { toast(d.detail || 'Registration failed', 'err'); return }
-                phone = d.phone; token = d.token; obData.name = nm;
-                localStorage.setItem('mv_phone', phone); localStorage.setItem('mv_token', token);
-                showAuth('onboard');
-            } catch (e) { toast('Connection error', 'err') }
-        }
+function openChat(msg) {
+    if(!chatOpen) toggleChat();
+    if(msg) { document.getElementById('chat-input').value = msg; sendChat(); }
+}
 
-        async function requestOTP(mode) {
-            otpMode = mode;
-            const ph = mode === 'login' ? document.getElementById('l-phone').value : document.getElementById('r-phone').value;
-            otpPhone = ph.replace(/\D/g, '');
-            if (!otpPhone) { toast('Enter phone number first', 'err'); return }
-            try {
-                const r = await fetch(`${API}/api/dashboard/auth/send-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: otpPhone }) });
-                const d = await r.json();
-                if (!r.ok) { toast(d.detail || 'Failed', 'err'); return }
-                document.getElementById('otp-phone-display').textContent = otpPhone;
-                showAuth('otp');
-                toast('✅ OTP sent! (Demo: ' + d.demo_otp + ')');
-                document.getElementById('o1').focus();
-            } catch (e) { toast('Error sending OTP', 'err') }
-        }
+async function sendChat() {
+    const input = document.getElementById('chat-input');
+    const msg = input.value.trim();
+    if(!msg) return;
+    input.value = '';
+    const container = document.getElementById('chat-messages');
+    // User bubble
+    const userDiv = document.createElement('div');
+    userDiv.className = 'chat-msg user'; userDiv.textContent = msg;
+    container.appendChild(userDiv);
+    // Typing indicator
+    const typing = document.createElement('div');
+    typing.className = 'chat-msg bot'; typing.innerHTML = '<em style="color:var(--text-muted)">Viya is thinking...</em>';
+    container.appendChild(typing);
+    container.scrollTop = container.scrollHeight;
+    try {
+        const phone = localStorage.getItem('mv_phone') || 'web_user';
+        const r = await fetch(`${API}/api/moneyview/process`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({phone, message:msg, sender_name:'Dashboard User'})
+        });
+        const d = await r.json();
+        typing.innerHTML = (d.reply||'Sorry, I could not process that.').replace(/\*([^*]+)\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+    } catch(e) {
+        typing.innerHTML = '⚠️ Connection error. Please try again.';
+    }
+    container.scrollTop = container.scrollHeight;
+}
 
-        function otpNext(el, next) { if (el.value.length === 1 && next <= 4) document.getElementById('o' + next).focus() }
+function switchView(view, el) {
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    if(el) el.classList.add('active');
+    if(view==='habits') openChat('habit check');
+    if(view==='goals') openChat('goal progress');
+    if(view==='profile') openChat('profile');
+}
 
-        async function verifyOTP() {
-            const otp = [1, 2, 3, 4].map(i => document.getElementById('o' + i).value).join('');
-            if (otp.length < 4) return;
-            try {
-                const r = await fetch(`${API}/api/dashboard/auth/verify-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: otpPhone, otp }) });
-                const d = await r.json();
-                if (!r.ok) { toast(d.detail || 'Invalid OTP', 'err'); return }
-                phone = d.phone; token = d.token;
-                localStorage.setItem('mv_phone', phone); localStorage.setItem('mv_token', token);
-                loadDash();
-            } catch (e) { toast('Verification error', 'err') }
-        }
-
-        // ONBOARDING
-        let obStep = 1;
-        function obSet(key, val, el) {
-            obData[key] = val;
-            el.parentElement.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('sel'));
-            el.classList.add('sel');
-            if (key !== 'primary_goal') {
-                setTimeout(() => {
-                    obStep++;
-                    document.querySelectorAll('.ob-step').forEach(s => s.classList.remove('active'));
-                    document.getElementById('os-' + obStep).classList.add('active');
-                    document.querySelectorAll('.dots .d').forEach((d, i) => d.classList.toggle('on', i === obStep - 1));
-                }, 250);
-            }
-        }
-        async function finishOnboard() {
-            obData.goal_amount = parseFloat(document.getElementById('ob-amt').value) || 50000;
-            try {
-                await fetch(`${API}/api/dashboard/onboard/${phone}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obData) });
-                toast('🎉 Welcome to MoneyViya!');
-                setTimeout(loadDash, 1000);
-            } catch (e) { toast('Error', 'err') }
-        }
-
-        // DASHBOARD
-        async function loadDash() {
-            document.getElementById('auth').classList.add('hidden');
-            document.getElementById('dash').style.display = 'block';
-            await refresh();
-        }
-
-        async function refresh() {
-            if (!phone) return;
-            try {
-                const r = await fetch(`${API}/api/dashboard/overview/${phone}`);
-                if (!r.ok) { toast('User not found', 'err'); return }
-                data = await r.json();
-                render();
-            } catch (e) { toast('Sync error', 'err') }
-        }
-
-        function fmt(n) { return '₹' + Number(n || 0).toLocaleString('en-IN') }
-
-        function render() {
-            if (!data) return;
-            const u = data.user, h = data.health, m = data.monthly;
-            document.getElementById('av').textContent = (u.name || 'U')[0].toUpperCase();
-            document.getElementById('h-sc').textContent = h.score;
-            document.getElementById('h-lb').textContent = h.label;
-            document.getElementById('h-arc').style.strokeDashoffset = 264 - (264 * h.score / 100);
-            document.getElementById('h-sv').textContent = fmt(m.savings);
-            document.getElementById('h-gl').textContent = data.goals.length;
-            document.getElementById('h-tx').textContent = data.transaction_count;
-            document.getElementById('h-mn').textContent = new Date().toLocaleString('en', { month: 'long' });
-            document.getElementById('h-bt').textContent = `${fmt(m.expense)} / ${fmt(m.budget)}`;
-            document.getElementById('h-bf').style.width = Math.min(m.budget_used_pct, 100) + '%';
-            document.getElementById('s-in').textContent = fmt(m.income);
-            document.getElementById('s-ex').textContent = fmt(m.expense);
-            document.getElementById('s-sv').textContent = fmt(m.savings);
-            document.getElementById('s-at').textContent = fmt(data.totals.savings);
-            drawDonut(data.categories);
-            renderGoals(data.goals);
-            renderTxns(data.recent_transactions);
-        }
-
-        function drawDonut(cats) {
-            const c = document.getElementById('donut'), ctx = c.getContext('2d');
-            const cl = ['#00A86B', '#FFB703', '#FF6B35', '#E63946', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6'];
-            const en = Object.entries(cats || {});
-            const tot = en.reduce((s, e) => s + e[1], 0);
-            document.getElementById('d-tot').textContent = fmt(tot);
-            ctx.clearRect(0, 0, 160, 160);
-            let sa = -Math.PI / 2;
-            const cx = 80, cy = 80, r = 60, lw = 20;
-            if (!en.length) { ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.strokeStyle = '#E1E8EE'; ctx.lineWidth = lw; ctx.stroke(); return }
-            const lg = document.getElementById('d-leg'); lg.innerHTML = '';
-            const ic = { 'Food': '🍛', 'Transport': '🚗', 'Shopping': '🛍️', 'Bills': '💡', 'Health': '💊', 'Entertainment': '🎬', 'Education': '📚', 'Housing': '🏠' };
-            en.forEach(([cat, amt], i) => {
-                const a = (amt / tot) * Math.PI * 2;
-                ctx.beginPath(); ctx.arc(cx, cy, r, sa, sa + a); ctx.strokeStyle = cl[i % cl.length]; ctx.lineWidth = lw; ctx.stroke(); sa += a;
-                lg.innerHTML += `<div class="li"><div class="dt" style="background:${cl[i % cl.length]}"></div>${ic[cat] || '📁'} ${cat}<span class="am">${fmt(amt)}</span></div>`;
-            });
-        }
-
-        function renderGoals(goals) {
-            const el = document.getElementById('goal-list');
-            if (!goals?.length) { el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--n400)"><p style="font-size:28px">🎯</p><p style="font-weight:600;font-size:13px">No goals yet</p><p style="font-size:11px;margin-top:4px">Tell Viya: "I want to save for a bike"</p></div>'; return }
-            el.innerHTML = goals.map(g => `<div class="gi"><div class="gt"><span class="nm">${g.emoji} ${g.name}</span><span class="pc mono">${g.progress}%</span></div><div class="gb"><div class="gf" style="width:${Math.min(g.progress, 100)}%"></div></div><div class="gm"><span>${fmt(g.saved)} / ${fmt(g.target)}</span><span style="color:${g.progress >= 100 ? 'var(--gold)' : g.progress > 50 ? 'var(--p)' : 'var(--n400)'}">${g.progress >= 100 ? 'Achieved 🎉' : g.progress > 50 ? 'On Track ✅' : 'In Progress'}</span></div></div>`).join('');
-        }
-
-        function renderTxns(txns) {
-            const el = document.getElementById('txn-list');
-            if (!txns?.length) { el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--n400)"><p style="font-size:28px">📝</p><p style="font-weight:600;font-size:13px">No transactions</p><p style="font-size:11px;margin-top:4px">Log your first expense!</p></div>'; return }
-            const ic = { 'Food': '🍛', 'Transport': '🚗', 'Shopping': '🛍️', 'Bills': '💡', 'Health': '💊', 'Entertainment': '🎬', 'Education': '📚', 'Salary': '💼', 'Freelance': '💻', 'Other': '📁', 'food': '🍛', 'transport': '🚗', 'shopping': '🛍️', 'bills': '💡', 'health': '💊', 'entertainment': '🎬', 'education': '📚' };
-            const bg = { 'Food': '#FF6B35', 'Transport': '#3B82F6', 'Shopping': '#8B5CF6', 'Bills': '#FFB703', 'Health': '#E63946', 'Entertainment': '#EC4899', 'Education': '#14B8A6' };
-            el.innerHTML = txns.slice(0, 15).map(t => {
-                const isI = t.type === 'income';
-                const c = bg[t.category] || '#94A3B8';
-                return `<div class="ti"><div class="tc2" style="background:${c}15;color:${c}">${ic[t.category] || '📁'}</div><div class="tinf"><div class="td">${t.description || t.category || 'Transaction'}</div><div class="tdt">${t.date || ''} ${t.source === 'web_dashboard' ? '🌐' : '💬'}</div></div><div class="ta ${isI ? 'green' : 'red'}">${isI ? '+' : '−'}${fmt(t.amount)}</div></div>`;
-            }).join('');
-        }
-
-        // ADD TXN
-        function showAddTxn() { document.getElementById('txn-mo').classList.add('show') }
-        function hideModal() { document.getElementById('txn-mo').classList.remove('show') }
-        async function addTxn() {
-            const amt = parseFloat(document.getElementById('t-amt').value);
-            if (!amt) { toast('Enter amount', 'err'); return }
-            try {
-                await fetch(`${API}/api/dashboard/transactions/${phone}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: amt, category: document.getElementById('t-cat').value, description: document.getElementById('t-desc').value, type: document.getElementById('t-type').value }) });
-                hideModal(); toast('✅ Saved! Synced to WhatsApp.');
-                document.getElementById('t-amt').value = ''; document.getElementById('t-desc').value = '';
-                await refresh();
-            } catch (e) { toast('Error', 'err') }
-        }
-
-        // UTILS
-        function toast(msg, type) { const t = document.getElementById('toast'); t.textContent = msg; t.className = 'toast show' + (type === 'err' ? ' err' : ''); setTimeout(() => t.classList.remove('show'), 3500) }
-        function logout() { localStorage.clear(); location.reload() }
-
-        // AUTO-LOGIN
-        (function () {
-            const p = localStorage.getItem('mv_phone');
-            const t = localStorage.getItem('mv_token');
-            if (p) { phone = p; token = t; loadDash() }
-            if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
-            setInterval(() => { if (phone && document.visibilityState === 'visible') refresh() }, 30000);
-        })();
-    </script>
+// ═══════════ AUTO LOGIN ═══════════
+(function() {
+    const token = localStorage.getItem('mv_token');
+    if(token) { showApp(); } 
+})();
+</script>
 </body>
-
 </html>

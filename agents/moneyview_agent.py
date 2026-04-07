@@ -1,12 +1,15 @@
 """
-MoneyViya Agent v2.0 - Personal Financial Manager & Advisor
+MoneyViya Agent v3.0 - AI Life & Money Manager
 =============================================================
-Natural conversational AI agent with:
-- No numbered options - natural language input
-- Complete financial profiling
-- Multi-goal management
-- Stock market analysis
-- Multilingual support (EN, HI, TA, TE, KN)
+Complete AI-powered life and money management agent:
+- Finance: tracking, budgeting, investing, tax planning
+- Income: active + passive, freelancing, side hustles
+- Career: job search, salary negotiation, promotions
+- Learning: courses with ROI, skill gap analysis
+- Productivity: habits, time management, daily planning
+- Multi-agent architecture with 5 specialist agents
+- Persona-aware: student/freelancer/homemaker/salaried/business
+- Multilingual: EN, HI, TA, TE, KN
 """
 
 import re
@@ -20,6 +23,34 @@ try:
     from services.openai_service import openai_service
 except:
     openai_service = None
+
+# Specialist Agents (MoneyViya 2.0 Multi-Agent Architecture)
+try:
+    from services.specialist_agents import (
+        income_agent, career_agent, learning_agent,
+        productivity_agent, tax_agent
+    )
+    SPECIALIST_AGENTS_AVAILABLE = True
+    print("[STARTUP] MoneyViya 2.0 specialist agents loaded!")
+except Exception as e:
+    print(f"[STARTUP] Specialist agents not available: {e}")
+    income_agent = career_agent = learning_agent = None
+    productivity_agent = tax_agent = None
+    SPECIALIST_AGENTS_AVAILABLE = False
+
+# Life Intelligence Agents (MoneyViya 2.0 Advanced)
+try:
+    from services.life_agents import (
+        habit_agent, pain_detector, daily_engine,
+        weekly_reflection, goal_synthesizer
+    )
+    LIFE_AGENTS_AVAILABLE = True
+    print("[STARTUP] MoneyViya 2.0 life intelligence agents loaded!")
+except Exception as e:
+    print(f"[STARTUP] Life agents not available: {e}")
+    habit_agent = pain_detector = daily_engine = None
+    weekly_reflection = goal_synthesizer = None
+    LIFE_AGENTS_AVAILABLE = False
 
 try:
     import pytz
@@ -476,6 +507,106 @@ _Type your answer for the current question, or type *reset* to start fresh._"""
                                             "baant", "share bill", "who owes"]):
                 return self._handle_split_bill(msg, user)
             
+            # ═══════════════════════════════════════════════════
+            # MONEYVIYA 2.0 — LIFE MANAGEMENT AGENTS
+            # ═══════════════════════════════════════════════════
+            
+            # ─── 30. INCOME GROWTH — Earn more, passive income ───
+            if SPECIALIST_AGENTS_AVAILABLE and any(w in msg_lower for w in [
+                    "earn more", "income ideas", "passive income", "side income",
+                    "freelance", "freelancing", "upwork", "fiverr", "gig",
+                    "income growth", "income streams", "extra income",
+                    "zyada kamana", "paisa kamana", "income badhana",
+                    "how to earn", "earn from home", "side hustle",
+                    "tiffin service", "tutoring", "reselling"]):
+                return income_agent.process(message, user)
+            
+            # ─── 31. CAREER — Jobs, salary, promotions ───
+            if SPECIALIST_AGENTS_AVAILABLE and any(w in msg_lower for w in [
+                    "career", "job", "switch job", "new job", "salary",
+                    "promotion", "hike", "appraisal", "resume", "cv",
+                    "interview", "leetcode", "dsa", "placement",
+                    "naukri", "job search", "resign", "quit job",
+                    "career path", "career change", "package",
+                    "job switch", "ctc", "compensation"]):
+                return career_agent.process(message, user)
+            
+            # ─── 32. LEARNING — Courses, skills, certifications ───
+            if SPECIALIST_AGENTS_AVAILABLE and any(w in msg_lower for w in [
+                    "learn", "course", "courses", "certification", "certificate",
+                    "skill", "skill gap", "what to learn", "kya seekhu",
+                    "study", "padhai", "training", "bootcamp",
+                    "udemy", "coursera", "freecodecamp",
+                    "learning roadmap", "learning path", "upskill",
+                    "free course", "scholarship", "which skill"]):
+                return learning_agent.process(message, user)
+            
+            # ─── 33. PRODUCTIVITY — Habits, time management ───
+            if SPECIALIST_AGENTS_AVAILABLE and any(w in msg_lower for w in [
+                    "productivity", "habit", "routine", "daily routine",
+                    "plan my day", "daily plan", "schedule",
+                    "time management", "procrastinat", "lazy",
+                    "morning routine", "time table", "focus",
+                    "aalas", "distract", "wakeup", "wake up"]):
+                return productivity_agent.process(message, user)
+            
+            # ─── 34. TAX — GST, ITR, tax saving ───
+            if SPECIALIST_AGENTS_AVAILABLE and any(w in msg_lower for w in [
+                    "gst", "itr", "income tax return", "file tax",
+                    "tax regime", "old regime", "new regime",
+                    "tax return", "tax filing", "gstr",
+                    "invoice", "bill generate", "client bill"]):
+                return tax_agent.process(message, user)
+            
+            # ═══════════════════════════════════════════════════
+            # MONEYVIYA 2.0 — LIFE INTELLIGENCE AGENTS
+            # ═══════════════════════════════════════════════════
+            
+            # ─── 35. HABIT AGENT — Streaks, routines, gamification ───
+            if LIFE_AGENTS_AVAILABLE and any(w in msg_lower for w in [
+                    "habit", "streak", "start habit", "new habit",
+                    "habit check", "check in", "daily check",
+                    "morning routine", "evening routine", "night routine",
+                    "suggest habit", "habit report", "habit progress",
+                    "habit ideas", "build habit", "break habit",
+                    "aadat", "routine", "bedtime"]):
+                return habit_agent.process(message, user)
+            
+            # ─── 36. GOAL SYNTHESIS — Cross-domain goals ───
+            if LIFE_AGENTS_AVAILABLE and any(w in msg_lower for w in [
+                    "set goal", "new goal", "create goal", "my goal",
+                    "goal progress", "goal status", "my goals",
+                    "check goals", "goal plan", "goal roadmap",
+                    "how to achieve", "break down goal",
+                    "connect goals", "goal connections"]):
+                return goal_synthesizer.process(message, user)
+            
+            # ─── 37. DAILY SUGGESTION — Morning/evening briefings ───
+            if LIFE_AGENTS_AVAILABLE and any(w in msg_lower for w in [
+                    "good morning", "morning briefing", "today's plan",
+                    "good evening", "evening checkin", "evening check",
+                    "subah", "shaam", "day plan", "daily briefing",
+                    "what should i do today", "plan today"]):
+                now = datetime.now()
+                if now.hour < 14:
+                    return daily_engine.morning_briefing(user)
+                else:
+                    return daily_engine.evening_checkin(user)
+            
+            # ─── 38. WEEKLY REVIEW — Sunday reflection ───
+            if LIFE_AGENTS_AVAILABLE and any(w in msg_lower for w in [
+                    "weekly review", "week review", "weekly report",
+                    "week summary", "this week", "reflect",
+                    "how was my week", "week analysis",
+                    "sunday review", "hafta"]):
+                return weekly_reflection.generate_review(user)
+            
+            # ─── 39. PAIN DETECTION — Emotional support ───
+            if LIFE_AGENTS_AVAILABLE:
+                pain_response = pain_detector.detect_from_message(message, user)
+                if pain_response:
+                    return pain_response
+            
             # ─── 22. INCOME — explicit keywords ───
             income_triggers = ["earn", "income", "received", "got paid", "salary", "kamai",
                               "mila", "credited", "कमाया", "मिला", "கிடைத்தது", "వచ్చింది",
@@ -538,11 +669,14 @@ Or just tell me what it was for! 😊"""
             self._save_user(phone, user)
             return """👋 *Welcome to MoneyViya!*
 
-I'm your personal AI financial advisor. I'll help you:
-💰 Track your money effortlessly
-🎯 Achieve your financial goals
-📈 Get smart investment advice
-💡 Save more every day
+I'm Viya — your AI Life & Money Manager 🚀
+
+I'll help you:
+💰 Track your money automatically
+📈 Grow your income (active + passive ideas)
+🎓 Learn skills that pay more
+💼 Grow your career
+🎯 Achieve your life goals
 
 Let's set up your profile in 2 minutes!
 
@@ -575,35 +709,138 @@ _(Just type: English, Hindi, Tamil, Telugu, or Kannada)_"""
             responses = {
                 "en": f"""Nice to meet you, *{user['name']}*! 😊
 
-*What do you do?*
-_(Example: I'm a student, I work in IT, I run a business, I'm a freelancer, I'm a homemaker)_""",
+*Which best describes you?*
+
+1️⃣ 🎓 *Student* — College/learning phase
+2️⃣ 💼 *Salaried* — Fixed monthly salary
+3️⃣ 🎯 *Freelancer* — Gig worker/self-employed
+4️⃣ 👩‍🏫 *Homemaker* — Managing household
+5️⃣ 🏢 *Business Owner* — Running a business
+
+_(Just type 1, 2, 3, 4, or 5 — or describe what you do!)_""",
                 "hi": f"""आपसे मिलकर खुशी हुई, *{user['name']}*! 😊
 
 *आप क्या करते हैं?*
-_(उदाहरण: छात्र हूं, नौकरी करता हूं, व्यापार है, फ्रीलांसर हूं)_""",
+
+1️⃣ 🎓 *छात्र* — पढ़ाई
+2️⃣ 💼 *नौकरी* — मासिक वेतन
+3️⃣ 🎯 *फ्रीलांसर* — स्व-रोजगार
+4️⃣ 👩‍🏫 *गृहिणी* — घर संभालना
+5️⃣ 🏢 *व्यापारी* — अपना बिज़नेस
+
+_(1, 2, 3, 4, या 5 लिखें)_""",
                 "ta": f"""சந்தித்ததில் மகிழ்ச்சி, *{user['name']}*! 😊
 
 *நீங்கள் என்ன செய்கிறீர்கள்?*
-_(உதாரணம்: மாணவர், வேலை, வணிகம்)_"""
+
+1️⃣ 🎓 *மாணவர்*
+2️⃣ 💼 *வேலை*
+3️⃣ 🎯 *ஃப்ரீலான்சர்*
+4️⃣ 👩‍🏫 *இல்லத்தரசி*
+5️⃣ 🏢 *தொழில்*"""
             }
             return responses.get(lang, responses["en"])
         
-        # Step 3: Occupation
+        # Step 3: Occupation + Persona Detection
         if step == 3:
-            user["occupation"] = self._detect_occupation(message)
+            msg_lower = message.lower().strip()
+            
+            # Detect persona from response
+            persona_map = {
+                "1": ("student", "Student"),
+                "student": ("student", "Student"),
+                "college": ("student", "Student"),
+                "padhai": ("student", "Student"),
+                "studying": ("student", "Student"),
+                "university": ("student", "Student"),
+                
+                "2": ("salaried", "Salaried Professional"),
+                "salaried": ("salaried", "Salaried Professional"),
+                "job": ("salaried", "Salaried Professional"),
+                "naukri": ("salaried", "Salaried Professional"),
+                "employee": ("salaried", "Salaried Professional"),
+                "work in": ("salaried", "Salaried Professional"),
+                "it": ("salaried", "IT Professional"),
+                "engineer": ("salaried", "Engineer"),
+                "developer": ("salaried", "Developer"),
+                "manager": ("salaried", "Manager"),
+                "teacher": ("salaried", "Teacher"),
+                "doctor": ("salaried", "Doctor"),
+                "nurse": ("salaried", "Nurse"),
+                
+                "3": ("freelancer", "Freelancer"),
+                "freelance": ("freelancer", "Freelancer"),
+                "freelancer": ("freelancer", "Freelancer"),
+                "gig": ("freelancer", "Gig Worker"),
+                "self employed": ("freelancer", "Self-Employed"),
+                "self-employed": ("freelancer", "Self-Employed"),
+                "uber": ("freelancer", "Gig Worker"),
+                "swiggy": ("freelancer", "Delivery Partner"),
+                "zomato": ("freelancer", "Delivery Partner"),
+                "tutor": ("freelancer", "Tutor"),
+                "consultant": ("freelancer", "Consultant"),
+                "designer": ("freelancer", "Designer"),
+                "writer": ("freelancer", "Writer"),
+                "photographer": ("freelancer", "Photographer"),
+                
+                "4": ("homemaker", "Homemaker"),
+                "homemaker": ("homemaker", "Homemaker"),
+                "housewife": ("homemaker", "Homemaker"),
+                "home maker": ("homemaker", "Homemaker"),
+                "grahini": ("homemaker", "Homemaker"),
+                "househusband": ("homemaker", "Homemaker"),
+                "home": ("homemaker", "Homemaker"),
+                
+                "5": ("business_owner", "Business Owner"),
+                "business": ("business_owner", "Business Owner"),
+                "entrepreneur": ("business_owner", "Entrepreneur"),
+                "shop": ("business_owner", "Shop Owner"),
+                "store": ("business_owner", "Store Owner"),
+                "restaurant": ("business_owner", "Restaurant Owner"),
+                "startup": ("business_owner", "Startup Founder"),
+                "vyapari": ("business_owner", "Business Owner"),
+                "dukandaar": ("business_owner", "Shop Owner"),
+            }
+            
+            detected_persona = None
+            detected_occupation = message.strip().title()
+            
+            for key, (persona, occ) in persona_map.items():
+                if key in msg_lower:
+                    detected_persona = persona
+                    detected_occupation = occ
+                    break
+            
+            if not detected_persona:
+                detected_persona = "salaried"  # default
+            
+            user["occupation"] = detected_occupation
+            user["persona"] = detected_persona
             user["onboarding_step"] = 4
             self._save_user(phone, user)
             
+            # Persona-specific acknowledgment
+            persona_msgs = {
+                "student": f"Awesome, student life! 🎓 MoneyViya will help you earn while learning + manage your money smartly.",
+                "salaried": f"Great, {detected_occupation}! 💼 MoneyViya will help you save more, invest wisely, and grow your career.",
+                "freelancer": f"Love it, {detected_occupation}! 🎯 MoneyViya will track irregular income, find new clients, and build passive income.",
+                "homemaker": f"Wonderful, {detected_occupation}! 👩‍🏫 MoneyViya will show your household contribution, find income-from-home ideas, and manage family finances.",
+                "business_owner": f"Impressive, {detected_occupation}! 🏢 MoneyViya will separate business/personal finances, track profitability, and help scale."
+            }
+            
+            persona_msg = persona_msgs.get(detected_persona, f"Great, {detected_occupation}! 💼")
+            
             responses = {
-                "en": f"""Great, {user['occupation']}! 💼
+                "en": f"""{persona_msg}
 
 *What's your approximate monthly income?*
-_(Example: 25000, 50k, 1 lakh)_""",
-                "hi": f"""बढ़िया, {user['occupation']}! 💼
+_(Example: 25000, 50k, 1 lakh, or 0 if student/homemaker)_""",
+                "hi": f"""{persona_msg}
 
 *आपकी लगभग मासिक आय कितनी है?*
 _(उदाहरण: 25000, 50 हजार, 1 लाख)_""",
-                "ta": f"""சிறப்பு, {user['occupation']}! 💼
+                "ta": f"""{persona_msg}
+
 
 *உங்கள் மாத வருமானம் எவ்வளவு?*"""
             }
@@ -829,11 +1066,11 @@ _(Example: 2 years, 6 months, December 2025)_""",
                 g = user["goals"][0]
                 goal_text = f"🎯 {g.get('name', 'Goal')} - ₹{int(g.get('amount', 0)):,} in {g.get('timeline', 'TBD')}"
             
-            return f"""🎉 *Your MoneyViya Profile is Ready!*
+            return f"""🎉 *{name}, Your MoneyViya Profile is Ready!*
 
-📊 *{name}'s Financial Snapshot:*
+📊 *Financial Snapshot:*
 ━━━━━━━━━━━━━━━━━━━━━━━━━
-💼 {user.get('occupation', 'User')}
+💼 {user.get('occupation', 'User')} ({user.get('persona', 'user').replace('_', ' ').title()})
 💰 Income: ₹{int(income):,}/month
 💸 Expenses: ₹{int(expenses):,}/month
 💵 Surplus: ₹{int(surplus):,}/month
@@ -846,15 +1083,16 @@ _(Example: 2 years, 6 months, December 2025)_""",
 • Daily Budget: ₹{daily_budget:,}
 • Daily Savings Target: ₹{int(surplus/30):,}
 
-⏰ *I'll Remind You:*
-• 6 AM - Morning motivation
-• 9 AM - Market updates
-• 8 PM - Day summary
+🚀 *Here's what I can do for you:*
 
-*Start tracking now!*
-Say "Spent 500 on lunch" or "Earned 5000"
+💰 *Money:* "Spent 500 on lunch" • "Balance" • "Report"
+📈 *Grow Income:* "passive income" • "freelance"
+🎓 *Learn \u0026 Earn:* "courses" • "skill gap"
+💼 *Career:* "salary insights" • "resume tips"
+⚡ *Productivity:* "plan my day" • "habit tracker"
+🏛️ *Tax:* "tax saving" • "gst" • "itr"
 
-Type *help* for all commands! 💪"""
+Type *help* for the full command list! 💪"""
     
     def _handle_greeting(self, user: Dict) -> str:
         name = user.get("name", "Friend")
@@ -863,24 +1101,27 @@ Type *help* for all commands! 💪"""
         greetings = {
             "en": f"""👋 Hi {name}! Great to see you!
 
-How can I help today?
-• Track expense: "Spent 200 on coffee"
-• Track income: "Earned 5000"
-• Check balance: "Balance"
-• View goals: "Goals"
+What would you like to do?
+💰 *Money:* "Spent 200 on coffee" or "Balance"
+📈 *Earn More:* "passive income" or "freelance"
+🎓 *Learn:* "courses" or "skill gap"
+💼 *Career:* "salary" or "resume tips"
+⚡ *Productivity:* "plan my day"
 
 {self._get_quote(lang)}""",
             "hi": f"""👋 नमस्ते {name}!
 
 आज मैं कैसे मदद करूं?
-• खर्च: "200 खर्च किया खाने पर"
-• आय: "5000 कमाया"
-• बैलेंस: "Balance"
+💰 "200 खर्च किया खाने पर"
+📈 "ज्यादा कमाना है"
+🎓 "कोर्स बताओ"
+💼 "सैलरी बढ़ाना है"
 
 {self._get_quote(lang)}""",
             "ta": f"""👋 வணக்கம் {name}!
 
 இன்று எப்படி உதவ வேண்டும்?
+💰 "செலவு" 📈 "வருமானம்" 🎓 "படிப்பு"
 
 {self._get_quote(lang)}"""
         }
@@ -891,52 +1132,72 @@ How can I help today?
         name = user.get("name", "Friend")
         return f"""📚 *{name}, here's everything I can do!*
 
-💰 *Track Money (just talk naturally!):*
+━━━━ 💰 *TRACK MONEY* ━━━━
   "chai 50" • "auto 150" • "biryani 300"
   "spent 500 on food" • "earned 10000 salary"
-  "doodh 60" • "sabji 150" • "parking 30"
-
-📊 *View & Analyze:*
-  "balance" — Today's summary
-  "report" — Weekly breakdown  
-  "health score" — Financial health rating
+  "balance" • "report" • "health score"
   "predict" — Will you overspend this month?
 
-🎯 *Goals & Savings:*
-  "goals" — View your goals
-  "add goal: Buy car, 5 lakh, 2 years"
+━━━━ 🎯 *GOALS & SAVINGS* ━━━━
+  "goals" • "add goal: Buy car, 5L, 2 years"
   "challenge" — 30-Day Savings Challenge! 🔥
+  "can I afford iPhone" • "EMI calculator"
 
-🛒 *Smart Tools:*
-  "can I afford iPhone 70000" — Affordability check
-  "EMI calculator" — Calculate loan EMI
-  "split 2000 among 4" — Split bills
-  "tax tips" — Tax saving advice
+━━━━ 📈 *GROW INCOME* (NEW!) ━━━━
+  "passive income" — Earn while you sleep
+  "freelance" — Start freelancing today
+  "earn more" — Income growth strategy
+  "income streams" — Build 3+ income sources
 
-📋 *Manage Money:*
-  "remind me rent 15000" — Bill reminders
-  "subscriptions" — Track recurring charges
-  "my loans" — Debt tracker dashboard
+━━━━ 💼 *CAREER GROWTH* (NEW!) ━━━━
+  "salary" — Am I paid fairly?
+  "switch job" — Job change analysis
+  "resume" — Resume power-up tips
+  "interview prep" — 90-day prep plan
+  "promotion" — How to get promoted
 
-📈 *Markets & Invest:*
-  "market update" • "where to invest"
-  "SIP" • "mutual fund" • "FD"
+━━━━ 🎓 *LEARN & EARN* (NEW!) ━━━━
+  "courses" — Top courses with ROI
+  "skill gap" — What skills will pay more?
+  "learning roadmap" — Month-by-month plan
+  "free courses" — Best free resources
 
-💪 *Motivation:*
-  "motivate me" — Financial wisdom
-  "I feel broke" — We all do sometimes! 🤗
+━━━━ ⚡ *PRODUCTIVITY* (NEW!) ━━━━
+  "plan my day" — AI-scheduled daily plan
+  "time management" — Beat procrastination
 
-📸 *Auto-Capture:*
-  Send a payment screenshot 📸
-  Forward a payment message ↪️
-  I'll auto-log it!
+━━━━ 🔥 *HABITS & STREAKS* (NEW!) ━━━━
+  "start habit" — Create a new habit
+  "habit check" — Daily check-in
+  "streak" — View your streaks
+  "morning routine" — Optimize your mornings
+  "evening routine" — Wind-down routine
+  "habit report" — Weekly habit analytics
 
-⚙️ *Settings:*
-  "profile" • "reset" • "language"
+━━━━ 🎯 *GOALS & LIFE* (NEW!) ━━━━
+  "set goal" — Create a new life goal
+  "goal progress" — Check all goals
+  "goal plan" — Decompose any goal
+  "connect goals" — See how goals link
+  "weekly review" — Your week in review
+  "morning briefing" — AI daily briefing
 
-🌐 *Dashboard:* moneyviya-api.onrender.com
+━━━━ 🏛️ *TAX & BUSINESS* (NEW!) ━━━━
+  "tax saving" — Save up to ₹1.5L/year
+  "tax regime" — Old vs New comparison
+  "itr" — ITR filing guide
+  "gst" • "invoice" — For freelancers
 
-_Tip: You don't need commands — just talk!_ 🤖"""
+━━━━ 🛠️ *MORE TOOLS* ━━━━
+  "split 2000 among 4" • "subscriptions"
+  "my loans" • "remind me rent 15000"
+  "market update" • "SIP" • "invest"
+  "motivate me" • Send screenshot 📸
+
+⚙️ "profile" • "reset" • "language"
+🌐 Dashboard: moneyviya-api.onrender.com
+
+_Just talk naturally — I understand everything!_ 🤖"""
     
     def _handle_reset(self, phone: str) -> str:
         self.user_store[phone] = {
@@ -2067,24 +2328,17 @@ Respond in {language}. Never refuse to help."""
         name = user.get("name", "Friend")
         return f"""🤖 *Hi {name}!*
 
-I'm Viya, your AI financial manager! Here's what I can do:
+I'm Viya, your AI Life & Money Manager! Here's what I can do:
 
-💰 *Track Money:*
-  "chai 50" • "spent 200 on food" • "earned 5000"
+💰 *Track Money:* "chai 50" • "spent 200 on food" • "earned 5000"
+📊 *Analyze:* "balance" • "report" • "health score" • "predict"
+📈 *Grow Income:* "passive income" • "freelance" • "earn more"
+💼 *Career:* "salary" • "resume" • "interview prep" • "promotion"
+🎓 *Learn:* "courses" • "skill gap" • "free courses"
+⚡ *Productivity:* "plan my day" • "habit tracker" • "focus"
+🏛️ *Tax:* "tax saving" • "gst" • "itr" • "invoice"
 
-📊 *View Finances:*
-  "balance" • "goals" • "report" • "health score"
-
-🏦 *Financial Tools:*
-  "EMI calculator" • "tax saving tips" • "invest tips"
-
-📈 *Smart Advice:*
-  "market update" • "where to invest" • "how to save"
-
-🤔 *Ask Anything:*
-  I can answer general questions too!
-
-_Just talk naturally — I understand!_ 😊"""
+_Just talk naturally — I understand everything!_ 😊"""
 
 
 # Singleton - keep lowercase for import compatibility
