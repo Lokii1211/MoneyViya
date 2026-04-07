@@ -78,8 +78,8 @@ function processMessage(text) {
 
 // ===== WHATSAPP CLOUD API =====
 async function sendWhatsAppMessage(to, text) {
-  const phoneId = process.env.WHATSAPP_PHONE_ID;
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneId = (process.env.WHATSAPP_PHONE_ID || '').trim();
+  const token = (process.env.WHATSAPP_ACCESS_TOKEN || '').trim();
   
   if (!phoneId || !token) {
     console.error('Missing WHATSAPP_PHONE_ID or WHATSAPP_ACCESS_TOKEN');
@@ -109,7 +109,7 @@ export default async function handler(req, res) {
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
     
-    if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+    if (mode === 'subscribe' && token === (process.env.WHATSAPP_VERIFY_TOKEN || '').trim()) {
       console.log('✅ Webhook verified!');
       return res.status(200).send(challenge);
     }
