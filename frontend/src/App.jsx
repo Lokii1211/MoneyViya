@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AppProvider, useApp } from './lib/store'
 import Auth from './pages/Auth'
-import Onboarding from './pages/Onboarding'
 import Home from './pages/Home'
 import Expenses from './pages/Expenses'
 import Budget from './pages/Budget'
@@ -26,7 +25,6 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />
-          <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
           <Route path="/" element={<Protected><Layout /></Protected>}>
             <Route index element={<Home />} />
             <Route path="expenses" element={<Expenses />} />

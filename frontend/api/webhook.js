@@ -555,6 +555,45 @@ export default async function handler(req, res) {
       }
     }
 
+    // --- IN-APP CHAT (same Groq AI as WhatsApp) ---
+    if (req.query.action === 'chat') {
+      const userPhone = req.query.phone || '';
+      const userMsg = decodeURIComponent(req.query.message || '');
+      const groqKey = (process.env.GROQ_API_KEY || '').trim();
+      
+      if (!userMsg) return res.status(200).json({ reply: 'Please type a message!' });
+      
+      try {
+        const systemPrompt = `You are Viya — MoneyViya's ultra-smart AI financial assistant. You're helpful, friendly, and concise.
+You help with: budgeting, saving, investing (SIP/MF), expense tracking, financial planning, habit building, goal setting.
+You also help different users: students (study plans, pocket money), gym-goers (diet, protein calc, workout plans), businessmen (revenue, tax), homemakers (household budget, savings).
+Keep responses SHORT (2-4 lines max). Use emojis. Be actionable. Current time: ${new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})}.
+Format: Use bullet points for lists. Bold key numbers.`;
+
+        const chatResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userMsg }
+            ],
+            max_tokens: 300, temperature: 0.7
+          })
+        });
+        
+        if (chatResp.ok) {
+          const chatData = await chatResp.json();
+          const reply = chatData.choices?.[0]?.message?.content || 'Let me think about that...';
+          return res.status(200).json({ reply });
+        }
+      } catch (e) {
+        console.error('Chat error:', e);
+      }
+      return res.status(200).json({ reply: '🤖 I\'m temporarily unavailable. Try again shortly!' });
+    }
+
     // --- WEBHOOK VERIFICATION (Meta) ---
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
