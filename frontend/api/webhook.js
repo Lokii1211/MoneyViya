@@ -1,11 +1,10 @@
 /**
- * MoneyViya WhatsApp Cloud API Webhook — V5 FULLY AGENTIC
- * Features:
- * - Groq AI (LLaMA-3.3) for intelligent conversations
- * - Accurate reminders: 5-min advance + on-time delivery
- * - Full DB sync: expenses, habits, goals saved to Supabase
- * - Multi-persona: students, gym, business, homemakers
- * - In-app chat endpoint
+ * MoneyViya WhatsApp Cloud API Webhook — V6 TRUE AGENTIC
+ * - Smart habit auto-detection from natural chat
+ * - OTP login via WhatsApp
+ * - Bi-directional sync (WhatsApp ↔ App)
+ * - Context-aware AI that understands implicit actions
+ * - Accurate IST reminders with 5-min advance
  */
 
 // ===== DB HELPERS =====
@@ -14,444 +13,432 @@ function dbHeaders() {
   return { 'apikey': key, 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' };
 }
 function dbUrl() { return (process.env.VITE_SUPABASE_URL || '').trim(); }
-
 async function dbQuery(table, params = '') {
-  try {
-    const r = await fetch(`${dbUrl()}/rest/v1/${table}${params}`, { headers: dbHeaders() });
-    return r.ok ? await r.json() : [];
-  } catch { return []; }
+  try { const r = await fetch(`${dbUrl()}/rest/v1/${table}${params}`, { headers: dbHeaders() }); return r.ok ? await r.json() : []; } catch { return []; }
 }
 async function dbInsert(table, data) {
-  try {
-    const r = await fetch(`${dbUrl()}/rest/v1/${table}`, {
-      method: 'POST', headers: { ...dbHeaders(), 'Prefer': 'return=representation' },
-      body: JSON.stringify(data)
-    });
-    const res = await r.json(); return Array.isArray(res) ? res[0] : res;
-  } catch { return null; }
+  try { const r = await fetch(`${dbUrl()}/rest/v1/${table}`, { method: 'POST', headers: { ...dbHeaders(), 'Prefer': 'return=representation' }, body: JSON.stringify(data) }); const res = await r.json(); return Array.isArray(res) ? res[0] : res; } catch { return null; }
 }
 async function dbUpdate(table, filter, data) {
-  try {
-    await fetch(`${dbUrl()}/rest/v1/${table}?${filter}`, {
-      method: 'PATCH', headers: { ...dbHeaders(), 'Prefer': 'return=minimal' },
-      body: JSON.stringify(data)
-    });
-  } catch {}
+  try { await fetch(`${dbUrl()}/rest/v1/${table}?${filter}`, { method: 'PATCH', headers: { ...dbHeaders(), 'Prefer': 'return=minimal' }, body: JSON.stringify(data) }); } catch {}
+}
+async function dbDelete(table, filter) {
+  try { await fetch(`${dbUrl()}/rest/v1/${table}?${filter}`, { method: 'DELETE', headers: dbHeaders() }); } catch {}
 }
 
-// ===== GROQ AI =====
-const SYSTEM_PROMPT = `You are Viya, MoneyViya's ultra-smart AI virtual personal assistant on WhatsApp. You serve ALL types of users in India.
-
-Your personality: Friendly, warm, uses emojis naturally, expert in multiple domains, gives actionable advice in 2-4 lines.
-Format: Use *bold* for emphasis (WhatsApp markdown). Keep under 250 words. Use ₹ for amounts (Indian number format).
-
-DOMAINS YOU HANDLE:
-1. 💰 FINANCE: budgets, SIP, mutual funds, tax saving, EMI, credit score, insurance, stocks, crypto, loans, UPI
-2. 🏋️ FITNESS: workout plans, diet charts, protein calculation (1.6-2.2g/kg), calorie tracking, gym schedules
-3. 📖 STUDENT: study schedules, exam prep timetables, CGPA tracking, pocket money management, learning habits
-4. 🏠 HOMEMAKER: household budgets, grocery lists, recipe costs, savings tips, utility bill tracking
-5. 💼 BUSINESS: revenue tracking, GST basics, expense reports, client management, profit margins
-6. 🧘 WELLNESS: meditation, sleep tracking, water intake, screen time, mental health tips
-
-CAPABILITIES (mention when relevant):
-- "spent 500 on food" → tracks expense in app
-- "remind me to X at Y time" → sets WhatsApp reminder
-- "add habit: workout" → creates trackable habit
-- "goal: save 50000 for bike" → creates savings goal
-- App: https://moneyviya.vercel.app
-
-Rules: Never give specific stock buy/sell advice. Suggest index funds for beginners. Be encouraging.
-Current time: ${new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})}`;
-
+// ===== GROQ AI (Context-Aware) =====
 async function askAI(userMessage, context = '') {
   const apiKey = (process.env.GROQ_API_KEY || '').trim();
   if (!apiKey) return null;
+  const systemPrompt = `You are Viya, MoneyViya's ultra-smart AI personal assistant on WhatsApp. You help ALL users in India.
+Personality: Warm, friendly, uses emojis. Expert in finance, fitness, study, home management, business.
+Format: *bold* for emphasis, ₹ for amounts, under 250 words, 2-4 concise lines.
+
+CRITICAL INTELLIGENCE RULES:
+- When user describes completing an activity (ate eggs, worked out, studied, meditated, ran, drank water), ALWAYS acknowledge it as a habit completion
+- Give specific, actionable advice (not generic)
+- Calculate exact numbers (protein: 1.6-2.2g/kg, calories, EMI amounts, SIP returns)
+- For gym: give full macro breakdown, meal timing, supplement advice
+- For students: give hour-by-hour study plans, revision schedules
+- For business: give ROI calculations, tax brackets, GST details
+- Remember context from the conversation
+Current IST time: ${new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})}
+${context}`;
+
   try {
     const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT + (context ? `\n\nUser context: ${context}` : '') },
-          { role: 'user', content: userMessage },
-        ],
-        max_tokens: 500, temperature: 0.7,
-      }),
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }], max_tokens: 500, temperature: 0.7 }),
     });
     const data = await resp.json();
     return data.choices?.[0]?.message?.content || null;
   } catch { return null; }
 }
 
-// ===== IST TIME HELPERS =====
-function nowIST() {
-  const n = new Date();
-  return new Date(n.getTime() + (5.5 * 60 * 60 * 1000));
-}
-function formatIST(d) {
-  const h = d.getUTCHours(), m = d.getUTCMinutes();
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  return `${h12}:${m.toString().padStart(2,'0')} ${ampm}`;
+// ===== IST TIME =====
+function nowIST() { return new Date(Date.now() + 5.5 * 3600000); }
+function formatIST(h, m) { const ampm = h >= 12 ? 'PM' : 'AM'; return `${h % 12 || 12}:${m.toString().padStart(2,'0')} ${ampm}`; }
+
+// ===== SMART HABIT AUTO-DETECTION ENGINE =====
+// This is the core intelligence — detects habit completions from natural language
+const HABIT_PATTERNS = [
+  // Fitness
+  { patterns: [/(?:ate|had|eaten|eat)\s+(\d+)?\s*eggs?/i, /eggs?\s*(\d+)?.*(?:done|eaten|had|ate)/i], habit: 'Eat healthy', icon: '🥗', extract: (t) => { const m = t.match(/(\d+)\s*eggs?/i); return m ? `${m[1]} eggs` : 'eggs'; } },
+  { patterns: [/(?:workout|gym|exercise|trained|lifted|weights).*(?:done|completed|finished)/i, /(?:done|completed|finished).*(?:workout|gym|exercise)/i, /^(?:workout|gym)\s*(?:done|✅|completed)/i], habit: 'Workout', icon: '🏋️' },
+  { patterns: [/(?:ran|run|jogged|running|jogging)\s*(\d+)?\s*(?:km|kms|kilometers?|miles?)?/i], habit: 'Run 2km', icon: '🏃', extract: (t) => { const m = t.match(/(\d+)\s*(?:km|kms)/i); return m ? `${m[1]}km run` : 'run'; } },
+  { patterns: [/(?:drank|drink|had)\s*(\d+)?\s*(?:liters?|litres?|L|glasses?)\s*(?:of\s*)?water/i, /water\s*(\d+)\s*(?:liters?|L|glasses?)/i], habit: 'Drink 3L water', icon: '💧', extract: (t) => { const m = t.match(/(\d+)\s*(?:liters?|L|glasses?)/i); return m ? `${m[1]}L water` : 'water'; } },
+  { patterns: [/(?:meditat|yoga).*(?:done|completed|finished|\d+\s*min)/i, /(?:done|completed).*(?:meditat|yoga)/i], habit: 'Meditate', icon: '🧘' },
+  { patterns: [/(?:push.?ups?|pull.?ups?|squats?|planks?)\s*(\d+)/i], habit: 'Workout', icon: '🏋️', extract: (t) => { const m = t.match(/(push.?ups?|pull.?ups?|squats?|planks?)\s*(\d+)/i); return m ? `${m[2]} ${m[1]}` : 'exercise'; } },
+  { patterns: [/protein\s*(?:shake|powder|scoop)/i, /(?:had|took|drank)\s*(?:whey|protein)/i], habit: 'Eat healthy', icon: '🥗' },
+  // Study
+  { patterns: [/(?:studi|read|reading|studied)\s*(\d+)?\s*(?:hours?|hrs?|minutes?|mins?|pages?)/i, /(?:done|completed|finished).*(?:studi|reading|chapter|assignment)/i], habit: 'Read 30 mins', icon: '📖', extract: (t) => { const m = t.match(/(\d+)\s*(?:hours?|hrs?|minutes?|mins?|pages?)/i); return m ? `${m[1]} ${m[2] || 'session'}` : 'study session'; } },
+  { patterns: [/(?:completed?|finished|done)\s*(?:chapter|assignment|homework|project|lecture)/i], habit: 'Read 30 mins', icon: '📖' },
+  // Lifestyle
+  { patterns: [/(?:woke|wake|got)\s*up\s*(?:at\s*)?\s*(\d+)/i, /early\s*(?:morning|wake|rise)/i], habit: 'Wake up early', icon: '⏰' },
+  { patterns: [/no\s*(?:junk|fast)\s*food/i, /(?:avoided?|skipped?)\s*(?:junk|fast|processed)\s*food/i], habit: 'No junk food', icon: '🚫' },
+  { patterns: [/(?:journa?l|diary|wrote|writing).*(?:done|completed|entry)/i, /(?:done|wrote).*journa?l/i], habit: 'Journal', icon: '📝' },
+  { patterns: [/(?:no|didn.?t|avoided?|quit)\s*(?:social\s*media|instagram|insta|facebook|twitter|reels)/i], habit: 'No social media 1h', icon: '📱' },
+  { patterns: [/(?:cooked?|made|prepared)\s*(?:food|meal|lunch|dinner|breakfast)/i, /(?:home\s*(?:cooked?|made))/i], habit: 'Eat healthy', icon: '🥗' },
+  // Finance
+  { patterns: [/(?:tracked?|logged?|noted?|recorded?)\s*(?:my\s*)?(?:expense|spending|kharcha)/i], habit: 'Track expenses', icon: '💰' },
+];
+
+async function detectAndCheckinHabit(text, phone) {
+  const today = new Date().toISOString().split('T')[0];
+  const userHabits = await dbQuery('habits', `?phone=eq.${phone}&select=*`);
+  
+  for (const pattern of HABIT_PATTERNS) {
+    for (const regex of pattern.patterns) {
+      if (regex.test(text)) {
+        // Find matching habit or create one
+        let habit = userHabits.find(h => h.name.toLowerCase().includes(pattern.habit.toLowerCase().split(' ')[0]));
+        
+        if (!habit) {
+          // Auto-create the habit!
+          habit = await dbInsert('habits', { phone, name: pattern.habit, icon: pattern.icon, frequency: 'daily', current_streak: 0, longest_streak: 0 });
+        }
+        
+        if (habit) {
+          // Check if already checked in today
+          const existing = await dbQuery('habit_checkins', `?habit_id=eq.${habit.id}&checked_date=eq.${today}&select=id`);
+          if (!existing.length) {
+            await dbInsert('habit_checkins', { habit_id: habit.id, phone, checked_date: today, status: 'done' });
+            const newStreak = (habit.current_streak || 0) + 1;
+            const bestStreak = Math.max(newStreak, habit.longest_streak || 0);
+            await dbUpdate('habits', `id=eq.${habit.id}`, { current_streak: newStreak, longest_streak: bestStreak, last_completed: today });
+            
+            const detail = pattern.extract ? pattern.extract(text) : '';
+            return { matched: true, habit: habit.name, icon: pattern.icon, streak: newStreak, best: bestStreak, detail, isNew: !userHabits.find(h => h.id === habit.id) };
+          }
+          return { matched: true, habit: habit.name, icon: pattern.icon, streak: habit.current_streak || 0, alreadyDone: true };
+        }
+      }
+    }
+  }
+  return { matched: false };
 }
 
-// ===== SMART NLP ENGINE =====
+// ===== SMART EXPENSE DETECTION =====
+function detectExpense(text) {
+  const amtMatch = text.match(/(?:₹|rs\.?|inr|rupees?)?\s*(\d[\d,]*)\s*/i) || text.match(/(\d[\d,]+)/);
+  if (!amtMatch) return null;
+  const amount = parseInt(amtMatch[1].replace(/,/g, ''));
+  if (amount <= 0 || amount > 10000000) return null;
+  
+  // Must have spending context
+  if (!/spent|paid|bought|expense|kharcha|kharch|cost|charged|billed/i.test(text)) return null;
+  
+  const cats = {
+    '🍕 Food': /food|lunch|dinner|breakfast|snack|tea|coffee|biryani|chai|eat|restaurant|swiggy|zomato|hotel|pizza|burger/i,
+    '🚗 Transport': /transport|uber|ola|auto|bus|train|petrol|diesel|metro|cab|fuel|travel|flight|ticket/i,
+    '🛒 Shopping': /shopping|clothes|dress|shirt|shoes|amazon|flipkart|myntra|mall|buy/i,
+    '💊 Health': /health|medicine|doctor|hospital|gym|pharmacy|protein|supplement|medical/i,
+    '📱 Recharge': /recharge|mobile|phone|jio|airtel|wifi|internet|broadband/i,
+    '🏠 Rent': /rent|house|room|pg|hostel|flat|apartment|maintenance/i,
+    '📚 Education': /education|book|course|class|tuition|school|college|udemy|exam/i,
+    '🎬 Entertainment': /movie|netflix|prime|spotify|game|party|concert/i,
+    '💡 Bills': /bill|electricity|water|gas|emi|loan|insurance/i,
+  };
+  let category = '📦 General';
+  for (const [cat, p] of Object.entries(cats)) { if (p.test(text)) { category = cat; break; } }
+  return { amount, category };
+}
+
+// ===== NLP INTENTS =====
 const INTENTS = [
   // GREETINGS
+  { name: 'greeting', patterns: [/^(hi|hello|hey|hlo|hii|namaste|vanakkam|start|yo|sup)$/i, /^good\s*(morning|afternoon|evening|night)/i], handler: () => GREETINGS },
+  { name: 'help', patterns: [/^(help|menu|\?|commands|options|features)$/i, /what\s*can\s*you\s*do/i], handler: () => GREETINGS },
+
+  // ===== REMINDER =====
   {
-    name: 'greeting',
-    patterns: [/^(hi|hello|hey|hlo|hii|namaste|vanakkam|start|yo|sup)$/i, /^(good\s*(morning|afternoon|evening|night))$/i],
-    handler: () => GREETINGS,
-  },
-  // HELP
-  {
-    name: 'help',
-    patterns: [/^(help|menu|\?|commands|options|features)$/i, /what\s*(can|do)\s*you\s*do/i],
-    handler: () => GREETINGS,
-  },
-  // ===== REMINDER (saves to DB with accurate IST timing) =====
-  {
-    name: 'reminder',
-    patterns: [/remind/i, /alarm/i, /alert\s*me/i, /yaad\s*dila/i, /don't\s*forget/i, /set\s*(a|an)?\s*(reminder|notification)/i],
+    name: 'reminder', patterns: [/remind/i, /alarm/i, /alert\s*me/i, /don't\s*forget/i],
     handler: async (text, from) => {
-      // Parse time
-      const timeMatch = text.match(/(\d{1,2})\s*[:\.]?\s*(\d{2})?\s*(am|pm|AM|PM)/);
+      const timeMatch = text.match(/(\d{1,2})\s*[:\.]?\s*(\d{2})?\s*(am|pm)/i);
       const time24 = text.match(/(\d{1,2}):(\d{2})\b(?!\s*(am|pm))/i);
       let hours = -1, minutes = 0, timeStr = '';
       
       if (timeMatch) {
-        hours = parseInt(timeMatch[1]);
-        minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
-        const period = timeMatch[3].toUpperCase();
-        if (period === 'PM' && hours !== 12) hours += 12;
-        if (period === 'AM' && hours === 12) hours = 0;
-        timeStr = `${timeMatch[1]}${timeMatch[2] ? ':' + timeMatch[2] : ':00'} ${period}`;
+        hours = parseInt(timeMatch[1]); minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+        const p = timeMatch[3].toUpperCase();
+        if (p === 'PM' && hours !== 12) hours += 12;
+        if (p === 'AM' && hours === 12) hours = 0;
+        timeStr = `${timeMatch[1]}${timeMatch[2] ? ':' + timeMatch[2] : ':00'} ${p}`;
       } else if (time24) {
-        hours = parseInt(time24[1]);
-        minutes = parseInt(time24[2]);
+        hours = parseInt(time24[1]); minutes = parseInt(time24[2]);
         timeStr = `${time24[1]}:${time24[2]}`;
       }
       
-      // Parse date
-      const dateMatch = text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-]?(\d{2,4})?/);
       const relDate = text.match(/(today|tomorrow|kal|aaj)/i);
-      
-      // Build IST target time
       const ist = nowIST();
-      let targetDay = ist.getUTCDate(), targetMonth = ist.getUTCMonth(), targetYear = ist.getUTCFullYear();
+      let day = ist.getUTCDate(), month = ist.getUTCMonth(), year = ist.getUTCFullYear();
+      if (relDate && /tomorrow|kal/i.test(relDate[1])) day += 1;
+      if (hours === -1) { hours = ist.getUTCHours() + 1; minutes = 0; timeStr = formatIST(hours, minutes); }
       
-      if (dateMatch) {
-        targetDay = parseInt(dateMatch[1]);
-        targetMonth = parseInt(dateMatch[2]) - 1;
-        if (dateMatch[3]) targetYear = parseInt(dateMatch[3]) < 100 ? 2000 + parseInt(dateMatch[3]) : parseInt(dateMatch[3]);
-      } else if (relDate) {
-        const d = relDate[1].toLowerCase();
-        if (d === 'tomorrow' || d === 'kal') targetDay += 1;
-      }
+      const remindIST = new Date(Date.UTC(year, month, day, hours, minutes, 0));
+      const remindUTC = new Date(remindIST.getTime() - 5.5 * 3600000);
+      const advanceUTC = new Date(remindUTC.getTime() - 5 * 60000);
       
-      // If no time specified, default to next hour
-      if (hours === -1) {
-        hours = ist.getUTCHours() + 1;
-        minutes = 0;
-        timeStr = formatIST(new Date(Date.UTC(targetYear, targetMonth, targetDay, hours, minutes)));
-      }
-      
-      // Create UTC time from IST
-      const remindAtIST = new Date(Date.UTC(targetYear, targetMonth, targetDay, hours, minutes, 0));
-      const remindAtUTC = new Date(remindAtIST.getTime() - (5.5 * 60 * 60 * 1000));
-      
-      // Also create 5-min advance reminder
-      const advanceUTC = new Date(remindAtUTC.getTime() - (5 * 60 * 1000));
-      
-      const dateStr = `${targetDay}/${targetMonth + 1}/${targetYear}`;
-      
-      // Extract task
       let task = 'Your reminder';
-      const taskP = [
-        /(?:to|for|about|that)\s+(.+?)(?:\s+at\s+\d|\s+on\s+\d|\s+tomorrow|\s+today|\s+kal|$)/i,
-        /remind(?:er)?\s+(?:me\s+)?(?:to\s+)?(.+?)(?:\s+at\s+\d|\s+on\s+\d|\s+tomorrow|$)/i,
-      ];
-      for (const p of taskP) {
-        const m = text.match(p);
-        if (m) { task = m[1].replace(/\s*(at|on)\s*$/, '').trim(); break; }
-      }
+      const tm = text.match(/(?:to|for|about|that)\s+(.+?)(?:\s+at\s+\d|\s+on\s+\d|\s+tomorrow|\s+today|$)/i) || text.match(/remind(?:er)?\s+(?:me\s+)?(?:to\s+)?(.+?)(?:\s+at\s+\d|\s+on\s+\d|$)/i);
+      if (tm) task = tm[1].replace(/\s*(at|on)\s*$/, '').trim();
 
-      // Save MAIN reminder
-      if (dbUrl() && from) {
-        await dbInsert('reminders', {
-          phone: from, task, remind_at: remindAtUTC.toISOString(),
-          remind_at_display: `${timeStr} on ${dateStr}`, status: 'pending'
-        });
-        // Save ADVANCE reminder (5 min before) — only if it's in the future
-        if (advanceUTC > new Date()) {
-          await dbInsert('reminders', {
-            phone: from, task: `⚡ ADVANCE: ${task} (in 5 mins!)`,
-            remind_at: advanceUTC.toISOString(),
-            remind_at_display: `5 min before ${timeStr}`, status: 'pending'
-          });
-        }
+      await dbInsert('reminders', { phone: from, task, remind_at: remindUTC.toISOString(), remind_at_display: `${timeStr} on ${day}/${month+1}/${year}`, status: 'pending' });
+      if (advanceUTC > new Date()) {
+        await dbInsert('reminders', { phone: from, task: `⚡ Coming up: ${task}`, remind_at: advanceUTC.toISOString(), remind_at_display: `5 min before ${timeStr}`, status: 'pending' });
       }
-
-      return `⏰ *Reminder Set!*\n\n📋 *Task:* ${task}\n🕐 *Time:* ${timeStr}\n📅 *Date:* ${dateStr}\n\n✅ You'll get:\n• ⚡ Advance alert *5 mins before*\n• 🔔 Final reminder *on time*\n\n_I'll notify you via WhatsApp!_ 💪`;
+      return `⏰ *Reminder Set!*\n\n📋 *${task}*\n🕐 ${timeStr} on ${day}/${month+1}/${year}\n\n✅ You'll get:\n• ⚡ *5-min advance* alert\n• 🔔 *On-time* reminder\n\n_Viya never forgets!_ 💪`;
     },
   },
-  // ===== EXPENSE TRACKING (saves to DB) =====
+
+  // ===== EXPENSE (saves to DB) =====
   {
-    name: 'expense',
-    patterns: [/(?:spent|paid|bought|expense|kharcha|kharch)\s/i, /(?:₹|rs\.?|inr)\s*\d+\s*(on|for)/i, /\d+\s*(rupees?|rs)\s*(on|for)/i],
+    name: 'expense', patterns: [/(?:spent|paid|bought|expense|kharcha|kharch)\s/i, /(?:₹|rs\.?|inr)\s*\d+\s*(on|for)/i, /\d+\s*(rupees?|rs)\s*(on|for)/i],
     handler: async (text, from) => {
-      const amtMatch = text.match(/(?:₹|rs\.?|inr|rupees?)?\s*(\d[\d,]*)/i) || text.match(/(\d[\d,]+)/);
-      const amount = amtMatch ? parseInt(amtMatch[1].replace(/,/g, '')) : 0;
-      const cats = {
-        '🍕 Food': /food|lunch|dinner|breakfast|snack|tea|coffee|biryani|chai|eat|restaurant|swiggy|zomato|hotel/i,
-        '🚗 Transport': /transport|uber|ola|auto|bus|train|petrol|diesel|metro|cab|fuel|travel/i,
-        '🛒 Shopping': /shopping|clothes|dress|shirt|shoes|amazon|flipkart|myntra|mall/i,
-        '💊 Health': /health|medicine|doctor|hospital|gym|pharmacy|protein|supplement/i,
-        '📱 Recharge': /recharge|mobile|phone|jio|airtel|wifi|internet/i,
-        '🏠 Rent': /rent|house|room|pg|hostel|flat/i,
-        '📚 Education': /education|book|course|class|tuition|school|college|udemy/i,
-        '🎬 Entertainment': /movie|netflix|prime|spotify|game|party/i,
-      };
-      let category = '📦 General';
-      for (const [cat, p] of Object.entries(cats)) { if (p.test(text)) { category = cat; break; } }
-
-      // Save to DB
-      if (from && amount > 0) {
-        await dbInsert('transactions', { phone: from, type: 'expense', amount, category, description: text.substring(0, 100) });
-      }
-
-      return `✅ *Expense Saved!*\n\n💸 Amount: *₹${amount.toLocaleString('en-IN')}*\n📁 Category: ${category}\n📅 ${new Date().toLocaleDateString('en-IN')}\n\n${amount > 5000 ? '⚠️ _Big expense! Was this planned?_' : '✨ _Every rupee tracked = smarter spending!_'}\n\n📱 View all on app: https://moneyviya.vercel.app`;
+      const exp = detectExpense(text);
+      if (!exp) return null;
+      await dbInsert('transactions', { phone: from, type: 'expense', amount: exp.amount, category: exp.category, description: text.substring(0, 100) });
+      return `✅ *Expense Tracked!*\n\n💸 *₹${exp.amount.toLocaleString('en-IN')}* — ${exp.category}\n📅 ${new Date().toLocaleDateString('en-IN')}\n\n${exp.amount > 5000 ? '⚠️ _Big expense! Was it planned?_' : '✨ _Every rupee tracked = smarter spending!_'}\n\n📱 Sync'd to app: moneyviya.vercel.app`;
     },
   },
-  // ===== INCOME TRACKING (saves to DB) =====
+
+  // ===== INCOME =====
   {
-    name: 'income',
-    patterns: [/(?:received|got|earned|income|salary|credited|deposited)\s/i, /salary\s*(is|of|=)?\s*\d/i, /\d+\s*(salary|income|credited)/i],
+    name: 'income', patterns: [/(?:received|got|earned|income|salary|credited)\s/i, /salary\s*(?:is|of|=)?\s*\d/i],
     handler: async (text, from) => {
-      const amtMatch = text.match(/(\d[\d,]+)/);
-      const amount = amtMatch ? parseInt(amtMatch[1].replace(/,/g, '')) : 0;
-      if (from && amount > 0) {
-        await dbInsert('transactions', { phone: from, type: 'income', amount, category: '💼 Income', description: text.substring(0, 100) });
-      }
-      return `✅ *Income Recorded!*\n\n💰 Amount: *₹${amount.toLocaleString('en-IN')}*\n📅 ${new Date().toLocaleDateString('en-IN')}\n\n*Smart 50-30-20 Split:*\n🏠 Needs: ₹${Math.round(amount * 0.5).toLocaleString('en-IN')}\n🎮 Wants: ₹${Math.round(amount * 0.3).toLocaleString('en-IN')}\n💰 Save: ₹${Math.round(amount * 0.2).toLocaleString('en-IN')}\n\n🔥 _SIP ₹${Math.round(amount * 0.2).toLocaleString('en-IN')}/month → ~₹${Math.round(amount * 0.2 * 195).toLocaleString('en-IN')} in 10 years!_ 📈`;
+      const m = text.match(/(\d[\d,]+)/); if (!m) return null;
+      const amount = parseInt(m[1].replace(/,/g, ''));
+      await dbInsert('transactions', { phone: from, type: 'income', amount, category: '💼 Income', description: text.substring(0, 100) });
+      return `✅ *Income Recorded!*\n\n💰 *₹${amount.toLocaleString('en-IN')}*\n\n*50-30-20 Split:*\n🏠 Needs: ₹${Math.round(amount*0.5).toLocaleString('en-IN')}\n🎮 Wants: ₹${Math.round(amount*0.3).toLocaleString('en-IN')}\n💰 Save: ₹${Math.round(amount*0.2).toLocaleString('en-IN')}\n\n🔥 _SIP ₹${Math.round(amount*0.2).toLocaleString('en-IN')}/month → ~₹${Math.round(amount*0.2*195).toLocaleString('en-IN')} in 10 years!_`;
     },
   },
-  // ===== HABIT TRACKING (saves to DB) =====
+
+  // ===== EXPLICIT HABIT COMMANDS =====
   {
-    name: 'habit',
-    patterns: [/(?:add|create|new|start)\s*habit/i, /habit\s*[:=]/i, /track(?:ing)?\s*habit/i, /my\s*habits/i, /checkin|check.?in|done\s+\w+/i],
+    name: 'habit_cmd', patterns: [/(?:add|create|new|start)\s*habit/i, /my\s*habits/i, /list\s*habits/i, /^done\s+/i, /^checkin\s+/i, /^completed?\s+/i],
     handler: async (text, from) => {
       const lower = text.toLowerCase();
       
-      // Check-in: "done workout" or "checkin meditation"
-      if (/^(done|completed?|checkin|check.?in|finished)\s+(.+)/i.test(lower)) {
-        const habitName = text.match(/^(?:done|completed?|checkin|check.?in|finished)\s+(.+)/i)?.[1]?.trim();
-        if (habitName && from) {
-          const habits = await dbQuery('habits', `?phone=eq.${from}&name=ilike.*${encodeURIComponent(habitName)}*&select=*`);
-          if (habits.length) {
-            const h = habits[0];
-            const today = new Date().toISOString().split('T')[0];
-            await dbInsert('habit_checkins', { habit_id: h.id, phone: from, checked_date: today, status: 'done' });
-            const newStreak = (h.current_streak || 0) + 1;
-            await dbUpdate('habits', `id=eq.${h.id}`, { current_streak: newStreak, longest_streak: Math.max(newStreak, h.longest_streak || 0), last_completed: today });
-            return `✅ *${h.icon || '🔥'} ${h.name} — Done!*\n\n🔥 Streak: *${newStreak} days*\n🏆 Best: *${Math.max(newStreak, h.longest_streak || 0)} days*\n\n_Keep going! Consistency is key!_ 💪`;
-          }
-          return `❌ Habit "${habitName}" not found.\n\nCreate it first: "add habit: ${habitName}"`;
-        }
-      }
-
-      // Show my habits
+      // List habits
       if (/my\s*habits|list\s*habits|show\s*habits/i.test(lower)) {
         const habits = await dbQuery('habits', `?phone=eq.${from}&select=*&order=created_at.asc`);
-        if (!habits.length) return `📋 No habits yet!\n\nCreate one: "add habit: workout"\n\nSuggestions:\n🏋️ Workout\n📖 Read 30 mins\n💧 Drink 3L water\n🧘 Meditate\n💰 Track expenses`;
+        if (!habits.length) return `📋 No habits yet!\n\nCreate: "add habit: workout"\nOr just chat naturally — I auto-detect!\n\n_Say "ate 6 eggs" or "gym done" and I'll track it_ 🤖`;
         let msg = `📋 *Your Habits:*\n\n`;
-        habits.forEach((h, i) => {
-          msg += `${h.icon || '✅'} *${h.name}* — ${h.current_streak || 0}🔥 streak\n`;
-        });
-        msg += `\n_Say "done [habit]" to check in!_`;
+        const today = new Date().toISOString().split('T')[0];
+        for (const h of habits) {
+          const checkins = await dbQuery('habit_checkins', `?habit_id=eq.${h.id}&checked_date=eq.${today}&select=id`);
+          const done = checkins.length > 0;
+          msg += `${done ? '✅' : '⬜'} ${h.icon} *${h.name}* — ${h.current_streak || 0}🔥\n`;
+        }
+        msg += `\n_Check-in: "done workout" or chat naturally!_\n_Synced live to app_ 📱`;
         return msg;
+      }
+
+      // Explicit check-in: "done workout"
+      if (/^(done|completed?|checkin|check.?in|finished)\s+(.+)/i.test(lower)) {
+        const habitName = text.match(/^(?:done|completed?|checkin|check.?in|finished)\s+(.+)/i)?.[1]?.trim();
+        if (habitName) {
+          const habits = await dbQuery('habits', `?phone=eq.${from}&select=*`);
+          const habit = habits.find(h => h.name.toLowerCase().includes(habitName.toLowerCase()));
+          if (habit) {
+            const today = new Date().toISOString().split('T')[0];
+            const existing = await dbQuery('habit_checkins', `?habit_id=eq.${habit.id}&checked_date=eq.${today}&select=id`);
+            if (existing.length) return `${habit.icon} *${habit.name}* already checked in today! ✅\n🔥 Streak: ${habit.current_streak || 0} days`;
+            await dbInsert('habit_checkins', { habit_id: habit.id, phone: from, checked_date: today, status: 'done' });
+            const newStreak = (habit.current_streak || 0) + 1;
+            await dbUpdate('habits', `id=eq.${habit.id}`, { current_streak: newStreak, longest_streak: Math.max(newStreak, habit.longest_streak || 0), last_completed: today });
+            return `✅ *${habit.icon} ${habit.name} — Done!*\n\n🔥 Streak: *${newStreak} days*\n🏆 Best: *${Math.max(newStreak, habit.longest_streak || 0)} days*\n\n_Reflected in app instantly!_ 📱💪`;
+          }
+          return `❌ Habit "${habitName}" not found.\nCreate it: "add habit: ${habitName}"`;
+        }
       }
 
       // Add habit
-      const habitMatch = text.match(/(?:add|create|new|start)\s*habit\s*[:=]?\s*(.+)/i);
-      if (habitMatch && from) {
-        const name = habitMatch[1].trim();
-        const iconMap = { workout: '🏋️', run: '🏃', read: '📖', meditate: '🧘', water: '💧', study: '🧮', diet: '🥗', sleep: '😴', walk: '🚶', code: '💻', journal: '📝' };
+      const hm = text.match(/(?:add|create|new|start)\s*habit\s*[:=]?\s*(.+)/i);
+      if (hm && from) {
+        const name = hm[1].trim();
+        const iconMap = { workout:'🏋️', run:'🏃', read:'📖', meditat:'🧘', water:'💧', study:'🧮', diet:'🥗', sleep:'😴', walk:'🚶', code:'💻', journal:'📝', egg:'🥚', yoga:'🧘', swim:'🏊' };
         let icon = '✅';
-        for (const [k, v] of Object.entries(iconMap)) { if (name.toLowerCase().includes(k)) { icon = v; break; } }
-        
+        for (const [k,v] of Object.entries(iconMap)) { if (name.toLowerCase().includes(k)) { icon = v; break; } }
         await dbInsert('habits', { phone: from, name, icon, frequency: 'daily', current_streak: 0, longest_streak: 0 });
-        return `✅ *Habit Created!*\n\n${icon} *${name}*\n📅 Frequency: Daily\n🔥 Streak: 0 days\n\n_Say "done ${name}" each day to build your streak!_ 💪`;
+        return `✅ *Habit Created!*\n\n${icon} *${name}* — Daily\n\n_Check-in options:_\n• "done ${name}"\n• Or just chat naturally: "finished ${name}"!\n\n_Synced to app_ 📱`;
       }
-
-      return `💡 *Habit Commands:*\n\n• "add habit: workout" → create\n• "my habits" → list all\n• "done workout" → daily check-in\n\nSuggested habits:\n🏋️ Workout\n📖 Read 30 mins\n💧 Drink 3L water\n🧘 Meditate 10 mins\n💰 Track expenses`;
+      return '💡 *Habit Commands:*\n\n• "add habit: workout"\n• "my habits"\n• "done workout"\n• Or chat naturally: "gym done", "ate eggs", "studied 2 hours"';
     },
   },
-  // ===== GOAL SETTING (saves to DB) =====
+
+  // ===== GOALS =====
   {
-    name: 'goal',
-    patterns: [/\b(goal|target)\b/i, /\bsave\s*for\b/i, /\bsaving\s*for\b/i, /\bwant\s*to\s*buy\b/i, /\bmy\s*goals?\b/i],
+    name: 'goal', patterns: [/\b(goal|target)\b/i, /\bsave\s*for\b/i, /\bmy\s*goals?\b/i, /\badded?\s+\d.*to\s+/i],
     handler: async (text, from) => {
-      const lower = text.toLowerCase();
-      
-      // Show goals
-      if (/my\s*goals?|list\s*goals?|show\s*goals?/i.test(lower)) {
+      if (/my\s*goals?|list\s*goals?|show\s*goals?/i.test(text)) {
         const goals = await dbQuery('goals', `?phone=eq.${from}&status=eq.active&select=*`);
-        if (!goals.length) return `🎯 No active goals!\n\nCreate one:\n"save for iPhone 80000"\n"goal: trip to goa 50000"`;
+        if (!goals.length) return `🎯 No goals yet!\nCreate: "save for iPhone 80000"`;
         let msg = `🎯 *Your Goals:*\n\n`;
         goals.forEach(g => {
           const pct = g.target_amount > 0 ? Math.round((g.current_amount / g.target_amount) * 100) : 0;
-          msg += `${g.icon || '🎯'} *${g.name}*\n   ₹${Number(g.current_amount || 0).toLocaleString('en-IN')} / ₹${Number(g.target_amount).toLocaleString('en-IN')} (${pct}%)\n\n`;
+          const bar = '█'.repeat(Math.floor(pct/10)) + '░'.repeat(10 - Math.floor(pct/10));
+          msg += `${g.icon} *${g.name}*\n[${bar}] ${pct}%\n₹${Number(g.current_amount||0).toLocaleString('en-IN')} / ₹${Number(g.target_amount).toLocaleString('en-IN')}\n\n`;
         });
-        msg += `_Add money: "added 5000 to [goal name]"_`;
-        return msg;
+        return msg + '_Add: "added 5000 to [goal]"_';
       }
-
-      // Add to existing goal
-      if (/added?\s+(\d[\d,]*)\s+to\s+(.+)/i.test(lower)) {
+      if (/added?\s+(\d[\d,]*)\s+to\s+(.+)/i.test(text)) {
         const m = text.match(/added?\s+(\d[\d,]*)\s+to\s+(.+)/i);
-        const amt = parseInt(m[1].replace(/,/g, ''));
-        const goalName = m[2].trim();
+        const amt = parseInt(m[1].replace(/,/g,'')); const goalName = m[2].trim();
         const goals = await dbQuery('goals', `?phone=eq.${from}&name=ilike.*${encodeURIComponent(goalName)}*&select=*`);
         if (goals.length) {
-          const g = goals[0];
-          const newAmt = Number(g.current_amount || 0) + amt;
+          const g = goals[0]; const newAmt = Number(g.current_amount||0) + amt;
           const status = newAmt >= Number(g.target_amount) ? 'completed' : 'active';
           await dbUpdate('goals', `id=eq.${g.id}`, { current_amount: newAmt, status });
           const pct = Math.round((newAmt / g.target_amount) * 100);
-          return `💰 *₹${amt.toLocaleString('en-IN')} added to ${g.name}!*\n\nProgress: ${pct}% [${'█'.repeat(Math.floor(pct/10))}${'░'.repeat(10 - Math.floor(pct/10))}]\n₹${newAmt.toLocaleString('en-IN')} / ₹${Number(g.target_amount).toLocaleString('en-IN')}\n\n${status === 'completed' ? '🎉 *GOAL ACHIEVED!* Congratulations!! 🥳' : `_₹${(Number(g.target_amount) - newAmt).toLocaleString('en-IN')} remaining!_`}`;
+          return `💰 *₹${amt.toLocaleString('en-IN')} → ${g.name}!*\n\n[${'█'.repeat(Math.floor(pct/10))}${'░'.repeat(10-Math.floor(pct/10))}] ${pct}%\n₹${newAmt.toLocaleString('en-IN')} / ₹${Number(g.target_amount).toLocaleString('en-IN')}\n\n${status === 'completed' ? '🎉 *GOAL ACHIEVED!* 🥳' : `_₹${(Number(g.target_amount)-newAmt).toLocaleString('en-IN')} remaining_`}`;
         }
-        return `❌ Goal "${goalName}" not found. Say "my goals" to see your goals.`;
+        return `❌ Goal "${goalName}" not found. Say "my goals"`;
       }
-
-      // Create new goal
-      const goalMatch = text.match(/(?:save\s*for|goal\s*[:=]?|want\s*to\s*buy)\s*(.+)/i);
-      const amtMatch = text.match(/(\d[\d,]+)/);
-      if (goalMatch && from) {
-        const name = goalMatch[1].replace(/\d[\d,]*/g, '').trim() || 'My Goal';
-        const target = amtMatch ? parseInt(amtMatch[1].replace(/,/g, '')) : 0;
-        const iconMap = { phone: '📱', iphone: '📱', bike: '🏍️', car: '🚗', laptop: '💻', trip: '✈️', house: '🏠', wedding: '💍', education: '🎓' };
+      const gm = text.match(/(?:save\s*for|goal\s*[:=]?)\s*(.+)/i);
+      const am = text.match(/(\d[\d,]+)/);
+      if (gm && from) {
+        const name = gm[1].replace(/\d[\d,]*/g,'').trim() || 'My Goal'; const target = am ? parseInt(am[1].replace(/,/g,'')) : 100000;
+        const icons = { phone:'📱', iphone:'📱', bike:'🏍️', car:'🚗', laptop:'💻', trip:'✈️', house:'🏠', wedding:'💍', goa:'✈️', education:'🎓' };
         let icon = '🎯';
-        for (const [k, v] of Object.entries(iconMap)) { if (name.toLowerCase().includes(k)) { icon = v; break; } }
-        
-        await dbInsert('goals', { phone: from, name, icon, target_amount: target || 100000, current_amount: 0, status: 'active', priority: 'medium' });
-        
-        const t = target || 100000;
-        return `🎯 *Goal Created!*\n\n${icon} *${name}*\n💰 Target: ₹${t.toLocaleString('en-IN')}\n\n*Monthly savings needed:*\n• 3 months: ₹${Math.round(t/3).toLocaleString('en-IN')}\n• 6 months: ₹${Math.round(t/6).toLocaleString('en-IN')}\n• 12 months: ₹${Math.round(t/12).toLocaleString('en-IN')}\n\n_Add savings: "added 5000 to ${name}"_ 💪`;
+        for (const [k,v] of Object.entries(icons)) { if (name.toLowerCase().includes(k)) { icon = v; break; } }
+        await dbInsert('goals', { phone: from, name, icon, target_amount: target, current_amount: 0, status: 'active', priority: 'medium' });
+        return `🎯 *Goal Created!*\n\n${icon} *${name}* — ₹${target.toLocaleString('en-IN')}\n\n*Monthly plan:*\n• 3 months: ₹${Math.round(target/3).toLocaleString('en-IN')}/mo\n• 6 months: ₹${Math.round(target/6).toLocaleString('en-IN')}/mo\n\n_Add savings: "added 5000 to ${name}"_ 💪`;
       }
+      return '🎯 *Goal Commands:*\n\n• "save for iPhone 80000"\n• "my goals"\n• "added 5000 to iPhone"';
+    },
+  },
 
-      return `🎯 *Goal Commands:*\n\n• "save for iPhone 80000" → create\n• "my goals" → list all\n• "added 5000 to iPhone" → add money`;
-    },
-  },
-  // ===== BALANCE/SUMMARY =====
+  // ===== BALANCE =====
   {
-    name: 'balance',
-    patterns: [/\b(balance|summary|overview|report|status)\b/i, /how\s*much\s*(have|did|do)\s*i/i, /total\s*(expense|income|spent|earned)/i],
+    name: 'balance', patterns: [/\b(balance|summary|overview|report|status)\b/i, /how\s*much\s*(have|did|do)\s*i/i],
     handler: async (text, from) => {
-      const expenses = await dbQuery('transactions', `?phone=eq.${from}&type=eq.expense&select=amount`);
-      const income = await dbQuery('transactions', `?phone=eq.${from}&type=eq.income&select=amount`);
-      const totalExp = expenses.reduce((s, t) => s + Number(t.amount), 0);
-      const totalInc = income.reduce((s, t) => s + Number(t.amount), 0);
-      const balance = totalInc - totalExp;
-      
-      return `📊 *Your Financial Summary*\n\n💰 Income: *₹${totalInc.toLocaleString('en-IN')}*\n💸 Expenses: *₹${totalExp.toLocaleString('en-IN')}*\n📈 Balance: *₹${balance.toLocaleString('en-IN')}*\n\n${balance >= 0 ? '✅ _You\'re in the green! Keep saving!_' : '⚠️ _Spending more than earning — let\'s fix this!_'}\n\n📱 Full dashboard: https://moneyviya.vercel.app`;
+      const [expenses, income, habits, goals] = await Promise.all([
+        dbQuery('transactions', `?phone=eq.${from}&type=eq.expense&select=amount`),
+        dbQuery('transactions', `?phone=eq.${from}&type=eq.income&select=amount`),
+        dbQuery('habits', `?phone=eq.${from}&select=name,current_streak,icon`),
+        dbQuery('goals', `?phone=eq.${from}&status=eq.active&select=name,current_amount,target_amount`),
+      ]);
+      const tExp = expenses.reduce((s,t) => s + Number(t.amount), 0);
+      const tInc = income.reduce((s,t) => s + Number(t.amount), 0);
+      let msg = `📊 *Your Dashboard*\n\n💰 Income: *₹${tInc.toLocaleString('en-IN')}*\n💸 Expenses: *₹${tExp.toLocaleString('en-IN')}*\n📈 Balance: *₹${(tInc-tExp).toLocaleString('en-IN')}*`;
+      if (habits.length) {
+        msg += `\n\n🔥 *Habits:* ${habits.length} tracked`;
+        const streaks = habits.filter(h => h.current_streak > 0);
+        if (streaks.length) msg += `\n${streaks.map(h => `${h.icon} ${h.name}: ${h.current_streak}🔥`).join('\n')}`;
+      }
+      if (goals.length) {
+        msg += `\n\n🎯 *Goals:* ${goals.length} active`;
+        goals.forEach(g => { msg += `\n${g.name}: ₹${Number(g.current_amount||0).toLocaleString('en-IN')}/${Number(g.target_amount).toLocaleString('en-IN')}`; });
+      }
+      msg += `\n\n📱 Full dashboard: moneyviya.vercel.app`;
+      return msg;
     },
   },
+
   // EDUCATION SHORTCUTS
-  { name: 'edu_sip', patterns: [/\bsip\b/i, /systematic\s*investment/i], handler: () => EDUCATION.sip },
-  { name: 'edu_mf', patterns: [/mutual\s*fund/i], handler: () => EDUCATION.mutual_fund },
-  { name: 'edu_emi', patterns: [/\bemi\b/i, /installment/i], handler: () => EDUCATION.emi },
-  { name: 'edu_credit', patterns: [/credit\s*score/i, /cibil/i], handler: () => EDUCATION.credit_score },
-  { name: 'edu_fd', patterns: [/\bfd\b/i, /fixed\s*deposit/i], handler: () => EDUCATION.fd },
-  { name: 'edu_tax', patterns: [/\btax\b/i, /80c/i, /tax\s*sav/i], handler: () => EDUCATION.tax },
-  { name: 'edu_ins', patterns: [/\binsurance\b/i, /\bterm\s*plan/i], handler: () => EDUCATION.insurance },
-  { name: 'edu_budget', patterns: [/\bbudget\b/i, /50.?30.?20/i], handler: () => EDUCATION.budget },
-  { name: 'edu_ppf', patterns: [/\bppf\b/i, /public\s*provident/i], handler: () => EDUCATION.ppf },
-  { name: 'edu_gold', patterns: [/\bgold\b/i, /\bsgb\b/i], handler: () => EDUCATION.gold },
-  { name: 'edu_stock', patterns: [/\bstock/i, /\bshare\s*market/i, /\bnifty\b/i], handler: () => EDUCATION.stocks },
-  { name: 'edu_loan', patterns: [/\bloan\b/i], handler: () => EDUCATION.loan },
-  // CASUAL
-  {
-    name: 'thanks',
-    patterns: [/\b(thanks|thank\s*you|thanku|tq|ty)\b/i, /\b(dhanyavaad|shukriya|nandri)\b/i],
-    handler: () => `🙏 *You're welcome!*\n\nAnything else I can help with? I'm here 24/7! 💬\n\n_Financial freedom starts with one smart decision!_ 💰`,
-  },
-  {
-    name: 'about',
-    patterns: [/who\s*(are|r)\s*(you|u)/i, /your\s*name/i],
-    handler: () => `🤖 *I'm Viya — Your AI Personal Assistant*\n\nI help with:\n💰 Money • 🏋️ Fitness • 📖 Study • 🏠 Home • 💼 Business\n\nBuilt by *MoneyViya* 🇮🇳\n📱 App: https://moneyviya.vercel.app`,
-  },
+  { name: 'e_sip', patterns: [/\bsip\b/i], handler: () => ED.sip },
+  { name: 'e_mf', patterns: [/mutual\s*fund/i], handler: () => ED.mf },
+  { name: 'e_emi', patterns: [/\bemi\b/i], handler: () => ED.emi },
+  { name: 'e_tax', patterns: [/\btax\b/i, /80c/i], handler: () => ED.tax },
+  { name: 'e_fd', patterns: [/\bfd\b/i, /fixed\s*deposit/i], handler: () => ED.fd },
+  { name: 'e_budget', patterns: [/\bbudget\b/i, /50.?30.?20/i], handler: () => ED.budget },
+  { name: 'e_loan', patterns: [/\bloan\b/i], handler: () => ED.loan },
+  { name: 'e_stock', patterns: [/\bstock/i, /\bnifty\b/i], handler: () => ED.stock },
+  { name: 'e_gold', patterns: [/\bgold\b/i], handler: () => ED.gold },
+  { name: 'e_credit', patterns: [/credit\s*score/i, /cibil/i], handler: () => ED.credit },
+  { name: 'thanks', patterns: [/\b(thanks|thank\s*you|thanku|tq|ty)\b/i], handler: () => `🙏 *Welcome!* Anything else? 💬` },
+  { name: 'about', patterns: [/who\s*(are|r)\s*(you|u)/i], handler: () => `🤖 *I'm Viya — Your AI Personal Assistant*\n\n💰 Finance • 🏋️ Fitness • 📖 Study • 🏠 Home • 💼 Business\n\nI auto-detect habits from your chats!\nSay "ate eggs" → I track it 🔥\n\n📱 App: moneyviya.vercel.app` },
 ];
 
-// ===== EDUCATION DATABASE =====
-const EDUCATION = {
-  sip: '📊 *SIP = Systematic Investment Plan*\n\nInvest ₹1,000/month instead of ₹12,000 at once.\n\n*Real example:*\n₹2,000/month in Nifty 50:\n• 5 years → ~₹1,65,000 (invested ₹1.2L)\n• 10 years → ~₹4,40,000 (invested ₹2.4L)\n• 20 years → ~₹20,00,000! (invested ₹4.8L)\n\n_Start ₹500/month on Groww or Zerodha_ 📈',
-  mutual_fund: '💰 *Mutual Fund = Group Investment*\n\n*Types:*\n• Equity (12-15% returns)\n• Debt (6-8% returns)\n• Index (lowest cost — best for beginners)\n\n_Start: Nifty 50 Index Fund SIP ₹500/month_ 📊',
-  emi: '🏦 *EMI = Equated Monthly Installment*\n\n*Golden Rule:* Total EMIs < 40% salary\n\n*Rates:*\n• Home: 8-10% • Car: 8-12% • Personal: 12-18%\n• Credit card: 36-42% (AVOID! 🚫)\n\n_No-cost EMI has processing fees!_ ⚠️',
-  credit_score: '📊 *Credit Score (300-900)*\n\n750+ = Excellent\n\n*Improve:*\n1. Pay bills ON TIME\n2. Keep usage < 30%\n3. Don\'t apply for many loans\n4. Keep old cards active\n\n_Check free: CIBIL, Paytm, CRED_ 📱',
-  fd: '🏦 *FD = Fixed Deposit*\n\n₹1L for 1 year → ~₹1.07L (7%)\n\n✅ Zero risk, guaranteed\n❌ Low returns, TDS above ₹40K\n\n_For long term: SIP > FD_ 📈',
-  tax: '🧾 *Tax Saving*\n\n*80C (₹1.5L):* ELSS, PPF, EPF\n*80D (₹25K):* Health insurance\n*80CCD (₹50K):* NPS\n\n_₹12,500/month ELSS = zero tax up to ₹7.5L!_ 💰',
-  insurance: '🛡️ *Must Have:*\n\n1. 🏥 Health: ₹5-10L cover (~₹500/month)\n2. 💀 Term Life: 10× salary (~₹700/month)\n\n❌ Avoid: LIC endowment, ULIPs (low returns)\n\n_Term plan + SIP > LIC plan_ 🎯',
-  budget: '📋 *50-30-20 Budget*\n\n*50% NEEDS* (rent, food, bills)\n*30% WANTS* (shopping, fun)\n*20% SAVINGS* (SIP, FD)\n\n_₹200/day saved = ₹73,000/year!_ 🎯',
-  ppf: '🏛️ *PPF — Safest Investment*\n\nInterest: 7.1% (tax-free!)\nLock-in: 15 years\n\n₹12,500/month for 15 years:\nInvested: ₹22.5L → Get: ~₹40L 🎯',
-  gold: '🥇 *Gold Options:*\n\n1. *SGB* — 2.5% interest + price gain (best!)\n2. *Gold ETF* — trade like stocks\n3. *Digital Gold* — from ₹1\n\n_Gold = max 10% of portfolio_ 🎯',
-  stocks: '📈 *Stocks for Beginners:*\n\n1. Start with Index Fund SIP (not direct stocks)\n2. Open Demat on Zerodha\n3. Learn 6 months before trading\n\n❌ No tips trading\n_SIP in Nifty 50 = easiest start_ 📊',
-  loan: '🏦 *Loan Rates:*\n\n• Home: 8.5-10%\n• Car: 8-12%\n• Personal: 12-18%\n• Credit card: 36-42% 🚫\n\n_EMI < 40% salary. Prepay whenever possible!_ ⚠️',
+const ED = {
+  sip: '📊 *SIP*\n₹2K/mo in Nifty 50:\n• 5yr → ~₹1.65L\n• 10yr → ~₹4.4L\n• 20yr → ~₹20L!\n_Start ₹500/mo on Groww_ 📈',
+  mf: '💰 *Mutual Funds*\n• Equity: 12-15%\n• Debt: 6-8%\n• Index: lowest cost (best!)\n_Start: Nifty 50 SIP ₹500/mo_ 📊',
+  emi: '🏦 *EMI Rule:* Total EMIs < 40% salary\n• Home: 8-10%\n• Car: 8-12%\n• Credit card: 36%+ 🚫',
+  tax: '🧾 *Tax Save:*\n80C: ₹1.5L (ELSS, PPF)\n80D: ₹25K (Health)\n80CCD: ₹50K (NPS)\n_₹12.5K/mo ELSS = zero tax up to ₹7.5L!_',
+  fd: '🏦 *FD:* ₹1L for 1yr → ~₹1.07L (7%)\n✅ Zero risk ❌ Low returns\n_For long term: SIP > FD_ 📈',
+  budget: '📋 *50-30-20*\n50% Needs • 30% Wants • 20% Save\n_₹200/day saved = ₹73K/year!_ 🎯',
+  loan: '🏦 Home: 8.5-10% • Car: 8-12%\nPersonal: 12-18% • Credit card: 36%+ 🚫\n_EMI < 40% salary always!_',
+  stock: '📈 *Stocks:* Start with Index Fund SIP\nOpen Demat on Zerodha\n❌ No tips trading\n_Nifty 50 SIP = easiest start_',
+  gold: '🥇 *Gold:* SGB (best!) → 2.5% interest + price gain\nGold ETF • Digital Gold from ₹1\n_Max 10% of portfolio_',
+  credit: '📊 *Credit Score (750+ = excellent)*\n1. Pay on time\n2. Usage < 30%\n3. Keep old cards\n_Check free: CIBIL, CRED_',
 };
 
 const GREETINGS = `👋 *Hey! I'm Viya — Your AI Personal Assistant* 🤖
 
-*I help with EVERYTHING:*
+*🧠 I'm SMART — I auto-detect from your chats:*
+• "ate 6 eggs" → ✅ checks in Eat healthy habit
+• "gym done" → ✅ checks in Workout habit
+• "studied 2 hours" → ✅ checks in Reading habit
+• "spent 500 on food" → 💸 tracks expense
 
-💰 *Money* — "spent 500 on food" / "salary 30000"
-🎯 *Goals* — "save for iPhone 80000"
-⏰ *Reminders* — "remind me to pay rent at 10 AM"
-📊 *Summary* — "balance" / "my expenses"
-🔥 *Habits* — "add habit: workout" / "done workout"
-📚 *Learn* — "what is SIP" / "tax tips"
+*📋 Direct Commands:*
+💰 "spent 200 food" • "salary 30000" • "balance"
+🎯 "save for bike 80000" • "my goals"
+⏰ "remind me to pay rent at 10 AM"
+🔥 "add habit: workout" • "my habits"
 
-🏋️ *Fitness* — "gym diet plan" / "protein calculation"
-📖 *Study* — "study schedule for exams"
-💼 *Business* — "revenue tracking tips"
-🏠 *Home* — "household budget ideas"
+*🤖 Ask me anything:*
+🏋️ Gym diet • 📖 Study plan • 💼 Business tips
+💰 SIP • Tax saving • Loans • Insurance
 
-_Just type naturally — I understand!_ 💬
-📱 App: https://moneyviya.vercel.app`;
+📱 App: moneyviya.vercel.app
+_Everything syncs live!_ 🔄`;
 
-// ===== PROCESS MESSAGE =====
+// ===== MASTER PROCESSOR =====
 async function processMessage(text, from) {
   const trimmed = text.trim();
   if (!trimmed) return GREETINGS;
   
-  // Save chat to history
+  // Save to chat history
   if (from) await dbInsert('chat_history', { phone: from, role: 'user', content: trimmed, source: 'whatsapp' });
 
-  // Rule-based intent matching
+  // 1. Rule-based intent matching
   for (const intent of INTENTS) {
-    for (const pattern of intent.patterns) {
-      if (pattern.test(trimmed)) {
+    for (const p of intent.patterns) {
+      if (p.test(trimmed)) {
         const reply = await intent.handler(trimmed, from);
-        if (from) await dbInsert('chat_history', { phone: from, role: 'assistant', content: reply.substring(0, 500), source: 'whatsapp' });
-        return reply;
+        if (reply) {
+          if (from) await dbInsert('chat_history', { phone: from, role: 'assistant', content: reply.substring(0, 500), source: 'whatsapp' });
+          return reply;
+        }
       }
     }
   }
 
-  // Fuzzy fallback for education topics
-  const words = trimmed.toLowerCase().split(/\s+/);
-  const topicMap = { invest: 'sip', investment: 'sip', mutual: 'mutual_fund', deposit: 'fd', pension: 'ppf', retire: 'ppf', gold: 'gold', sona: 'gold', share: 'stocks', market: 'stocks', trading: 'stocks' };
-  for (const word of words) { if (topicMap[word]) return EDUCATION[topicMap[word]]; }
+  // 2. SMART HABIT AUTO-DETECTION — the key intelligence
+  if (from) {
+    const habitResult = await detectAndCheckinHabit(trimmed, from);
+    if (habitResult.matched) {
+      let reply;
+      if (habitResult.alreadyDone) {
+        reply = `${habitResult.icon} *${habitResult.habit}* already done today! ✅\n🔥 Streak: ${habitResult.streak} days\n\n_Keep it up!_ 💪`;
+      } else {
+        reply = `✅ *${habitResult.icon} ${habitResult.habit} — Tracked!*${habitResult.detail ? `\n📝 ${habitResult.detail}` : ''}\n\n🔥 Streak: *${habitResult.streak} days*\n🏆 Best: *${habitResult.best} days*${habitResult.isNew ? '\n\n🆕 _Auto-created this habit for you!_' : ''}\n\n_Reflected in app instantly!_ 📱`;
+      }
+      // Also get AI response for the context
+      const aiTip = await askAI(`User just said: "${trimmed}". They completed a ${habitResult.habit} activity. Give a very short (1-2 line) motivational or health tip related to this. Don't repeat what they did.`);
+      if (aiTip) reply += `\n\n💡 _${aiTip}_`;
+      if (from) await dbInsert('chat_history', { phone: from, role: 'assistant', content: reply.substring(0, 500), source: 'whatsapp' });
+      return reply;
+    }
+  }
 
-  // AI fallback — handles gym, study, diet, business, etc.
-  const userContext = from ? `Phone: ${from}` : '';
-  const aiReply = await askAI(trimmed, userContext);
+  // 3. Education fuzzy match
+  const words = trimmed.toLowerCase().split(/\s+/);
+  const tm = { invest:'sip', mutual:'mf', deposit:'fd', pension:'fd', gold:'gold', share:'stock', market:'stock', trading:'stock' };
+  for (const w of words) { if (tm[w]) return ED[tm[w]]; }
+
+  // 4. AI fallback — handles gym, study, diet, business, etc.
+  const userCtx = from ? `Phone: ${from}` : '';
+  const aiReply = await askAI(trimmed, userCtx);
   if (aiReply) {
     if (from) await dbInsert('chat_history', { phone: from, role: 'assistant', content: aiReply.substring(0, 500), source: 'whatsapp' });
     return aiReply;
   }
 
-  return `🤖 I didn't quite get that.\n\n*Try:*\n💸 "spent 200 on food"\n📚 "what is SIP"\n⏰ "remind me to pay rent at 10 AM"\n🔥 "add habit: workout"\n🏋️ "gym diet plan"\n📖 "study schedule"\n\n_Or type "help" for full menu!_ 💬`;
+  return `🤖 I didn't get that.\n\n*Try:*\n💸 "spent 200 food" • 📚 "what is SIP"\n⏰ "remind me..." • 🔥 "gym done"\n🏋️ "gym diet plan" • 📖 "study schedule"\n\n_Type "help" for full menu!_ 💬`;
 }
 
 // ===== WHATSAPP API =====
@@ -461,87 +448,112 @@ async function sendWhatsAppMessage(to, text) {
   if (!phoneId || !token) return;
   try {
     await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: text } }),
     });
-  } catch (err) { console.error('Send error:', err); }
+  } catch (err) { console.error('WA send error:', err); }
 }
+
+// ===== OTP SYSTEM =====
+function generateOTP() { return Math.floor(100000 + Math.random() * 900000).toString(); }
 
 // ===== VERCEL HANDLER =====
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    // --- REMINDER CHECKER (accurate timing) ---
+    // --- REMINDER CHECKER ---
     if (req.query.action === 'check_reminders') {
-      const supabaseUrl = dbUrl();
-      const supabaseKey = (process.env.VITE_SUPABASE_ANON_KEY || '').trim();
-      const phoneId = (process.env.WHATSAPP_PHONE_ID || '').trim();
-      const waToken = (process.env.WHATSAPP_ACCESS_TOKEN || '').trim();
-
-      if (!supabaseUrl || !supabaseKey || !phoneId || !waToken) {
-        return res.status(200).json({ error: 'Missing env vars' });
-      }
-
       try {
-        const now = new Date();
-        const nowISO = now.toISOString();
-        
-        // Fetch ALL pending reminders whose time has passed
-        const resp = await fetch(
-          `${supabaseUrl}/rest/v1/reminders?status=eq.pending&remind_at=lte.${nowISO}&select=*`,
-          { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } }
-        );
+        const now = new Date().toISOString();
+        const resp = await fetch(`${dbUrl()}/rest/v1/reminders?status=eq.pending&remind_at=lte.${now}&select=*`, { headers: dbHeaders() });
         const reminders = await resp.json();
-
-        if (!Array.isArray(reminders) || reminders.length === 0) {
-          return res.status(200).json({ message: 'No due reminders', checked_at: nowISO });
-        }
-
+        if (!Array.isArray(reminders) || !reminders.length) return res.status(200).json({ message: 'No due reminders', at: now });
         let sent = 0;
-        for (const reminder of reminders) {
-          const isAdvance = reminder.task.startsWith('⚡ ADVANCE:');
-          const message = isAdvance
-            ? `⚡ *Heads Up!*\n\n📋 ${reminder.task.replace('⚡ ADVANCE: ', '')}\n🕐 Coming up in *5 minutes*\n\n_Get ready!_ 🎯`
-            : `🔔 *Reminder!*\n\n📋 *Task:* ${reminder.task}\n🕐 *Time:* ${reminder.remind_at_display || 'Now'}\n\n✅ _Time to do it! Stay organized with Viya_ 💪`;
-
-          await sendWhatsAppMessage(reminder.phone, message);
-          
-          // Mark as sent
-          await fetch(`${supabaseUrl}/rest/v1/reminders?id=eq.${reminder.id}`, {
-            method: 'PATCH',
-            headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'sent' }),
-          });
+        for (const r of reminders) {
+          const isAdv = r.task.startsWith('⚡');
+          const msg = isAdv
+            ? `⚡ *Heads Up!*\n\n📋 ${r.task.replace('⚡ Coming up: ', '')}\n🕐 Coming in *5 minutes*\n_Get ready!_ 🎯`
+            : `🔔 *Reminder!*\n\n📋 *${r.task}*\n🕐 ${r.remind_at_display || 'Now'}\n\n_Time to act! Stay on track_ 💪`;
+          await sendWhatsAppMessage(r.phone, msg);
+          await dbUpdate('reminders', `id=eq.${r.id}`, { status: 'sent' });
           sent++;
         }
-        return res.status(200).json({ message: `Sent ${sent} reminders`, checked_at: nowISO });
-      } catch (err) {
-        return res.status(200).json({ error: err.message });
-      }
+        return res.status(200).json({ sent, at: now });
+      } catch (e) { return res.status(200).json({ error: e.message }); }
     }
 
     // --- IN-APP CHAT ---
     if (req.query.action === 'chat') {
-      const userPhone = req.query.phone || '';
-      const userMsg = decodeURIComponent(req.query.message || '');
-      if (!userMsg) return res.status(200).json({ reply: 'Please type a message!' });
+      const phone = req.query.phone || '';
+      const msg = decodeURIComponent(req.query.message || '');
+      if (!msg) return res.status(200).json({ reply: 'Type a message!' });
+      
+      // Check for habit auto-detection in app chat too
+      if (phone) {
+        const habitResult = await detectAndCheckinHabit(msg, phone);
+        if (habitResult.matched && !habitResult.alreadyDone) {
+          const aiReply = await askAI(msg, `User completed ${habitResult.habit}. Give brief related tip.`);
+          const reply = `✅ ${habitResult.icon} *${habitResult.habit}* tracked! 🔥 ${habitResult.streak} day streak${aiReply ? `\n\n${aiReply}` : ''}`;
+          return res.status(200).json({ reply, habitCheckin: habitResult });
+        }
+      }
       
       try {
-        const reply = await askAI(userMsg, `User phone: ${userPhone}`);
+        const reply = await askAI(msg, phone ? `User phone: ${phone}` : '');
         if (reply) return res.status(200).json({ reply });
       } catch {}
-      return res.status(200).json({ reply: '🤖 Temporarily unavailable. Try again!' });
+      return res.status(200).json({ reply: '🤖 Try again shortly!' });
+    }
+
+    // --- OTP: SEND ---
+    if (req.query.action === 'send_otp') {
+      const phone = req.query.phone || '';
+      if (!phone || phone.length < 10) return res.status(200).json({ success: false, message: 'Invalid phone' });
+      
+      const otp = generateOTP();
+      const expiry = new Date(Date.now() + 5 * 60000).toISOString(); // 5 min expiry
+      
+      // Store OTP in notifications table (reuse for OTP storage)
+      await dbDelete('notifications', `phone=eq.${phone}&type=eq.otp`);
+      await dbInsert('notifications', { phone, type: 'otp', title: otp, description: expiry, is_read: false });
+      
+      // Try to send via WhatsApp
+      try {
+        await sendWhatsAppMessage(`91${phone}`, `🔐 *MoneyViya Login OTP*\n\nYour OTP: *${otp}*\n\n⏱️ Valid for 5 minutes\n⚠️ Don't share with anyone\n\n_If you didn't request this, ignore it._`);
+      } catch {}
+      
+      return res.status(200).json({ success: true, message: 'OTP sent to WhatsApp!' });
+    }
+
+    // --- OTP: VERIFY ---
+    if (req.query.action === 'verify_otp') {
+      const phone = req.query.phone || '';
+      const otp = req.query.otp || '';
+      
+      const records = await dbQuery('notifications', `?phone=eq.${phone}&type=eq.otp&is_read=eq.false&select=title,description`);
+      if (!records.length) return res.status(200).json({ success: false, message: 'OTP expired or not found' });
+      
+      const stored = records[0];
+      if (stored.title !== otp) return res.status(200).json({ success: false, message: 'Wrong OTP' });
+      if (new Date(stored.description) < new Date()) return res.status(200).json({ success: false, message: 'OTP expired' });
+      
+      // Mark OTP as used
+      await dbUpdate('notifications', `phone=eq.${phone}&type=eq.otp`, { is_read: true });
+      
+      // Auto-create user if not exists
+      const users = await dbQuery('users', `?phone=eq.${phone}&select=phone,name`);
+      if (!users.length) {
+        await dbInsert('users', { phone, name: 'User', encrypted_password: generateOTP() });
+      }
+      
+      return res.status(200).json({ success: true, message: 'OTP verified!' });
     }
 
     // --- WEBHOOK VERIFICATION ---
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
-    if (mode === 'subscribe' && token === (process.env.WHATSAPP_VERIFY_TOKEN || '').trim()) {
-      return res.status(200).send(challenge);
-    }
-    
-    return res.status(200).json({ status: 'MoneyViya V5 — Fully Agentic AI', time: new Date().toISOString() });
+    if (mode === 'subscribe' && token === (process.env.WHATSAPP_VERIFY_TOKEN || '').trim()) return res.status(200).send(challenge);
+    return res.status(200).json({ status: 'MoneyViya V6 — True Agentic AI', time: new Date().toISOString() });
   }
   
   if (req.method === 'POST') {
@@ -563,6 +575,5 @@ export default async function handler(req, res) {
     }
     return res.status(200).send('OK');
   }
-  
   return res.status(405).send('Method not allowed');
 }
