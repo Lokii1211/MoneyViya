@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
-import { Plus, Flame, Check, X, Trash2 } from 'lucide-react'
+import { Plus, Flame, Check, Trash2 } from 'lucide-react'
 
 const PRESETS = [
-  { emoji: '💰', name: 'Track expenses', cat: 'finance' },
-  { emoji: '🏋️', name: 'Workout', cat: 'health' },
-  { emoji: '📖', name: 'Read 30 mins', cat: 'learning' },
-  { emoji: '🧘', name: 'Meditate', cat: 'wellness' },
-  { emoji: '💧', name: 'Drink 3L water', cat: 'health' },
-  { emoji: '🥗', name: 'Eat healthy', cat: 'health' },
-  { emoji: '📝', name: 'Journal', cat: 'wellness' },
-  { emoji: '🚫', name: 'No junk food', cat: 'health' },
-  { emoji: '⏰', name: 'Wake up early', cat: 'discipline' },
-  { emoji: '📱', name: 'No social media 1h', cat: 'discipline' },
-  { emoji: '🏃', name: 'Run 2km', cat: 'fitness' },
-  { emoji: '🧮', name: 'Study 2 hours', cat: 'learning' },
+  { icon: '💰', name: 'Track expenses' },
+  { icon: '🏋️', name: 'Workout' },
+  { icon: '📖', name: 'Read 30 mins' },
+  { icon: '🧘', name: 'Meditate' },
+  { icon: '💧', name: 'Drink 3L water' },
+  { icon: '🥗', name: 'Eat healthy' },
+  { icon: '📝', name: 'Journal' },
+  { icon: '🚫', name: 'No junk food' },
+  { icon: '⏰', name: 'Wake up early' },
+  { icon: '📱', name: 'No social media 1h' },
+  { icon: '🏃', name: 'Run 2km' },
+  { icon: '🧮', name: 'Study 2 hours' },
 ]
 
 export default function Habits() {
@@ -24,7 +24,6 @@ export default function Habits() {
   const [checkins, setCheckins] = useState({})
   const [showAdd, setShowAdd] = useState(false)
   const [custom, setCustom] = useState('')
-  const [customEmoji, setCustomEmoji] = useState('✅')
   const [toast, setToast] = useState('')
 
   const loadData = async () => {
@@ -37,9 +36,9 @@ export default function Habits() {
   }
   useEffect(() => { if (phone) loadData() }, [phone])
 
-  const addHabit = async (name, emoji, cat) => {
+  const addHabit = async (name, icon) => {
     if (!name.trim()) return
-    await api.addHabit(phone, name.trim(), emoji, cat)
+    await api.addHabit(phone, name.trim(), icon)
     setCustom(''); setShowAdd(false)
     showToast('Habit added! 🔥')
     loadData()
@@ -61,7 +60,7 @@ export default function Habits() {
 
   const doneCount = Object.keys(checkins).length
   const totalCount = habits.length
-  const totalStreak = habits.reduce((s, h) => s + (h.streak || 0), 0)
+  const totalStreak = habits.reduce((s, h) => s + (h.current_streak || 0), 0)
 
   return (
     <div className="page">
@@ -95,15 +94,15 @@ export default function Habits() {
           <h3 style={{fontSize:15, fontWeight:700, marginBottom:12}}>Choose a habit</h3>
           <div className="preset-grid">
             {PRESETS.map((p, i) => (
-              <button key={i} className="preset-btn" onClick={() => addHabit(p.name, p.emoji, p.cat)}>
-                <span>{p.emoji}</span> {p.name}
+              <button key={i} className="preset-btn" onClick={() => addHabit(p.name, p.icon)}>
+                <span>{p.icon}</span> {p.name}
               </button>
             ))}
           </div>
           <div style={{borderTop:'1px solid var(--border)', marginTop:14, paddingTop:14}}>
             <div style={{display:'flex', gap:8}}>
               <input className="form-input" placeholder="Custom habit..." value={custom} onChange={e => setCustom(e.target.value)} style={{flex:1}} />
-              <button className="btn-primary" style={{padding:'0 16px'}} onClick={() => addHabit(custom, customEmoji, 'custom')}>Add</button>
+              <button className="btn-primary" style={{padding:'0 16px'}} onClick={() => addHabit(custom, '✅')}>Add</button>
             </div>
           </div>
         </div>
@@ -121,10 +120,10 @@ export default function Habits() {
         habits.map(h => (
           <div key={h.id} className={`habit-card${checkins[h.id] ? ' done' : ''}`}>
             <div className="habit-left">
-              <span className="habit-emoji">{h.emoji}</span>
+              <span className="habit-emoji">{h.icon || '✅'}</span>
               <div>
                 <div className="habit-name" style={checkins[h.id] ? {textDecoration:'line-through', opacity:0.6} : {}}>{h.name}</div>
-                <div className="habit-streak"><Flame size={12} /> {h.streak || 0} day streak</div>
+                <div className="habit-streak"><Flame size={12} /> {h.current_streak || 0} day streak</div>
               </div>
             </div>
             <div style={{display:'flex', alignItems:'center', gap:8}}>

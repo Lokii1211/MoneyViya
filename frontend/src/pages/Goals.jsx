@@ -3,14 +3,14 @@ import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { Target, Plus, Trash2, TrendingUp } from 'lucide-react'
 
-const EMOJIS = ['🏍️','💻','🏠','✈️','📱','🎓','💍','🚗','👶','💊']
+const ICONS = ['🏍️','💻','🏠','✈️','📱','🎓','💍','🚗','👶','💊']
 
 export default function Goals() {
   const { phone } = useApp()
   const [goals, setGoals] = useState([])
   const [showAdd, setShowAdd] = useState(false)
   const [addAmt, setAddAmt] = useState({})
-  const [form, setForm] = useState({ name: '', emoji: '🎯', target: '', deadline: '' })
+  const [form, setForm] = useState({ name: '', icon: '🎯', target: '', deadline: '' })
   const [toast, setToast] = useState('')
 
   const load = async () => { const g = await api.getGoals(phone); setGoals(g || []) }
@@ -18,8 +18,8 @@ export default function Goals() {
 
   const createGoal = async () => {
     if (!form.name || !form.target) return
-    await api.addGoal(phone, form.name, form.emoji, Number(form.target), form.deadline)
-    setForm({ name: '', emoji: '🎯', target: '', deadline: '' }); setShowAdd(false)
+    await api.addGoal(phone, form.name, form.icon, Number(form.target), form.deadline)
+    setForm({ name: '', icon: '🎯', target: '', deadline: '' }); setShowAdd(false)
     showToast('Goal created! 🎯'); load()
   }
 
@@ -47,7 +47,6 @@ export default function Goals() {
         </button>
       </div>
 
-      {/* Summary */}
       {goals.length > 0 && (
         <div style={{background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:16, padding:20, marginBottom:20, textAlign:'center'}}>
           <div style={{fontSize:11, color:'var(--text3)', letterSpacing:2, fontWeight:700}}>TOTAL SAVED</div>
@@ -59,13 +58,12 @@ export default function Goals() {
         </div>
       )}
 
-      {/* Add Goal */}
       {showAdd && (
         <div className="entry-form" style={{marginBottom:20}}>
           <h3 style={{fontSize:15, fontWeight:700, marginBottom:14}}>Create Goal</h3>
           <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:12}}>
-            {EMOJIS.map(e => (
-              <button key={e} className={`cat-chip icon-chip${form.emoji === e ? ' active' : ''}`} onClick={() => setForm(p => ({...p, emoji: e}))}>{e}</button>
+            {ICONS.map(e => (
+              <button key={e} className={`cat-chip icon-chip${form.icon === e ? ' active' : ''}`} onClick={() => setForm(p => ({...p, icon: e}))}>{e}</button>
             ))}
           </div>
           <div className="form-group"><label>Goal Name</label>
@@ -84,12 +82,11 @@ export default function Goals() {
         </div>
       )}
 
-      {/* Goals List */}
       {goals.length === 0 ? (
         <div className="empty-state">
           <Target size={48} className="empty-icon" />
           <h3>Set Your First Goal</h3>
-          <p>What are you saving for? A bike, laptop, trip? Start saving today! 🎯</p>
+          <p>What are you saving for? A bike, laptop, trip? Start today! 🎯</p>
           <button className="btn-primary" onClick={() => setShowAdd(true)}>Create Goal</button>
         </div>
       ) : (
@@ -98,7 +95,7 @@ export default function Goals() {
           return (
             <div key={g.id} className="goal-card">
               <div className="goal-header">
-                <div className="goal-icon">{g.emoji}</div>
+                <div className="goal-icon">{g.icon || '🎯'}</div>
                 <div className="goal-info">
                   <div className="goal-name">{g.name}</div>
                   <div className="goal-deadline">{g.deadline ? `By ${g.deadline}` : 'No deadline'}</div>

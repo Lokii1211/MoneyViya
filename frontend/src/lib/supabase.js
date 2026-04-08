@@ -11,13 +11,15 @@ async function insert(table, data) {
   if (!REST) return null
   try {
     const r = await fetch(`${REST}/${table}`, { method: 'POST', headers: { ...hdrs(), 'Prefer': 'return=representation' }, body: JSON.stringify(data) })
+    if (!r.ok) { console.error(`INSERT ${table} failed:`, r.status, await r.text()); return null }
     const res = await r.json(); return Array.isArray(res) ? res[0] : res
-  } catch { return null }
+  } catch (e) { console.error(`INSERT ${table} error:`, e); return null }
 }
 async function update(table, filter, data) {
   if (!REST) return null
   try {
     const r = await fetch(`${REST}/${table}?${filter}`, { method: 'PATCH', headers: { ...hdrs(), 'Prefer': 'return=representation' }, body: JSON.stringify(data) })
+    if (!r.ok) { console.error(`UPDATE ${table} failed:`, r.status); return null }
     const res = await r.json(); return Array.isArray(res) ? res[0] : res
   } catch { return null }
 }
@@ -33,15 +35,17 @@ async function upsert(table, data) {
   } catch { return null }
 }
 
-// ===== COMPLETE API =====
+// ===== COMPLETE API — MATCHES REAL DB SCHEMA =====
 export const api = {
-  // AUTH
+  // AUTH — uses 'encrypted_password' column (real schema)
   async login(phone, password) {
     try {
       const users = await query('users', `?phone=eq.${phone}&select=*`)
       const user = users[0]
       if (!user) return { success: false, message: 'Account not found. Register first.' }
-      if (user.password_hash !== password) return { success: false, message: 'Wrong password.' }
+      // Check both password_hash and encrypted_password for compatibility
+      const storedPwd = user.encrypted_password || user.password_hash
+      if (storedPwd !== password) return { success: false, message: 'Wrong password.' }
       localStorage.setItem('mv_token', 'sb_' + phone)
       localStorage.setItem('mv_phone', phone)
       localStorage.setItem('mv_user', JSON.stringify(user))
@@ -52,7 +56,7 @@ export const api = {
     try {
       const existing = await query('users', `?phone=eq.${phone}&select=phone`)
       if (existing.length) return { success: false, message: 'Account exists. Sign in.' }
-      await upsert('users', { phone, password_hash: password, name })
+      await insert('users', { phone, encrypted_password: password, name })
       return { success: true, message: 'Account created! Sign in now.' }
     } catch { return { success: false, message: 'Connection error.' } }
   },
@@ -67,7 +71,7 @@ export const api = {
   },
   async updateUser(phone, data) { return update('users', `phone=eq.${phone}`, data) },
 
-  // TRANSACTIONS
+  // TRANSACTIONS — columns: id, phone, type, amount, category, description, source, merchant, created_at
   async getTransactions(phone, limit = 50) {
     return query('transactions', `?phone=eq.${phone}&select=*&order=created_at.desc&limit=${limit}`)
   },
@@ -88,10 +92,10 @@ export const api = {
   },
   async deleteTransaction(id) { return remove('transactions', `id=eq.${id}`) },
 
-  // GOALS
+  // GOALS — columns: id, phone, name, icon, target_amount, current_amount, deadline, priority, status, created_at
   async getGoals(phone) { return query('goals', `?phone=eq.${phone}&status=eq.active&select=*&order=created_at.desc`) },
-  async addGoal(phone, name, emoji, target, deadline) {
-    return insert('goals', { phone, name, emoji, target_amount: target, deadline, current_amount: 0 })
+  async addGoal(phone, name, icon, target, deadline) {
+    return insert('goals', { phone, name, icon: icon || '🎯', target_amount: target, deadline: deadline || '', current_amount: 0, status: 'active', priority: 'medium' })
   },
   async updateGoal(id, data) { return update('goals', `id=eq.${id}`, data) },
   async deleteGoal(id) { return remove('goals', `id=eq.${id}`) },
@@ -104,66 +108,58 @@ export const api = {
     return update('goals', `id=eq.${id}`, { current_amount: newAmt, status })
   },
 
-  // HABITS
+  // HABITS — columns: id, phone, name, icon, frequency, current_streak, longest_streak, last_completed, created_at
   async getHabits(phone) { return query('habits', `?phone=eq.${phone}&select=*&order=created_at.asc`) },
-  async addHabit(phone, name, emoji, category) {
-    return insert('habits', { phone, name, emoji, category: category || 'general' })
+  async addHabit(phone, name, icon) {
+    return insert('habits', { phone, name, icon: icon || '✅', frequency: 'daily', current_streak: 0, longest_streak: 0 })
   },
   async deleteHabit(id) {
     await remove('habit_checkins', `habit_id=eq.${id}`)
     return remove('habits', `id=eq.${id}`)
   },
 
-  // HABIT CHECK-INS
+  // HABIT CHECK-INS — columns: id, habit_id, phone, checked_date, status, created_at
   async getCheckins(phone, date) {
     const d = date || new Date().toISOString().split('T')[0]
     return query('habit_checkins', `?phone=eq.${phone}&checked_date=eq.${d}&select=*`)
   },
   async checkinHabit(habitId, phone) {
     const today = new Date().toISOString().split('T')[0]
-    // Check if already done
     const existing = await query('habit_checkins', `?habit_id=eq.${habitId}&checked_date=eq.${today}&select=*`)
     if (existing.length) {
-      // Undo check-in
       await remove('habit_checkins', `habit_id=eq.${habitId}&checked_date=eq.${today}`)
-      // Decrease streak
       const habits = await query('habits', `?id=eq.${habitId}&select=*`)
-      if (habits[0]) await update('habits', `id=eq.${habitId}`, { streak: Math.max(0, (habits[0].streak || 0) - 1) })
+      if (habits[0]) await update('habits', `id=eq.${habitId}`, { current_streak: Math.max(0, (habits[0].current_streak || 0) - 1) })
       return { checked: false }
     }
-    // Do check-in
-    await insert('habit_checkins', { habit_id: habitId, phone, checked_date: today })
-    // Increase streak
+    await insert('habit_checkins', { habit_id: habitId, phone, checked_date: today, status: 'done' })
     const habits = await query('habits', `?id=eq.${habitId}&select=*`)
     if (habits[0]) {
-      const newStreak = (habits[0].streak || 0) + 1
-      const bestStreak = Math.max(newStreak, habits[0].best_streak || 0)
-      await update('habits', `id=eq.${habitId}`, { streak: newStreak, best_streak: bestStreak })
+      const newStreak = (habits[0].current_streak || 0) + 1
+      const longestStreak = Math.max(newStreak, habits[0].longest_streak || 0)
+      await update('habits', `id=eq.${habitId}`, { current_streak: newStreak, longest_streak: longestStreak, last_completed: today })
     }
     return { checked: true }
   },
 
-  // NOTIFICATIONS
+  // NOTIFICATIONS — columns: id, phone, type, title, description, is_read, action_url, created_at
   async getNotifications(phone) { return query('notifications', `?phone=eq.${phone}&select=*&order=created_at.desc&limit=20`) },
   async markNotifRead(id) { return update('notifications', `id=eq.${id}`, { is_read: true }) },
   async clearNotifications(phone) { return remove('notifications', `phone=eq.${phone}`) },
 
-  // CHAT — In-app AI chat using Groq via webhook
+  // CHAT — uses webhook for Groq AI
   async chat(phone, message) {
     try {
-      // Save user message
       await insert('chat_history', { phone, role: 'user', content: message, source: 'app' })
-      // Call our webhook with chat action
       const r = await fetch(`/api/webhook?action=chat&phone=${phone}&message=${encodeURIComponent(message)}`)
       if (r.ok) {
         const data = await r.json()
-        const reply = data.reply || data.message || 'I couldn\'t process that. Try again!'
-        // Save assistant reply
+        const reply = data.reply || data.message || "I couldn't process that. Try again!"
         await insert('chat_history', { phone, role: 'assistant', content: reply, source: 'app' })
         return { reply }
       }
     } catch {}
-    return { reply: '🤖 I\'m having connection issues. Please try again in a moment!' }
+    return { reply: "🤖 I'm having connection issues. Please try again!" }
   },
   async getChatHistory(phone, limit = 30) {
     return query('chat_history', `?phone=eq.${phone}&select=*&order=created_at.desc&limit=${limit}`)
