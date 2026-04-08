@@ -100,33 +100,56 @@ const INTENTS = [
       /don't\s*forget/i,
       /set\s*(a|an)?\s*(reminder|notification)/i,
     ],
-    handler: (text) => {
+    handler: async (text, from) => {
       // Extract time (6:30 AM, 7pm, 18:00, etc.)
       const timeMatch = text.match(/(\d{1,2})\s*[:\.]?\s*(\d{2})?\s*(am|pm|AM|PM)/);
       const time24 = text.match(/(\d{1,2}):(\d{2})\b(?!\s*(am|pm))/i);
-      let timeStr = '';
+      let hours = 0, minutes = 0, timeStr = '';
+      
       if (timeMatch) {
-        timeStr = `${timeMatch[1]}${timeMatch[2] ? ':' + timeMatch[2] : ':00'} ${timeMatch[3].toUpperCase()}`;
+        hours = parseInt(timeMatch[1]);
+        minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+        const period = timeMatch[3].toUpperCase();
+        if (period === 'PM' && hours !== 12) hours += 12;
+        if (period === 'AM' && hours === 12) hours = 0;
+        timeStr = `${timeMatch[1]}${timeMatch[2] ? ':' + timeMatch[2] : ':00'} ${period}`;
       } else if (time24) {
+        hours = parseInt(time24[1]);
+        minutes = parseInt(time24[2]);
         timeStr = `${time24[1]}:${time24[2]}`;
       }
       
-      // Extract date (8/4/2026, tomorrow, today, etc.)
+      // Extract date
       const dateMatch = text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-]?(\d{2,4})?/);
       const relDate = text.match(/(today|tomorrow|kal|aaj)/i);
-      let dateStr = '';
+      const remindAt = new Date();
+      // IST offset
+      remindAt.setHours(remindAt.getHours() + 5);
+      remindAt.setMinutes(remindAt.getMinutes() + 30);
+      
       if (dateMatch) {
-        dateStr = `${dateMatch[1]}/${dateMatch[2]}${dateMatch[3] ? '/' + dateMatch[3] : ''}`;
+        remindAt.setDate(parseInt(dateMatch[1]));
+        remindAt.setMonth(parseInt(dateMatch[2]) - 1);
+        if (dateMatch[3]) remindAt.setFullYear(parseInt(dateMatch[3]));
       } else if (relDate) {
         const d = relDate[1].toLowerCase();
-        const now = new Date();
-        if (d === 'tomorrow' || d === 'kal') now.setDate(now.getDate() + 1);
-        dateStr = now.toLocaleDateString('en-IN');
-      } else {
-        dateStr = new Date().toLocaleDateString('en-IN');
+        if (d === 'tomorrow' || d === 'kal') remindAt.setDate(remindAt.getDate() + 1);
       }
       
-      // Extract task — everything after "to" or "for" or "about"
+      if (timeStr) {
+        remindAt.setHours(hours);
+        remindAt.setMinutes(minutes);
+        remindAt.setSeconds(0);
+      }
+      
+      // Adjust back from IST to UTC for storage
+      const remindAtUTC = new Date(remindAt);
+      remindAtUTC.setHours(remindAtUTC.getHours() - 5);
+      remindAtUTC.setMinutes(remindAtUTC.getMinutes() - 30);
+      
+      let dateStr = remindAt.toLocaleDateString('en-IN');
+      
+      // Extract task
       let task = '';
       const taskMatch = text.match(/(?:to|for|about|that)\s+(.+?)(?:\s+at\s+\d|\s+on\s+\d|\s+tomorrow|\s+today|$)/i);
       const taskMatch2 = text.match(/remind(?:er)?\s+(?:me\s+)?(?:to\s+)?(.+?)(?:\s+at\s+\d|\s+on\s+\d|$)/i);
@@ -134,7 +157,34 @@ const INTENTS = [
       else if (taskMatch2) task = taskMatch2[1].replace(/\s*(at|on)\s*$/, '').trim();
       else task = 'Your reminder';
 
-      return `⏰ *Reminder Saved!*\n\n📋 Task: ${task}\n🕐 Time: ${timeStr || 'Not specified'}\n📅 Date: ${dateStr}\n\n✅ _I'll notify you at the scheduled time._\n\n💡 Tip: You can also say:\n• "remind me to pay rent tomorrow 10 AM"\n• "remind me about SIP on 5th"`;
+      // Save to Supabase
+      const supabaseUrl = (process.env.VITE_SUPABASE_URL || '').trim();
+      const supabaseKey = (process.env.VITE_SUPABASE_ANON_KEY || '').trim();
+      if (supabaseUrl && supabaseKey && from) {
+        try {
+          await fetch(`${supabaseUrl}/rest/v1/reminders`, {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal',
+            },
+            body: JSON.stringify({
+              phone: from,
+              task: task,
+              remind_at: remindAtUTC.toISOString(),
+              remind_at_display: `${timeStr || 'Not set'} on ${dateStr}`,
+              status: 'pending',
+            }),
+          });
+          console.log(`💾 Reminder saved for ${from}: "${task}" at ${remindAtUTC.toISOString()}`);
+        } catch (e) {
+          console.error('Failed to save reminder:', e);
+        }
+      }
+
+      return `⏰ *Reminder Saved!*\n\n📋 Task: ${task}\n🕐 Time: ${timeStr || 'Not specified'}\n📅 Date: ${dateStr}\n\n✅ _I'll notify you at the scheduled time via WhatsApp!_\n\n💡 Tip: You can also say:\n• "remind me to pay rent tomorrow 10 AM"\n• "remind me about SIP on 5th"`;
     },
   },
 
@@ -379,7 +429,7 @@ const GREETINGS = `👋 *Namaste! I'm Viya — Your Private Wealth Manager* 💰
 _Just type naturally — I understand!_ 💬`;
 
 // ===== PROCESS MESSAGE (with AI fallback) =====
-async function processMessage(text) {
+async function processMessage(text, from) {
   const trimmed = text.trim();
   if (!trimmed) return GREETINGS;
 
@@ -387,7 +437,7 @@ async function processMessage(text) {
   for (const intent of INTENTS) {
     for (const pattern of intent.patterns) {
       if (pattern.test(trimmed)) {
-        return intent.handler(trimmed);
+        return await intent.handler(trimmed, from);
       }
     }
   }
@@ -479,7 +529,7 @@ export default async function handler(req, res) {
               const text = msg.text.body;
               console.log(`📩 From ${from}: ${text}`);
               
-              const reply = await processMessage(text);
+              const reply = await processMessage(text, from);
               await sendWhatsAppMessage(from, reply);
               console.log(`📤 Replied to ${from}`);
             }
