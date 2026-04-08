@@ -501,6 +501,61 @@ async function sendWhatsAppMessage(to, text) {
 // ===== VERCEL HANDLER =====
 export default async function handler(req, res) {
   if (req.method === 'GET') {
+    // --- REMINDER CHECKER (called by UptimeRobot every 5 min) ---
+    if (req.query.action === 'check_reminders') {
+      const supabaseUrl = (process.env.VITE_SUPABASE_URL || '').trim();
+      const supabaseKey = (process.env.VITE_SUPABASE_ANON_KEY || '').trim();
+      const phoneId = (process.env.WHATSAPP_PHONE_ID || '').trim();
+      const waToken = (process.env.WHATSAPP_ACCESS_TOKEN || '').trim();
+
+      if (!supabaseUrl || !supabaseKey || !phoneId || !waToken) {
+        return res.status(200).json({ error: 'Missing env vars', vars: { supabaseUrl: !!supabaseUrl, supabaseKey: !!supabaseKey, phoneId: !!phoneId, waToken: !!waToken } });
+      }
+
+      try {
+        const now = new Date();
+        const nowISO = now.toISOString();
+        
+        const resp = await fetch(
+          `${supabaseUrl}/rest/v1/reminders?status=eq.pending&remind_at=lte.${nowISO}&select=*`,
+          { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } }
+        );
+        const reminders = await resp.json();
+
+        if (!Array.isArray(reminders) || reminders.length === 0) {
+          return res.status(200).json({ message: 'No due reminders', checked_at: nowISO });
+        }
+
+        let sent = 0;
+        for (const reminder of reminders) {
+          const message = `⏰ *Reminder Alert!*\n\n📋 *Task:* ${reminder.task}\n🕐 *Scheduled:* ${reminder.remind_at_display || 'Now'}\n\n_This reminder was set by you via WhatsApp._\n✅ Stay organized with Viya! 💪\n\nType "help" for more options!`;
+
+          await sendWhatsAppMessage(reminder.phone, message);
+
+          // Mark as sent
+          await fetch(
+            `${supabaseUrl}/rest/v1/reminders?id=eq.${reminder.id}`,
+            {
+              method: 'PATCH',
+              headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ status: 'sent' }),
+            }
+          );
+          sent++;
+          console.log(`📤 Reminder sent to ${reminder.phone}: ${reminder.task}`);
+        }
+        return res.status(200).json({ message: `Sent ${sent} reminders`, checked_at: nowISO });
+      } catch (err) {
+        console.error('Reminder check error:', err);
+        return res.status(200).json({ error: err.message });
+      }
+    }
+
+    // --- WEBHOOK VERIFICATION (Meta) ---
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
@@ -509,7 +564,9 @@ export default async function handler(req, res) {
       console.log('✅ Webhook verified!');
       return res.status(200).send(challenge);
     }
-    return res.status(403).send('Forbidden');
+    
+    // Health check
+    return res.status(200).json({ status: 'MoneyViya Bot V3 — Agentic AI', time: new Date().toISOString() });
   }
   
   if (req.method === 'POST') {
