@@ -7,13 +7,20 @@ import { TrendingUp, Plus, Sun, Flame, Target, Wallet, BarChart3, Landmark, Cale
 export default function Home() {
   const { phone, user, setUser } = useApp()
   const [data, setData] = useState(null)
+  const [habits, setHabits] = useState([])
   const nav = useNavigate()
-  useEffect(() => { if (phone) api.getUser(phone).then(d => { if (d) { setData(d); setUser(p => ({ ...p, ...d })) } }) }, [phone])
+  useEffect(() => {
+    if (phone) {
+      api.getUser(phone).then(d => { if (d) { setData(d); setUser(p => ({ ...p, ...d })) } })
+      api.getHabits(phone).then(h => { if (h) setHabits(h) })
+    }
+  }, [phone])
   const income = data?.monthly_income || 0, expense = data?.monthly_expenses || 0
   const savings = data?.current_savings || 0, budget = data?.daily_budget || 1000
   const name = data?.name || user?.name || 'User'
   const spent = expense, weeklyBudget = budget * 7
   const weekPct = weeklyBudget > 0 ? Math.min((spent / weeklyBudget) * 100, 100) : 0
+  const totalStreak = habits.reduce((s, h) => s + (h.current_streak || 0), 0)
 
   const actions = [
     { icon: <Plus size={18} />, label: 'Add Expense', color: 'green', to: '/expenses' },
@@ -51,8 +58,8 @@ export default function Home() {
       <div className="streak-card" onClick={() => nav('/habits')}>
         <div className="streak-fire">🔥</div>
         <div className="streak-info">
-          <div className="streak-count">7 Day Streak!</div>
-          <div className="streak-label">Keep tracking daily to grow your streak</div>
+          <div className="streak-count">{totalStreak > 0 ? `${totalStreak} Day Streak!` : 'Start Your Streak!'}</div>
+          <div className="streak-label">{totalStreak > 0 ? 'Keep going! Every day counts' : 'Complete habits daily to build streaks'}</div>
         </div>
         <ArrowUpRight size={20} />
       </div>
