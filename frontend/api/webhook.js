@@ -1,7 +1,67 @@
 /**
- * MoneyViya WhatsApp Cloud API Webhook — V2 Smart NLP
+ * MoneyViya WhatsApp Cloud API Webhook — V3 Agentic AI
  * Runs as Vercel Serverless Function
+ * Uses Groq AI (free LLaMA-3) for intelligent conversations
  */
+
+// ===== GROQ AI (Free LLaMA-3 — 30 req/min) =====
+const SYSTEM_PROMPT = `You are Viya, MoneyViya's Private Wealth Manager AI assistant for India. You're talking via WhatsApp.
+
+Your personality:
+- Friendly, warm, uses emojis naturally
+- Expert in Indian personal finance (₹ currency)
+- Explains complex topics simply with real examples
+- Uses *bold* for emphasis (WhatsApp markdown)
+- Keeps responses under 300 words (WhatsApp readability)
+- Mixes Hindi words naturally (bachat, kharcha, etc.)
+- Always gives actionable advice
+
+Your capabilities:
+- Track expenses & income
+- Explain SIP, mutual funds, EMI, FD, PPF, NPS, stocks, crypto, insurance, tax saving
+- Set savings goals
+- Budget planning (50-30-20 rule)
+- Emergency fund guidance
+- Investment recommendations for beginners
+- UPI tips and tricks
+- Loan comparison
+
+Rules:
+- Never give stock-specific buy/sell advice
+- Always recommend index funds for beginners
+- Amounts in ₹ with Indian number format
+- Suggest the MoneyViya app for tracking: https://moneyviya.vercel.app
+- If someone asks something non-financial, politely redirect to finance topics
+- For greetings, introduce yourself briefly and show what you can do`;
+
+async function askAI(userMessage) {
+  const apiKey = (process.env.GROQ_API_KEY || '').trim();
+  if (!apiKey) return null;
+
+  try {
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: userMessage },
+        ],
+        max_tokens: 500,
+        temperature: 0.7,
+      }),
+    });
+    const data = await resp.json();
+    return data.choices?.[0]?.message?.content || null;
+  } catch (err) {
+    console.error('Groq AI error:', err);
+    return null;
+  }
+}
 
 // ===== SMART NLP ENGINE =====
 
@@ -318,11 +378,12 @@ const GREETINGS = `👋 *Namaste! I'm Viya — Your Private Wealth Manager* 💰
 
 _Just type naturally — I understand!_ 💬`;
 
-// ===== PROCESS MESSAGE =====
-function processMessage(text) {
+// ===== PROCESS MESSAGE (with AI fallback) =====
+async function processMessage(text) {
   const trimmed = text.trim();
   if (!trimmed) return GREETINGS;
 
+  // Step 1: Try rule-based intent matching
   for (const intent of INTENTS) {
     for (const pattern of intent.patterns) {
       if (pattern.test(trimmed)) {
@@ -348,7 +409,11 @@ function processMessage(text) {
     if (topicMap[word]) return EDUCATION[topicMap[word]];
   }
 
-  // Final fallback
+  // Step 2: Try AI (Groq LLaMA-3) for smart response
+  const aiReply = await askAI(trimmed);
+  if (aiReply) return aiReply;
+
+  // Step 3: Final fallback
   return `🤖 I'm not sure I understood that.\n\nHere's what I can help with:\n\n💸 *Track:* "spent 200 on food"\n📚 *Learn:* "what is SIP", "tax tips"\n⏰ *Remind:* "remind me to pay rent"\n🎯 *Goals:* "save for laptop"\n📊 *Info:* "credit score", "gold"\n\n_Or just say "help" for the full menu!_ 💬`;
 }
 
@@ -414,7 +479,7 @@ export default async function handler(req, res) {
               const text = msg.text.body;
               console.log(`📩 From ${from}: ${text}`);
               
-              const reply = processMessage(text);
+              const reply = await processMessage(text);
               await sendWhatsAppMessage(from, reply);
               console.log(`📤 Replied to ${from}`);
             }
