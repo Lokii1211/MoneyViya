@@ -1,22 +1,53 @@
-import { useState } from 'react'
-import { Bell, CheckCircle, AlertTriangle, TrendingUp, Flame, Target, Trash2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useApp } from '../lib/store'
+import { api } from '../lib/supabase'
+import { Bell, CheckCircle, AlertTriangle, Clock, Flame, Target, Trash2 } from 'lucide-react'
 
-const MOCK_NOTIFS = [
-  { id: 1, type: 'alert', icon: <AlertTriangle size={16} />, title: 'Budget Warning', desc: 'Food spending is at 85% of your budget', time: '2h ago', read: false },
-  { id: 2, type: 'success', icon: <CheckCircle size={16} />, title: 'Goal Progress', desc: 'Emergency Fund reached 50%! Keep going 🎉', time: '5h ago', read: false },
-  { id: 3, type: 'info', icon: <TrendingUp size={16} />, title: 'Market Update', desc: 'Nifty up 1.2% today. Your portfolio is growing.', time: '8h ago', read: true },
-  { id: 4, type: 'habit', icon: <Flame size={16} />, title: 'Habit Reminder', desc: 'Don\'t forget to track expenses today! 🔥 3-day streak', time: '1d ago', read: true },
-  { id: 5, type: 'info', icon: <Target size={16} />, title: 'Weekly Review Ready', desc: 'Your weekly financial review is ready to view', time: '2d ago', read: true },
-]
+const TYPE_ICON = {
+  alert: <AlertTriangle size={16} />,
+  success: <CheckCircle size={16} />,
+  info: <Clock size={16} />,
+  habit: <Flame size={16} />,
+  goal: <Target size={16} />,
+  otp: null, // hide OTPs
+  reminder: <Clock size={16} />,
+}
+
+function timeAgo(d) {
+  const diff = (Date.now() - new Date(d).getTime()) / 1000
+  if (diff < 60) return 'just now'
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`
+  return `${Math.floor(diff/86400)}d ago`
+}
 
 export default function Notifications() {
-  const [notifs, setNotifs] = useState(MOCK_NOTIFS)
+  const { phone } = useApp()
+  const [notifs, setNotifs] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  function markRead(id) { setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n)) }
-  function remove(id) { setNotifs(prev => prev.filter(n => n.id !== id)) }
-  function markAllRead() { setNotifs(prev => prev.map(n => ({ ...n, read: true }))) }
+  useEffect(() => {
+    if (!phone) return
+    api.getNotifications(phone).then(data => {
+      // Filter out OTP notifications
+      setNotifs((data || []).filter(n => n.type !== 'otp'))
+      setLoading(false)
+    })
+  }, [phone])
 
-  const unread = notifs.filter(n => !n.read).length
+  function markRead(id) {
+    api.markNotifRead(id)
+    setNotifs(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+  }
+  function remove(id) {
+    setNotifs(prev => prev.filter(n => n.id !== id))
+  }
+  function markAllRead() {
+    notifs.forEach(n => { if (!n.is_read) api.markNotifRead(n.id) })
+    setNotifs(prev => prev.map(n => ({ ...n, is_read: true })))
+  }
+
+  const unread = notifs.filter(n => !n.is_read).length
 
   return (
     <div className="page">
@@ -25,16 +56,16 @@ export default function Notifications() {
         {unread > 0 && <button className="link-btn" onClick={markAllRead}>Mark all read</button>}
       </header>
 
-      {notifs.length === 0 ? (
+      {loading ? <p className="empty-text">Loading...</p> : notifs.length === 0 ? (
         <div className="empty-state"><Bell size={48} className="empty-icon" /><h3>All caught up!</h3><p>No new notifications</p></div>
       ) : (
         notifs.map(n => (
-          <div key={n.id} className={'notif-card' + (n.read ? '' : ' unread')} onClick={() => markRead(n.id)}>
-            <div className={'notif-icon ' + n.type}>{n.icon}</div>
+          <div key={n.id} className={'notif-card' + (n.is_read ? '' : ' unread')} onClick={() => markRead(n.id)}>
+            <div className={'notif-icon ' + (n.type || 'info')}>{TYPE_ICON[n.type] || <Bell size={16} />}</div>
             <div className="notif-body">
               <div className="notif-title">{n.title}</div>
-              <div className="notif-desc">{n.desc}</div>
-              <div className="notif-time">{n.time}</div>
+              <div className="notif-desc">{n.description}</div>
+              <div className="notif-time">{timeAgo(n.created_at)}</div>
             </div>
             <button className="notif-dismiss" onClick={e => { e.stopPropagation(); remove(n.id) }}><Trash2 size={14} /></button>
           </div>

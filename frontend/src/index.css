@@ -669,6 +669,24 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
 .btn-primary:disabled { opacity:0.5; cursor:wait; transform:none; }
 .btn-primary.full { width:100%; }
 .link-btn { background:none; border:none; color:var(--primary); font-size:13px; font-weight:600; cursor:pointer; padding:4px 0; }
+/* ===== PROFILE STATS ===== */
+.profile-stats { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 16px 0; }
+.ps-card {
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm);
+  padding:14px; text-align:center;
+}
+.ps-icon { margin-bottom:6px; }
+.ps-icon.green { color:var(--primary); }
+.ps-icon.red { color:var(--red); }
+.ps-icon.orange { color:var(--orange); }
+.ps-icon.violet { color:var(--violet); }
+.ps-val { font-family:var(--mono); font-size:16px; font-weight:800; margin-bottom:2px; }
+.ps-label { font-size:11px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; }
+
+.profile-footer { text-align:center; padding:24px 16px; }
+.profile-footer p { font-size:11px; color:var(--text3); line-height:1.8; }
+
+.empty-text { color:var(--text3); font-size:13px; text-align:center; padding:24px 16px; }
 
 /* ===== RESPONSIVE ===== */
 @media (min-width:431px) {
