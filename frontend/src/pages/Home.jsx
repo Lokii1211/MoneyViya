@@ -2,35 +2,91 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
-import { TrendingUp, Plus, Sun, Flame, Target, Wallet, BarChart3, Landmark, CalendarCheck, ArrowUpRight } from 'lucide-react'
+import { TrendingUp, Plus, Sun, Flame, Target, Wallet, BarChart3, Landmark, CalendarCheck, ArrowUpRight, Sparkles, MessageCircle, Zap } from 'lucide-react'
+
+// Daily tips based on time of day — keeps users coming back
+const DAILY_TIPS = {
+  morning: [
+    '☀️ Morning is the best time to review your goals. What will you achieve today?',
+    '💪 Start strong! Log your first habit check-in for today.',
+    '📊 Quick tip: Track your morning expenses to stay on budget!',
+    '🧠 Those who plan their day earn 25% more on average.',
+  ],
+  afternoon: [
+    '🍱 Tracked your lunch expense yet? Small habits = big savings!',
+    '📈 Fun fact: ₹100/day saved = ₹36,500/year. That\'s an iPhone!',
+    '💡 Afternoon slump? Take a 10-min walk — it boosts productivity by 40%.',
+    '🎯 Check your goals progress. Even ₹500 added today matters!',
+  ],
+  evening: [
+    '🌅 Great day? Log your expenses before they slip from memory!',
+    '🏋️ Hit the gym tonight? Tell Viya "gym done" to track it!',
+    '📖 Reading tonight? Just 20 mins/day = 30 books/year!',
+    '💰 Evening review: How much did you spend today?',
+  ],
+  night: [
+    '🌙 Time to reflect! How many habits did you complete today?',
+    '😴 Good sleep = better financial decisions tomorrow.',
+    '📝 Journal your wins today — even small ones count!',
+    '🧘 5-minute meditation before bed improves focus by 30%.',
+  ],
+}
+
+function getTimeGreeting() {
+  const h = new Date().getHours()
+  if (h < 5) return { greeting: 'Good Night', period: 'night', emoji: '🌙' }
+  if (h < 12) return { greeting: 'Good Morning', period: 'morning', emoji: '☀️' }
+  if (h < 17) return { greeting: 'Good Afternoon', period: 'afternoon', emoji: '🌤️' }
+  if (h < 21) return { greeting: 'Good Evening', period: 'evening', emoji: '🌅' }
+  return { greeting: 'Good Night', period: 'night', emoji: '🌙' }
+}
+
+function getDailyTip(period) {
+  const tips = DAILY_TIPS[period] || DAILY_TIPS.morning
+  const idx = Math.floor(Date.now() / 3600000) % tips.length // Changes every hour
+  return tips[idx]
+}
 
 export default function Home() {
   const { phone, user, setUser } = useApp()
   const [data, setData] = useState(null)
   const [habits, setHabits] = useState([])
+  const [checkins, setCheckins] = useState([])
   const nav = useNavigate()
+  const { greeting, period, emoji } = getTimeGreeting()
+  const tip = getDailyTip(period)
+
   useEffect(() => {
     if (phone) {
       api.getUser(phone).then(d => { if (d) { setData(d); setUser(p => ({ ...p, ...d })) } })
       api.getHabits(phone).then(h => { if (h) setHabits(h) })
+      api.getCheckins(phone).then(c => { if (c) setCheckins(c) })
     }
   }, [phone])
+
   const income = data?.monthly_income || 0, expense = data?.monthly_expenses || 0
   const savings = data?.current_savings || 0, budget = data?.daily_budget || 1000
   const name = data?.name || user?.name || 'User'
   const spent = expense, weeklyBudget = budget * 7
   const weekPct = weeklyBudget > 0 ? Math.min((spent / weeklyBudget) * 100, 100) : 0
-  const totalStreak = habits.reduce((s, h) => s + (h.current_streak || 0), 0)
+  const maxStreak = habits.reduce((m, h) => Math.max(m, h.current_streak || 0), 0)
+  const totalHabits = habits.length
+  const todayDone = checkins.length
+  const completionPct = totalHabits > 0 ? Math.round((todayDone / totalHabits) * 100) : 0
+
+  // Streak messages with personality
+  const streakMsg = maxStreak >= 30 ? '👑 Legend Status!' : maxStreak >= 7 ? '🗡️ Week Warrior!' : maxStreak >= 3 ? '🎩 Hat-trick!' : maxStreak > 0 ? `${maxStreak} Day Streak!` : 'Start Your Streak!'
+  const streakSub = maxStreak >= 7 ? 'You\'re unstoppable! Keep crushing it!' : maxStreak > 0 ? 'Consistency is your superpower 💪' : 'Complete habits daily to build streaks'
 
   const actions = [
     { icon: <Plus size={18} />, label: 'Add Expense', color: 'green', to: '/expenses' },
     { icon: <Sun size={18} />, label: 'Briefing', color: 'cyan', to: '/chat?q=morning+briefing' },
     { icon: <Flame size={18} />, label: 'Habits', color: 'gold', to: '/habits' },
-    { icon: <Wallet size={18} />, label: 'Earn More', color: 'violet', to: '/chat?q=passive+income' },
+    { icon: <Wallet size={18} />, label: 'Earn More', color: 'violet', to: '/chat?q=passive+income+ideas' },
     { icon: <Target size={18} />, label: 'Goals', color: 'rose', to: '/goals' },
-    { icon: <BarChart3 size={18} />, label: 'Review', color: 'cyan', to: '/chat?q=weekly+review' },
-    { icon: <Landmark size={18} />, label: 'Tax Save', color: 'green', to: '/chat?q=tax+saving' },
-    { icon: <CalendarCheck size={18} />, label: 'Plan Day', color: 'violet', to: '/chat?q=plan+my+day' },
+    { icon: <BarChart3 size={18} />, label: 'Review', color: 'cyan', to: '/chat?q=weekly+financial+review' },
+    { icon: <Landmark size={18} />, label: 'Tax Save', color: 'green', to: '/chat?q=tax+saving+tips+for+salaried' },
+    { icon: <CalendarCheck size={18} />, label: 'Plan Day', color: 'violet', to: '/chat?q=plan+my+day+productively' },
   ]
 
   return (
@@ -38,15 +94,24 @@ export default function Home() {
       <header className="page-header">
         <div className="header-left">
           <div className="avatar">{name.charAt(0).toUpperCase()}</div>
-          <div><div className="header-name">{name}</div><div className="header-sub">Private Wealth Manager</div></div>
+          <div><div className="header-name">{greeting}, {name.split(' ')[0]}! {emoji}</div><div className="header-sub">Your AI Life Assistant</div></div>
         </div>
       </header>
 
-      {/* Wealth Card — Stitch: Money Left Today */}
+      {/* Daily Tip Card — Changes every hour, keeps users engaged */}
+      <div className="daily-tip-card" onClick={() => nav('/chat')}>
+        <Sparkles size={16} className="tip-icon"/>
+        <div className="tip-text">{tip}</div>
+        <ArrowUpRight size={14} className="tip-arrow"/>
+      </div>
+
+      {/* Wealth Card */}
       <div className="wealth-card">
         <div className="wealth-label">NET WORTH</div>
         <div className="wealth-amount">₹{savings.toLocaleString('en-IN')}</div>
-        <div className="wealth-change up"><TrendingUp size={14} /> Growing</div>
+        <div className={`wealth-change ${income >= expense ? 'up' : 'down'}`}>
+          <TrendingUp size={14} /> {income >= expense ? 'Growing' : 'Needs attention'}
+        </div>
         <div className="wealth-stats">
           <div><div className="ws-label">INCOME</div><div className="ws-val green">₹{income.toLocaleString('en-IN')}</div></div>
           <div><div className="ws-label">EXPENSES</div><div className="ws-val red">₹{expense.toLocaleString('en-IN')}</div></div>
@@ -54,17 +119,29 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Streak Card — Stitch: Orange gamification */}
+      {/* Streak Card — Gamification */}
       <div className="streak-card" onClick={() => nav('/habits')}>
         <div className="streak-fire">🔥</div>
         <div className="streak-info">
-          <div className="streak-count">{totalStreak > 0 ? `${totalStreak} Day Streak!` : 'Start Your Streak!'}</div>
-          <div className="streak-label">{totalStreak > 0 ? 'Keep going! Every day counts' : 'Complete habits daily to build streaks'}</div>
+          <div className="streak-count">{streakMsg}</div>
+          <div className="streak-label">{streakSub}</div>
         </div>
         <ArrowUpRight size={20} />
       </div>
 
-      {/* Weekly Progress — Stitch */}
+      {/* Today's Habits Progress */}
+      {totalHabits > 0 && (
+        <div className="habit-progress-card" onClick={() => nav('/habits')}>
+          <div className="hp-header">
+            <span className="hp-title">Today's Habits</span>
+            <span className="hp-count">{todayDone}/{totalHabits}</span>
+          </div>
+          <div className="weekly-bar"><div className={`weekly-fill ${completionPct >= 80 ? 'safe' : completionPct >= 40 ? 'warning' : 'danger'}`} style={{width: completionPct + '%'}} /></div>
+          <div className="hp-msg">{completionPct === 100 ? '🎉 All done! You\'re a champion!' : completionPct >= 50 ? '💪 Almost there! Keep going!' : '📋 Tap to check in your habits'}</div>
+        </div>
+      )}
+
+      {/* Weekly Spending */}
       <div className="weekly-card">
         <div className="weekly-header">
           <div className="weekly-title">This Week</div>
@@ -73,6 +150,16 @@ export default function Home() {
         <div className="weekly-bar">
           <div className={`weekly-fill ${weekPct < 60 ? 'safe' : weekPct < 85 ? 'warning' : 'danger'}`} style={{width: weekPct + '%'}} />
         </div>
+      </div>
+
+      {/* Ask Viya — Sticky engagement */}
+      <div className="ask-viya-card" onClick={() => nav('/chat')}>
+        <div className="av-icon"><MessageCircle size={20}/></div>
+        <div className="av-text">
+          <div className="av-title">Ask Viya anything</div>
+          <div className="av-sub">Gym diet, study plan, tax tips, mental health...</div>
+        </div>
+        <Zap size={16} className="av-zap"/>
       </div>
 
       {/* Quick Actions */}
@@ -91,7 +178,7 @@ export default function Home() {
             <div className={'txn-amount ' + (t.type === 'income' ? 'income' : 'expense')}>{t.type === 'income' ? '+' : '-'}₹{t.amount}</div>
           </div>
         ))}
-        {(!data?.recent_transactions?.length) && <p className="empty-text">No transactions yet. Add your first expense! 🚀</p>}
+        {(!data?.recent_transactions?.length) && <p className="empty-text">No transactions yet. Say "spent 500 on food" to start! 🚀</p>}
       </section>
     </div>
   )

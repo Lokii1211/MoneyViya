@@ -688,6 +688,48 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
 
 .empty-text { color:var(--text3); font-size:13px; text-align:center; padding:24px 16px; }
 
+/* ===== V7: DAILY TIP CARD ===== */
+.daily-tip-card {
+  display:flex; align-items:center; gap:10px; padding:12px 14px; margin:0 16px 14px;
+  background:linear-gradient(135deg, rgba(139,92,246,0.15), rgba(0,208,132,0.10));
+  border:1px solid rgba(139,92,246,0.2); border-radius:var(--radius-sm); cursor:pointer;
+  transition:all 0.3s var(--ease); animation:tipPulse 3s ease-in-out infinite;
+}
+.daily-tip-card:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(139,92,246,0.15); }
+@keyframes tipPulse { 0%,100% { border-color:rgba(139,92,246,0.2); } 50% { border-color:rgba(0,208,132,0.3); } }
+.tip-icon { color:var(--violet); flex-shrink:0; }
+.tip-text { flex:1; font-size:12px; color:var(--text); font-weight:500; line-height:1.5; }
+.tip-arrow { color:var(--text3); flex-shrink:0; }
+
+/* ===== V7: HABIT PROGRESS ===== */
+.habit-progress-card {
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  padding:14px 16px; margin:0 16px 14px; cursor:pointer; transition:all 0.3s;
+}
+.habit-progress-card:hover { border-color:var(--primary); }
+.hp-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.hp-title { font-size:13px; font-weight:700; }
+.hp-count { font-family:var(--mono); font-size:13px; color:var(--primary); font-weight:700; }
+.hp-msg { font-size:11px; color:var(--text2); margin-top:6px; font-weight:500; }
+
+/* ===== V7: ASK VIYA CARD ===== */
+.ask-viya-card {
+  display:flex; align-items:center; gap:12px; padding:14px 16px; margin:0 16px 14px;
+  background:linear-gradient(135deg, var(--primary-dim), rgba(0,208,132,0.05));
+  border:1px solid rgba(0,208,132,0.15); border-radius:var(--radius); cursor:pointer;
+  transition:all 0.3s var(--ease);
+}
+.ask-viya-card:hover { transform:translateY(-1px); box-shadow:0 6px 20px var(--primary-glow); border-color:var(--primary); }
+.av-icon {
+  width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background:var(--primary); color:#000; flex-shrink:0;
+}
+.av-text { flex:1; }
+.av-title { font-size:14px; font-weight:800; margin-bottom:2px; }
+.av-sub { font-size:11px; color:var(--text2); font-weight:500; }
+.av-zap { color:var(--gold); animation:zapBlink 2s ease-in-out infinite; }
+@keyframes zapBlink { 0%,100% { opacity:0.4; } 50% { opacity:1; } }
+
 /* ===== RESPONSIVE ===== */
 @media (min-width:431px) {
   .app-shell { border-left:1px solid var(--border); border-right:1px solid var(--border); box-shadow:0 0 60px rgba(0,0,0,0.5); }
