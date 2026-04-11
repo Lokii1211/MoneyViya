@@ -693,10 +693,9 @@ async function processMessage(text, from) {
     }
   }
 
-  // 3. Education fuzzy match
-  const words = trimmed.toLowerCase().split(/\s+/);
-  const tm = { invest:'sip', mutual:'mf', deposit:'fd', pension:'fd', gold:'gold', share:'stock', market:'stock', trading:'stock' };
-  for (const w of words) { if (tm[w]) return ED[tm[w]]; }
+
+  // 3. V8.5: Removed static education lookup — AI now has REAL-TIME market data
+  // and gives much better personalized responses than static text
 
   // 4. V8 AI with DEEP user context — knows spending, streaks, goals, mood
   const mood = detectMood(trimmed);
