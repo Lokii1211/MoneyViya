@@ -847,6 +847,11 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
+    // --- DEBUG: View last webhook payload ---
+    if (req.query.action === 'debug_webhook') {
+      return res.status(200).json(global.__lastWebhook || { message: 'No webhook received yet' });
+    }
+
     // --- WEBHOOK VERIFICATION ---
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
@@ -858,21 +863,43 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const body = req.body;
     
+    // Debug: Log ALL incoming POST payloads to diagnose webhook issues
+    const debugLog = JSON.stringify(body || {}).substring(0, 2000);
+    console.log(`🔍 POST received:`, debugLog);
+    // Store last webhook payload for debug endpoint
+    global.__lastWebhook = { time: new Date().toISOString(), body: body, raw: debugLog };
+    
     // === WaSenderAPI Webhook (incoming messages) ===
-    if (body?.event === 'messages.upsert' || (body?.data?.message && !body?.object)) {
+    // Handles: messages.received, messages-personal.received, messages.upsert
+    const isWaSender = body?.event && !body?.object;
+    if (isWaSender) {
+      console.log(`🔔 WaSender event: ${body.event}`, JSON.stringify(body).substring(0, 500));
+      
+      // Skip non-message events
+      if (!body.event.includes('message')) return res.status(200).json({ status: 'ok', event: body.event });
+      
       try {
-        const msgData = body?.data?.message || body?.data || {};
-        const from = (msgData?.from || '').replace('@s.whatsapp.net', '').replace('+', '');
-        const text = msgData?.body || msgData?.text || msgData?.message?.conversation || '';
-        const fromMe = msgData?.fromMe || msgData?.key?.fromMe || false;
+        // WaSender format: { event, data: { messages: { key: { remoteJid, fromMe }, messageBody, message: { conversation } } } }
+        const msgs = body?.data?.messages || body?.data?.message || body?.data || {};
+        const key = msgs?.key || {};
+        const fromMe = key?.fromMe || false;
         
-        if (from && text && !fromMe) {
-          console.log(`📩 WaSender ${from}: ${text}`);
+        // Extract sender phone from remoteJid (format: 919003360494@s.whatsapp.net)
+        const remoteJid = key?.remoteJid || msgs?.from || '';
+        const from = remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '').replace('+', '');
+        
+        // Extract message text (WaSender uses messageBody or message.conversation)
+        const text = msgs?.messageBody || msgs?.body || msgs?.message?.conversation || msgs?.message?.extendedTextMessage?.text || '';
+        
+        console.log(`📩 WaSender parsed — from: ${from}, text: ${text}, fromMe: ${fromMe}`);
+        
+        if (from && text && !fromMe && from.length >= 10) {
           await dbInsert('chat_history', { phone: from, role: 'user', content: text.substring(0, 500), source: 'whatsapp' });
           const reply = await processMessage(text, from);
+          console.log(`📤 Reply to ${from}: ${reply.substring(0, 100)}...`);
           await sendWhatsAppMessage(from, reply);
         }
-      } catch (err) { console.error('WaSender webhook error:', err); }
+      } catch (err) { console.error('WaSender webhook error:', err.message || err); }
       return res.status(200).json({ status: 'ok' });
     }
     
