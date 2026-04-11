@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
-import { Globe, User, Briefcase, DollarSign, PiggyBank, Target, Shield, ChevronRight, ChevronLeft, Check, Sparkles } from 'lucide-react'
+import { Globe, User, Briefcase, DollarSign, PiggyBank, Target, Shield, ChevronRight, ChevronLeft, Check, Sparkles, Smartphone, Bell } from 'lucide-react'
 
 const LANGUAGES = [
   { code: 'en', name: 'English', native: 'English' },
@@ -32,32 +32,77 @@ const GOALS = [
   { id: 'invest', emoji: '📈', label: 'Start Investing' },
 ]
 
-const STEPS = ['Language', 'Name', 'Persona', 'Income', 'Expenses', 'Savings', 'Goal', 'Done']
+const STARTER_HABITS = [
+  { id: 'track', emoji: '💰', label: 'Track expenses daily' },
+  { id: 'water', emoji: '💧', label: 'Drink 3L water' },
+  { id: 'workout', emoji: '🏋️', label: 'Workout / Exercise' },
+  { id: 'read', emoji: '📖', label: 'Read 30 mins' },
+  { id: 'meditate', emoji: '🧘', label: 'Meditate' },
+  { id: 'healthy', emoji: '🥗', label: 'Eat healthy' },
+  { id: 'nosocial', emoji: '📵', label: 'No social media 1h' },
+  { id: 'sleep', emoji: '😴', label: 'Sleep by 11 PM' },
+]
+
+const STEPS = ['Language', 'Name', 'Persona', 'Income', 'Budget', 'Goal', 'Habits', 'Permissions', 'Done']
 
 export default function Onboarding() {
   const { phone } = useApp()
   const nav = useNavigate()
   const [step, setStep] = useState(0)
-  const [form, setForm] = useState({ language: 'en', name: '', persona: '', income: '', expenses: '', savings: '', goal: '' })
+  const [form, setForm] = useState({
+    language: 'en', name: '', persona: '', income: '', daily_budget: '',
+    goal: '', selectedHabits: [], notifyAllowed: false
+  })
+  const [saving, setSaving] = useState(false)
 
   function next() { if (step < STEPS.length - 1) setStep(step + 1) }
   function prev() { if (step > 0) setStep(step - 1) }
   function set(key, val) { setForm({ ...form, [key]: val }) }
+  function toggleHabit(id) {
+    setForm(f => ({ ...f, selectedHabits: f.selectedHabits.includes(id)
+      ? f.selectedHabits.filter(h => h !== id) : [...f.selectedHabits, id] }))
+  }
 
   async function finish() {
-    const msgs = [
-      `my name is ${form.name}`,
-      `I am a ${form.persona}`,
-      `my monthly income is ${form.income}`,
-      `my monthly expenses are ${form.expenses}`,
-      `my current savings are ${form.savings}`,
-      `my primary goal is ${form.goal}`,
-    ]
-    for (const m of msgs) {
-      try { await api.chat(phone, m) } catch {}
-    }
+    setSaving(true)
+    try {
+      // Save user profile to DB
+      await api.updateUser(phone, {
+        name: form.name || 'User',
+        persona: form.persona,
+        monthly_income: Number(form.income) || 0,
+        daily_budget: Number(form.daily_budget) || 1000,
+        language: form.language,
+        current_savings: 0,
+        monthly_expenses: 0,
+      })
+
+      // Auto-create selected habits
+      for (const hId of form.selectedHabits) {
+        const h = STARTER_HABITS.find(x => x.id === hId)
+        if (h) await api.addHabit(phone, h.label, h.emoji)
+      }
+
+      // Auto-create goal if selected
+      if (form.goal) {
+        const g = GOALS.find(x => x.id === form.goal)
+        if (g) {
+          const targets = { emergency: 100000, house: 2000000, car: 500000, travel: 50000, education: 200000, wedding: 500000, retire: 5000000, invest: 50000 }
+          await api.addGoal(phone, g.label, g.emoji, targets[form.goal] || 100000)
+        }
+      }
+
+      // Request notification permission
+      if (form.notifyAllowed && 'Notification' in window) {
+        try { await Notification.requestPermission() } catch {}
+      }
+    } catch (e) { console.error('Onboarding save error:', e) }
+    setSaving(false)
     nav('/')
   }
+
+  const monthlyIncome = Number(form.income) || 0
+  const suggestedBudget = monthlyIncome > 0 ? Math.round(monthlyIncome / 30) : 1000
 
   return (
     <div className="onboarding">
@@ -85,7 +130,7 @@ export default function Onboarding() {
         <div className="ob-card">
           <User size={32} className="ob-icon" />
           <h2>What's your name?</h2>
-          <p className="ob-sub">We'll use this to personalize your experience</p>
+          <p className="ob-sub">Viya will use this to personalize everything for you</p>
           <input type="text" className="form-input ob-input" placeholder="Enter your name" value={form.name} onChange={e => set('name', e.target.value)} autoFocus />
         </div>
       )}
@@ -94,7 +139,7 @@ export default function Onboarding() {
         <div className="ob-card">
           <Briefcase size={32} className="ob-icon" />
           <h2>What describes you best?</h2>
-          <p className="ob-sub">This helps us tailor financial advice for you</p>
+          <p className="ob-sub">This helps Viya give you personalized AI advice</p>
           <div className="ob-grid">
             {PERSONAS.map(p => (
               <button key={p.id} className={'ob-persona' + (form.persona === p.id ? ' active' : '')} onClick={() => set('persona', p.id)}>
@@ -111,30 +156,27 @@ export default function Onboarding() {
         <div className="ob-card">
           <DollarSign size={32} className="ob-icon" />
           <h2>Monthly Income</h2>
-          <p className="ob-sub">Your approximate monthly earnings</p>
-          <div className="ob-amount-wrap"><span className="ob-currency">₹</span><input type="number" className="form-input ob-amount" placeholder="50000" value={form.income} onChange={e => set('income', e.target.value)} /></div>
+          <p className="ob-sub">Approximate monthly earnings (salary/freelance/pocket money)</p>
+          <div className="ob-amount-wrap"><span className="ob-currency">₹</span><input type="number" className="form-input ob-amount" placeholder="25000" value={form.income} onChange={e => set('income', e.target.value)} /></div>
+          {monthlyIncome > 0 && (
+            <div className="ob-insight">
+              <Sparkles size={14}/> 50-30-20 split: <strong>₹{Math.round(monthlyIncome*0.5).toLocaleString('en-IN')}</strong> needs, <strong>₹{Math.round(monthlyIncome*0.3).toLocaleString('en-IN')}</strong> wants, <strong>₹{Math.round(monthlyIncome*0.2).toLocaleString('en-IN')}</strong> savings
+            </div>
+          )}
         </div>
       )}
 
       {step === 4 && (
         <div className="ob-card">
-          <DollarSign size={32} className="ob-icon" />
-          <h2>Monthly Expenses</h2>
-          <p className="ob-sub">Your approximate monthly spending</p>
-          <div className="ob-amount-wrap"><span className="ob-currency">₹</span><input type="number" className="form-input ob-amount" placeholder="30000" value={form.expenses} onChange={e => set('expenses', e.target.value)} /></div>
+          <PiggyBank size={32} className="ob-icon" />
+          <h2>Daily Budget</h2>
+          <p className="ob-sub">How much can you spend per day?</p>
+          <div className="ob-amount-wrap"><span className="ob-currency">₹</span><input type="number" className="form-input ob-amount" placeholder={suggestedBudget.toString()} value={form.daily_budget} onChange={e => set('daily_budget', e.target.value)} /></div>
+          {suggestedBudget > 0 && <p className="ob-hint">💡 Suggested: ₹{suggestedBudget.toLocaleString('en-IN')}/day based on your income</p>}
         </div>
       )}
 
       {step === 5 && (
-        <div className="ob-card">
-          <PiggyBank size={32} className="ob-icon" />
-          <h2>Current Savings</h2>
-          <p className="ob-sub">Total savings across all accounts</p>
-          <div className="ob-amount-wrap"><span className="ob-currency">₹</span><input type="number" className="form-input ob-amount" placeholder="100000" value={form.savings} onChange={e => set('savings', e.target.value)} /></div>
-        </div>
-      )}
-
-      {step === 6 && (
         <div className="ob-card">
           <Target size={32} className="ob-icon" />
           <h2>Primary Financial Goal</h2>
@@ -149,26 +191,63 @@ export default function Onboarding() {
         </div>
       )}
 
+      {step === 6 && (
+        <div className="ob-card">
+          <Shield size={32} className="ob-icon" />
+          <h2>Pick Your Habits</h2>
+          <p className="ob-sub">Select habits you want to track daily. Viya will auto-detect these from your chats! 🤖</p>
+          <div className="ob-grid">
+            {STARTER_HABITS.map(h => (
+              <button key={h.id} className={'ob-goal' + (form.selectedHabits.includes(h.id) ? ' active' : '')} onClick={() => toggleHabit(h.id)}>
+                <span>{h.emoji}</span><span>{h.label}</span>
+              </button>
+            ))}
+          </div>
+          <p className="ob-hint">💡 Say "gym done" or "ate eggs" in chat → Viya auto-tracks it!</p>
+        </div>
+      )}
+
       {step === 7 && (
+        <div className="ob-card">
+          <Smartphone size={32} className="ob-icon" />
+          <h2>Smart Permissions</h2>
+          <p className="ob-sub">Enable features for the best experience</p>
+          <div className="ob-permissions">
+            <button className={'ob-perm' + (form.notifyAllowed ? ' active' : '')} onClick={() => set('notifyAllowed', !form.notifyAllowed)}>
+              <Bell size={20}/>
+              <div>
+                <div className="ob-perm-title">🔔 Push Notifications</div>
+                <div className="ob-perm-desc">Get habit reminders, budget alerts, daily tips</div>
+              </div>
+              <div className={'ob-toggle' + (form.notifyAllowed ? ' on' : '')}><div className="ob-toggle-dot"/></div>
+            </button>
+            <div className="ob-perm-info">
+              <Sparkles size={14}/> <strong>Coming soon:</strong> Auto-detect bank SMS to track expenses automatically! 🏦
+            </div>
+          </div>
+        </div>
+      )}
+
+      {step === 8 && (
         <div className="ob-card ob-success">
           <div className="ob-check"><Check size={40} /></div>
           <h2>You're All Set! 🎉</h2>
-          <p className="ob-sub">Your private wealth manager is ready. Let's start building your financial future!</p>
+          <p className="ob-sub">Viya is ready to be your AI best friend!</p>
           <div className="ob-summary">
-            <div className="ob-sum-row"><span>Name</span><span>{form.name}</span></div>
-            <div className="ob-sum-row"><span>Type</span><span>{form.persona}</span></div>
-            <div className="ob-sum-row"><span>Income</span><span>₹{Number(form.income || 0).toLocaleString('en-IN')}</span></div>
-            <div className="ob-sum-row"><span>Expenses</span><span>₹{Number(form.expenses || 0).toLocaleString('en-IN')}</span></div>
-            <div className="ob-sum-row"><span>Savings</span><span>₹{Number(form.savings || 0).toLocaleString('en-IN')}</span></div>
-            <div className="ob-sum-row"><span>Goal</span><span>{form.goal}</span></div>
+            <div className="ob-sum-row"><span>Name</span><span>{form.name || 'User'}</span></div>
+            <div className="ob-sum-row"><span>Type</span><span>{PERSONAS.find(p => p.id === form.persona)?.label || '-'}</span></div>
+            <div className="ob-sum-row"><span>Income</span><span>₹{Number(form.income || 0).toLocaleString('en-IN')}/mo</span></div>
+            <div className="ob-sum-row"><span>Budget</span><span>₹{Number(form.daily_budget || suggestedBudget).toLocaleString('en-IN')}/day</span></div>
+            <div className="ob-sum-row"><span>Goal</span><span>{GOALS.find(g => g.id === form.goal)?.label || '-'}</span></div>
+            <div className="ob-sum-row"><span>Habits</span><span>{form.selectedHabits.length} selected</span></div>
           </div>
         </div>
       )}
 
       <div className="ob-nav">
-        {step > 0 && step < 7 && <button className="btn-secondary ob-back" onClick={prev}><ChevronLeft size={18} /> Back</button>}
-        {step < 7 && <button className="btn-primary ob-next" onClick={next}>Continue <ChevronRight size={18} /></button>}
-        {step === 7 && <button className="btn-primary ob-next" onClick={finish}><Sparkles size={18} /> Start Using MoneyViya</button>}
+        {step > 0 && step < 8 && <button className="btn-secondary ob-back" onClick={prev}><ChevronLeft size={18} /> Back</button>}
+        {step < 8 && <button className="btn-primary ob-next" onClick={next}>Continue <ChevronRight size={18} /></button>}
+        {step === 8 && <button className="btn-primary ob-next" onClick={finish} disabled={saving}><Sparkles size={18} /> {saving ? 'Setting up...' : 'Start Using MoneyViya'}</button>}
       </div>
     </div>
   )

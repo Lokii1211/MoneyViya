@@ -85,6 +85,98 @@ FORMAT: Use *bold* for key points. ₹ for money (Indian format). Under 300 word
   } catch { return null; }
 }
 
+// ===== V8: DEEP USER INTELLIGENCE ENGINE =====
+// Builds comprehensive user context for hyper-personalized AI responses
+async function buildUserContext(phone) {
+  try {
+    const [user, txns, habits, goals, recentChats] = await Promise.all([
+      dbQuery('users', `?phone=eq.${phone}&select=*`),
+      dbQuery('transactions', `?phone=eq.${phone}&select=*&order=created_at.desc&limit=50`),
+      dbQuery('habits', `?phone=eq.${phone}&select=*`),
+      dbQuery('goals', `?phone=eq.${phone}&status=eq.active&select=*`),
+      dbQuery('chat_history', `?phone=eq.${phone}&select=content,role&order=created_at.desc&limit=6`),
+    ]);
+    const u = user[0] || {};
+    const expenses = txns.filter(t => t.type === 'expense');
+    const income = txns.filter(t => t.type === 'income');
+    
+    // Spending analytics
+    const totalExp = expenses.reduce((s,t) => s + Number(t.amount), 0);
+    const totalInc = income.reduce((s,t) => s + Number(t.amount), 0);
+    const avgExpense = expenses.length > 0 ? Math.round(totalExp / expenses.length) : 0;
+    
+    // Category breakdown
+    const catSpend = {};
+    expenses.forEach(t => { const c = t.category || 'Other'; catSpend[c] = (catSpend[c]||0) + Number(t.amount); });
+    const topCats = Object.entries(catSpend).sort((a,b) => b[1]-a[1]).slice(0,3);
+    
+    // Spending trend (last 7 days vs previous 7)
+    const now = Date.now();
+    const week1 = expenses.filter(t => now - new Date(t.created_at).getTime() < 7*86400000).reduce((s,t) => s+Number(t.amount), 0);
+    const week2 = expenses.filter(t => { const d = now - new Date(t.created_at).getTime(); return d >= 7*86400000 && d < 14*86400000; }).reduce((s,t) => s+Number(t.amount), 0);
+    const trend = week2 > 0 ? Math.round(((week1-week2)/week2)*100) : 0;
+    
+    // Habit streaks
+    const activeStreaks = habits.filter(h => (h.current_streak||0) > 0);
+    const maxStreak = habits.reduce((m,h) => Math.max(m, h.current_streak||0), 0);
+    const todayISO = new Date(now + 5.5*3600000).toISOString().split('T')[0];
+    
+    // Goal progress
+    const goalProgress = goals.map(g => ({
+      name: g.name, pct: g.target_amount > 0 ? Math.round((g.current_amount/g.target_amount)*100) : 0,
+      remaining: Number(g.target_amount) - Number(g.current_amount||0)
+    }));
+    
+    // Recent conversation context
+    const recentContext = recentChats.reverse().map(c => `${c.role}: ${c.content?.substring(0,80)}`).join('\n');
+    
+    let ctx = `\nUSER PROFILE: ${u.name || 'User'}, ${u.persona || 'salaried'}, phone: ${phone}`;
+    ctx += `\nFINANCIAL SNAPSHOT: Income ₹${totalInc.toLocaleString('en-IN')}, Expenses ₹${totalExp.toLocaleString('en-IN')}, Balance ₹${(totalInc-totalExp).toLocaleString('en-IN')}`;
+    ctx += `\nSPENDING PATTERN: Avg expense ₹${avgExpense}, This week ₹${week1} (${trend > 0 ? '+'+trend : trend}% vs last week)`;
+    if (topCats.length) ctx += `\nTOP CATEGORIES: ${topCats.map(([c,a]) => `${c}: ₹${a}`).join(', ')}`;
+    if (activeStreaks.length) ctx += `\nACTIVE STREAKS: ${activeStreaks.map(h => `${h.icon}${h.name}: ${h.current_streak}🔥`).join(', ')} (Max: ${maxStreak})`;
+    if (goalProgress.length) ctx += `\nGOALS: ${goalProgress.map(g => `${g.name}: ${g.pct}% (₹${g.remaining} left)`).join(', ')}`;
+    if (recentContext) ctx += `\nRECENT CHAT:\n${recentContext}`;
+    
+    return ctx;
+  } catch { return ''; }
+}
+
+// ===== V8: MOOD DETECTION =====
+function detectMood(text) {
+  const lower = text.toLowerCase();
+  if (/stress|worried|anxious|tension|panic|scared|afraid|nervous/i.test(lower)) return 'stressed';
+  if (/sad|depress|lonely|alone|crying|unhappy|hopeless|worthless/i.test(lower)) return 'sad';
+  if (/happy|excited|great|awesome|amazing|wonderful|celebrate|promotion|passed/i.test(lower)) return 'happy';
+  if (/angry|frustrated|irritated|annoyed|hate|pissed|furious/i.test(lower)) return 'angry';
+  if (/tired|exhausted|burned|burnout|sleepy|drained|overwhelmed/i.test(lower)) return 'tired';
+  if (/confused|lost|don\'t know|dunno|unsure|help me/i.test(lower)) return 'confused';
+  if (/bored|nothing|boring|idle|free/i.test(lower)) return 'bored';
+  return 'neutral';
+}
+
+// ===== V8: SMART DAILY INSIGHTS =====
+async function getDailyInsight(phone) {
+  const hour = new Date(Date.now() + 5.5*3600000).getUTCHours();
+  const txns = await dbQuery('transactions', `?phone=eq.${phone}&type=eq.expense&select=amount,created_at&order=created_at.desc&limit=30`);
+  const habits = await dbQuery('habits', `?phone=eq.${phone}&select=name,current_streak,icon`);
+  
+  const today = txns.filter(t => {
+    const d = new Date(t.created_at).toISOString().split('T')[0];
+    return d === new Date(Date.now()+5.5*3600000).toISOString().split('T')[0];
+  });
+  const todaySpent = today.reduce((s,t) => s+Number(t.amount), 0);
+  
+  if (hour < 10) {
+    const streaks = habits.filter(h => h.current_streak > 0);
+    return streaks.length ? `🌅 Morning! Your ${streaks[0].icon}${streaks[0].name} streak: ${streaks[0].current_streak}🔥 — don't break it today!` : null;
+  }
+  if (hour >= 20 && todaySpent > 0) {
+    return `📊 Today you spent *₹${todaySpent.toLocaleString('en-IN')}*. ${todaySpent > 1000 ? 'That\'s a lot — was everything necessary?' : 'Good control! 👏'}`;
+  }
+  return null;
+}
+
 // ===== IST TIME =====
 function nowIST() { return new Date(Date.now() + 5.5 * 3600000); }
 function formatIST(h, m) { const ampm = h >= 12 ? 'PM' : 'AM'; return `${h % 12 || 12}:${m.toString().padStart(2,'0')} ${ampm}`; }
@@ -459,9 +551,13 @@ async function processMessage(text, from) {
   const tm = { invest:'sip', mutual:'mf', deposit:'fd', pension:'fd', gold:'gold', share:'stock', market:'stock', trading:'stock' };
   for (const w of words) { if (tm[w]) return ED[tm[w]]; }
 
-  // 4. AI fallback — handles gym, study, diet, business, etc.
-  const userCtx = from ? `Phone: ${from}` : '';
-  const aiReply = await askAI(trimmed, userCtx);
+  // 4. V8 AI with DEEP user context — knows spending, streaks, goals, mood
+  const mood = detectMood(trimmed);
+  const userCtx = from ? await buildUserContext(from) : '';
+  const moodCtx = mood !== 'neutral' ? `\nDETECTED MOOD: ${mood} — respond with empathy first!` : '';
+  const insight = from ? await getDailyInsight(from) : null;
+  const insightCtx = insight ? `\nDAILY INSIGHT to weave in: ${insight}` : '';
+  const aiReply = await askAI(trimmed, userCtx + moodCtx + insightCtx);
   if (aiReply) {
     if (from) await dbInsert('chat_history', { phone: from, role: 'assistant', content: aiReply.substring(0, 500), source: 'whatsapp' });
     return aiReply;
@@ -516,18 +612,23 @@ export default async function handler(req, res) {
       const msg = decodeURIComponent(req.query.message || '');
       if (!msg) return res.status(200).json({ reply: 'Type a message!' });
       
-      // Check for habit auto-detection in app chat too
+      // V8: Check for habit auto-detection in app chat too
       if (phone) {
         const habitResult = await detectAndCheckinHabit(msg, phone);
         if (habitResult.matched && !habitResult.alreadyDone) {
-          const aiReply = await askAI(msg, `User completed ${habitResult.habit}. Give brief related tip.`);
+          const ctx = await buildUserContext(phone);
+          const aiReply = await askAI(msg, ctx + `\nUser just completed ${habitResult.habit}. Celebrate and give brief related tip.`);
           const reply = `✅ ${habitResult.icon} *${habitResult.habit}* tracked! 🔥 ${habitResult.streak} day streak${aiReply ? `\n\n${aiReply}` : ''}`;
           return res.status(200).json({ reply, habitCheckin: habitResult });
         }
       }
       
+      // V8: Deep context for in-app chat
       try {
-        const reply = await askAI(msg, phone ? `User phone: ${phone}` : '');
+        const mood = detectMood(msg);
+        const ctx = phone ? await buildUserContext(phone) : '';
+        const moodCtx = mood !== 'neutral' ? `\nDETECTED MOOD: ${mood} — respond with empathy first!` : '';
+        const reply = await askAI(msg, ctx + moodCtx);
         if (reply) return res.status(200).json({ reply });
       } catch {}
       return res.status(200).json({ reply: '🤖 Try again shortly!' });
@@ -582,7 +683,7 @@ export default async function handler(req, res) {
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
     if (mode === 'subscribe' && token === (process.env.WHATSAPP_VERIFY_TOKEN || '').trim()) return res.status(200).send(challenge);
-    return res.status(200).json({ status: 'MoneyViya V6 — True Agentic AI', time: new Date().toISOString() });
+    return res.status(200).json({ status: 'MoneyViya V8 — Deep Intelligence Engine', time: new Date().toISOString() });
   }
   
   if (req.method === 'POST') {

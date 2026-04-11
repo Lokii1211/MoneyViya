@@ -730,6 +730,37 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
 .av-zap { color:var(--gold); animation:zapBlink 2s ease-in-out infinite; }
 @keyframes zapBlink { 0%,100% { opacity:0.4; } 50% { opacity:1; } }
 
+/* ===== V8: ONBOARDING ENHANCEMENTS ===== */
+.ob-insight {
+  font-size:12px; color:var(--primary); margin-top:12px; padding:10px 12px;
+  background:var(--primary-dim); border-radius:var(--radius-sm); line-height:1.6;
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+}
+.ob-hint { font-size:11px; color:var(--text2); margin-top:8px; text-align:center; }
+.ob-permissions { display:flex; flex-direction:column; gap:12px; }
+.ob-perm {
+  display:flex; align-items:center; gap:12px; padding:14px 16px;
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  cursor:pointer; transition:all 0.3s; text-align:left; width:100%;
+}
+.ob-perm.active { border-color:var(--primary); background:var(--primary-dim); }
+.ob-perm-title { font-size:13px; font-weight:700; margin-bottom:2px; }
+.ob-perm-desc { font-size:11px; color:var(--text2); }
+.ob-toggle {
+  width:40px; height:22px; border-radius:11px; background:var(--border); position:relative;
+  flex-shrink:0; transition:all 0.3s; margin-left:auto;
+}
+.ob-toggle.on { background:var(--primary); }
+.ob-toggle-dot {
+  width:18px; height:18px; border-radius:50%; background:#fff; position:absolute;
+  top:2px; left:2px; transition:all 0.3s;
+}
+.ob-toggle.on .ob-toggle-dot { left:20px; }
+.ob-perm-info {
+  font-size:11px; color:var(--text2); padding:10px 14px; display:flex; align-items:center; gap:6px;
+  background:rgba(139,92,246,0.08); border-radius:var(--radius-sm); border:1px dashed rgba(139,92,246,0.2);
+}
+
 /* ===== RESPONSIVE ===== */
 @media (min-width:431px) {
   .app-shell { border-left:1px solid var(--border); border-right:1px solid var(--border); box-shadow:0 0 60px rgba(0,0,0,0.5); }
