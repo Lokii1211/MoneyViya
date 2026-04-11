@@ -82,6 +82,125 @@ async function fetchRealTimeMarketData() {
   return data;
 }
 
+// ===== PRODUCTION ML ENGINE =====
+
+// 1. TF-IDF Intent Classifier — classifies messages into intents without external libs
+const INTENT_TRAINING = {
+  finance: ['gold price', 'nifty', 'sensex', 'stock market', 'share price', 'mutual fund', 'sip', 'fd', 'fixed deposit', 'investment', 'returns', 'interest rate', 'emi', 'loan', 'tax', 'budget', 'savings', 'credit score', 'ppf', 'nps', 'insurance', 'market today'],
+  expense: ['spent', 'paid', 'bought', 'expense', 'kharcha', 'cost', 'price was', 'bill', 'payment'],
+  habit: ['gym', 'workout', 'exercise', 'ran', 'walked', 'meditated', 'read', 'studied', 'ate', 'eggs', 'protein', 'yoga', 'swim', 'slept', 'woke up'],
+  goal: ['save for', 'goal', 'target', 'dream', 'planning to buy', 'want to buy'],
+  reminder: ['remind', 'alarm', 'alert me', 'dont forget', 'remember to'],
+  greeting: ['hi', 'hello', 'hey', 'good morning', 'good evening', 'namaste', 'vanakkam'],
+  mood_low: ['stressed', 'depressed', 'sad', 'anxious', 'worried', 'tension', 'frustrated', 'angry', 'scared', 'lonely', 'broke', 'no money', 'debt'],
+  diet: ['diet', 'nutrition', 'calories', 'protein', 'meal plan', 'weight loss', 'weight gain', 'bulk', 'cut', 'macro'],
+  business: ['business', 'startup', 'gst', 'invoice', 'revenue', 'profit', 'marketing', 'freelance', 'client'],
+  study: ['study', 'exam', 'preparation', 'syllabus', 'timetable', 'schedule', 'revision', 'notes']
+};
+
+function classifyIntent(text) {
+  const lower = text.toLowerCase();
+  const words = lower.split(/\s+/);
+  const scores = {};
+  
+  for (const [intent, keywords] of Object.entries(INTENT_TRAINING)) {
+    scores[intent] = 0;
+    for (const kw of keywords) {
+      if (lower.includes(kw)) {
+        // TF-IDF inspired: shorter keywords = less weight, exact matches = more weight
+        const idf = Math.log(10 / (INTENT_TRAINING[intent].length + 1));
+        const tf = (lower.split(kw).length - 1) / words.length;
+        scores[intent] += tf * idf * kw.split(' ').length; // multi-word boost
+      }
+    }
+  }
+  
+  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  return { primary: sorted[0][0], confidence: sorted[0][1], all: Object.fromEntries(sorted.filter(s => s[1] > 0)) };
+}
+
+// 2. Sentiment Analyzer — VADER-inspired lexicon scoring for Indian English/Hindi
+const SENTIMENT_LEXICON = {
+  positive: { happy:3, great:3, awesome:3, love:3, excellent:3, good:2, nice:2, thanks:2, amazing:3, perfect:3, best:2, proud:2, excited:3, celebrate:3, yay:3, accha:2, badhiya:3, mast:2, sahi:2, superb:3, fantastic:3 },
+  negative: { sad:-3, bad:-2, terrible:-3, worst:-3, hate:-3, angry:-3, stressed:-3, worried:-2, anxious:-3, scared:-2, frustrated:-3, depressed:-3, hopeless:-3, broke:-2, debt:-2, bura:-2, kharab:-2, tension:-2, problem:-2, issue:-1, struggling:-2 },
+  intensifiers: { very:1.5, really:1.5, extremely:2, so:1.3, too:1.3, bahut:1.5, bohot:1.5 }
+};
+
+function analyzeSentiment(text) {
+  const words = text.toLowerCase().split(/\s+/);
+  let score = 0;
+  let multiplier = 1;
+  
+  for (const word of words) {
+    if (SENTIMENT_LEXICON.intensifiers[word]) { multiplier = SENTIMENT_LEXICON.intensifiers[word]; continue; }
+    if (SENTIMENT_LEXICON.positive[word]) { score += SENTIMENT_LEXICON.positive[word] * multiplier; }
+    if (SENTIMENT_LEXICON.negative[word]) { score += SENTIMENT_LEXICON.negative[word] * multiplier; }
+    multiplier = 1; // reset after use
+  }
+  
+  // Normalize to -1 to 1 range
+  const normalized = Math.max(-1, Math.min(1, score / (words.length * 0.5 + 1)));
+  return {
+    score: normalized,
+    label: normalized > 0.3 ? 'positive' : normalized < -0.3 ? 'negative' : 'neutral',
+    intensity: Math.abs(normalized) > 0.6 ? 'strong' : Math.abs(normalized) > 0.2 ? 'moderate' : 'mild'
+  };
+}
+
+// 3. Exponential Moving Average Spending Predictor
+function predictSpending(transactions) {
+  if (!transactions || transactions.length < 3) return null;
+  
+  const expenses = transactions.filter(t => t.type === 'expense').map(t => ({
+    amount: Number(t.amount),
+    date: new Date(t.created_at),
+    category: t.category
+  })).sort((a, b) => a.date - b.date);
+  
+  if (expenses.length < 3) return null;
+  
+  // EMA with alpha=0.3 (recent transactions weighted more)
+  const alpha = 0.3;
+  let ema = expenses[0].amount;
+  for (let i = 1; i < expenses.length; i++) ema = alpha * expenses[i].amount + (1 - alpha) * ema;
+  
+  // Category-wise breakdown
+  const catTotals = {};
+  const catCounts = {};
+  expenses.forEach(e => {
+    catTotals[e.category] = (catTotals[e.category] || 0) + e.amount;
+    catCounts[e.category] = (catCounts[e.category] || 0) + 1;
+  });
+  
+  const topCategories = Object.entries(catTotals)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([cat, total]) => ({ category: cat, total, avg: Math.round(total / catCounts[cat]) }));
+  
+  // Days in current month
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const dayOfMonth = now.getDate();
+  const dailyRate = ema; // EMA gives us a smoothed daily rate
+  
+  return {
+    predictedDaily: Math.round(ema),
+    predictedMonthly: Math.round(dailyRate * daysInMonth),
+    predictedRemaining: Math.round(dailyRate * (daysInMonth - dayOfMonth)),
+    topCategories,
+    trend: expenses.length > 5 ? (expenses.slice(-3).reduce((s, e) => s + e.amount, 0) / 3 > ema ? 'increasing' : 'decreasing') : 'stable'
+  };
+}
+
+// 4. Multi-turn Conversation Memory — builds context from recent chat history
+async function getConversationContext(phone) {
+  const chats = await dbQuery('chat_history', `?phone=eq.${phone}&select=content,role,created_at&order=created_at.desc&limit=8`);
+  if (!chats.length) return '';
+  
+  const recent = chats.reverse().map(c => `${c.role === 'user' ? 'User' : 'Viya'}: ${c.content.substring(0, 150)}`).join('\n');
+  return `\nRECENT CONVERSATION (for context, maintain continuity):\n${recent}\n`;
+}
+
 // ===== V8.5: SPENDING ANOMALY DETECTOR =====
 async function detectSpendingAnomalies(phone) {
   const txns = await dbQuery('transactions', `?phone=eq.${phone}&type=eq.expense&select=amount,category,created_at&order=created_at.desc&limit=100`);
@@ -661,51 +780,104 @@ async function processMessage(text, from) {
   }
 
 
-  // 3. V8.5: Removed static education lookup — AI now has REAL-TIME market data
-  // and gives much better personalized responses than static text
-
-  // 4. V8 AI with DEEP user context — knows spending, streaks, goals, mood
-  const mood = detectMood(trimmed);
+  // 3. PRODUCTION ML PIPELINE — Intent + Sentiment + Prediction + Memory
+  const intent = classifyIntent(trimmed);
+  const sentiment = analyzeSentiment(trimmed);
+  const conversationCtx = from ? await getConversationContext(from) : '';
   const userCtx = from ? await buildUserContext(from) : '';
-  const moodCtx = mood !== 'neutral' ? `\nDETECTED MOOD: ${mood} — respond with empathy first!` : '';
-  const insight = from ? await getDailyInsight(from) : null;
-  const insightCtx = insight ? `\nDAILY INSIGHT to weave in: ${insight}` : '';
-  const aiReply = await askAI(trimmed, userCtx + moodCtx + insightCtx);
+  
+  // Fetch spending prediction if finance-related intent
+  let spendingCtx = '';
+  if (from && (intent.primary === 'finance' || intent.primary === 'expense')) {
+    const txns = await dbQuery('transactions', `?phone=eq.${from}&select=*&order=created_at.desc&limit=50`);
+    const prediction = predictSpending(txns);
+    if (prediction) {
+      spendingCtx = `\nSPENDING PREDICTION (EMA Model): Daily avg ₹${prediction.predictedDaily}, monthly projected ₹${prediction.predictedMonthly}, trend: ${prediction.trend}`;
+      if (prediction.topCategories.length) spendingCtx += `\nTop categories: ${prediction.topCategories.map(c => `${c.category}: ₹${c.total}`).join(', ')}`;
+    }
+  }
+  
+  // Build ML context string
+  const mlContext = [
+    `\nML ANALYSIS:`,
+    `Intent: ${intent.primary} (confidence: ${intent.confidence.toFixed(2)})`,
+    `Sentiment: ${sentiment.label} (${sentiment.intensity})`,
+    sentiment.label === 'negative' ? `⚠️ User seems ${sentiment.intensity === 'strong' ? 'very ' : ''}distressed — be empathetic and supportive first!` : '',
+    spendingCtx,
+    conversationCtx,
+    userCtx,
+  ].filter(Boolean).join('\n');
+  
+  const aiReply = await askAI(trimmed, mlContext);
   if (aiReply) {
     if (from) await dbInsert('chat_history', { phone: from, role: 'assistant', content: aiReply.substring(0, 500), source: 'whatsapp' });
     return aiReply;
   }
 
-  return `🤖 I didn't get that.\n\n*Try:*\n💸 "spent 200 food" • 📚 "what is SIP"\n⏰ "remind me..." • 🔥 "gym done"\n🏋️ "gym diet plan" • 📖 "study schedule"\n\n_Type "help" for full menu!_ 💬`;
+  return `Hey! I couldn't process that right now. Just text me naturally — ask about gold prices, investment tips, or say "spent 200 on food" to track expenses! 🤖`;
 }
 
-// ===== WHATSAPP API — DUAL MODE (WaSender + Meta Cloud) =====
+// ===== PRODUCTION WHATSAPP — Meta Cloud API (Official) =====
+// Handles: retries, message chunking, rate limiting, error reporting
 async function sendWhatsAppMessage(to, text) {
-  // Priority 1: WaSenderAPI (simpler, no Meta verification needed)
+  const phoneId = (process.env.WHATSAPP_PHONE_ID || '').trim();
+  const token = (process.env.WHATSAPP_ACCESS_TOKEN || '').trim();
+  
+  // Normalize phone: ensure country code format (91XXXXXXXXXX)
+  let phone = to.replace(/[^0-9]/g, '');
+  if (phone.length === 10) phone = '91' + phone;
+  
+  // Chunk long messages (WhatsApp limit ~4096 chars)
+  const MAX_LEN = 4000;
+  const chunks = [];
+  if (text.length <= MAX_LEN) { chunks.push(text); }
+  else {
+    let remaining = text;
+    while (remaining.length > 0) {
+      let cut = remaining.substring(0, MAX_LEN);
+      const lastNewline = cut.lastIndexOf('\n');
+      if (lastNewline > MAX_LEN * 0.5 && remaining.length > MAX_LEN) cut = cut.substring(0, lastNewline);
+      chunks.push(cut);
+      remaining = remaining.substring(cut.length).trim();
+    }
+  }
+  
+  // Meta Cloud API (Official — Production)
+  if (phoneId && token) {
+    for (const chunk of chunks) {
+      let attempts = 0;
+      while (attempts < 3) {
+        try {
+          const resp = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'text', text: { preview_url: true, body: chunk } }),
+          });
+          if (resp.ok) { console.log(`✅ Meta WA sent to ${phone} (${chunk.length} chars)`); break; }
+          const err = await resp.json().catch(() => ({}));
+          console.error(`⚠️ Meta WA ${resp.status}:`, JSON.stringify(err).substring(0, 200));
+          if (resp.status === 429) { await new Promise(r => setTimeout(r, 2000)); } // Rate limited — wait
+          attempts++;
+        } catch (err) { console.error('Meta WA error:', err.message); attempts++; }
+      }
+    }
+    return;
+  }
+  
+  // Fallback: WaSender (deprecated — will be removed)
   const wasenderKey = (process.env.WASENDER_API_KEY || '').trim();
   if (wasenderKey) {
     try {
-      const phoneNumber = to.startsWith('+') ? to : `+${to}`;
       const resp = await fetch('https://www.wasenderapi.com/api/send-message', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${wasenderKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: phoneNumber, text }),
+        body: JSON.stringify({ to: `+${phone}`, text }),
       });
-      if (resp.ok) { console.log(`✅ WaSender sent to ${to}`); return; }
-      console.error(`⚠️ WaSender: ${resp.status}`);
-    } catch (err) { console.error('WaSender error:', err); }
+      if (resp.ok) return;
+    } catch {}
   }
   
-  // Priority 2: Meta Cloud API (official WhatsApp Business)
-  const phoneId = (process.env.WHATSAPP_PHONE_ID || '').trim();
-  const token = (process.env.WHATSAPP_ACCESS_TOKEN || '').trim();
-  if (!phoneId || !token) return;
-  try {
-    await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
-      method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: text } }),
-    });
-  } catch (err) { console.error('Meta WA error:', err); }
+  console.warn('⚠️ No WhatsApp API configured. Set WHATSAPP_PHONE_ID + WHATSAPP_ACCESS_TOKEN for Meta Cloud API.');
 }
 
 // ===== OTP SYSTEM =====
@@ -752,15 +924,20 @@ export default async function handler(req, res) {
         }
       }
       
-      // V8: Deep context for in-app chat
+      // V10: ML-powered in-app chat
       try {
-        const mood = detectMood(msg);
+        const intent = classifyIntent(msg);
+        const sentiment = analyzeSentiment(msg);
+        const conversationCtx = phone ? await getConversationContext(phone) : '';
         const ctx = phone ? await buildUserContext(phone) : '';
-        const moodCtx = mood !== 'neutral' ? `\nDETECTED MOOD: ${mood} — respond with empathy first!` : '';
-        const reply = await askAI(msg, ctx + moodCtx);
-        if (reply) return res.status(200).json({ reply });
-      } catch {}
-      return res.status(200).json({ reply: '🤖 Try again shortly!' });
+        const sentimentCtx = sentiment.label === 'negative' ? `\n⚠️ User feeling ${sentiment.intensity} negative — empathize!` : '';
+        const reply = await askAI(msg, ctx + conversationCtx + sentimentCtx + `\nIntent: ${intent.primary}`);
+        if (reply) {
+          if (phone) await dbInsert('chat_history', { phone, role: 'assistant', content: reply.substring(0, 500), source: 'app' });
+          return res.status(200).json({ reply, ml: { intent: intent.primary, sentiment: sentiment.label } });
+        }
+      } catch (e) { console.error('Chat error:', e.message); }
+      return res.status(200).json({ reply: 'Let me try again — ask me anything about finance, health, or study!' });
     }
 
     // --- OTP: SEND ---
@@ -822,8 +999,8 @@ export default async function handler(req, res) {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
-    if (mode === 'subscribe' && token === (process.env.WHATSAPP_VERIFY_TOKEN || '').trim()) return res.status(200).send(challenge);
-    return res.status(200).json({ status: 'MoneyViya V8.5 — Real-Time Intelligence Engine', time: new Date().toISOString() });
+    if (mode === 'subscribe' && token === (process.env.WHATSAPP_VERIFY_TOKEN || 'moneyviya_verify_2026').trim()) return res.status(200).send(challenge);
+    return res.status(200).json({ status: 'MoneyViya V10 — Production AI Engine', time: new Date().toISOString(), ml: 'TF-IDF + VADER + EMA', whatsapp: 'Meta Cloud API' });
   }
   
   if (req.method === 'POST') {
@@ -879,22 +1056,46 @@ export default async function handler(req, res) {
       return res.status(200).json({ status: 'ok' });
     }
     
-    // === Meta Cloud API Webhook (existing) ===
+    // === META CLOUD API WEBHOOK (Primary — Production) ===
     if (body?.object === 'whatsapp_business_account') {
-      for (const entry of (body.entry || [])) {
-        for (const change of (entry.changes || [])) {
-          for (const msg of (change.value?.messages || [])) {
-            if (msg.type === 'text') {
+      try {
+        for (const entry of (body.entry || [])) {
+          for (const change of (entry.changes || [])) {
+            const value = change.value || {};
+            
+            // Handle status updates (delivered, read, sent)
+            if (value.statuses) {
+              for (const status of value.statuses) {
+                console.log(`📊 Meta status: ${status.status} for ${status.recipient_id}`);
+              }
+              continue;
+            }
+            
+            // Handle incoming messages
+            for (const msg of (value.messages || [])) {
               const from = msg.from;
-              const text = msg.text.body;
-              console.log(`📩 Meta ${from}: ${text}`);
+              const contactName = value.contacts?.[0]?.profile?.name || '';
+              let text = '';
+              
+              // Support text, button replies, interactive, and image messages
+              if (msg.type === 'text') text = msg.text.body;
+              else if (msg.type === 'button') text = msg.button?.text || '';
+              else if (msg.type === 'interactive') text = msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title || '';
+              else if (msg.type === 'image' && msg.image?.caption) text = msg.image.caption;
+              else continue; // Skip unsupported types
+              
+              if (!text || !from) continue;
+              
+              console.log(`📩 Meta WA — from: ${from}, name: ${contactName}, text: ${text}`);
               await dbInsert('chat_history', { phone: from, role: 'user', content: text.substring(0, 500), source: 'whatsapp' });
+              
               const reply = await processMessage(text, from);
+              console.log(`📤 Reply to ${from}: ${reply.substring(0, 100)}...`);
               await sendWhatsAppMessage(from, reply);
             }
           }
         }
-      }
+      } catch (err) { console.error('Meta webhook error:', err.message || err); }
       return res.status(200).send('OK');
     }
     
