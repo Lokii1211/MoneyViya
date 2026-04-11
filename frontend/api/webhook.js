@@ -879,19 +879,26 @@ export default async function handler(req, res) {
       if (!body.event.includes('message')) return res.status(200).json({ status: 'ok', event: body.event });
       
       try {
-        // WaSender format: { event, data: { messages: { key: { remoteJid, fromMe }, messageBody, message: { conversation } } } }
+        // WaSender ACTUAL format (verified from debug):
+        // { event: "messages.received", data: { messages: { 
+        //   key: { remoteJid: "195833345630343@lid", senderPn: "919003360494@s.whatsapp.net", cleanedSenderPn: "919003360494", fromMe: false },
+        //   messageBody: "Hi", message: { conversation: "Hi" }, pushName: "LK"
+        // }}}
         const msgs = body?.data?.messages || body?.data?.message || body?.data || {};
         const key = msgs?.key || {};
         const fromMe = key?.fromMe || false;
         
-        // Extract sender phone from remoteJid (format: 919003360494@s.whatsapp.net)
-        const remoteJid = key?.remoteJid || msgs?.from || '';
-        const from = remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '').replace('+', '');
+        // CRITICAL FIX: WaSender uses LID format in remoteJid (not phone!)
+        // Real phone is in key.cleanedSenderPn or key.senderPn
+        const from = key?.cleanedSenderPn || 
+                     (key?.senderPn || '').replace('@s.whatsapp.net', '') ||
+                     (key?.remoteJid || '').replace('@s.whatsapp.net', '').replace('@lid', '').replace('@c.us', '');
         
-        // Extract message text (WaSender uses messageBody or message.conversation)
-        const text = msgs?.messageBody || msgs?.body || msgs?.message?.conversation || msgs?.message?.extendedTextMessage?.text || '';
+        // Extract message text
+        const text = msgs?.messageBody || msgs?.message?.conversation || msgs?.message?.extendedTextMessage?.text || '';
+        const pushName = msgs?.pushName || '';
         
-        console.log(`📩 WaSender parsed — from: ${from}, text: ${text}, fromMe: ${fromMe}`);
+        console.log(`📩 WaSender — from: ${from}, name: ${pushName}, text: ${text}, fromMe: ${fromMe}`);
         
         if (from && text && !fromMe && from.length >= 10) {
           await dbInsert('chat_history', { phone: from, role: 'user', content: text.substring(0, 500), source: 'whatsapp' });
