@@ -37,26 +37,30 @@ async function upsert(table, data) {
 
 // ===== COMPLETE API — MATCHES REAL DB SCHEMA =====
 export const api = {
-  // AUTH — uses 'encrypted_password' column (real schema)
+  // AUTH — uses 'password_hash' column (actual DB schema)
   async login(phone, password) {
     try {
-      const users = await query('users', `?phone=eq.${phone}&select=*`)
+      // Normalize phone: remove +91, spaces, dashes
+      const cleanPhone = phone.replace(/[^\d]/g, '').replace(/^91/, '').slice(-10);
+      // Try both formats: 10-digit and with country code
+      let users = await query('users', `?phone=eq.${cleanPhone}&select=*`)
+      if (!users.length) users = await query('users', `?phone=eq.91${cleanPhone}&select=*`)
+      if (!users.length) users = await query('users', `?phone=eq.${phone}&select=*`)
       const user = users[0]
       if (!user) return { success: false, message: 'Account not found. Register first.' }
-      // Check both password_hash and encrypted_password for compatibility
-      const storedPwd = user.encrypted_password || user.password_hash
-      if (storedPwd !== password) return { success: false, message: 'Wrong password.' }
-      localStorage.setItem('mv_token', 'sb_' + phone)
-      localStorage.setItem('mv_phone', phone)
+      if (user.password_hash !== password) return { success: false, message: 'Wrong password.' }
+      localStorage.setItem('mv_token', 'sb_' + user.phone)
+      localStorage.setItem('mv_phone', user.phone)
       localStorage.setItem('mv_user', JSON.stringify(user))
-      return { success: true, token: 'sb_' + phone, user }
+      return { success: true, token: 'sb_' + user.phone, user }
     } catch { return { success: false, message: 'Connection error.' } }
   },
   async register(phone, password, name = 'User') {
     try {
-      const existing = await query('users', `?phone=eq.${phone}&select=phone`)
+      const cleanPhone = phone.replace(/[^\d]/g, '').replace(/^91/, '').slice(-10);
+      const existing = await query('users', `?phone=eq.${cleanPhone}&select=phone`)
       if (existing.length) return { success: false, message: 'Account exists. Sign in.' }
-      await insert('users', { phone, encrypted_password: password, name })
+      await insert('users', { phone: cleanPhone, password_hash: password, name })
       return { success: true, message: 'Account created! Sign in now.' }
     } catch { return { success: false, message: 'Connection error.' } }
   },
