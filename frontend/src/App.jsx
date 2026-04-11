@@ -11,6 +11,7 @@ import Review from './pages/Review'
 import Search from './pages/Search'
 import Notifications from './pages/Notifications'
 import Profile from './pages/Profile'
+import Onboarding from './pages/Onboarding'
 import Layout from './components/Layout'
 import './index.css'
 
@@ -25,6 +26,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />
+          <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
           <Route path="/" element={<Protected><Layout /></Protected>}>
             <Route index element={<Home />} />
             <Route path="expenses" element={<Expenses />} />
@@ -42,3 +44,4 @@ export default function App() {
     </AppProvider>
   )
 }
+
