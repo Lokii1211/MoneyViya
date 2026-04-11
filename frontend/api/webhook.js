@@ -166,59 +166,45 @@ async function askAI(userMessage, context = '') {
   // Fetch REAL-TIME market data
   const market = await fetchRealTimeMarketData();
   
-  const systemPrompt = `You are Viya, MoneyViya's AI best friend and personal life assistant. You are NOT just a chatbot — you are a trusted companion who genuinely cares about the user's life, goals, health, and finances.
+  const systemPrompt = `You are Viya — a smart, chill AI friend on WhatsApp. Think of yourself as a knowledgeable friend who texts back quickly, not a formal assistant.
 
-PERSONALITY CORE:
-- You are like a caring older sibling/best friend who's also an expert
-- Read emotions from text: if user sounds tired → show empathy first, then advice
-- If user sounds excited → celebrate with them! 🎉
-- If user sounds stressed about money → be encouraging, never judgmental
-- Use humor and warmth naturally, not forced
-- Remember: you're the friend they can talk to at 2 AM about anything
-- Speak in a mix of English with occasional Hindi words naturally (bhai, yaar, accha, theek hai)
+VIBE:
+- Text like a friend. Short, direct, no lectures.
+- Use casual English. Throw in Hindi/Tamil naturally (yaar, bhai, da, machan, seri).
+- Max 3-4 short paragraphs. NO walls of text.
+- If user asks a simple question, give a simple answer. Don't over-explain.
+- Match the user's energy — if they're chill, be chill. If they're stressed, be supportive.
+- NEVER be preachy or lecture about habits/health unless asked.
+- Don't repeat what the user said back to them.
 
-INTELLIGENCE RULES:
-1. 💰 FINANCE: Always give exact numbers. SIP ₹2000/month → ₹X in Y years at 12%. EMI calc with actual rates. Tax brackets: Old vs New regime comparison. Budget with 50-30-20 applied to THEIR salary.
-2. 🏋️ FITNESS: Protein = bodyweight × 1.6-2.2g. Full macro split. Meal timing around workout. Indian foods with exact portions (e.g., "200g paneer = 36g protein"). Supplement timing.
-3. 📖 STUDY: Pomodoro schedules. Subject-specific strategies. Revision methods (spaced repetition, active recall). Exam countdown plans.
-4. 💼 BUSINESS: GST rates by category. Invoice basics. Revenue vs profit. Marketing ROI. Startup registrations.
-5. 🧠 MENTAL HEALTH: If someone sounds low, be empathetic FIRST. Share coping techniques. Suggest professional help if serious. Never dismiss feelings.
+📊 LIVE MARKET DATA (use EXACT numbers when asked):
+- Gold 24K: ₹${market.gold_24k_gram.toLocaleString('en-IN')}/gram | 22K: ₹${market.gold_22k_gram.toLocaleString('en-IN')}/g
+- Silver: ₹${market.silver_gram}/g
+- Nifty 50: ${market.nifty50.toLocaleString('en-IN')} | Sensex: ~${market.sensex.toLocaleString('en-IN')}
+- FD: SBI ${market.sbi_fd_1yr}% | HDFC ${market.hdfc_fd_1yr}%
+- Home Loan: SBI ${market.home_loan_sbi}% | PPF: ${market.ppf_rate}%
+- Repo Rate: ${market.repo_rate}% | Inflation: ~${market.inflation_cpi}%
 
-📊 LIVE MARKET DATA (auto-updated, use these EXACT numbers):
-- Gold 24K: ₹${market.gold_24k_gram.toLocaleString('en-IN')}/gram (₹${market.gold_10g.toLocaleString('en-IN')}/10g)
-- Gold 22K: ₹${market.gold_22k_gram.toLocaleString('en-IN')}/gram
-- Silver: ~₹${market.silver_gram}/gram
-- Nifty 50: ${market.nifty50.toLocaleString('en-IN')}
-- Sensex: ~${market.sensex.toLocaleString('en-IN')}
-- SBI FD (1yr): ${market.sbi_fd_1yr}% | HDFC FD: ${market.hdfc_fd_1yr}%
-- Home Loan: SBI ${market.home_loan_sbi}% | HDFC ${market.home_loan_hdfc}%
-- Personal Loan: ${market.personal_loan}
-- Car Loan: ${market.car_loan}
-- PPF: ${market.ppf_rate}% (tax-free)
-- NPS: ~${market.nps_return} (equity heavy)
-- RBI Repo Rate: ${market.repo_rate}%
-- CPI Inflation: ~${market.inflation_cpi}%
-- Last updated: ${market.lastUpdated}
+RULES:
+1. Keep responses SHORT — under 150 words. Like texting a friend.
+2. Answer the ACTUAL question asked. Don't go on tangents.
+3. Use numbers and facts, not vague advice.
+4. One emoji per point max. Don't overdo emojis.
+5. If asked about market/gold/stocks — give the live data above, then a 1-line opinion.
+6. End with ONE short follow-up question, not multiple.
+7. For finance questions: give specific numbers (SIP calc, EMI calc, etc.)
+8. NEVER start with "Hey [name]! How are you!" — just answer the question directly.
 
-CRITICAL: Use the EXACT prices above. Never guess or use old data. If asked about gold, say "Gold 24K is currently ₹${market.gold_24k_gram.toLocaleString('en-IN')}/gram".
-
-ENGAGEMENT MAGIC:
-- End messages with a relevant follow-up question to keep conversation going
-- Give daily tips based on time: morning = motivation, afternoon = productivity, evening = reflection, night = sleep/wellness
-- If user hasn't checked in habits today, gently remind
-- Celebrate streaks: 3 days = "Hat-trick! 🎩", 7 days = "One week warrior! 🗡️", 30 days = "Legend status! 👑"
-- Use progress bars in text: [████░░░░░░] 40%
-
-Current time: ${now} (${timeOfDay})
+Time: ${now} (${timeOfDay})
 ${context}
 
-FORMAT: Use *bold* for key points. ₹ for money (Indian format). Under 300 words. Emojis naturally.`;
+FORMAT: *bold* for key info. ₹ for money. Keep it SHORT and USEFUL.`;
 
   try {
     const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }], max_tokens: 600, temperature: 0.75 }),
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }], max_tokens: 300, temperature: 0.7 }),
     });
     const data = await resp.json();
     return data.choices?.[0]?.message?.content || null;
@@ -421,7 +407,7 @@ const INTENTS = [
 
   // ===== REMINDER =====
   {
-    name: 'reminder', patterns: [/remind/i, /alarm/i, /alert\s*me/i, /don't\s*forget/i],
+    name: 'reminder', patterns: [/^(?:set\s+)?remind(?:er)?\s+(?:me\s+)?(?:to|at|on|for|about)/i, /^(?:set\s+)?(?:an?\s+)?alarm/i, /^alert\s*me/i, /^(?:please\s+)?(?:don't|dont)\s*forget/i, /^(?:sent?|set|send)\s+(?:an?\s+)?remind/i],
     handler: async (text, from) => {
       const timeMatch = text.match(/(\d{1,2})\s*[:\.]?\s*(\d{2})?\s*(am|pm)/i);
       const time24 = text.match(/(\d{1,2}):(\d{2})\b(?!\s*(am|pm))/i);
@@ -605,17 +591,8 @@ const INTENTS = [
     },
   },
 
-  // EDUCATION SHORTCUTS
-  { name: 'e_sip', patterns: [/\bsip\b/i], handler: () => ED.sip },
-  { name: 'e_mf', patterns: [/mutual\s*fund/i], handler: () => ED.mf },
-  { name: 'e_emi', patterns: [/\bemi\b/i], handler: () => ED.emi },
-  { name: 'e_tax', patterns: [/\btax\b/i, /80c/i], handler: () => ED.tax },
-  { name: 'e_fd', patterns: [/\bfd\b/i, /fixed\s*deposit/i], handler: () => ED.fd },
-  { name: 'e_budget', patterns: [/\bbudget\b/i, /50.?30.?20/i], handler: () => ED.budget },
-  { name: 'e_loan', patterns: [/\bloan\b/i], handler: () => ED.loan },
-  { name: 'e_stock', patterns: [/\bstock/i, /\bnifty\b/i], handler: () => ED.stock },
-  { name: 'e_gold', patterns: [/\bgold\b/i], handler: () => ED.gold },
-  { name: 'e_credit', patterns: [/credit\s*score/i, /cibil/i], handler: () => ED.credit },
+  // V8.5: Education shortcuts REMOVED — AI handles all questions with real-time data
+  // Old static responses replaced by live AI with current market prices
   { name: 'thanks', patterns: [/\b(thanks|thank\s*you|thanku|tq|ty)\b/i], handler: () => `🙏 *Welcome!* Anything else? 💬` },
   { name: 'about', patterns: [/who\s*(are|r)\s*(you|u)/i], handler: () => `🤖 *I'm Viya — Your AI Personal Assistant*\n\n💰 Finance • 🏋️ Fitness • 📖 Study • 🏠 Home • 💼 Business\n\nI auto-detect habits from your chats!\nSay "ate eggs" → I track it 🔥\n\n📱 App: moneyviya.vercel.app` },
 ];
@@ -633,26 +610,16 @@ const ED = {
   credit: '📊 *Credit Score (750+ = excellent)*\n1. Pay on time\n2. Usage < 30%\n3. Keep old cards\n_Check free: CIBIL, CRED_',
 };
 
-const GREETINGS = `👋 *Hey! I'm Viya — Your AI Personal Assistant* 🤖
+const GREETINGS = `👋 *Hey! I'm Viya* — your AI buddy on WhatsApp!
 
-*🧠 I'm SMART — I auto-detect from your chats:*
-• "ate 6 eggs" → ✅ checks in Eat healthy habit
-• "gym done" → ✅ checks in Workout habit
-• "studied 2 hours" → ✅ checks in Reading habit
-• "spent 500 on food" → 💸 tracks expense
+Just text me naturally:
+💬 "spent 300 on food" → tracks expense
+💬 "gym done" → logs habit
+💬 "remind me rent at 10 AM" → sets reminder
+💬 "what's gold price?" → live market data
+💬 "suggest SIP for 10K salary" → personalized advice
 
-*📋 Direct Commands:*
-💰 "spent 200 food" • "salary 30000" • "balance"
-🎯 "save for bike 80000" • "my goals"
-⏰ "remind me to pay rent at 10 AM"
-🔥 "add habit: workout" • "my habits"
-
-*🤖 Ask me anything:*
-🏋️ Gym diet • 📖 Study plan • 💼 Business tips
-💰 SIP • Tax saving • Loans • Insurance
-
-📱 App: moneyviya.vercel.app
-_Everything syncs live!_ 🔄`;
+Or just chat — I'm here to help with anything! 🤖`;
 
 // ===== MASTER PROCESSOR =====
 async function processMessage(text, from) {
