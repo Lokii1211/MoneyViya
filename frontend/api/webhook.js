@@ -866,8 +866,11 @@ export default async function handler(req, res) {
     // Debug: Log ALL incoming POST payloads to diagnose webhook issues
     const debugLog = JSON.stringify(body || {}).substring(0, 2000);
     console.log(`🔍 POST received:`, debugLog);
-    // Store last webhook payload for debug endpoint
-    global.__lastWebhook = { time: new Date().toISOString(), body: body, raw: debugLog };
+    // Store last 10 webhook payloads for debug endpoint
+    if (!global.__webhookLogs) global.__webhookLogs = [];
+    global.__webhookLogs.push({ time: new Date().toISOString(), event: body?.event || 'unknown', body });
+    if (global.__webhookLogs.length > 10) global.__webhookLogs.shift();
+    global.__lastWebhook = { time: new Date().toISOString(), body, logs: global.__webhookLogs };
     
     // === WaSenderAPI Webhook (incoming messages) ===
     // Handles: messages.received, messages-personal.received, messages.upsert
