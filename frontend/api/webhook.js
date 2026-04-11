@@ -713,8 +713,24 @@ async function processMessage(text, from) {
   return `🤖 I didn't get that.\n\n*Try:*\n💸 "spent 200 food" • 📚 "what is SIP"\n⏰ "remind me..." • 🔥 "gym done"\n🏋️ "gym diet plan" • 📖 "study schedule"\n\n_Type "help" for full menu!_ 💬`;
 }
 
-// ===== WHATSAPP API =====
+// ===== WHATSAPP API — DUAL MODE (WaSender + Meta Cloud) =====
 async function sendWhatsAppMessage(to, text) {
+  // Priority 1: WaSenderAPI (simpler, no Meta verification needed)
+  const wasenderKey = (process.env.WASENDER_API_KEY || '').trim();
+  if (wasenderKey) {
+    try {
+      const phoneNumber = to.startsWith('+') ? to : `+${to}`;
+      const resp = await fetch('https://www.wasenderapi.com/api/send-message', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${wasenderKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: phoneNumber, text }),
+      });
+      if (resp.ok) { console.log(`✅ WaSender sent to ${to}`); return; }
+      console.error(`⚠️ WaSender: ${resp.status}`);
+    } catch (err) { console.error('WaSender error:', err); }
+  }
+  
+  // Priority 2: Meta Cloud API (official WhatsApp Business)
   const phoneId = (process.env.WHATSAPP_PHONE_ID || '').trim();
   const token = (process.env.WHATSAPP_ACCESS_TOKEN || '').trim();
   if (!phoneId || !token) return;
@@ -723,7 +739,7 @@ async function sendWhatsAppMessage(to, text) {
       method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: text } }),
     });
-  } catch (err) { console.error('WA send error:', err); }
+  } catch (err) { console.error('Meta WA error:', err); }
 }
 
 // ===== OTP SYSTEM =====
@@ -825,16 +841,42 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, message: 'OTP verified!' });
     }
 
+    // --- MARKET DATA API (for frontend) ---
+    if (req.query.action === 'market_data') {
+      const data = await fetchRealTimeMarketData();
+      return res.status(200).json(data);
+    }
+
     // --- WEBHOOK VERIFICATION ---
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
     if (mode === 'subscribe' && token === (process.env.WHATSAPP_VERIFY_TOKEN || '').trim()) return res.status(200).send(challenge);
-    return res.status(200).json({ status: 'MoneyViya V8 — Deep Intelligence Engine', time: new Date().toISOString() });
+    return res.status(200).json({ status: 'MoneyViya V8.5 — Real-Time Intelligence Engine', time: new Date().toISOString() });
   }
   
   if (req.method === 'POST') {
     const body = req.body;
+    
+    // === WaSenderAPI Webhook (incoming messages) ===
+    if (body?.event === 'messages.upsert' || (body?.data?.message && !body?.object)) {
+      try {
+        const msgData = body?.data?.message || body?.data || {};
+        const from = (msgData?.from || '').replace('@s.whatsapp.net', '').replace('+', '');
+        const text = msgData?.body || msgData?.text || msgData?.message?.conversation || '';
+        const fromMe = msgData?.fromMe || msgData?.key?.fromMe || false;
+        
+        if (from && text && !fromMe) {
+          console.log(`📩 WaSender ${from}: ${text}`);
+          await dbInsert('chat_history', { phone: from, role: 'user', content: text.substring(0, 500), source: 'whatsapp' });
+          const reply = await processMessage(text, from);
+          await sendWhatsAppMessage(from, reply);
+        }
+      } catch (err) { console.error('WaSender webhook error:', err); }
+      return res.status(200).json({ status: 'ok' });
+    }
+    
+    // === Meta Cloud API Webhook (existing) ===
     if (body?.object === 'whatsapp_business_account') {
       for (const entry of (body.entry || [])) {
         for (const change of (entry.changes || [])) {
@@ -842,15 +884,18 @@ export default async function handler(req, res) {
             if (msg.type === 'text') {
               const from = msg.from;
               const text = msg.text.body;
-              console.log(`📩 ${from}: ${text}`);
+              console.log(`📩 Meta ${from}: ${text}`);
+              await dbInsert('chat_history', { phone: from, role: 'user', content: text.substring(0, 500), source: 'whatsapp' });
               const reply = await processMessage(text, from);
               await sendWhatsAppMessage(from, reply);
             }
           }
         }
       }
+      return res.status(200).send('OK');
     }
-    return res.status(200).send('OK');
+    
+    return res.status(200).json({ status: 'ok' });
   }
   return res.status(405).send('Method not allowed');
 }
