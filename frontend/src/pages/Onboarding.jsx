@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
-import { Globe, User, Briefcase, DollarSign, PiggyBank, Target, Shield, ChevronRight, ChevronLeft, Check, Sparkles, Smartphone, Bell } from 'lucide-react'
+import { Globe, User, Briefcase, DollarSign, PiggyBank, Target, Shield, ChevronRight, ChevronLeft, Check, Sparkles, Smartphone, Bell, Plus } from 'lucide-react'
 
 const LANGUAGES = [
   { code: 'en', name: 'English', native: 'English' },
@@ -10,6 +10,7 @@ const LANGUAGES = [
   { code: 'ta', name: 'Tamil', native: 'தமிழ்' },
   { code: 'te', name: 'Telugu', native: 'తెలుగు' },
   { code: 'kn', name: 'Kannada', native: 'ಕನ್ನಡ' },
+  { code: 'ml', name: 'Malayalam', native: 'മലയാളം' },
 ]
 
 const PERSONAS = [
@@ -30,6 +31,7 @@ const GOALS = [
   { id: 'wedding', emoji: '💍', label: 'Wedding' },
   { id: 'retire', emoji: '🌴', label: 'Retirement' },
   { id: 'invest', emoji: '📈', label: 'Start Investing' },
+  { id: 'debt', emoji: '💳', label: 'Pay Off Debt' },
 ]
 
 const STARTER_HABITS = [
@@ -41,17 +43,20 @@ const STARTER_HABITS = [
   { id: 'healthy', emoji: '🥗', label: 'Eat healthy' },
   { id: 'nosocial', emoji: '📵', label: 'No social media 1h' },
   { id: 'sleep', emoji: '😴', label: 'Sleep by 11 PM' },
+  { id: 'journal', emoji: '📝', label: 'Write journal' },
+  { id: 'walk', emoji: '🚶', label: 'Walk 5000 steps' },
 ]
 
-const STEPS = ['Language', 'Name', 'Persona', 'Income', 'Budget', 'Goal', 'Habits', 'Permissions', 'Done']
+const STEPS = ['Language', 'About You', 'Persona', 'Income', 'Budget', 'Goal', 'Habits', 'Permissions', 'Done']
 
 export default function Onboarding() {
   const { phone } = useApp()
   const nav = useNavigate()
   const [step, setStep] = useState(0)
   const [form, setForm] = useState({
-    language: 'en', name: '', age: '', city: '', occupation: '', persona: '', income: '', daily_budget: '',
-    goal: '', selectedHabits: [], notifyAllowed: false
+    language: 'en', name: '', age: '', city: '', occupation: '', persona: '', customPersona: '',
+    income: '', daily_budget: '', goal: '', customGoal: '', selectedHabits: [], customHabit: '',
+    notifyAllowed: false
   })
   const [saving, setSaving] = useState(false)
 
@@ -62,16 +67,25 @@ export default function Onboarding() {
     setForm(f => ({ ...f, selectedHabits: f.selectedHabits.includes(id)
       ? f.selectedHabits.filter(h => h !== id) : [...f.selectedHabits, id] }))
   }
+  function addCustomHabit() {
+    if (!form.customHabit.trim()) return
+    const id = 'custom_' + Date.now()
+    STARTER_HABITS.push({ id, emoji: '⭐', label: form.customHabit.trim() })
+    setForm(f => ({ ...f, customHabit: '', selectedHabits: [...f.selectedHabits, id] }))
+  }
 
   async function finish() {
     setSaving(true)
     try {
+      const persona = form.persona === 'other' ? form.customPersona : form.persona
+      const occupation = form.occupation || (PERSONAS.find(p => p.id === form.persona)?.label || '')
+
       await api.updateUser(phone, {
         name: form.name || 'User',
         age: form.age ? Number(form.age) : null,
         city: form.city || null,
-        occupation: form.occupation || null,
-        persona: form.persona,
+        occupation: occupation || null,
+        persona: persona,
         monthly_income: Number(form.income) || 0,
         daily_budget: Number(form.daily_budget) || 1000,
         language: form.language,
@@ -86,11 +100,17 @@ export default function Onboarding() {
       }
 
       if (form.goal) {
-        const g = GOALS.find(x => x.id === form.goal)
-        if (g) {
-          const targets = { emergency: 100000, house: 2000000, car: 500000, travel: 50000, education: 200000, wedding: 500000, retire: 5000000, invest: 50000 }
-          await api.addGoal(phone, g.label, g.emoji, targets[form.goal] || 100000)
+        let goalName, goalEmoji
+        if (form.goal === 'other') {
+          goalName = form.customGoal || 'My Goal'
+          goalEmoji = '🎯'
+        } else {
+          const g = GOALS.find(x => x.id === form.goal)
+          goalName = g?.label || 'Goal'
+          goalEmoji = g?.emoji || '🎯'
         }
+        const targets = { emergency: 100000, house: 2000000, car: 500000, travel: 50000, education: 200000, wedding: 500000, retire: 5000000, invest: 50000, debt: 100000 }
+        await api.addGoal(phone, goalName, goalEmoji, targets[form.goal] || 100000)
       }
 
       if (form.notifyAllowed && 'Notification' in window) {
@@ -103,6 +123,8 @@ export default function Onboarding() {
 
   const monthlyIncome = Number(form.income) || 0
   const suggestedBudget = monthlyIncome > 0 ? Math.round(monthlyIncome / 30) : 1000
+  const displayPersona = form.persona === 'other' ? form.customPersona : (PERSONAS.find(p => p.id === form.persona)?.label || '-')
+  const displayGoal = form.goal === 'other' ? form.customGoal : (GOALS.find(g => g.id === form.goal)?.label || '-')
 
   return (
     <div className="onboarding">
@@ -136,7 +158,7 @@ export default function Onboarding() {
             <input type="number" className="form-input ob-input" placeholder="Age" value={form.age} onChange={e => set('age', e.target.value)} />
             <input type="text" className="form-input ob-input" placeholder="City (e.g. Chennai)" value={form.city} onChange={e => set('city', e.target.value)} />
           </div>
-          <input type="text" className="form-input ob-input" placeholder="Occupation (e.g. Software Engineer)" value={form.occupation} onChange={e => set('occupation', e.target.value)} />
+          <input type="text" className="form-input ob-input" placeholder="Occupation (optional)" value={form.occupation} onChange={e => set('occupation', e.target.value)} />
         </div>
       )}
 
@@ -153,7 +175,15 @@ export default function Onboarding() {
                 <span className="ob-p-desc">{p.desc}</span>
               </button>
             ))}
+            <button className={'ob-persona' + (form.persona === 'other' ? ' active' : '')} onClick={() => set('persona', 'other')}>
+              <span className="ob-p-emoji">✨</span>
+              <span className="ob-p-label">Other</span>
+              <span className="ob-p-desc">Tell Viya who you are</span>
+            </button>
           </div>
+          {form.persona === 'other' && (
+            <input type="text" className="form-input ob-input" style={{marginTop:12}} placeholder="Describe yourself (e.g. Content Creator)" value={form.customPersona} onChange={e => set('customPersona', e.target.value)} autoFocus />
+          )}
         </div>
       )}
 
@@ -192,7 +222,13 @@ export default function Onboarding() {
                 <span>{g.emoji}</span><span>{g.label}</span>
               </button>
             ))}
+            <button className={'ob-goal' + (form.goal === 'other' ? ' active' : '')} onClick={() => set('goal', 'other')}>
+              <span>✨</span><span>Other / Custom</span>
+            </button>
           </div>
+          {form.goal === 'other' && (
+            <input type="text" className="form-input ob-input" style={{marginTop:12}} placeholder="Your custom goal (e.g. Buy a bike)" value={form.customGoal} onChange={e => set('customGoal', e.target.value)} autoFocus />
+          )}
         </div>
       )}
 
@@ -200,13 +236,17 @@ export default function Onboarding() {
         <div className="ob-card">
           <Shield size={32} className="ob-icon" />
           <h2>Pick Your Habits</h2>
-          <p className="ob-sub">Select habits you want to track daily. Viya will auto-detect these from your chats! 🤖</p>
+          <p className="ob-sub">Select habits you want to track daily. Viya will remind you! 🤖</p>
           <div className="ob-grid">
             {STARTER_HABITS.map(h => (
               <button key={h.id} className={'ob-goal' + (form.selectedHabits.includes(h.id) ? ' active' : '')} onClick={() => toggleHabit(h.id)}>
                 <span>{h.emoji}</span><span>{h.label}</span>
               </button>
             ))}
+          </div>
+          <div style={{display:'flex', gap:8, marginTop:12}}>
+            <input type="text" className="form-input" style={{flex:1, fontSize:14, padding:'10px 14px'}} placeholder="Add custom habit..." value={form.customHabit} onChange={e => set('customHabit', e.target.value)} onKeyDown={e => e.key === 'Enter' && addCustomHabit()} />
+            <button className="btn-primary" style={{padding:'0 14px', fontSize:13}} onClick={addCustomHabit}><Plus size={16}/></button>
           </div>
           <p className="ob-hint">💡 Say "gym done" or "ate eggs" in chat → Viya auto-tracks it!</p>
         </div>
@@ -240,10 +280,11 @@ export default function Onboarding() {
           <p className="ob-sub">Viya is ready to be your AI best friend!</p>
           <div className="ob-summary">
             <div className="ob-sum-row"><span>Name</span><span>{form.name || 'User'}</span></div>
-            <div className="ob-sum-row"><span>Type</span><span>{PERSONAS.find(p => p.id === form.persona)?.label || '-'}</span></div>
+            {form.city && <div className="ob-sum-row"><span>City</span><span>{form.city}</span></div>}
+            <div className="ob-sum-row"><span>Type</span><span>{displayPersona}</span></div>
             <div className="ob-sum-row"><span>Income</span><span>₹{Number(form.income || 0).toLocaleString('en-IN')}/mo</span></div>
             <div className="ob-sum-row"><span>Budget</span><span>₹{Number(form.daily_budget || suggestedBudget).toLocaleString('en-IN')}/day</span></div>
-            <div className="ob-sum-row"><span>Goal</span><span>{GOALS.find(g => g.id === form.goal)?.label || '-'}</span></div>
+            <div className="ob-sum-row"><span>Goal</span><span>{displayGoal}</span></div>
             <div className="ob-sum-row"><span>Habits</span><span>{form.selectedHabits.length} selected</span></div>
           </div>
         </div>

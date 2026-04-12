@@ -115,7 +115,10 @@ export const api = {
   // HABITS — columns: id, phone, name, icon, frequency, current_streak, longest_streak, last_completed, created_at
   async getHabits(phone) { return query('habits', `?phone=eq.${phone}&select=*&order=created_at.asc`) },
   async addHabit(phone, name, icon) {
-    return insert('habits', { phone, name, icon: icon || '✅', frequency: 'daily', current_streak: 0, longest_streak: 0 })
+    // Prevent duplicate habits
+    const existing = await query('habits', `?phone=eq.${phone}&name=eq.${encodeURIComponent(name.trim())}&select=id`)
+    if (existing.length) return existing[0] // Already exists, return it
+    return insert('habits', { phone, name: name.trim(), icon: icon || '✅', frequency: 'daily', current_streak: 0, longest_streak: 0 })
   },
   async deleteHabit(id) {
     await remove('habit_checkins', `habit_id=eq.${id}`)
@@ -131,19 +134,37 @@ export const api = {
     const today = new Date().toISOString().split('T')[0]
     const existing = await query('habit_checkins', `?habit_id=eq.${habitId}&checked_date=eq.${today}&select=*`)
     if (existing.length) {
+      // Unchecking — remove today's checkin
       await remove('habit_checkins', `habit_id=eq.${habitId}&checked_date=eq.${today}`)
-      const habits = await query('habits', `?id=eq.${habitId}&select=*`)
-      if (habits[0]) await update('habits', `id=eq.${habitId}`, { current_streak: Math.max(0, (habits[0].current_streak || 0) - 1) })
+      // Recalculate streak from history
+      const streak = await this._calcStreak(habitId)
+      await update('habits', `id=eq.${habitId}`, { current_streak: streak })
       return { checked: false }
     }
+    // Checking in
     await insert('habit_checkins', { habit_id: habitId, phone, checked_date: today, status: 'done' })
+    // Recalculate streak from history
+    const streak = await this._calcStreak(habitId)
     const habits = await query('habits', `?id=eq.${habitId}&select=*`)
-    if (habits[0]) {
-      const newStreak = (habits[0].current_streak || 0) + 1
-      const longestStreak = Math.max(newStreak, habits[0].longest_streak || 0)
-      await update('habits', `id=eq.${habitId}`, { current_streak: newStreak, longest_streak: longestStreak, last_completed: today })
-    }
+    const longestStreak = Math.max(streak, habits[0]?.longest_streak || 0)
+    await update('habits', `id=eq.${habitId}`, { current_streak: streak, longest_streak: longestStreak, last_completed: today })
     return { checked: true }
+  },
+  // Calculate consecutive daily streak from checkin history
+  async _calcStreak(habitId) {
+    const checkins = await query('habit_checkins', `?habit_id=eq.${habitId}&select=checked_date&order=checked_date.desc&limit=60`)
+    if (!checkins.length) return 0
+    let streak = 0
+    const today = new Date()
+    for (let i = 0; i < 60; i++) {
+      const d = new Date(today)
+      d.setDate(d.getDate() - i)
+      const ds = d.toISOString().split('T')[0]
+      if (checkins.some(c => c.checked_date === ds)) streak++
+      else if (i > 0) break // Gap found, stop counting (skip today if not checked yet)
+      else continue // Today might not be checked yet, check yesterday
+    }
+    return streak
   },
 
   // NOTIFICATIONS — columns: id, phone, type, title, description, is_read, action_url, created_at
