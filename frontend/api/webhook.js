@@ -1,5 +1,5 @@
 /**
- * MoneyViya WhatsApp Cloud API Webhook — V6 TRUE AGENTIC
+ * Viya WhatsApp Cloud API Webhook — V6 TRUE AGENTIC
  * - Smart habit auto-detection from natural chat
  * - OTP login via WhatsApp
  * - Bi-directional sync (WhatsApp ↔ App)
@@ -572,7 +572,7 @@ const INTENTS = [
       const exp = detectExpense(text);
       if (!exp) return null;
       await dbInsert('transactions', { phone: from, type: 'expense', amount: exp.amount, category: exp.category, description: text.substring(0, 100) });
-      return `✅ *Expense Tracked!*\n\n💸 *₹${exp.amount.toLocaleString('en-IN')}* — ${exp.category}\n📅 ${new Date().toLocaleDateString('en-IN')}\n\n${exp.amount > 5000 ? '⚠️ _Big expense! Was it planned?_' : '✨ _Every rupee tracked = smarter spending!_'}\n\n📱 Sync'd to app: moneyviya.vercel.app`;
+      return `✅ *Expense Tracked!*\n\n💸 *₹${exp.amount.toLocaleString('en-IN')}* — ${exp.category}\n📅 ${new Date().toLocaleDateString('en-IN')}\n\n${exp.amount > 5000 ? '⚠️ _Big expense! Was it planned?_' : '✨ _Every rupee tracked = smarter spending!_'}\n\n📱 Sync'd to app: viya.vercel.app`;
     },
   },
 
@@ -705,7 +705,7 @@ const INTENTS = [
         msg += `\n\n🎯 *Goals:* ${goals.length} active`;
         goals.forEach(g => { msg += `\n${g.name}: ₹${Number(g.current_amount||0).toLocaleString('en-IN')}/${Number(g.target_amount).toLocaleString('en-IN')}`; });
       }
-      msg += `\n\n📱 Full dashboard: moneyviya.vercel.app`;
+      msg += `\n\n📱 Full dashboard: viya.vercel.app`;
       return msg;
     },
   },
@@ -713,7 +713,7 @@ const INTENTS = [
   // V8.5: Education shortcuts REMOVED — AI handles all questions with real-time data
   // Old static responses replaced by live AI with current market prices
   { name: 'thanks', patterns: [/\b(thanks|thank\s*you|thanku|tq|ty)\b/i], handler: () => `🙏 *Welcome!* Anything else? 💬` },
-  { name: 'about', patterns: [/who\s*(are|r)\s*(you|u)/i], handler: () => `🤖 *I'm Viya — Your AI Personal Assistant*\n\n💰 Finance • 🏋️ Fitness • 📖 Study • 🏠 Home • 💼 Business\n\nI auto-detect habits from your chats!\nSay "ate eggs" → I track it 🔥\n\n📱 App: moneyviya.vercel.app` },
+  { name: 'about', patterns: [/who\s*(are|r)\s*(you|u)/i], handler: () => `🤖 *I'm Viya — Your AI Personal Assistant*\n\n💰 Finance • 🏋️ Fitness • 📖 Study • 🏠 Home • 💼 Business\n\nI auto-detect habits from your chats!\nSay "ate eggs" → I track it 🔥\n\n📱 App: viya.vercel.app` },
 ];
 
 const ED = {
@@ -954,7 +954,7 @@ export default async function handler(req, res) {
       
       // Try to send via WhatsApp
       try {
-        await sendWhatsAppMessage(`91${phone}`, `🔐 *MoneyViya Login OTP*\n\nYour OTP: *${otp}*\n\n⏱️ Valid for 5 minutes\n⚠️ Don't share with anyone\n\n_If you didn't request this, ignore it._`);
+        await sendWhatsAppMessage(`91${phone}`, `🔐 *Viya Login OTP*\n\nYour OTP: *${otp}*\n\n⏱️ Valid for 5 minutes\n⚠️ Don't share with anyone\n\n_If you didn't request this, ignore it._`);
       } catch {}
       
       return res.status(200).json({ success: true, message: 'OTP sent to WhatsApp!' });
@@ -1000,7 +1000,7 @@ export default async function handler(req, res) {
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
     if (mode === 'subscribe' && token === (process.env.WHATSAPP_VERIFY_TOKEN || 'moneyviya_verify_2026').trim()) return res.status(200).send(challenge);
-    return res.status(200).json({ status: 'MoneyViya V10 — Production AI Engine', time: new Date().toISOString(), ml: 'TF-IDF + VADER + EMA', whatsapp: 'Meta Cloud API' });
+    return res.status(200).json({ status: 'Viya V10 — Production AI Engine', time: new Date().toISOString(), ml: 'TF-IDF + VADER + EMA', whatsapp: 'Meta Cloud API' });
   }
   
   if (req.method === 'POST') {

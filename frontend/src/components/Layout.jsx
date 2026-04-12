@@ -6,7 +6,10 @@ export default function Layout() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <span className="app-header-title">MoneyViya</span>
+        <div className="app-header-brand" onClick={() => nav('/')} style={{cursor:'pointer'}}>
+          <img src="/logo.png" alt="Viya" className="app-header-logo" />
+          <span className="app-header-title">Viya</span>
+        </div>
         <div className="app-header-actions">
           <button className="header-icon-btn" onClick={() => nav('/search')} aria-label="Search">
             <Search size={18}/>

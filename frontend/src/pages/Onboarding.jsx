@@ -252,7 +252,7 @@ export default function Onboarding() {
       <div className="ob-nav">
         {step > 0 && step < 8 && <button className="btn-secondary ob-back" onClick={prev}><ChevronLeft size={18} /> Back</button>}
         {step < 8 && <button className="btn-primary ob-next" onClick={next}>Continue <ChevronRight size={18} /></button>}
-        {step === 8 && <button className="btn-primary ob-next" onClick={finish} disabled={saving}><Sparkles size={18} /> {saving ? 'Setting up...' : 'Start Using MoneyViya'}</button>}
+        {step === 8 && <button className="btn-primary ob-next" onClick={finish} disabled={saving}><Sparkles size={18} /> {saving ? 'Setting up...' : 'Start Using Viya'}</button>}
       </div>
     </div>
   )

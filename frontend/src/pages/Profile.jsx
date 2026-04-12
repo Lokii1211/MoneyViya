@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Moon, Globe, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown } from 'lucide-react'
+import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown } from 'lucide-react'
 
 export default function Profile() {
-  const { user, phone, logout, setUser } = useApp()
+  const { user, phone, logout, setUser, theme, toggleTheme } = useApp()
   const nav = useNavigate()
   const [stats, setStats] = useState({ income: 0, expenses: 0, habits: 0, goals: 0, streak: 0, chatCount: 0 })
   const [editing, setEditing] = useState(false)
@@ -160,6 +160,11 @@ export default function Profile() {
 
       {/* Settings */}
       <div className="settings-list">
+        <button className="settings-item" onClick={toggleTheme}>
+          <div className="si-icon">{theme === 'dark' ? <Sun size={18}/> : <Moon size={18}/>}</div>
+          <div className="si-info"><div className="si-label">Appearance</div><div className="si-sub">{theme === 'dark' ? 'Dark mode' : 'Light mode'}</div></div>
+          <div className={`theme-toggle-pill ${theme}`}><div className="theme-toggle-dot"/></div>
+        </button>
         <button className="settings-item" onClick={() => nav('/notifications')}>
           <div className="si-icon"><Bell size={18}/></div>
           <div className="si-info"><div className="si-label">Notifications</div><div className="si-sub">Push & reminders</div></div>
@@ -185,8 +190,7 @@ export default function Profile() {
       <button className="logout-btn" onClick={handleLogout}><LogOut size={18}/> Sign Out</button>
 
       <div className="profile-footer">
-        <p>MoneyViya v10.0 — Production AI Engine</p>
-        <p>ML: TF-IDF + VADER + EMA</p>
+        <p>Viya v10.0 — Production AI Engine</p>
         <p>Built with ❤️ by Lokesh</p>
       </div>
     </div>

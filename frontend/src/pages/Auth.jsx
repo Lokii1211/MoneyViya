@@ -85,9 +85,9 @@ export default function Auth() {
   return (
     <div className="auth-screen">
       <div className="auth-box">
-        <div className="auth-logo"><Sparkles size={28}/></div>
-        <h1 className="auth-title">MoneyViya</h1>
-        <p className="auth-sub">Your AI Personal Assistant</p>
+        <img src="/logo.png" alt="Viya" className="auth-logo-img" />
+        <h1 className="auth-title">Viya</h1>
+        <p className="auth-sub">Your AI Life & Wealth Partner</p>
 
         {/* Mode Toggle */}
         <div className="auth-mode-toggle">
