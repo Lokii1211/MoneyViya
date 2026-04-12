@@ -209,4 +209,7 @@ export const api = {
   async removeFamilyConnection(id) {
     return remove('family_connections', `id=eq.${id}`)
   },
+  async sendFriendRequest(ownerPhone, memberPhone) {
+    return insert('family_connections', { owner_phone: ownerPhone, member_phone: memberPhone, relation: 'Friend', connection_type: 'friend', status: 'pending' })
+  },
 }

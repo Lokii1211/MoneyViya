@@ -268,6 +268,11 @@ export default function Profile() {
           <div className="si-info"><div className="si-label">Family Mode</div><div className="si-sub">Track expenses for family members</div></div>
           <ChevronRight size={16} className="si-arrow"/>
         </button>
+        <button className="settings-item" onClick={() => nav('/friends')}>
+          <div className="si-icon">🤝</div>
+          <div className="si-info"><div className="si-label">Friends</div><div className="si-sub">Connect & motivate each other</div></div>
+          <ChevronRight size={16} className="si-arrow"/>
+        </button>
         <button className="settings-item" onClick={() => nav('/terms')}>
           <div className="si-icon"><FileText size={18}/></div>
           <div className="si-info"><div className="si-label">Terms of Service</div><div className="si-sub">Usage policies & guidelines</div></div>
