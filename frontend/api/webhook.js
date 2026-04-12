@@ -338,6 +338,18 @@ RESPONSE RULES:
 9. If unsure, be honest: "Hmm not 100% sure about that, but here's what I know..."
 10. Make them feel like chatting with you is the best part of their day.
 
+🛡️ DECLINE SCRIPTS (when user says friends pressure them to spend):
+If they say "friends want me to go out" or "peer pressure to spend" or "can't say no":
+- "Tell them: 'I'm saving for something exciting, rain check? 🙌' — works every time!"
+- "Try: 'Let's do something fun that doesn't cost much — chai pe charcha? ☕'"
+- "Say: 'Bro I promised myself I'd hit my savings goal this month. Next time pakka! 💪'"
+- Give them 2-3 polite ways to decline without feeling cheap.
+
+📊 SPENDING ANOMALY DETECTION:
+- If daily spending > 2x their daily budget → "Whoa, you've spent ₹X today — that's 2x your usual. Everything okay?"
+- If category spending suddenly spikes → "Your [category] spending jumped this week. Want to set a limit?"
+- If they're on track → "You're killing it! Under budget for ${new Date().toLocaleDateString('en-IN', {month:'long'})}! 🎉"
+
 Time: ${now} (${timeOfDay})
 ${context}
 
@@ -443,12 +455,25 @@ async function getDailyInsight(phone) {
   });
   const todaySpent = today.reduce((s,t) => s+Number(t.amount), 0);
   
+  // Get user's daily budget
+  const userData = await dbQuery('users', `?phone=eq.${phone}&select=daily_budget`);
+  const dailyBudget = userData?.[0]?.daily_budget || 1000;
+  
+  // ANOMALY: Spending > 2x daily budget
+  if (todaySpent > dailyBudget * 2 && hour >= 14) {
+    return `⚠️ *Spending Alert!* You've spent *₹${todaySpent.toLocaleString('en-IN')}* today — that's ${Math.round(todaySpent/dailyBudget)}x your daily budget of ₹${dailyBudget}!\n\nEverything okay? 🤔`;
+  }
+  
   if (hour < 10) {
     const streaks = habits.filter(h => h.current_streak > 0);
     return streaks.length ? `🌅 Morning! Your ${streaks[0].icon}${streaks[0].name} streak: ${streaks[0].current_streak}🔥 — don't break it today!` : null;
   }
+  if (hour >= 14 && hour < 18 && todaySpent > 0) {
+    const left = dailyBudget - todaySpent;
+    return left > 0 ? `💰 You have *₹${left.toLocaleString('en-IN')}* left today. ${left > dailyBudget*0.5 ? 'Great control! 👏' : 'Be careful with remaining spend 🤞'}` : null;
+  }
   if (hour >= 20 && todaySpent > 0) {
-    return `📊 Today you spent *₹${todaySpent.toLocaleString('en-IN')}*. ${todaySpent > 1000 ? 'That\'s a lot — was everything necessary?' : 'Good control! 👏'}`;
+    return `📊 Today you spent *₹${todaySpent.toLocaleString('en-IN')}*. ${todaySpent > dailyBudget ? 'Over budget — let\'s do better tomorrow! 💪' : 'Under budget! You saved ₹' + (dailyBudget-todaySpent) + ' today! 🎉'}`;
   }
   return null;
 }
@@ -771,6 +796,24 @@ async function processMessage(text, from) {
   
   // Save to chat history
   if (from) await dbInsert('chat_history', { phone: from, role: 'user', content: trimmed, source: 'whatsapp' });
+
+  // 0. BILL SCAN HANDLER — When image OCR detects a bill
+  if (trimmed.startsWith('[BILL_SCANNED]')) {
+    const amtMatch = trimmed.match(/Amount:\s*₹([\d,]+)/);
+    const amt = amtMatch ? amtMatch[1] : '?';
+    const reply = `📸 *Bill Scanned!*\n\n✅ ₹${amt} expense logged automatically!\n\n💡 _I scanned your receipt and added it to your expenses. Check the Viya app to review or change the category._\n\n📊 _Send me any bill photo and I'll track it for you!_`;
+    if (from) await dbInsert('chat_history', { phone: from, role: 'assistant', content: reply.substring(0, 500), source: 'whatsapp' });
+    return reply;
+  }
+
+  // 0b. IMAGE ANALYSIS — When image was analyzed but isn't a bill
+  if (trimmed.startsWith('[IMAGE_ANALYSIS]') || trimmed.startsWith('[IMAGE]')) {
+    const content = trimmed.replace(/^\[(IMAGE_ANALYSIS|IMAGE)\]\s*/, '');
+    const aiReply = await askAI(`User sent an image on WhatsApp. Image analysis: "${content}". Give a brief, friendly response about what you see. If it's related to money/expenses, offer to track it. Be conversational like a friend.`);
+    const reply = aiReply || `📷 I see your image! Want me to help with anything related to it?`;
+    if (from) await dbInsert('chat_history', { phone: from, role: 'assistant', content: reply.substring(0, 500), source: 'whatsapp' });
+    return reply;
+  }
 
   // 1. Rule-based intent matching
   for (const intent of INTENTS) {
