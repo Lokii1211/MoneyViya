@@ -67,6 +67,10 @@ export default function Home() {
   const income = data?.monthly_income || 0, expense = data?.monthly_expenses || 0
   const savings = data?.current_savings || 0, budget = data?.daily_budget || 1000
   const name = data?.name || user?.name || 'User'
+  const todaySpent = (data?.recent_transactions || []).filter(t => {
+    if (t.type !== 'expense') return false
+    return new Date(t.created_at).toDateString() === new Date().toDateString()
+  }).reduce((s, t) => s + Number(t.amount), 0)
   const spent = expense, weeklyBudget = budget * 7
   const weekPct = weeklyBudget > 0 ? Math.min((spent / weeklyBudget) * 100, 100) : 0
   const maxStreak = habits.reduce((m, h) => Math.max(m, h.current_streak || 0), 0)
@@ -105,17 +109,19 @@ export default function Home() {
         <ArrowUpRight size={14} className="tip-arrow"/>
       </div>
 
-      {/* Wealth Card */}
-      <div className="wealth-card">
-        <div className="wealth-label">NET WORTH</div>
-        <div className="wealth-amount">₹{savings.toLocaleString('en-IN')}</div>
-        <div className={`wealth-change ${income >= expense ? 'up' : 'down'}`}>
-          <TrendingUp size={14} /> {income >= expense ? 'Growing' : 'Needs attention'}
+      {/* 💰 MONEY LEFT TODAY — THE #1 number (Blueprint Core Feature #2) */}
+      <div className="wealth-card" onClick={() => nav('/expenses')}>
+        <div className="wealth-label">MONEY LEFT TODAY</div>
+        <div className="wealth-amount" style={{color: (budget/30 - todaySpent) >= 0 ? 'var(--primary)' : 'var(--red)', fontSize:38}}>
+          ₹{Math.abs(Math.round(budget/30 - todaySpent)).toLocaleString('en-IN')}
+        </div>
+        <div className={`wealth-change ${(budget/30 - todaySpent) >= 0 ? 'up' : 'down'}`}>
+          <TrendingUp size={14} /> {(budget/30 - todaySpent) >= 0 ? `₹${Math.round(budget/30)} daily budget` : `Over budget by ₹${Math.abs(Math.round(budget/30 - todaySpent))}`}
         </div>
         <div className="wealth-stats">
           <div><div className="ws-label">INCOME</div><div className="ws-val green">₹{income.toLocaleString('en-IN')}</div></div>
           <div><div className="ws-label">EXPENSES</div><div className="ws-val red">₹{expense.toLocaleString('en-IN')}</div></div>
-          <div><div className="ws-label">BUDGET</div><div className="ws-val accent">₹{budget.toLocaleString('en-IN')}</div></div>
+          <div><div className="ws-label">SAVED</div><div className="ws-val accent">₹{savings.toLocaleString('en-IN')}</div></div>
         </div>
       </div>
 

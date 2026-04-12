@@ -232,7 +232,7 @@ export default function Profile() {
       <button className="logout-btn" onClick={handleLogout}><LogOut size={18}/> Sign Out</button>
 
       <div className="profile-footer">
-        <p>Viya v10.5 — Production AI Engine</p>
+        <p>Viya v10.7 — OCR Bill Scanner + AI Friend Engine</p>
         <p>Built with ❤️ by Lokesh</p>
       </div>
     </div>
