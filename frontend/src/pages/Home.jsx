@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useCountUp, getCurrentFestival } from '../lib/utils'
-import { TrendingUp, Plus, Sun, Flame, Target, Wallet, BarChart3, Landmark, CalendarCheck, ArrowUpRight, Sparkles, MessageCircle, Zap, Phone } from 'lucide-react'
+import { TrendingUp, Plus, Sun, Flame, Target, Wallet, BarChart3, Landmark, CalendarCheck, ArrowUpRight, Sparkles, MessageCircle, Zap, Phone, PiggyBank } from 'lucide-react'
 
 // Daily tips based on time of day — keeps users coming back
 const DAILY_TIPS = {
@@ -53,6 +53,7 @@ export default function Home() {
   const [data, setData] = useState(null)
   const [habits, setHabits] = useState([])
   const [checkins, setCheckins] = useState([])
+  const [goals, setGoals] = useState([])
   const nav = useNavigate()
   const { greeting, period, emoji } = getTimeGreeting()
   const tip = getDailyTip(period)
@@ -62,6 +63,7 @@ export default function Home() {
       api.getUser(phone).then(d => { if (d) { setData(d); setUser(p => ({ ...p, ...d })) } })
       api.getHabits(phone).then(h => { if (h) setHabits(h) })
       api.getCheckins(phone).then(c => { if (c) setCheckins(c) })
+      api.getGoals(phone).then(g => { if (g) setGoals(g) })
     }
   }, [phone])
 
@@ -89,6 +91,7 @@ export default function Home() {
     { icon: <Flame size={18} />, label: 'Habits', color: 'gold', to: '/habits' },
     { icon: <Wallet size={18} />, label: 'Earn More', color: 'violet', to: '/chat?q=passive+income+ideas' },
     { icon: <Target size={18} />, label: 'Goals', color: 'rose', to: '/goals' },
+    { icon: <PiggyBank size={18} />, label: 'Invest', color: 'gold', to: '/chat?q=best+SIP+mutual+funds+for+beginners+india' },
     { icon: <BarChart3 size={18} />, label: 'Report', color: 'cyan', to: '/report' },
     { icon: <Landmark size={18} />, label: 'Tax Save', color: 'green', to: '/chat?q=tax+saving+tips+for+salaried' },
     { icon: <CalendarCheck size={18} />, label: 'Plan Day', color: 'violet', to: '/chat?q=plan+my+day+productively' },
@@ -130,7 +133,7 @@ export default function Home() {
       {/* 💰 MONEY LEFT TODAY — animated counting */}
       <div className="wealth-card" onClick={() => nav('/expenses')}>
         <div className="wealth-label">MONEY LEFT TODAY</div>
-        <div className="wealth-amount" style={{color: moneyLeft >= 0 ? 'var(--primary)' : 'var(--red)', fontSize:38}}>
+        <div className="wealth-amount" style={{color: moneyLeft >= 0 ? 'var(--primary)' : 'var(--red)', fontSize:72, lineHeight:1}}>
           ₹{animatedMoneyLeft.toLocaleString('en-IN')}
         </div>
         <div className={`wealth-change ${moneyLeft >= 0 ? 'up' : 'down'}`}>
@@ -142,6 +145,27 @@ export default function Home() {
           <div><div className="ws-label">SAVED</div><div className="ws-val accent">₹{savings.toLocaleString('en-IN')}</div></div>
         </div>
       </div>
+
+      {/* 🎯 Goal Progress Preview — Blueprint: "Bike goal: ₹33,600 (42%)" */}
+      {goals.length > 0 && (() => {
+        const g = goals.find(g => g.current_amount < g.target_amount) || goals[0]
+        const pct = g.target_amount > 0 ? Math.min(Math.round((g.current_amount / g.target_amount) * 100), 100) : 0
+        return (
+          <div style={{background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:14, padding:'14px 16px', marginBottom:12, cursor:'pointer'}} onClick={() => nav('/goals')}>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6}}>
+              <div style={{display:'flex', alignItems:'center', gap:8}}>
+                <span style={{fontSize:20}}>{g.icon || '🎯'}</span>
+                <span style={{fontSize:13, fontWeight:700}}>{g.name}</span>
+              </div>
+              <span style={{fontSize:13, fontWeight:800, color:'var(--primary)'}}>{pct}%</span>
+            </div>
+            <div className="progress-bar" style={{height:6, marginBottom:4}}>
+              <div className="progress-fill" style={{width: pct + '%'}} />
+            </div>
+            <div style={{fontSize:11, color:'var(--text3)'}}>₹{Number(g.current_amount).toLocaleString('en-IN')} of ₹{Number(g.target_amount).toLocaleString('en-IN')}</div>
+          </div>
+        )
+      })()}
 
       {/* Streak Card — Gamification */}
       <div className="streak-card" onClick={() => nav('/habits')}>
@@ -197,7 +221,7 @@ export default function Home() {
         <div className="section-head"><h3>Recent Transactions</h3><button className="link-btn" onClick={() => nav('/expenses')}>See All</button></div>
         {(data?.recent_transactions || []).slice(0, 5).map((t, i) => (
           <div key={i} className="txn-item">
-            <div className="txn-icon">{t.type === 'income' ? '💰' : '🛒'}</div>
+            <div className="txn-icon">{t.category?.split(' ')[0] || (t.type === 'income' ? '💰' : '🛒')}</div>
             <div className="txn-info"><div className="txn-name">{t.description || t.category}</div><div className="txn-cat">{t.category}</div></div>
             <div className={'txn-amount ' + (t.type === 'income' ? 'income' : 'expense')}>{t.type === 'income' ? '+' : '-'}₹{t.amount}</div>
           </div>

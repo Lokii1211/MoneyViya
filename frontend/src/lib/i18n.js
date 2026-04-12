@@ -71,6 +71,21 @@ const strings = {
     invite_friends: 'స్నేహితులను ఆహ్వానించు', family_mode: 'కుటుంబ మోడ్',
     ask_viya: 'Viya ని ఏదైనా అడగండి...', send: 'పంపు',
     loading: 'లోడ్ అవుతోంది...', cancel: 'రద్దు', save: 'సేవ్', share: 'షేర్',
+  },
+  kn: {
+    home: 'ಮುಖಪುಟ', money: 'ಹಣ', chat: 'ಚಾಟ್', habits: 'ಅಭ್ಯಾಸಗಳು', profile: 'ಪ್ರೊಫೈಲ್',
+    greeting_morning: 'ಶುಭೋದಯ', greeting_afternoon: 'ಶುಭ ಮಧ್ಯಾಹ್ನ', greeting_evening: 'ಶುಭ ಸಂಜೆ', greeting_night: 'ಶುಭ ರಾತ್ರಿ',
+    money_left_today: 'ಇಂದು ಉಳಿದ ಹಣ', daily_budget: 'ದೈನಿಕ ಬಜೆಟ್', over_budget: 'ಬಜೆಟ್ ಮೀರಿದೆ',
+    income: 'ಆದಾಯ', expenses: 'ಖರ್ಚುಗಳು', saved: 'ಉಳಿತಾಯ',
+    add_expense: 'ಖರ್ಚು ಸೇರಿಸಿ', earn_more: 'ಹೆಚ್ಚು ಗಳಿಸಿ', goals: 'ಗುರಿಗಳು',
+    report: 'ವರದಿ', scan_bill: 'ಬಿಲ್ ಸ್ಕ್ಯಾನ್', add: 'ಸೇರಿಸಿ',
+    spent: 'ಖರ್ಚು', today: 'ಇಂದು', yesterday: 'ನಿನ್ನೆ',
+    daily_habits: 'ದೈನಿಕ ಅಭ್ಯಾಸಗಳು', streak: 'ಸ್ಟ್ರೀಕ್', best: 'ಅತ್ಯುತ್ತಮ',
+    savings_goals: 'ಉಳಿತಾಯ ಗುರಿಗಳು', total_saved: 'ಒಟ್ಟು ಉಳಿತಾಯ',
+    sign_out: 'ಸೈನ್ ಔಟ್', language: 'ಭಾಷೆ', terms: 'ಸೇವಾ ನಿಯಮಗಳು',
+    invite_friends: 'ಸ್ನೇಹಿತರನ್ನು ಆಹ್ವಾನಿಸಿ', family_mode: 'ಕುಟುಂಬ ಮೋಡ್',
+    ask_viya: 'Viya ಅನ್ನು ಏನಾದರೂ ಕೇಳಿ...', send: 'ಕಳುಹಿಸಿ',
+    loading: 'ಲೋಡ್ ಆಗುತ್ತಿದೆ...', cancel: 'ರದ್ದು', save: 'ಉಳಿಸಿ', share: 'ಹಂಚಿಕೊಳ್ಳಿ',
   }
 }
 
@@ -79,6 +94,7 @@ export const LANGUAGES = [
   { code: 'hi', label: 'Hindi', native: 'हिंदी' },
   { code: 'ta', label: 'Tamil', native: 'தமிழ்' },
   { code: 'te', label: 'Telugu', native: 'తెలుగు' },
+  { code: 'kn', label: 'Kannada', native: 'ಕನ್ನಡ' },
 ]
 
 export function t(key) {
