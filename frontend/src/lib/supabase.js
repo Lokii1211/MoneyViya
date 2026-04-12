@@ -192,4 +192,21 @@ export const api = {
 
   // REMINDERS
   async getReminders(phone) { return query('reminders', `?phone=eq.${phone}&select=*&order=created_at.desc&limit=20`) },
+
+  // FAMILY CONNECTIONS — columns: id, owner_phone, member_phone, relation, status (pending/accepted/rejected), created_at
+  async getFamilyConnections(phone) {
+    return query('family_connections', `?owner_phone=eq.${phone}&select=*&order=created_at.desc`)
+  },
+  async getFamilyInvitesReceived(phone) {
+    return query('family_connections', `?member_phone=eq.${phone}&select=*&order=created_at.desc`)
+  },
+  async sendFamilyInvite(ownerPhone, memberPhone, relation) {
+    return insert('family_connections', { owner_phone: ownerPhone, member_phone: memberPhone, relation, status: 'pending' })
+  },
+  async respondFamilyInvite(id, status) {
+    return update('family_connections', `id=eq.${id}`, { status })
+  },
+  async removeFamilyConnection(id) {
+    return remove('family_connections', `id=eq.${id}`)
+  },
 }

@@ -94,7 +94,7 @@ export default function Home() {
     { icon: <PiggyBank size={18} />, label: 'Invest', color: 'gold', to: '/chat?q=best+SIP+mutual+funds+for+beginners+india' },
     { icon: <BarChart3 size={18} />, label: 'Report', color: 'cyan', to: '/report' },
     { icon: <Landmark size={18} />, label: 'Tax Save', color: 'green', to: '/chat?q=tax+saving+tips+for+salaried' },
-    { icon: <Users size={18} />, label: 'Community', color: 'rose', to: '/community' },
+    { icon: <Users size={18} />, label: 'Family', color: 'rose', to: '/family' },
   ]
 
   const moneyLeft = Math.round(budget/30 - todaySpent)
