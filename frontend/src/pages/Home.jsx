@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
+import { useCountUp, getCurrentFestival } from '../lib/utils'
 import { TrendingUp, Plus, Sun, Flame, Target, Wallet, BarChart3, Landmark, CalendarCheck, ArrowUpRight, Sparkles, MessageCircle, Zap, Phone } from 'lucide-react'
 
 // Daily tips based on time of day — keeps users coming back
@@ -93,6 +94,12 @@ export default function Home() {
     { icon: <CalendarCheck size={18} />, label: 'Plan Day', color: 'violet', to: '/chat?q=plan+my+day+productively' },
   ]
 
+  const moneyLeft = Math.round(budget/30 - todaySpent)
+  const animatedMoneyLeft = useCountUp(Math.abs(moneyLeft), 900)
+  const animatedIncome = useCountUp(income, 700)
+  const animatedExpense = useCountUp(expense, 700)
+  const festival = getCurrentFestival()
+
   return (
     <div className="page">
       <header className="page-header">
@@ -102,25 +109,36 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Daily Tip Card — Changes every hour, keeps users engaged */}
+      {/* 🎉 Festival Banner */}
+      {festival && (
+        <div style={{background: festival.colors.bg, borderRadius:14, padding:'12px 16px', marginBottom:12, display:'flex', alignItems:'center', gap:10, cursor:'pointer'}} onClick={() => nav('/chat?q=' + encodeURIComponent(festival.greeting))}>
+          <span style={{fontSize:24}}>{festival.emoji}</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13, fontWeight:800, color:'#fff'}}>{festival.greeting}</div>
+            <div style={{fontSize:11, color:'rgba(255,255,255,0.7)'}}>Tap for festive money tips! 🎁</div>
+          </div>
+        </div>
+      )}
+
+      {/* Daily Tip Card */}
       <div className="daily-tip-card" onClick={() => nav('/chat')}>
         <Sparkles size={16} className="tip-icon"/>
         <div className="tip-text">{tip}</div>
         <ArrowUpRight size={14} className="tip-arrow"/>
       </div>
 
-      {/* 💰 MONEY LEFT TODAY — THE #1 number (Blueprint Core Feature #2) */}
+      {/* 💰 MONEY LEFT TODAY — animated counting */}
       <div className="wealth-card" onClick={() => nav('/expenses')}>
         <div className="wealth-label">MONEY LEFT TODAY</div>
-        <div className="wealth-amount" style={{color: (budget/30 - todaySpent) >= 0 ? 'var(--primary)' : 'var(--red)', fontSize:38}}>
-          ₹{Math.abs(Math.round(budget/30 - todaySpent)).toLocaleString('en-IN')}
+        <div className="wealth-amount" style={{color: moneyLeft >= 0 ? 'var(--primary)' : 'var(--red)', fontSize:38}}>
+          ₹{animatedMoneyLeft.toLocaleString('en-IN')}
         </div>
-        <div className={`wealth-change ${(budget/30 - todaySpent) >= 0 ? 'up' : 'down'}`}>
-          <TrendingUp size={14} /> {(budget/30 - todaySpent) >= 0 ? `₹${Math.round(budget/30)} daily budget` : `Over budget by ₹${Math.abs(Math.round(budget/30 - todaySpent))}`}
+        <div className={`wealth-change ${moneyLeft >= 0 ? 'up' : 'down'}`}>
+          <TrendingUp size={14} /> {moneyLeft >= 0 ? `₹${Math.round(budget/30)} daily budget` : `Over budget by ₹${Math.abs(moneyLeft)}`}
         </div>
         <div className="wealth-stats">
-          <div><div className="ws-label">INCOME</div><div className="ws-val green">₹{income.toLocaleString('en-IN')}</div></div>
-          <div><div className="ws-label">EXPENSES</div><div className="ws-val red">₹{expense.toLocaleString('en-IN')}</div></div>
+          <div><div className="ws-label">INCOME</div><div className="ws-val green">₹{animatedIncome.toLocaleString('en-IN')}</div></div>
+          <div><div className="ws-label">EXPENSES</div><div className="ws-val red">₹{animatedExpense.toLocaleString('en-IN')}</div></div>
           <div><div className="ws-label">SAVED</div><div className="ws-val accent">₹{savings.toLocaleString('en-IN')}</div></div>
         </div>
       </div>
