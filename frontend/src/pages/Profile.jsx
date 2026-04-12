@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown } from 'lucide-react'
+import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown, Clock } from 'lucide-react'
 
 export default function Profile() {
   const { user, phone, logout, setUser, theme, toggleTheme } = useApp()
@@ -167,7 +167,12 @@ export default function Profile() {
         </button>
         <button className="settings-item" onClick={() => nav('/notifications')}>
           <div className="si-icon"><Bell size={18}/></div>
-          <div className="si-info"><div className="si-label">Notifications</div><div className="si-sub">Push & reminders</div></div>
+          <div className="si-info"><div className="si-label">Notifications</div><div className="si-sub">Push alerts & updates</div></div>
+          <ChevronRight size={16} className="si-arrow"/>
+        </button>
+        <button className="settings-item" onClick={() => nav('/reminders')}>
+          <div className="si-icon"><Clock size={18}/></div>
+          <div className="si-info"><div className="si-label">Reminders</div><div className="si-sub">Daily, weekly & monthly</div></div>
           <ChevronRight size={16} className="si-arrow"/>
         </button>
         <button className="settings-item" onClick={() => nav('/onboarding')}>
