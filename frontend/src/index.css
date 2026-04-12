@@ -943,6 +943,23 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
   background:rgba(139,92,246,0.08); border-radius:var(--radius-sm); border:1px dashed rgba(139,92,246,0.2);
 }
 
+/* ===== WHATSAPP FAB ===== */
+.whatsapp-fab {
+  position:fixed; bottom:80px; right:16px; z-index:999;
+  width:56px; height:56px; border-radius:50%;
+  background:linear-gradient(135deg, #25D366, #128C7E);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 4px 20px rgba(37,211,102,0.4), 0 2px 8px rgba(0,0,0,0.2);
+  transition:all 0.3s var(--ease);
+  animation:waPulse 2s ease-in-out infinite;
+  text-decoration:none;
+}
+.whatsapp-fab:hover { transform:scale(1.1); box-shadow:0 6px 28px rgba(37,211,102,0.5); }
+@keyframes waPulse {
+  0%,100% { box-shadow:0 4px 20px rgba(37,211,102,0.4); }
+  50% { box-shadow:0 4px 30px rgba(37,211,102,0.6), 0 0 0 8px rgba(37,211,102,0.1); }
+}
+
 /* ===== RESPONSIVE ===== */
 @media (min-width:431px) {
   .app-shell { border-left:1px solid var(--border); border-right:1px solid var(--border); box-shadow:0 0 60px rgba(0,0,0,0.5); }
