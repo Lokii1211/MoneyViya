@@ -88,7 +88,7 @@ export default function Home() {
     { icon: <Flame size={18} />, label: 'Habits', color: 'gold', to: '/habits' },
     { icon: <Wallet size={18} />, label: 'Earn More', color: 'violet', to: '/chat?q=passive+income+ideas' },
     { icon: <Target size={18} />, label: 'Goals', color: 'rose', to: '/goals' },
-    { icon: <BarChart3 size={18} />, label: 'Review', color: 'cyan', to: '/chat?q=weekly+financial+review' },
+    { icon: <BarChart3 size={18} />, label: 'Report', color: 'cyan', to: '/report' },
     { icon: <Landmark size={18} />, label: 'Tax Save', color: 'green', to: '/chat?q=tax+saving+tips+for+salaried' },
     { icon: <CalendarCheck size={18} />, label: 'Plan Day', color: 'violet', to: '/chat?q=plan+my+day+productively' },
   ]

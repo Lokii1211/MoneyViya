@@ -52,18 +52,39 @@ export default function Habits() {
     loadData()
   }
 
+  const [celebration, setCelebration] = useState(null)
+
+  const STREAK_MILESTONES = [
+    { days: 3, emoji: '🎩', label: 'Hat-trick!', msg: '3 days strong! Keep going!' },
+    { days: 7, emoji: '🗡️', label: 'Week Warrior!', msg: '7 days! A new habit is forming!' },
+    { days: 14, emoji: '💎', label: 'Two Weeks!', msg: 'Science says 21 days = permanent. Almost there!' },
+    { days: 21, emoji: '🏆', label: 'HABIT FORMED!', msg: '21 days! This is who you are now!' },
+    { days: 30, emoji: '👑', label: 'LEGENDARY!', msg: '30 DAYS! You are absolutely unstoppable!' },
+    { days: 50, emoji: '⚡', label: 'TITANIUM!', msg: '50 days! You\'re in the top 1%!' },
+    { days: 100, emoji: '🌟', label: 'CENTURY!', msg: '100 DAYS! Hall of Fame status!' },
+  ]
+
   const toggleCheckin = async (habitId) => {
     const result = await api.checkinHabit(habitId, phone)
     if (result.checked) {
       const habit = habits.find(h => h.id === habitId)
-      const msgs = [
-        `Great job! ${habit?.icon || '✅'} Keep going!`,
-        `You're on fire! 🔥`,
-        `${habit?.name} done! 💪 Consistency is key!`,
-        `Awesome! One more step towards your best self ✨`,
-        `${habit?.icon || '✅'} Checked! Viya is proud of you 🙌`,
-      ]
-      showToast(msgs[Math.floor(Math.random() * msgs.length)])
+      const newStreak = (habit?.current_streak || 0) + 1
+      
+      // Check streak milestone
+      const milestone = STREAK_MILESTONES.find(m => m.days === newStreak)
+      if (milestone) {
+        setCelebration({ ...milestone, habitName: habit?.name, habitIcon: habit?.icon })
+        setTimeout(() => setCelebration(null), 4000)
+      } else {
+        const msgs = [
+          `Great job! ${habit?.icon || '✅'} Keep going!`,
+          `You're on fire! 🔥`,
+          `${habit?.name} done! 💪 Consistency is key!`,
+          `Awesome! One more step towards your best self ✨`,
+          `${habit?.icon || '✅'} Checked! Viya is proud of you 🙌`,
+        ]
+        showToast(msgs[Math.floor(Math.random() * msgs.length)])
+      }
     } else {
       showToast('Check-in removed')
     }
@@ -99,6 +120,19 @@ export default function Habits() {
   return (
     <div className="page">
       {toast && <div className="toast">{toast}</div>}
+      
+      {/* Streak Milestone Celebration */}
+      {celebration && (
+        <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.7)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', animation:'fadeIn 0.3s'}}>
+          <div style={{background:'var(--surface)', borderRadius:24, padding:32, textAlign:'center', maxWidth:320, animation:'scaleIn 0.4s var(--ease)', margin:16}}>
+            <div style={{fontSize:64, marginBottom:8}}>{celebration.emoji}</div>
+            <div style={{fontSize:22, fontWeight:900, color:'var(--primary)', marginBottom:4}}>{celebration.label}</div>
+            <div style={{fontSize:14, color:'var(--text2)', marginBottom:12}}>{celebration.habitIcon} {celebration.habitName}</div>
+            <div style={{fontSize:13, color:'var(--text3)', lineHeight:1.5}}>{celebration.msg}</div>
+            <div style={{marginTop:16, fontSize:11, color:'var(--text3)'}}>🔥 {celebration.days} day streak!</div>
+          </div>
+        </div>
+      )}
       <div className="page-header">
         <h2 style={{fontSize:22, fontWeight:800}}>Daily Habits</h2>
         <button className="btn-primary" style={{padding:'8px 16px', fontSize:13, borderRadius:10}} onClick={() => setShowAdd(!showAdd)}>
