@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
+import { useCountUp } from '../lib/utils'
 import { Plus, TrendingDown, TrendingUp, Trash2, Camera, Upload, X, Check, Sparkles } from 'lucide-react'
 
 const CATEGORIES = ['🍔 Food', '🚗 Transport', '🛒 Shopping', '🏠 Rent', '💊 Health', '🎬 Entertainment', '📱 Recharge', '📚 Education', '👔 Work', '🎁 Other']
@@ -123,6 +124,10 @@ export default function Expenses() {
   }).reduce((s, t) => s + Number(t.amount), 0)
   const moneyLeft = dailyBudget - todayExpenses
 
+  const animatedMoneyLeft = useCountUp(Math.abs(moneyLeft), 800)
+  const animatedIncome = useCountUp(totalInc, 700)
+  const animatedExpense = useCountUp(totalExp, 700)
+
   const formatDate = (d) => {
     const dt = new Date(d)
     const today = new Date()
@@ -149,12 +154,12 @@ export default function Expenses() {
         </div>
       </div>
 
-      {/* 💰 MONEY LEFT TODAY — Primary Display */}
+      {/* 💰 MONEY LEFT TODAY — animated */}
       <div style={{background:'linear-gradient(135deg, var(--primary-dim), var(--cyan-dim))', border:'1px solid var(--border2)', borderRadius:18, padding:'24px 20px', marginBottom:16, textAlign:'center', position:'relative', overflow:'hidden'}}>
         <div style={{position:'absolute', top:-20, right:-20, width:100, height:100, background:'var(--primary)', opacity:0.05, borderRadius:'50%'}} />
         <div style={{fontSize:11, letterSpacing:2, fontWeight:700, color:'var(--text3)', marginBottom:4}}>MONEY LEFT TODAY</div>
         <div style={{fontFamily:'var(--mono)', fontSize:42, fontWeight:900, color: moneyLeft >= 0 ? 'var(--primary)' : 'var(--red)', lineHeight:1.1}}>
-          ₹{Math.abs(moneyLeft).toLocaleString('en-IN')}
+          ₹{animatedMoneyLeft.toLocaleString('en-IN')}
         </div>
         {moneyLeft < 0 && <div style={{fontSize:12, color:'var(--red)', fontWeight:700, marginTop:4}}>⚠️ Over budget by ₹{Math.abs(moneyLeft)}</div>}
         <div style={{fontSize:12, color:'var(--text2)', marginTop:6}}>Daily budget: ₹{dailyBudget.toLocaleString('en-IN')} · Spent: ₹{todayExpenses.toLocaleString('en-IN')}</div>
@@ -164,11 +169,11 @@ export default function Expenses() {
       <div style={{display:'flex', gap:10, marginBottom:16}}>
         <div style={{flex:1, background:'var(--primary-dim)', border:'1px solid rgba(0,208,132,0.2)', borderRadius:12, padding:'14px 16px'}}>
           <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:4}}><TrendingUp size={14} color="var(--primary)" /><span style={{fontSize:11, color:'var(--text3)', fontWeight:700}}>INCOME</span></div>
-          <div style={{fontFamily:'var(--mono)', fontSize:20, fontWeight:800, color:'var(--primary)'}}>₹{totalInc.toLocaleString('en-IN')}</div>
+          <div style={{fontFamily:'var(--mono)', fontSize:20, fontWeight:800, color:'var(--primary)'}}>₹{animatedIncome.toLocaleString('en-IN')}</div>
         </div>
         <div style={{flex:1, background:'var(--red-dim)', border:'1px solid rgba(255,71,87,0.2)', borderRadius:12, padding:'14px 16px'}}>
           <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:4}}><TrendingDown size={14} color="var(--red)" /><span style={{fontSize:11, color:'var(--text3)', fontWeight:700}}>SPENT</span></div>
-          <div style={{fontFamily:'var(--mono)', fontSize:20, fontWeight:800, color:'var(--red)'}}>₹{totalExp.toLocaleString('en-IN')}</div>
+          <div style={{fontFamily:'var(--mono)', fontSize:20, fontWeight:800, color:'var(--red)'}}>₹{animatedExpense.toLocaleString('en-IN')}</div>
         </div>
       </div>
 
