@@ -995,12 +995,20 @@ export default async function handler(req, res) {
       return res.status(200).json(global.__lastWebhook || { message: 'No webhook received yet' });
     }
 
-    // --- WEBHOOK VERIFICATION ---
+    // --- WEBHOOK VERIFICATION (Meta WhatsApp) ---
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
-    if (mode === 'subscribe' && token === (process.env.WHATSAPP_VERIFY_TOKEN || 'moneyviya_verify_token_2024').trim()) return res.status(200).send(challenge);
-    return res.status(200).json({ status: 'Viya V10 — Production AI Engine', time: new Date().toISOString(), ml: 'TF-IDF + VADER + EMA', whatsapp: 'Meta Cloud API' });
+    const validTokens = [
+      process.env.WHATSAPP_VERIFY_TOKEN,
+      'moneyviya_verify_token_2024',
+      'moneyviya_verify_2026',
+    ].filter(Boolean).map(t => t.trim());
+    
+    if (mode === 'subscribe' && validTokens.includes(token)) {
+      return res.status(200).send(challenge);
+    }
+    return res.status(200).json({ status: 'Viya V10 — Production AI Engine', time: new Date().toISOString(), ml: 'TF-IDF + VADER + EMA', whatsapp: 'Meta Cloud API', verify_debug: { mode, hasToken: !!token, hasChallenge: !!challenge } });
   }
   
   if (req.method === 'POST') {
