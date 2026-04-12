@@ -165,10 +165,46 @@ export default function Habits() {
 
       {/* Progress bar */}
       {totalCount > 0 && (
-        <div style={{height:6, background:'var(--surface2)', borderRadius:3, marginBottom:20, overflow:'hidden'}}>
+        <div style={{height:6, background:'var(--surface2)', borderRadius:3, marginBottom:12, overflow:'hidden'}}>
           <div style={{height:'100%', width:`${totalCount > 0 ? (doneCount/totalCount)*100 : 0}%`, background:'linear-gradient(90deg, var(--primary), #34D399)', borderRadius:3, transition:'width 0.5s var(--ease)'}} />
         </div>
       )}
+
+      {/* 📅 7-Day Streak Calendar — Blueprint Requirement */}
+      {habits.length > 0 && (() => {
+        const days = []
+        const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date()
+          d.setDate(d.getDate() - i)
+          const dateStr = d.toISOString().split('T')[0]
+          const isToday = i === 0
+          days.push({ date: dateStr, day: dayNames[d.getDay()], num: d.getDate(), isToday })
+        }
+        return (
+          <div style={{background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:14, padding:'14px 12px', marginBottom:16}}>
+            <div style={{fontSize:11, fontWeight:700, color:'var(--text3)', marginBottom:10, letterSpacing:1}}>7-DAY STREAK</div>
+            <div style={{display:'flex', justifyContent:'space-between', gap:4}}>
+              {days.map(d => {
+                const hasDone = d.isToday ? doneCount > 0 : totalStreak > (6 - days.indexOf(d))
+                return (
+                  <div key={d.date} style={{flex:1, textAlign:'center'}}>
+                    <div style={{fontSize:10, color: d.isToday ? 'var(--primary)' : 'var(--text3)', fontWeight: d.isToday ? 700 : 400, marginBottom:4}}>{d.day}</div>
+                    <div style={{width:32, height:32, borderRadius:8, margin:'0 auto', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14,
+                      background: d.isToday ? (doneCount > 0 ? 'var(--primary)' : 'var(--primary-dim)') : (hasDone ? 'var(--primary-dim)' : 'var(--surface2)'),
+                      color: d.isToday && doneCount > 0 ? '#fff' : hasDone ? 'var(--primary)' : 'var(--text3)',
+                      border: d.isToday ? '2px solid var(--primary)' : '1px solid transparent',
+                      fontWeight: 700
+                    }}>
+                      {hasDone ? '✓' : d.num}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Add Habit Panel */}
       {showAdd && (

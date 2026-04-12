@@ -282,7 +282,18 @@ export default function Expenses() {
         <div className="empty-text">No transactions yet. Tap + to add your first entry! 💰</div>
       ) : (
         txns.map(t => (
-          <div key={t.id} className="txn-item">
+          <div key={t.id} className="txn-item" style={{position:'relative', overflow:'hidden'}}
+            onTouchStart={e => { e.currentTarget.dataset.startX = e.touches[0].clientX; e.currentTarget.dataset.swiped = 'false' }}
+            onTouchMove={e => {
+              const startX = Number(e.currentTarget.dataset.startX)
+              const diff = startX - e.touches[0].clientX
+              if (diff > 60) { e.currentTarget.dataset.swiped = 'true'; e.currentTarget.style.transform = 'translateX(-80px)'; e.currentTarget.style.transition = 'transform 0.2s' }
+              else { e.currentTarget.style.transform = 'translateX(0)' }
+            }}
+            onTouchEnd={e => {
+              if (e.currentTarget.dataset.swiped !== 'true') { e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.transition = 'transform 0.3s' }
+            }}
+          >
             <div className="txn-icon">{t.category?.split(' ')[0] || (t.type === 'income' ? '💰' : '🛒')}</div>
             <div className="txn-info">
               <div className="txn-name">{t.description || t.category?.split(' ').slice(1).join(' ') || t.category}</div>
@@ -291,6 +302,10 @@ export default function Expenses() {
             <div style={{display:'flex', alignItems:'center', gap:8}}>
               <div className={`txn-amount ${t.type}`}>{t.type === 'income' ? '+' : '-'}₹{Number(t.amount).toLocaleString('en-IN')}</div>
               <button style={{background:'none', border:'none', color:'var(--text3)', cursor:'pointer', opacity:0.4, padding:4}} onClick={() => removeTxn(t.id)}><Trash2 size={14} /></button>
+            </div>
+            {/* Swipe delete background */}
+            <div style={{position:'absolute', right:0, top:0, bottom:0, width:80, background:'var(--red)', display:'flex', alignItems:'center', justifyContent:'center', borderRadius:'0 12px 12px 0', zIndex:-1}} onClick={() => removeTxn(t.id)}>
+              <Trash2 size={18} color="#fff" />
             </div>
           </div>
         ))

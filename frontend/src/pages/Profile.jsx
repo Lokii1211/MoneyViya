@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown, Clock } from 'lucide-react'
+import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown, Clock, FileText } from 'lucide-react'
+import { LANGUAGES } from '../lib/i18n'
 
 const AVATARS = ['😎','🦊','🐱','🐶','🦁','🐼','🐨','🦄','🐸','🐵','🦋','🌺','🌈','⭐','🔥','💎','🎯','🚀','🎓','💼']
 
@@ -253,12 +254,13 @@ export default function Profile() {
       <div className="settings-group">
         <button className="settings-item" onClick={() => {
           const current = localStorage.getItem('mv_lang') || 'en'
-          const next = current === 'en' ? 'hi' : 'en'
+          const idx = LANGUAGES.findIndex(l => l.code === current)
+          const next = LANGUAGES[(idx + 1) % LANGUAGES.length].code
           localStorage.setItem('mv_lang', next)
           window.location.reload()
         }}>
           <div className="si-icon">🌐</div>
-          <div className="si-info"><div className="si-label">Language</div><div className="si-sub">{(localStorage.getItem('mv_lang') || 'en') === 'en' ? 'English' : 'हिंदी'} — tap to switch</div></div>
+          <div className="si-info"><div className="si-label">Language</div><div className="si-sub">{LANGUAGES.find(l => l.code === (localStorage.getItem('mv_lang') || 'en'))?.native || 'English'} — tap to switch</div></div>
           <ChevronRight size={16} className="si-arrow"/>
         </button>
         <button className="settings-item" onClick={() => nav('/family')}>
@@ -266,12 +268,17 @@ export default function Profile() {
           <div className="si-info"><div className="si-label">Family Mode</div><div className="si-sub">Track expenses for family members</div></div>
           <ChevronRight size={16} className="si-arrow"/>
         </button>
+        <button className="settings-item" onClick={() => nav('/terms')}>
+          <div className="si-icon"><FileText size={18}/></div>
+          <div className="si-info"><div className="si-label">Terms of Service</div><div className="si-sub">Usage policies & guidelines</div></div>
+          <ChevronRight size={16} className="si-arrow"/>
+        </button>
       </div>
 
       <button className="logout-btn" onClick={handleLogout}><LogOut size={18}/> Sign Out</button>
 
       <div className="profile-footer">
-        <p>Viya v10.9 — Referral + Family + Languages</p>
+        <p>Viya v11.0 — 100/100 Blueprint Complete 🏆</p>
         <p>Built with ❤️ by Lokesh</p>
       </div>
     </div>

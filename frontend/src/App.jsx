@@ -16,6 +16,7 @@ import Help from './pages/Help'
 import Profile from './pages/Profile'
 import Report from './pages/Report'
 import Family from './pages/Family'
+import Terms from './pages/Terms'
 import Onboarding from './pages/Onboarding'
 import Layout from './components/Layout'
 import './index.css'
@@ -48,6 +49,7 @@ export default function App() {
             <Route path="profile" element={<Profile />} />
 <Route path="report" element={<Report />} />
 <Route path="family" element={<Family />} />
+<Route path="terms" element={<Terms />} />
           </Route>
         </Routes>
       </BrowserRouter>
