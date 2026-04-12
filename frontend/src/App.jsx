@@ -11,6 +11,8 @@ import Review from './pages/Review'
 import Search from './pages/Search'
 import Notifications from './pages/Notifications'
 import Reminders from './pages/Reminders'
+import Privacy from './pages/Privacy'
+import Help from './pages/Help'
 import Profile from './pages/Profile'
 import Onboarding from './pages/Onboarding'
 import Layout from './components/Layout'
@@ -39,6 +41,8 @@ export default function App() {
             <Route path="search" element={<Search />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="reminders" element={<Reminders />} />
+            <Route path="privacy" element={<Privacy />} />
+            <Route path="help" element={<Help />} />
             <Route path="profile" element={<Profile />} />
           </Route>
         </Routes>

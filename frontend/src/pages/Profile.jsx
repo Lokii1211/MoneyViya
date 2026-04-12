@@ -4,12 +4,16 @@ import { api } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown, Clock } from 'lucide-react'
 
+const AVATARS = ['😎','🦊','🐱','🐶','🦁','🐼','🐨','🦄','🐸','🐵','🦋','🌺','🌈','⭐','🔥','💎','🎯','🚀','🎓','💼']
+
 export default function Profile() {
   const { user, phone, logout, setUser, theme, toggleTheme } = useApp()
   const nav = useNavigate()
   const [stats, setStats] = useState({ income: 0, expenses: 0, habits: 0, goals: 0, streak: 0, chatCount: 0 })
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
+  const [selectedAvatar, setSelectedAvatar] = useState(localStorage.getItem('mv_avatar') || '')
   const [editForm, setEditForm] = useState({
     name: '', age: '', city: '', occupation: '', monthly_income: '', daily_budget: ''
   })
@@ -41,6 +45,12 @@ export default function Profile() {
   }, [user])
 
   function handleLogout() { localStorage.clear(); logout(); nav('/auth') }
+
+  function pickAvatar(emoji) {
+    setSelectedAvatar(emoji)
+    localStorage.setItem('mv_avatar', emoji)
+    setShowAvatarPicker(false)
+  }
 
   async function saveProfile() {
     setSaving(true)
@@ -74,10 +84,17 @@ export default function Profile() {
 
       {/* Profile Hero */}
       <div className="profile-hero">
-        <div className="profile-avatar-lg">
-          <span>{name.charAt(0).toUpperCase()}</span>
+        <div className="profile-avatar-lg" onClick={() => setShowAvatarPicker(!showAvatarPicker)} style={{cursor:'pointer', position:'relative'}}>
+          {selectedAvatar ? (
+            <span style={{fontSize:36}}>{selectedAvatar}</span>
+          ) : (
+            <span>{name.charAt(0).toUpperCase()}</span>
+          )}
           <div className="profile-level-badge" style={{ background: level.color }}>
             {level.icon}
+          </div>
+          <div style={{position:'absolute', bottom:-2, right:-2, width:20, height:20, borderRadius:'50%', background:'var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--bg)'}}>
+            <Edit3 size={10} color="#fff"/>
           </div>
         </div>
         <div className="profile-name-lg">{name}</div>
@@ -87,6 +104,26 @@ export default function Profile() {
           {editing ? <><X size={14}/> Cancel</> : <><Edit3 size={14}/> Edit Profile</>}
         </button>
       </div>
+
+      {/* Avatar Picker */}
+      {showAvatarPicker && (
+        <div style={{background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:16, padding:16, marginBottom:16, animation:'slideUp 0.3s var(--ease)'}}>
+          <div style={{fontSize:13, fontWeight:700, marginBottom:10}}>Choose Your Avatar</div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(10, 1fr)', gap:6}}>
+            {AVATARS.map((a, i) => (
+              <button key={i} onClick={() => pickAvatar(a)} style={{
+                width:36, height:36, borderRadius:10, border:`2px solid ${selectedAvatar === a ? 'var(--primary)' : 'var(--border)'}`,
+                background:selectedAvatar === a ? 'var(--primary-dim)' : 'var(--bg2)',
+                fontSize:20, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                transition:'all 0.2s'
+              }}>{a}</button>
+            ))}
+          </div>
+          <button onClick={() => { setSelectedAvatar(''); localStorage.removeItem('mv_avatar'); setShowAvatarPicker(false) }} style={{marginTop:8, padding:'6px 12px', background:'none', border:'1px solid var(--border)', borderRadius:8, fontSize:12, color:'var(--text3)', cursor:'pointer', fontFamily:'inherit'}}>
+            Use Letter Initial
+          </button>
+        </div>
+      )}
 
       {/* Edit Form */}
       {editing && (
@@ -180,12 +217,12 @@ export default function Profile() {
           <div className="si-info"><div className="si-label">Redo Setup</div><div className="si-sub">Change preferences</div></div>
           <ChevronRight size={16} className="si-arrow"/>
         </button>
-        <button className="settings-item">
+        <button className="settings-item" onClick={() => nav('/privacy')}>
           <div className="si-icon"><Shield size={18}/></div>
           <div className="si-info"><div className="si-label">Privacy & Security</div><div className="si-sub">Your data is encrypted</div></div>
           <ChevronRight size={16} className="si-arrow"/>
         </button>
-        <button className="settings-item">
+        <button className="settings-item" onClick={() => nav('/help')}>
           <div className="si-icon"><HelpCircle size={18}/></div>
           <div className="si-info"><div className="si-label">Help & Support</div><div className="si-sub">FAQs, contact us</div></div>
           <ChevronRight size={16} className="si-arrow"/>
@@ -195,7 +232,7 @@ export default function Profile() {
       <button className="logout-btn" onClick={handleLogout}><LogOut size={18}/> Sign Out</button>
 
       <div className="profile-footer">
-        <p>Viya v10.0 — Production AI Engine</p>
+        <p>Viya v10.5 — Production AI Engine</p>
         <p>Built with ❤️ by Lokesh</p>
       </div>
     </div>
