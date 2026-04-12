@@ -227,6 +227,8 @@ export default function Profile() {
           <div className="si-info"><div className="si-label">Help & Support</div><div className="si-sub">FAQs, contact us</div></div>
           <ChevronRight size={16} className="si-arrow"/>
         </button>
+      </div>
+
       {/* 🎁 Referral Card */}
       <div style={{background:'linear-gradient(135deg, var(--primary-dim), var(--cyan-dim))', border:'1px solid rgba(0,208,132,0.2)', borderRadius:16, padding:'16px 18px', margin:'16px 0'}}>
         <div style={{fontSize:13, fontWeight:800, marginBottom:6}}>🎁 Invite Friends, Earn Rewards</div>
