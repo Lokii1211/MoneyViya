@@ -37,12 +37,15 @@ export default function Auth() {
       const r = await fetch(`/api/webhook?action=verify_otp&phone=${phone}&otp=${otp}`)
       const d = await r.json()
       if (d.success) {
-        // Auto-login after OTP verification
         const user = await api.getUser(phone)
         login(phone, 'sb_' + phone, user || {})
         localStorage.setItem('mv_token', 'sb_' + phone)
         localStorage.setItem('mv_phone', phone)
-        nav('/')
+        if (!user?.onboarding_complete && !user?.persona) {
+          nav('/onboarding')
+        } else {
+          nav('/')
+        }
       } else setErr(d.message || 'Invalid OTP')
     } catch { setErr('Network error') }
     setLoading(false)
@@ -53,7 +56,15 @@ export default function Auth() {
     e.preventDefault(); setErr(''); setLoading(true)
     try {
       const d = await api.login(phone, pass)
-      if (d.success) { login(phone, d.token, d.user); nav('/') }
+      if (d.success) {
+        login(phone, d.token, d.user)
+        // Check if onboarding is complete
+        if (!d.user?.onboarding_complete && !d.user?.persona) {
+          nav('/onboarding')
+        } else {
+          nav('/')
+        }
+      }
       else setErr(d.message || 'Login failed')
     } catch { setErr('Network error') }
     setLoading(false)

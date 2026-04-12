@@ -50,7 +50,7 @@ export default function Onboarding() {
   const nav = useNavigate()
   const [step, setStep] = useState(0)
   const [form, setForm] = useState({
-    language: 'en', name: '', persona: '', income: '', daily_budget: '',
+    language: 'en', name: '', age: '', city: '', occupation: '', persona: '', income: '', daily_budget: '',
     goal: '', selectedHabits: [], notifyAllowed: false
   })
   const [saving, setSaving] = useState(false)
@@ -66,24 +66,25 @@ export default function Onboarding() {
   async function finish() {
     setSaving(true)
     try {
-      // Save user profile to DB
       await api.updateUser(phone, {
         name: form.name || 'User',
+        age: form.age ? Number(form.age) : null,
+        city: form.city || null,
+        occupation: form.occupation || null,
         persona: form.persona,
         monthly_income: Number(form.income) || 0,
         daily_budget: Number(form.daily_budget) || 1000,
         language: form.language,
         current_savings: 0,
         monthly_expenses: 0,
+        onboarding_complete: true,
       })
 
-      // Auto-create selected habits
       for (const hId of form.selectedHabits) {
         const h = STARTER_HABITS.find(x => x.id === hId)
         if (h) await api.addHabit(phone, h.label, h.emoji)
       }
 
-      // Auto-create goal if selected
       if (form.goal) {
         const g = GOALS.find(x => x.id === form.goal)
         if (g) {
@@ -92,7 +93,6 @@ export default function Onboarding() {
         }
       }
 
-      // Request notification permission
       if (form.notifyAllowed && 'Notification' in window) {
         try { await Notification.requestPermission() } catch {}
       }
@@ -129,9 +129,14 @@ export default function Onboarding() {
       {step === 1 && (
         <div className="ob-card">
           <User size={32} className="ob-icon" />
-          <h2>What's your name?</h2>
-          <p className="ob-sub">Viya will use this to personalize everything for you</p>
-          <input type="text" className="form-input ob-input" placeholder="Enter your name" value={form.name} onChange={e => set('name', e.target.value)} autoFocus />
+          <h2>Tell us about yourself</h2>
+          <p className="ob-sub">Viya will personalize your entire experience</p>
+          <input type="text" className="form-input ob-input" placeholder="Your full name" value={form.name} onChange={e => set('name', e.target.value)} autoFocus />
+          <div className="ob-input-row">
+            <input type="number" className="form-input ob-input" placeholder="Age" value={form.age} onChange={e => set('age', e.target.value)} />
+            <input type="text" className="form-input ob-input" placeholder="City (e.g. Chennai)" value={form.city} onChange={e => set('city', e.target.value)} />
+          </div>
+          <input type="text" className="form-input ob-input" placeholder="Occupation (e.g. Software Engineer)" value={form.occupation} onChange={e => set('occupation', e.target.value)} />
         </div>
       )}
 
