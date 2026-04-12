@@ -21,8 +21,23 @@ export default function Expenses() {
   const [ocrLoading, setOcrLoading] = useState(false)
   const [ocrResult, setOcrResult] = useState(null)
   const fileRef = useRef(null)
+  const [showSMS, setShowSMS] = useState(false)
+  const [smsText, setSmsText] = useState('')
+  const [smsResult, setSmsResult] = useState(null)
+  const [subscriptions, setSubscriptions] = useState([])
 
-  const load = async () => { const t = await api.getTransactions(phone); setTxns(t || []) }
+  const load = async () => {
+    const t = await api.getTransactions(phone); setTxns(t || [])
+    // Detect subscriptions (recurring expenses)
+    if (t && t.length > 10) {
+      const cats = {}; (t || []).filter(x => x.type === 'expense').forEach(x => {
+        const k = (x.category || '').split(' ').slice(1).join(' ') || x.category
+        if (!cats[k]) cats[k] = { name: k, icon: (x.category || '').split(' ')[0], count: 0, total: 0 }
+        cats[k].count++; cats[k].total += Number(x.amount)
+      })
+      setSubscriptions(Object.values(cats).filter(c => c.count >= 3).sort((a,b) => b.total - a.total).slice(0, 5))
+    }
+  }
   useEffect(() => { if (phone) load() }, [phone])
 
   // Quick add — auto-save on category tap
@@ -113,6 +128,61 @@ export default function Expenses() {
   const removeTxn = async (id) => { await api.deleteTransaction(id); showToast('Deleted'); load() }
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(''), 2500) }
 
+  // 📱 Bank SMS Auto-Parser — Blueprint core feature
+  const parseBankSMS = (text) => {
+    const patterns = [
+      // HDFC: "INR X.XX debited from A/c XX1234 on DD-MM-YY to MERCHANT"
+      /(?:INR|Rs\.?|₹)\s*([\d,]+\.?\d*)\s*(?:debited|spent|withdrawn)/i,
+      // ICICI: "Rs X.XX spent on ICICI Card"
+      /(?:Rs\.?|₹|INR)\s*([\d,]+\.?\d*)\s*(?:has been|was)?\s*(?:debited|charged|spent)/i,
+      // SBI: "Dear Customer, Rs X.XX debited"
+      /(?:debited|charged|spent|withdrawn).*?(?:Rs\.?|₹|INR)\s*([\d,]+\.?\d*)/i,
+      // Generic: any amount pattern
+      /(?:Rs\.?|₹|INR)\s*([\d,]+\.?\d*)/i,
+    ]
+    let amount = 0
+    for (const p of patterns) {
+      const m = text.match(p)
+      if (m) { amount = parseFloat(m[1].replace(/,/g, '')); break }
+    }
+    if (!amount) return null
+    // Detect merchant/category
+    const lower = text.toLowerCase()
+    let category = '🎁 Other'
+    if (/swiggy|zomato|food|restaurant|eat|lunch|dinner|breakfast/i.test(lower)) category = '🍔 Food'
+    else if (/uber|ola|rapido|cab|auto|petrol|fuel|metro/i.test(lower)) category = '🚗 Transport'
+    else if (/amazon|flipkart|myntra|shop|mall|mart/i.test(lower)) category = '🛒 Shopping'
+    else if (/rent|house|flat|room|emi/i.test(lower)) category = '🏠 Rent'
+    else if (/hospital|medical|pharmacy|doctor|health|med/i.test(lower)) category = '💊 Health'
+    else if (/netflix|hotstar|prime|movie|spotify|game/i.test(lower)) category = '🎬 Entertainment'
+    else if (/recharge|jio|airtel|vi|bsnl|mobile/i.test(lower)) category = '📱 Recharge'
+    else if (/college|school|course|udemy|book|fee/i.test(lower)) category = '📚 Education'
+    // Extract merchant name
+    const merchantMatch = text.match(/(?:at|to|towards|for|@)\s+([A-Za-z][A-Za-z\s]+)/i)
+    const merchant = merchantMatch ? merchantMatch[1].trim().split(/\s+/).slice(0,3).join(' ') : ''
+    return { amount, category, merchant, isIncome: /credit|received|deposit|salary|refund/i.test(lower) }
+  }
+
+  const handleSMSParse = () => {
+    const result = parseBankSMS(smsText)
+    if (result) {
+      setSmsResult(result)
+    } else {
+      showToast('❌ Could not parse this message. Try a bank debit SMS.')
+    }
+  }
+
+  const confirmSMS = async () => {
+    if (!smsResult) return
+    if (smsResult.isIncome) {
+      await api.addIncome(phone, smsResult.amount, '🏦 Bank Transfer')
+    } else {
+      await api.addExpense(phone, smsResult.amount, smsResult.category, smsResult.merchant)
+    }
+    showToast(`✅ ₹${smsResult.amount} auto-detected from SMS!`)
+    setSmsResult(null); setShowSMS(false); setSmsText(''); load()
+  }
+
   // Calculations
   const totalExp = txns.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
   const totalInc = txns.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
@@ -147,6 +217,9 @@ export default function Expenses() {
         <div style={{display:'flex', gap:6}}>
           <button style={{padding:'8px 12px', fontSize:13, borderRadius:10, background:'var(--violet-dim)', border:'1px solid rgba(139,92,246,0.2)', color:'var(--violet)', fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:4}} onClick={() => fileRef.current?.click()}>
             <Camera size={15}/> Scan Bill
+          </button>
+          <button style={{padding:'8px 12px', fontSize:13, borderRadius:10, background:'var(--cyan-dim)', border:'1px solid rgba(0,200,200,0.2)', color:'var(--cyan)', fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:4}} onClick={() => setShowSMS(!showSMS)}>
+            📱 SMS
           </button>
           <button className="btn-primary" style={{padding:'8px 16px', fontSize:13, borderRadius:10}} onClick={() => setShowAdd(!showAdd)}>
             <Plus size={16} style={{marginRight:4}} /> Add
@@ -236,6 +309,66 @@ export default function Expenses() {
               </div>
             </>
           ) : null}
+        </div>
+      )}
+
+      {/* 📱 Bank SMS Auto-Parser */}
+      {showSMS && (
+        <div style={{background:'var(--surface)', border:'2px solid var(--cyan)', borderRadius:16, padding:20, marginBottom:16, animation:'slideUp 0.3s var(--ease)'}}>
+          <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:12}}>
+            <span style={{fontSize:20}}>📱</span>
+            <div><div style={{fontSize:14, fontWeight:800}}>Paste Bank SMS</div><div style={{fontSize:11, color:'var(--text3)'}}>Auto-detect amount & category from bank messages</div></div>
+          </div>
+          <textarea value={smsText} onChange={e => setSmsText(e.target.value)} placeholder={'Paste your bank SMS here, e.g.:\nINR 450.00 debited from A/c XX1234 on 12-04-26 to SWIGGY'} style={{width:'100%', minHeight:80, background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:10, padding:12, fontSize:13, fontFamily:'monospace', color:'var(--text)', resize:'vertical', outline:'none'}}/>
+          {smsResult && (
+            <div style={{background:'var(--bg2)', borderRadius:12, padding:14, marginTop:10, marginBottom:10}}>
+              <div style={{display:'flex', justifyContent:'space-between', marginBottom:6}}>
+                <span style={{fontSize:12, color:'var(--text3)'}}>Detected</span>
+                <span style={{fontFamily:'var(--mono)', fontSize:18, fontWeight:800, color: smsResult.isIncome ? 'var(--primary)' : 'var(--red)'}}>
+                  {smsResult.isIncome ? '+' : '-'}₹{smsResult.amount.toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div style={{display:'flex', justifyContent:'space-between'}}>
+                <span style={{fontSize:12, color:'var(--text3)'}}>Category</span>
+                <span style={{fontSize:13, fontWeight:700}}>{smsResult.category}</span>
+              </div>
+              {smsResult.merchant && <div style={{display:'flex', justifyContent:'space-between', marginTop:4}}>
+                <span style={{fontSize:12, color:'var(--text3)'}}>Merchant</span>
+                <span style={{fontSize:12, color:'var(--text2)'}}>{smsResult.merchant}</span>
+              </div>}
+            </div>
+          )}
+          <div style={{display:'flex', gap:8, marginTop:8}}>
+            <button style={{flex:1, padding:10, background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:10, fontSize:13, fontWeight:700, cursor:'pointer', color:'var(--text2)'}} onClick={() => { setShowSMS(false); setSmsText(''); setSmsResult(null) }}>
+              <X size={14} style={{marginRight:4}}/> Cancel
+            </button>
+            {!smsResult ? (
+              <button className="btn-primary" style={{flex:2, padding:10}} onClick={handleSMSParse} disabled={!smsText.trim()}>
+                🔍 Parse SMS
+              </button>
+            ) : (
+              <button className="btn-primary" style={{flex:2, padding:10}} onClick={confirmSMS}>
+                <Check size={14} style={{marginRight:4}}/> Confirm & Add
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 🔄 Recurring Subscriptions Detection */}
+      {subscriptions.length > 0 && !showAdd && !showSMS && !showOCR && (
+        <div style={{marginBottom:16}}>
+          <div style={{fontSize:11, fontWeight:700, color:'var(--text3)', marginBottom:8, letterSpacing:0.5}}>🔄 RECURRING EXPENSES DETECTED</div>
+          <div style={{display:'flex', gap:8, overflowX:'auto', paddingBottom:4}}>
+            {subscriptions.map((s, i) => (
+              <div key={i} style={{minWidth:120, background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:12, padding:'10px 12px', flexShrink:0}}>
+                <div style={{fontSize:18, marginBottom:4}}>{s.icon}</div>
+                <div style={{fontSize:12, fontWeight:700, marginBottom:2}}>{s.name}</div>
+                <div style={{fontFamily:'var(--mono)', fontSize:13, fontWeight:800, color:'var(--red)'}}>₹{Math.round(s.total/s.count).toLocaleString('en-IN')}/avg</div>
+                <div style={{fontSize:10, color:'var(--text3)'}}>{s.count}x logged</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

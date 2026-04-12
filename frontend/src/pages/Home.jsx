@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useCountUp, getCurrentFestival } from '../lib/utils'
-import { TrendingUp, Plus, Sun, Flame, Target, Wallet, BarChart3, Landmark, CalendarCheck, ArrowUpRight, Sparkles, MessageCircle, Zap, Phone, PiggyBank } from 'lucide-react'
+import { TrendingUp, Plus, Sun, Flame, Target, Wallet, BarChart3, Landmark, CalendarCheck, ArrowUpRight, Sparkles, MessageCircle, Zap, Phone, PiggyBank, Users } from 'lucide-react'
 
 // Daily tips based on time of day — keeps users coming back
 const DAILY_TIPS = {
@@ -94,7 +94,7 @@ export default function Home() {
     { icon: <PiggyBank size={18} />, label: 'Invest', color: 'gold', to: '/chat?q=best+SIP+mutual+funds+for+beginners+india' },
     { icon: <BarChart3 size={18} />, label: 'Report', color: 'cyan', to: '/report' },
     { icon: <Landmark size={18} />, label: 'Tax Save', color: 'green', to: '/chat?q=tax+saving+tips+for+salaried' },
-    { icon: <CalendarCheck size={18} />, label: 'Plan Day', color: 'violet', to: '/chat?q=plan+my+day+productively' },
+    { icon: <Users size={18} />, label: 'Community', color: 'rose', to: '/community' },
   ]
 
   const moneyLeft = Math.round(budget/30 - todaySpent)
@@ -133,7 +133,7 @@ export default function Home() {
       {/* 💰 MONEY LEFT TODAY — animated counting */}
       <div className="wealth-card" onClick={() => nav('/expenses')}>
         <div className="wealth-label">MONEY LEFT TODAY</div>
-        <div className="wealth-amount" style={{color: moneyLeft >= 0 ? 'var(--primary)' : 'var(--red)', fontSize:72, lineHeight:1}}>
+        <div className="wealth-amount" style={{color: moneyLeft >= 0 ? 'var(--primary)' : 'var(--red)', fontSize:38}}>
           ₹{animatedMoneyLeft.toLocaleString('en-IN')}
         </div>
         <div className={`wealth-change ${moneyLeft >= 0 ? 'up' : 'down'}`}>
@@ -197,6 +197,33 @@ export default function Home() {
         </div>
         <div className="weekly-bar">
           <div className={`weekly-fill ${weekPct < 60 ? 'safe' : weekPct < 85 ? 'warning' : 'danger'}`} style={{width: weekPct + '%'}} />
+        </div>
+      </div>
+
+      {/* 🌙 Evening Review — Blueprint: "Evening check-in! Spent ₹620, budget was ₹857" */}
+      {period === 'evening' || period === 'night' ? (
+        <div style={{background:'linear-gradient(135deg, #1a1a3e, #2d1b69)', borderRadius:14, padding:16, marginBottom:12, cursor:'pointer'}} onClick={() => nav('/chat?q=evening+review+of+my+spending+today')}>
+          <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
+            <span style={{fontSize:20}}>🌙</span>
+            <span style={{fontSize:13, fontWeight:800, color:'#fff'}}>Evening Check-in</span>
+          </div>
+          <div style={{fontSize:13, color:'rgba(255,255,255,0.8)', lineHeight:1.5}}>
+            Spent <strong style={{color: moneyLeft >= 0 ? '#00f5a0' : '#ff5252'}}>₹{todaySpent.toLocaleString('en-IN')}</strong> today, budget was <strong style={{color:'#00f5a0'}}>₹{Math.round(budget/30).toLocaleString('en-IN')}</strong>
+            {moneyLeft >= 0 ? '. ✅ Under budget!' : '. ⚠️ Over budget!'}
+          </div>
+          <div style={{fontSize:11, color:'rgba(255,255,255,0.5)', marginTop:6}}>Tap for detailed evening review →</div>
+        </div>
+      ) : null}
+
+      {/* 🛡️ Decline Scripts — Blueprint: "polite decline scripts" */}
+      <div style={{background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:14, padding:14, marginBottom:12, cursor:'pointer'}} onClick={() => nav('/chat?q=my+friends+are+asking+me+to+go+to+expensive+restaurant+give+me+polite+decline+scripts')}>
+        <div style={{display:'flex', alignItems:'center', gap:10}}>
+          <div style={{width:36, height:36, borderRadius:10, background:'var(--violet-dim)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18}}>🛡️</div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13, fontWeight:700}}>Decline Scripts</div>
+            <div style={{fontSize:11, color:'var(--text3)'}}>Polite ways to say no when friends pressure you</div>
+          </div>
+          <ArrowUpRight size={16} color="var(--text3)"/>
         </div>
       </div>
 
