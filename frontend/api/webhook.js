@@ -1008,6 +1008,93 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, message: 'OTP verified!' });
     }
 
+    // --- OCR BILL SCANNER ---
+    if (req.query.action === 'ocr_bill') {
+      try {
+        const { image, phone } = req.body || {};
+        if (!image) return res.status(200).json({ error: 'No image provided' });
+        
+        const apiKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || '';
+        const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'llama-3.2-90b-vision-preview',
+            messages: [{
+              role: 'user',
+              content: [
+                { type: 'text', text: 'Extract from this bill/receipt. Return ONLY valid JSON: {"amount": number, "type": "expense" or "income", "category": "Food/Transport/Shopping/Rent/Health/Entertainment/Recharge/Education/Work/Salary/Investment/Other", "description": "brief description", "merchant": "store name"}. If unreadable: {"error": "Could not read"}' },
+                { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${image}` } }
+              ]
+            }],
+            max_tokens: 200, temperature: 0.1
+          })
+        });
+        const data = await resp.json();
+        const text = data.choices?.[0]?.message?.content || '';
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          return res.status(200).json(parsed);
+        }
+        return res.status(200).json({ error: 'Could not parse' });
+      } catch (e) {
+        return res.status(200).json({ error: e.message });
+      }
+    }
+
+    // --- WEEKLY REPORT ---
+    if (req.query.action === 'weekly_report') {
+      const phone = req.query.phone || '';
+      if (!phone) return res.status(200).json({ error: 'No phone' });
+      
+      const now = new Date(Date.now() + 5.5 * 3600000);
+      const weekAgo = new Date(now - 7 * 86400000).toISOString();
+      
+      const [txns, habits, goals] = await Promise.all([
+        dbQuery('transactions', `?phone=eq.${phone}&created_at=gte.${weekAgo}&select=*&order=created_at.desc`),
+        dbQuery('habits', `?phone=eq.${phone}&select=*`),
+        dbQuery('goals', `?phone=eq.${phone}&status=eq.active&select=*`)
+      ]);
+      
+      const expenses = txns.filter(t => t.type === 'expense');
+      const income = txns.filter(t => t.type === 'income');
+      const totalExp = expenses.reduce((s,t) => s + Number(t.amount), 0);
+      const totalInc = income.reduce((s,t) => s + Number(t.amount), 0);
+      
+      // Category breakdown
+      const cats = {};
+      expenses.forEach(t => { const c = t.category || 'Other'; cats[c] = (cats[c]||0) + Number(t.amount); });
+      const topCats = Object.entries(cats).sort((a,b) => b[1]-a[1]).slice(0,5);
+      
+      // Habit stats
+      const activeStreaks = habits.filter(h => (h.current_streak||0) > 0);
+      const maxStreak = habits.reduce((m,h) => Math.max(m, h.current_streak||0), 0);
+      
+      // Goal progress
+      const goalData = goals.map(g => ({
+        name: g.name, icon: g.icon || '🎯',
+        pct: g.target_amount > 0 ? Math.round((g.current_amount/g.target_amount)*100) : 0,
+        saved: Number(g.current_amount || 0),
+        target: Number(g.target_amount || 0)
+      }));
+      
+      return res.status(200).json({
+        success: true,
+        report: {
+          period: `${new Date(weekAgo).toLocaleDateString('en-IN', {day:'numeric',month:'short'})} - ${now.toLocaleDateString('en-IN', {day:'numeric',month:'short'})}`,
+          totalExpenses: totalExp,
+          totalIncome: totalInc,
+          saved: totalInc - totalExp,
+          txnCount: txns.length,
+          topCategories: topCats.map(([cat, amt]) => ({ category: cat, amount: amt })),
+          habits: { total: habits.length, active: activeStreaks.length, maxStreak },
+          goals: goalData,
+          dailyAvg: expenses.length > 0 ? Math.round(totalExp / 7) : 0
+        }
+      });
+    }
+
     // --- MARKET DATA API (for frontend) ---
     if (req.query.action === 'market_data') {
       const data = await fetchRealTimeMarketData();
@@ -1113,12 +1200,73 @@ export default async function handler(req, res) {
               if (msg.type === 'text') text = msg.text.body;
               else if (msg.type === 'button') text = msg.button?.text || '';
               else if (msg.type === 'interactive') text = msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title || '';
-              else if (msg.type === 'image' && msg.image?.caption) text = msg.image.caption;
+              else if (msg.type === 'image') {
+                // OCR: Process bill/receipt images
+                try {
+                  const mediaId = msg.image?.id;
+                  const caption = msg.image?.caption || '';
+                  
+                  if (mediaId) {
+                    // Download image from WhatsApp
+                    const waToken = (process.env.WHATSAPP_ACCESS_TOKEN || '').trim();
+                    const mediaResp = await fetch(`https://graph.facebook.com/v19.0/${mediaId}`, {
+                      headers: { 'Authorization': `Bearer ${waToken}` }
+                    });
+                    const mediaData = await mediaResp.json();
+                    const imageUrl = mediaData.url;
+                    
+                    if (imageUrl) {
+                      const imgResp = await fetch(imageUrl, { headers: { 'Authorization': `Bearer ${waToken}` } });
+                      const imgBuffer = await imgResp.arrayBuffer();
+                      const base64 = Buffer.from(imgBuffer).toString('base64');
+                      
+                      // Send to Groq Vision for OCR
+                      const apiKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || '';
+                      const ocrResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          model: 'llama-3.2-90b-vision-preview',
+                          messages: [{ role: 'user', content: [
+                            { type: 'text', text: `Analyze this image. If it's a bill/receipt/payment screenshot, extract: amount, merchant, category. If it's something else, describe what you see briefly. ${caption ? 'User caption: ' + caption : ''}` },
+                            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64}` } }
+                          ]}],
+                          max_tokens: 300, temperature: 0.2
+                        })
+                      });
+                      const ocrData = await ocrResp.json();
+                      const ocrText = ocrData.choices?.[0]?.message?.content || '';
+                      
+                      // Check if it's a bill and auto-log
+                      if (/₹|rs\.?|inr|amount|total|bill|receipt|paid|payment/i.test(ocrText)) {
+                        const amtMatch = ocrText.match(/₹\s*([\d,]+(?:\.\d+)?)|(\d[\d,]+(?:\.\d+)?)\s*(?:rs|inr|rupees)/i);
+                        if (amtMatch) {
+                          const amt = parseFloat((amtMatch[1] || amtMatch[2]).replace(/,/g, ''));
+                          if (amt > 0 && amt < 500000) {
+                            await dbInsert('transactions', { phone: from, amount: amt, type: 'expense', category: '🛒 Shopping', description: 'Bill scan via WhatsApp', source: 'whatsapp' });
+                            text = `[BILL_SCANNED] Amount: ₹${amt}. ${ocrText.substring(0, 200)}`;
+                          }
+                        }
+                        if (!text) text = `[IMAGE_ANALYSIS] ${ocrText.substring(0, 300)}`;
+                      } else {
+                        text = caption || `[IMAGE] ${ocrText.substring(0, 200)}`;
+                      }
+                    } else {
+                      text = caption || 'Sent an image';
+                    }
+                  } else {
+                    text = caption || 'Sent an image';
+                  }
+                } catch (imgErr) {
+                  console.error('Image processing error:', imgErr.message);
+                  text = msg.image?.caption || 'Sent an image (could not process)';
+                }
+              }
               else continue; // Skip unsupported types
               
               if (!text || !from) continue;
               
-              console.log(`📩 Meta WA — from: ${from}, name: ${contactName}, text: ${text}`);
+              console.log(`📩 Meta WA — from: ${from}, name: ${contactName}, text: ${text.substring(0, 100)}`);
               await dbInsert('chat_history', { phone: from, role: 'user', content: text.substring(0, 500), source: 'whatsapp' });
               
               const reply = await processMessage(text, from);
