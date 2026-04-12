@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { Home, Receipt, Flame, MessageCircle, User, Bell, Search } from 'lucide-react'
+import { t } from '../lib/i18n'
 
 export default function Layout() {
   const nav = useNavigate()
@@ -23,19 +24,19 @@ export default function Layout() {
       <main className="app-main"><Outlet /></main>
       <nav className="bottom-nav">
         <NavLink to="/" end className={({isActive})=>'nav-item'+(isActive?' active':'')}>
-          <Home size={20}/><span>Home</span>
+          <Home size={20}/><span>{t('home')}</span>
         </NavLink>
         <NavLink to="/expenses" className={({isActive})=>'nav-item'+(isActive?' active':'')}>
-          <Receipt size={20}/><span>Money</span>
+          <Receipt size={20}/><span>{t('money')}</span>
         </NavLink>
         <NavLink to="/chat" className="nav-fab">
           <MessageCircle size={22}/>
         </NavLink>
         <NavLink to="/habits" className={({isActive})=>'nav-item'+(isActive?' active':'')}>
-          <Flame size={20}/><span>Habits</span>
+          <Flame size={20}/><span>{t('habits')}</span>
         </NavLink>
         <NavLink to="/profile" className={({isActive})=>'nav-item'+(isActive?' active':'')}>
-          <User size={20}/><span>Profile</span>
+          <User size={20}/><span>{t('profile')}</span>
         </NavLink>
       </nav>
     </div>

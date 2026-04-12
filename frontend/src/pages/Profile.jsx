@@ -227,12 +227,49 @@ export default function Profile() {
           <div className="si-info"><div className="si-label">Help & Support</div><div className="si-sub">FAQs, contact us</div></div>
           <ChevronRight size={16} className="si-arrow"/>
         </button>
+      {/* 🎁 Referral Card */}
+      <div style={{background:'linear-gradient(135deg, var(--primary-dim), var(--cyan-dim))', border:'1px solid rgba(0,208,132,0.2)', borderRadius:16, padding:'16px 18px', margin:'16px 0'}}>
+        <div style={{fontSize:13, fontWeight:800, marginBottom:6}}>🎁 Invite Friends, Earn Rewards</div>
+        <div style={{fontSize:11, color:'var(--text2)', marginBottom:10}}>Share your code — when friends join, you both level up!</div>
+        <div style={{display:'flex', gap:8, alignItems:'center'}}>
+          <div style={{flex:1, background:'var(--bg)', borderRadius:10, padding:'10px 14px', fontFamily:'var(--mono)', fontSize:14, fontWeight:800, letterSpacing:2, textAlign:'center', border:'1px dashed var(--border2)'}}>
+            VIYA{phone?.slice(-4) || '0000'}
+          </div>
+          <button style={{padding:'10px 16px', background:'var(--primary)', color:'#fff', borderRadius:10, border:'none', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap'}} onClick={() => {
+            const code = `VIYA${phone?.slice(-4) || '0000'}`
+            const text = `Hey! I use Viya — an AI friend that helps me save money & build habits. 🔥\n\nUse my code ${code} when you sign up!\n\nhttps://moneyviya.vercel.app/auth?ref=${code}`
+            if (navigator.share) navigator.share({ title: 'Join Viya!', text })
+            else { navigator.clipboard.writeText(text); alert('Referral link copied! 📋') }
+          }}>
+            Share 🔗
+          </button>
+        </div>
+      </div>
+
+      {/* 🌐 Language & Family */}
+      <div className="section-head" style={{marginTop:16}}><h3>More Settings</h3></div>
+      <div className="settings-group">
+        <button className="settings-item" onClick={() => {
+          const current = localStorage.getItem('mv_lang') || 'en'
+          const next = current === 'en' ? 'hi' : 'en'
+          localStorage.setItem('mv_lang', next)
+          window.location.reload()
+        }}>
+          <div className="si-icon">🌐</div>
+          <div className="si-info"><div className="si-label">Language</div><div className="si-sub">{(localStorage.getItem('mv_lang') || 'en') === 'en' ? 'English' : 'हिंदी'} — tap to switch</div></div>
+          <ChevronRight size={16} className="si-arrow"/>
+        </button>
+        <button className="settings-item" onClick={() => nav('/family')}>
+          <div className="si-icon">👨‍👩‍👧‍👦</div>
+          <div className="si-info"><div className="si-label">Family Mode</div><div className="si-sub">Track expenses for family members</div></div>
+          <ChevronRight size={16} className="si-arrow"/>
+        </button>
       </div>
 
       <button className="logout-btn" onClick={handleLogout}><LogOut size={18}/> Sign Out</button>
 
       <div className="profile-footer">
-        <p>Viya v10.8 — Festival Themes + Animated Numbers</p>
+        <p>Viya v10.9 — Referral + Family + Languages</p>
         <p>Built with ❤️ by Lokesh</p>
       </div>
     </div>
