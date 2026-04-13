@@ -592,14 +592,37 @@ const INTENTS = [
     },
   },
 
-  // ===== EXPENSE (saves to DB) =====
+  // ===== EXPENSE (saves to DB with duplicate check) =====
   {
     name: 'expense', patterns: [/(?:spent|paid|bought|expense|kharcha|kharch)\s/i, /(?:₹|rs\.?|inr)\s*\d+\s*(on|for)/i, /\d+\s*(rupees?|rs)\s*(on|for)/i],
     handler: async (text, from) => {
       const exp = detectExpense(text);
       if (!exp) return null;
-      await dbInsert('transactions', { phone: from, type: 'expense', amount: exp.amount, category: exp.category, description: text.substring(0, 100) });
-      return `✅ *Expense Tracked!*\n\n💸 *₹${exp.amount.toLocaleString('en-IN')}* — ${exp.category}\n📅 ${new Date().toLocaleDateString('en-IN')}\n\n${exp.amount > 5000 ? '⚠️ _Big expense! Was it planned?_' : '✨ _Every rupee tracked = smarter spending!_'}\n\n📱 _Synced to app: heyviya.vercel.app_`;
+      
+      // Check for duplicate (same amount + category in last 5 minutes)
+      const recent = await dbQuery('transactions', `?phone=eq.${from}&type=eq.expense&amount=eq.${exp.amount}&order=created_at.desc&limit=1&select=created_at,category`);
+      if (recent.length) {
+        const lastTime = new Date(recent[0].created_at).getTime();
+        const now = Date.now();
+        if (now - lastTime < 300000) { // 5 minutes
+          return `⚠️ *Duplicate Detected!*\n\nYou already logged *₹${exp.amount.toLocaleString('en-IN')}* (${recent[0].category}) just ${Math.round((now - lastTime)/60000)} min ago.\n\nIf this is a separate expense, reply:\n*"add ₹${exp.amount} ${exp.category}"*`;
+        }
+      }
+      
+      const result = await dbInsert('transactions', { phone: from, type: 'expense', amount: exp.amount, category: exp.category, description: text.substring(0, 100) });
+      if (!result) {
+        console.error('[EXPENSE] Failed to save expense for', from, exp);
+        return `⚠️ Expense noted but sync failed. Please try again or add it in the app: heyviya.vercel.app`;
+      }
+      
+      // Check if user is registered on the app
+      const short = from.replace(/^91/, '').slice(-10);
+      const appUser = await dbQuery('users', `?or=(phone.eq.${from},phone.eq.${short})&select=name,onboarding_complete`);
+      const regNote = (!appUser.length || !appUser[0].onboarding_complete) 
+        ? `\n\n📲 _Register on *heyviya.vercel.app* to see your full dashboard!_` 
+        : '';
+      
+      return `✅ *Expense Tracked!*\n\n💸 *₹${exp.amount.toLocaleString('en-IN')}* — ${exp.category}\n📅 ${new Date().toLocaleDateString('en-IN')}\n\n${exp.amount > 5000 ? '⚠️ _Big expense! Was it planned?_' : '✨ _Every rupee tracked = smarter spending!_'}${regNote}`;
     },
   },
 
@@ -776,14 +799,14 @@ async function processMessage(text, from) {
   if (from) {
     await dbInsert('chat_history', { phone: from, role: 'user', content: trimmed, source: 'whatsapp' });
     // Auto-register: ensure user exists in DB for app sync
-    const existing = await dbQuery('users', `?phone=eq.${from}&select=phone`);
+    const short = from.replace(/^91/, '').slice(-10);
+    const existing = await dbQuery('users', `?or=(phone.eq.${from},phone.eq.${short})&select=phone,onboarding_complete,name`);
     if (!existing.length) {
-      const short = from.replace(/^91/, '').slice(-10);
-      const existShort = await dbQuery('users', `?phone=eq.${short}&select=phone`);
-      if (!existShort.length) {
-        await dbInsert('users', { phone: from, name: 'User', encrypted_password: String(Math.random()).slice(2, 8) });
-        console.log(`[AUTO-REG] New user registered via WhatsApp: ${from}`);
-      }
+      await dbInsert('users', { phone: from, name: 'User', password_hash: String(Math.random()).slice(2, 8) });
+      console.log(`[AUTO-REG] New user registered via WhatsApp: ${from}`);
+      // First-time user: prompt them to register on the app
+      const welcome = `🎉 *Welcome to Viya!*\n\nI've set up your account. To get the *full experience*, complete your profile on our app:\n\n📲 *heyviya.vercel.app*\n\nYou can:\n• 📊 See your spending dashboard\n• 🎯 Track goals & habits visually\n• 🔔 Get smart reminders\n• 📈 View insights & reports\n\nMeanwhile, just chat with me here — I'll track everything for you! 😊`;
+      await sendWhatsAppMessage(from, welcome);
     }
   }
 
@@ -1021,9 +1044,13 @@ export default async function handler(req, res) {
     if (req.query.action === 'verify_otp') {
       const phone = req.query.phone || '';
       const otp = req.query.otp || '';
+      const longPhone = phone.length === 10 ? '91' + phone : phone;
+      const shortPhone = phone.replace(/^91/, '').slice(-10);
       
-      const records = await dbQuery('notifications', `?phone=eq.${phone}&type=eq.otp&is_read=eq.false&select=title,description`);
-      if (!records.length) return res.status(200).json({ success: false, message: 'OTP expired or not found' });
+      // Check OTP in both phone formats
+      let records = await dbQuery('notifications', `?phone=eq.${phone}&type=eq.otp&is_read=eq.false&select=title,description`);
+      if (!records.length) records = await dbQuery('notifications', `?phone=eq.${longPhone}&type=eq.otp&is_read=eq.false&select=title,description`);
+      if (!records.length) return res.status(200).json({ success: false, message: 'OTP expired or not found. Please request a new one.' });
       
       const stored = records[0];
       if (stored.title !== otp) return res.status(200).json({ success: false, message: 'Wrong OTP. Please check and try again.' });
@@ -1033,13 +1060,14 @@ export default async function handler(req, res) {
       console.log(`[OTP] Expiry: ${stored.description}, Now: ${new Date().toISOString()}, Diff: ${(expiryTime - nowTime)/1000}s`);
       if (expiryTime + 300000 < nowTime) return res.status(200).json({ success: false, message: 'OTP expired. Please request a new one.' });
       
-      // Mark OTP as used
+      // Mark OTP as used (both formats)
       await dbUpdate('notifications', `phone=eq.${phone}&type=eq.otp`, { is_read: true });
+      await dbUpdate('notifications', `phone=eq.${longPhone}&type=eq.otp`, { is_read: true });
       
-      // Auto-create user if not exists
-      const users = await dbQuery('users', `?phone=eq.${phone}&select=phone,name`);
+      // Auto-create user if not exists (check both phone formats)
+      const users = await dbQuery('users', `?or=(phone.eq.${shortPhone},phone.eq.${longPhone})&select=phone,name`);
       if (!users.length) {
-        await dbInsert('users', { phone, name: 'User', encrypted_password: generateOTP() });
+        await dbInsert('users', { phone: shortPhone, name: 'User', password_hash: generateOTP() });
       }
       
       return res.status(200).json({ success: true, message: 'OTP verified!' });
