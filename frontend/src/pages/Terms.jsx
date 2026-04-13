@@ -27,7 +27,7 @@ export default function Terms() {
           { title: '9. Intellectual Property', body: 'All content, design, and code of Viya are owned by the developer. "Viya" and the Viya logo are trademarks. You may not reproduce or redistribute any part of the App.' },
           { title: '10. Limitation of Liability', body: 'Viya is provided "as is" without warranties. We are not liable for: data loss due to device issues, inaccurate AI responses, third-party service outages, or financial decisions made based on App suggestions.' },
           { title: '11. Changes to Terms', body: 'We may update these terms at any time. Continued use of the App after changes constitutes acceptance. We will notify users of material changes via in-app notification or WhatsApp.' },
-          { title: '12. Contact', body: 'For questions about these terms, contact us at support@moneyviya.com or through the in-app Help & Support page.' },
+          { title: '12. Contact', body: 'For questions about these terms, contact us at support@heyviya.com or through the in-app Help & Support page.' },
         ].map((s, i) => (
           <div key={i} style={{marginBottom:16}}>
             <div style={{fontSize:14, fontWeight:700, marginBottom:4, color:'var(--text)'}}>{s.title}</div>

@@ -1295,7 +1295,7 @@ Tone: {personality_info['motivation']}"""
         SUPABASE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY", ""))
         
         if not SUPABASE_URL or not SUPABASE_KEY:
-            return f"⚠️ Reminder service not configured. Use the app: moneyviya.vercel.app/reminders"
+            return f"⚠️ Reminder service not configured. Use the app: heyviya.vercel.app/reminders"
         
         try:
             headers = {
@@ -1325,10 +1325,10 @@ Tone: {personality_info['motivation']}"""
             if resp.status_code in [200, 201]:
                 return f"✅ Reminder set for *{display_time}* daily!\nYou'll get it on WhatsApp 📱"
             else:
-                return f"⚠️ Couldn't save. Try on the app: moneyviya.vercel.app/reminders"
+                return f"⚠️ Couldn't save. Try on the app: heyviya.vercel.app/reminders"
         except Exception as e:
             print(f"[Reminder] Save error: {e}")
-            return f"⚠️ Error saving. Try on the app: moneyviya.vercel.app/reminders"
+            return f"⚠️ Error saving. Try on the app: heyviya.vercel.app/reminders"
     
     def _handle_fallback(self, message: str, user_data: Dict, entities: Dict, context: Dict) -> str:
         """Universal AI Fallback — Handles ANY message (financial or general)

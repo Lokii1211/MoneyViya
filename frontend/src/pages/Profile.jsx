@@ -240,7 +240,7 @@ export default function Profile() {
           </div>
           <button style={{padding:'10px 16px', background:'var(--primary)', color:'#fff', borderRadius:10, border:'none', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap'}} onClick={() => {
             const code = `VIYA${phone?.slice(-4) || '0000'}`
-            const text = `Hey! I use Viya — an AI friend that helps me save money & build habits. 🔥\n\nUse my code ${code} when you sign up!\n\nhttps://moneyviya.vercel.app/auth?ref=${code}`
+            const text = `Hey! I use Viya — an AI friend that helps me save money & build habits. 🔥\n\nUse my code ${code} when you sign up!\n\nhttps://heyviya.vercel.app/auth?ref=${code}`
             if (navigator.share) navigator.share({ title: 'Join Viya!', text })
             else { navigator.clipboard.writeText(text); alert('Referral link copied! 📋') }
           }}>

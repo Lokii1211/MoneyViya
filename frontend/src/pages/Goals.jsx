@@ -65,7 +65,7 @@ export default function Goals() {
 
   const shareGoal = (g) => {
     const pct = g.target_amount > 0 ? Math.round((g.current_amount / g.target_amount) * 100) : 0
-    const text = `${g.icon} I've saved ₹${Number(g.current_amount).toLocaleString('en-IN')} towards my "${g.name}" goal (${pct}%)! 🎯\n\nTracking with Viya — my AI money friend 💚\nhttps://moneyviya.vercel.app`
+    const text = `${g.icon} I've saved ₹${Number(g.current_amount).toLocaleString('en-IN')} towards my "${g.name}" goal (${pct}%)! 🎯\n\nTracking with Viya — my AI money friend 💚\nhttps://heyviya.vercel.app`
     if (navigator.share) {
       navigator.share({ title: 'My Savings Goal', text })
     } else {

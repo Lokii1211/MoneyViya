@@ -80,7 +80,7 @@ export default function Community() {
   const referralCode = 'VIYA' + (phone || '0000').slice(-4)
 
   const shareAchievement = (text) => {
-    const msg = `🏆 ${name} on Viya: ${text}\n\nJoin me on Viya and start saving! 💚\nhttps://moneyviya.vercel.app/?ref=${referralCode}`
+    const msg = `🏆 ${name} on Viya: ${text}\n\nJoin me on Viya and start saving! 💚\nhttps://heyviya.vercel.app/?ref=${referralCode}`
     if (navigator.share) navigator.share({ text: msg })
     else window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`)
   }

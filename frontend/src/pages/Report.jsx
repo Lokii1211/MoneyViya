@@ -33,7 +33,7 @@ ${report.habits.maxStreak > 0 ? `🔥 Best Streak: ${report.habits.maxStreak} da
 ${report.goals.length > 0 ? `🎯 Goals: ${report.goals.map(g => `${g.icon} ${g.name} (${g.pct}%)`).join(', ')}` : ''}
 
 Track your money with Viya — your AI friend 💚
-https://moneyviya.vercel.app`
+https://heyviya.vercel.app`
 
     if (navigator.share) {
       navigator.share({ title: 'My Weekly Viya Report', text })

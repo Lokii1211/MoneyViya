@@ -1,4 +1,4 @@
-name: MoneyViya Reminders Cron
+name: heyviya Reminders Cron
 
 on:
   schedule:
@@ -14,9 +14,9 @@ jobs:
     steps:
       - name: Trigger Morning/Evening Reminder
         run: |
-          echo "Triggering MoneyViya reminder cron..."
+          echo "Triggering heyviya reminder cron..."
           curl -s -o /dev/null -w "HTTP Status: %{http_code}" \
-            "https://moneyviya.vercel.app/api/cron/check-reminders" \
+            "https://heyviya.vercel.app/api/cron/check-reminders" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
           echo ""
           echo "Done!"
