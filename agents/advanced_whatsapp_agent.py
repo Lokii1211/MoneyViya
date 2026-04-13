@@ -105,6 +105,7 @@ class AdvancedWhatsAppAgent:
             "confirmation": self._handle_confirmation,
             "market_update": self._handle_market_update,
             "health_check": self._handle_health_check,
+            "set_reminder": self._handle_set_reminder,
         }
         
         # Response templates (Multi-language)
@@ -305,6 +306,7 @@ Enter this code on the website to access your dashboard.""",
                 "negative": [r"^(no|nope|नहीं|இல்லை|కాదు|wait|add more|wrong|galat)$"],
             },
             "otp": [r"otp|login|code|verification|वेरिफिकेशन|உறுதிப்படுத்தல்"],
+            "reminder": [r"remind|reminder|alarm|alert|याद|நினைவூட்டு|at \d+|at \d+:\d+|\d+\s*(am|pm|AM|PM)"],
         }
 
     async def process_message(self, phone: str, message: str, user_data: Dict = None) -> str:
@@ -472,6 +474,22 @@ _(Reply with 1, 2, 3, or 4)_"""
         # Check for help
         if any(re.search(p, text) for p in self.smart_patterns["help"]):
             return "help", entities
+        
+        # Check for reminder/alarm requests
+        if any(re.search(p, text) for p in self.smart_patterns["reminder"]):
+            # Extract time from message
+            time_match = re.search(r'(\d{1,2})[:\.]?(\d{2})?\s*(am|pm|AM|PM)?', text)
+            if time_match:
+                hour = int(time_match.group(1))
+                minute = int(time_match.group(2) or 0)
+                ampm = (time_match.group(3) or '').lower()
+                if ampm == 'pm' and hour < 12:
+                    hour += 12
+                elif ampm == 'am' and hour == 12:
+                    hour = 0
+                entities["time"] = f"{hour:02d}:{minute:02d}"
+            entities["title"] = text
+            return "set_reminder", entities
         
         # Check for confirmation (context-dependent)
         if context.get("awaiting_confirmation"):
@@ -1228,49 +1246,89 @@ Type "invest" for personalized advice."""
         goal_progress = self._get_goal_progress(phone)
         days_left = goal.get("days_left", 0) if goal else 0
         
-        return f"""You are MoneyViya (Viya for short), a personal AI financial advisor and manager for Indian users.
-You operate exclusively through WhatsApp and are the user's most trusted financial companion.
+        return f"""You are MoneyViya (Viya for short), a personal AI financial advisor for Indian users on WhatsApp.
 
-YOUR IDENTITY:
-- Name: Viya (short for MoneyViya)
-- Personality: Warm, brilliant, non-judgmental, like a CA best friend
-- Tone: Friendly but professional. Celebratory when wins happen. Gentle when mistakes occur. Never preachy.
-- Voice: Speak in {language}. When responding in regional languages, be fluent and NATIVE — not translated English.
+IDENTITY: Warm, non-judgmental CA best friend. Speak in {language}.
 
-YOUR CORE BELIEFS:
-1. Every person deserves great financial guidance regardless of income level
-2. Small consistent actions beat big occasional efforts
-3. Financial health is emotional health — never shame users for spending
-4. Data is only valuable if it changes behavior — always connect numbers to actions
-5. One clear recommendation beats ten good options
+USER: {name} | Income: ₹{income:,} | Budget: ₹{daily_budget}/day | Spent today: ₹{today_spending}
+Goal: {goal_name} ({goal_progress}%) | Personality: {personality_info['emoji']} {personality_info['name']}
 
-YOUR CONSTRAINTS:
-1. You are NOT a SEBI-registered advisor. Provide general financial education.
-2. Never promise specific returns on investments
-3. Never collect bank passwords or OTPs
-4. All advice must be appropriate for the user's risk profile
+RULES:
+1. Keep replies under 50 words MAX — this is WhatsApp, not email
+2. Use 1-2 emojis only
+3. ONE clear action at the end
+4. Indian numbering (₹1,50,000)
+5. Never preach. Be brief. Be helpful.
+6. WhatsApp format: *bold*, no markdown headers
+7. If user wants a reminder, tell them to use the app's Reminders page
 
-CURRENT USER CONTEXT:
-Name: {name}
-Language: {language}
-Monthly Income: ₹{income:,}
-Money Personality: {personality_info['emoji']} {personality_info['name']} — {personality_info['desc']}
-Active Goal: {goal_name}
-Goal Progress: {goal_progress}%
-Days to Goal: {days_left}
-Today's Spending: ₹{today_spending}
-Daily Budget: ₹{daily_budget}
-
-RESPONSE FORMAT:
-- Under 150 words unless user asked a detailed question
-- Use emojis sparingly but meaningfully (max 3 per message)
-- Always end with ONE clear next action or question
-- For numbers above 1,000, use Indian numbering (₹1,50,000 not ₹150,000)
-- WhatsApp formatting: *bold* for emphasis, _italic_ for context, no markdown headers
-- If user asks something off-topic, gently guide back to finance
-
-TONE CALIBRATION (based on {personality_info['name']}):
-{personality_info['motivation']}"""
+Tone: {personality_info['motivation']}"""
+    
+    def _handle_set_reminder(self, message: str, user_data: Dict, entities: Dict, context: Dict) -> str:
+        """Save reminder to Supabase user_reminders table so cron fires it via WhatsApp"""
+        import requests as req
+        
+        phone = user_data.get("phone", "")
+        name = user_data.get("name", "Friend")
+        reminder_time = entities.get("time", "09:00")
+        title = entities.get("title", message)
+        
+        # Clean up the title
+        clean_title = re.sub(r'(remind|reminder|alarm|alert|me|at|send|set|an?)\s*', '', title, flags=re.IGNORECASE).strip()
+        if not clean_title or len(clean_title) < 3:
+            clean_title = "Reminder"
+        clean_title = clean_title[:50]  # Max 50 chars
+        
+        # Format time for display
+        try:
+            h, m = map(int, reminder_time.split(":"))
+            ampm = "AM" if h < 12 else "PM"
+            display_h = h if h <= 12 else h - 12
+            if display_h == 0:
+                display_h = 12
+            display_time = f"{display_h}:{m:02d} {ampm}"
+        except:
+            display_time = reminder_time
+        
+        # Save to Supabase REST API
+        SUPABASE_URL = os.getenv("VITE_SUPABASE_URL", os.getenv("SUPABASE_URL", ""))
+        SUPABASE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY", ""))
+        
+        if not SUPABASE_URL or not SUPABASE_KEY:
+            return f"⚠️ Reminder service not configured. Use the app: moneyviya.vercel.app/reminders"
+        
+        try:
+            headers = {
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+                "Content-Type": "application/json",
+                "Prefer": "return=representation"
+            }
+            
+            data = {
+                "phone": phone,
+                "title": clean_title.capitalize(),
+                "description": f"Set via WhatsApp",
+                "icon": "⏰",
+                "freq": "daily",
+                "time": reminder_time,
+                "enabled": True
+            }
+            
+            resp = req.post(
+                f"{SUPABASE_URL}/rest/v1/user_reminders",
+                json=data,
+                headers=headers,
+                timeout=10
+            )
+            
+            if resp.status_code in [200, 201]:
+                return f"✅ Reminder set for *{display_time}* daily!\nYou'll get it on WhatsApp 📱"
+            else:
+                return f"⚠️ Couldn't save. Try on the app: moneyviya.vercel.app/reminders"
+        except Exception as e:
+            print(f"[Reminder] Save error: {e}")
+            return f"⚠️ Error saving. Try on the app: moneyviya.vercel.app/reminders"
     
     def _handle_fallback(self, message: str, user_data: Dict, entities: Dict, context: Dict) -> str:
         """Universal AI Fallback — Handles ANY message (financial or general)
@@ -1305,21 +1363,13 @@ TONE CALIBRATION (based on {personality_info['name']}):
                 else:
                     # GENERAL — Universal AI with MoneyViya personality
                     lang_name = {"en": "English", "hi": "Hindi", "ta": "Tamil", "te": "Telugu", "kn": "Kannada"}.get(lang, "English")
-                    system_prompt = f"""You are Viya, MoneyViya's AI assistant. You're talking to {name}.
-
-You can answer ANY question — you're not limited to finance. Be helpful, knowledgeable, and friendly.
-
+                    system_prompt = f"""You are Viya, MoneyViya's AI assistant, talking to {name}.
+Answer ANY question. Be helpful.
 RULES:
-1. Answer the user's question accurately and helpfully
-2. Keep response under 150 words (WhatsApp format)
-3. Use emojis naturally
-4. At the END, add ONE subtle connection back to MoneyViya if relevant
-   Examples: "By the way, want to track today's expenses? 💰" or 
-   "Speaking of that, let me know if you need any financial help! 📊"
-5. If it's a greeting, be warm and ask how their finances are going
-6. If they're upset/frustrated, lead with empathy
-7. Write in {lang_name}
-8. Never say "I can't help with that" — always engage"""
+1. MAX 50 words — WhatsApp, not email
+2. Use 1-2 emojis
+3. Write in {lang_name}
+4. Be direct. No filler."""
 
                 response = requests.post(
                     "https://api.openai.com/v1/chat/completions",
@@ -1331,7 +1381,7 @@ RULES:
                             {"role": "user", "content": message}
                         ],
                         "temperature": 0.7,
-                        "max_tokens": 300
+                        "max_tokens": 120
                     },
                     timeout=15
                 )
