@@ -3,6 +3,14 @@ const key = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 const REST = url ? `${url}/rest/v1` : ''
 const hdrs = () => ({ 'apikey': key, 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' })
 
+// Phone format helper — WhatsApp stores as 919003360494, app stores as 9003360494
+function phoneFilter(phone) {
+  const clean = phone.replace(/[^\d]/g, '').replace(/^\+/, '')
+  const short = clean.replace(/^91/, '').slice(-10)
+  const long = '91' + short
+  return `or=(phone.eq.${short},phone.eq.${long})`
+}
+
 async function query(table, params = '') {
   if (!REST) return []
   try { const r = await fetch(`${REST}/${table}${params}`, { headers: hdrs() }); return r.ok ? await r.json() : [] } catch { return [] }
@@ -77,7 +85,7 @@ export const api = {
 
   // TRANSACTIONS — columns: id, phone, type, amount, category, description, source, merchant, created_at
   async getTransactions(phone, limit = 50) {
-    return query('transactions', `?phone=eq.${phone}&select=*&order=created_at.desc&limit=${limit}`)
+    return query('transactions', `?${phoneFilter(phone)}&select=*&order=created_at.desc&limit=${limit}`)
   },
   async addExpense(phone, amount, category, note) {
     const r = await insert('transactions', { phone, type: 'expense', amount, category, description: note || '' })
@@ -97,7 +105,7 @@ export const api = {
   async deleteTransaction(id) { return remove('transactions', `id=eq.${id}`) },
 
   // GOALS — columns: id, phone, name, icon, target_amount, current_amount, deadline, priority, status, created_at
-  async getGoals(phone) { return query('goals', `?phone=eq.${phone}&status=eq.active&select=*&order=created_at.desc`) },
+  async getGoals(phone) { return query('goals', `?${phoneFilter(phone)}&status=eq.active&select=*&order=created_at.desc`) },
   async addGoal(phone, name, icon, target, deadline) {
     return insert('goals', { phone, name, icon: icon || '🎯', target_amount: target, deadline: deadline || '', current_amount: 0, status: 'active', priority: 'medium' })
   },
@@ -113,7 +121,7 @@ export const api = {
   },
 
   // HABITS — columns: id, phone, name, icon, frequency, current_streak, longest_streak, last_completed, created_at
-  async getHabits(phone) { return query('habits', `?phone=eq.${phone}&select=*&order=created_at.asc`) },
+  async getHabits(phone) { return query('habits', `?${phoneFilter(phone)}&select=*&order=created_at.asc`) },
   async addHabit(phone, name, icon) {
     // Prevent duplicate habits
     const existing = await query('habits', `?phone=eq.${phone}&name=eq.${encodeURIComponent(name.trim())}&select=id`)
@@ -128,7 +136,7 @@ export const api = {
   // HABIT CHECK-INS — columns: id, habit_id, phone, checked_date, status, created_at
   async getCheckins(phone, date) {
     const d = date || new Date().toISOString().split('T')[0]
-    return query('habit_checkins', `?phone=eq.${phone}&checked_date=eq.${d}&select=*`)
+    return query('habit_checkins', `?${phoneFilter(phone)}&checked_date=eq.${d}&select=*`)
   },
   async checkinHabit(habitId, phone) {
     const today = new Date().toISOString().split('T')[0]
@@ -168,7 +176,7 @@ export const api = {
   },
 
   // NOTIFICATIONS — columns: id, phone, type, title, description, is_read, action_url, created_at
-  async getNotifications(phone) { return query('notifications', `?phone=eq.${phone}&select=*&order=created_at.desc&limit=20`) },
+  async getNotifications(phone) { return query('notifications', `?${phoneFilter(phone)}&select=*&order=created_at.desc&limit=20`) },
   async markNotifRead(id) { return update('notifications', `id=eq.${id}`, { is_read: true }) },
   async clearNotifications(phone) { return remove('notifications', `phone=eq.${phone}`) },
 
@@ -187,11 +195,11 @@ export const api = {
     return { reply: "🤖 I'm having connection issues. Please try again!" }
   },
   async getChatHistory(phone, limit = 30) {
-    return query('chat_history', `?phone=eq.${phone}&select=*&order=created_at.desc&limit=${limit}`)
+    return query('chat_history', `?${phoneFilter(phone)}&select=*&order=created_at.desc&limit=${limit}`)
   },
 
   // REMINDERS
-  async getReminders(phone) { return query('reminders', `?phone=eq.${phone}&select=*&order=created_at.desc&limit=20`) },
+  async getReminders(phone) { return query('reminders', `?${phoneFilter(phone)}&select=*&order=created_at.desc&limit=20`) },
 
   // FAMILY CONNECTIONS — columns: id, owner_phone, member_phone, relation, status (pending/accepted/rejected), created_at
   async getFamilyConnections(phone) {

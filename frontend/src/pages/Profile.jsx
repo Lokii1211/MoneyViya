@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown, Clock, FileText } from 'lucide-react'
+import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown, Clock, FileText, Lock } from 'lucide-react'
 import { LANGUAGES } from '../lib/i18n'
 
 const AVATARS = ['😎','🦊','🐱','🐶','🦁','🐼','🐨','🦄','🐸','🐵','🦋','🌺','🌈','⭐','🔥','💎','🎯','🚀','🎓','💼']
