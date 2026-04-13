@@ -283,8 +283,7 @@ export default function Profile() {
       <button className="logout-btn" onClick={handleLogout}><LogOut size={18}/> Sign Out</button>
 
       <div className="profile-footer">
-        <p>Viya v11.0 — 100/100 Blueprint Complete 🏆</p>
-        <p>Built with ❤️ by Lokesh</p>
+        <p>Viya — Your AI Life & Wealth Partner</p>
       </div>
     </div>
   )
