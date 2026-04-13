@@ -4,9 +4,9 @@
   "outputDirectory": "frontend/dist",
   "rewrites": [
     { "source": "/api/cron/check-reminders", "destination": "/api/cron/check-reminders.py" },
+    { "source": "/api/whatsapp", "destination": "/api/whatsapp.py" },
     { "source": "/api/(.*)", "destination": "/api/index.py" },
-    { "source": "/webhook/(.*)", "destination": "/api/index.py" },
-    { "source": "/((?!api|assets|webhook).*)", "destination": "/index.html" }
+    { "source": "/((?!api|assets).*)", "destination": "/index.html" }
   ],
   "functions": {
     "api/index.py": {
@@ -17,7 +17,7 @@
       "runtime": "@vercel/python@4.0.0",
       "maxDuration": 60
     },
-    "api/webhook/whatsapp-cloud.py": {
+    "api/whatsapp.py": {
       "runtime": "@vercel/python@4.0.0",
       "maxDuration": 30
     }
