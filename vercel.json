@@ -16,6 +16,10 @@
     "api/cron/check-reminders.py": {
       "runtime": "@vercel/python@4.0.0",
       "maxDuration": 60
+    },
+    "api/webhook/whatsapp-cloud.py": {
+      "runtime": "@vercel/python@4.0.0",
+      "maxDuration": 30
     }
   },
   "crons": [
