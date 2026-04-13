@@ -78,7 +78,7 @@ export default function Onboarding() {
     setSaving(true)
     try {
       const persona = form.persona === 'other' ? form.customPersona : form.persona
-      const occupation = form.occupation || (PERSONAS.find(p => p.id === form.persona)?.label || '')
+      const occupation = PERSONAS.find(p => p.id === form.persona)?.label || form.customPersona || ''
 
       await api.updateUser(phone, {
         name: form.name || 'User',
@@ -169,7 +169,6 @@ export default function Onboarding() {
               ))}
             </div>
           </div>
-          <input type="text" className="form-input ob-input" placeholder="Occupation (optional)" value={form.occupation} onChange={e => set('occupation', e.target.value)} />
         </div>
       )}
 
