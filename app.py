@@ -2239,7 +2239,7 @@ async def baileys_message(request: Request):
 
 
 # ================= WHATSAPP CLOUD API WEBHOOK (Meta Official) =================
-WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "heyviya_webhook_verify_2024")
+WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "heyviya_webhook_2024")
 
 @app.get("/webhook/whatsapp-cloud")
 async def verify_whatsapp_webhook(request: Request):

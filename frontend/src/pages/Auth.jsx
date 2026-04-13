@@ -122,7 +122,7 @@ export default function Auth() {
                   <span>Enter the 6-digit OTP sent to your WhatsApp</span>
                 </div>
                 <div className="otp-phone-display">+91 {phone}</div>
-                <div className="input-wrap otp-input"><Lock size={16}/><input type="text" placeholder="Enter 6-digit OTP" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g,'').slice(0,6))} required maxLength={6} style={{letterSpacing:'8px', fontSize:22, fontFamily:'var(--mono)', textAlign:'center'}}/></div>
+                <div className="input-wrap otp-input"><Lock size={16}/><input type="text" placeholder="Enter 6-digit OTP" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g,'').slice(0,6))} required maxLength={6} style={{letterSpacing:'4px', fontSize:16, fontFamily:'var(--mono)', textAlign:'center'}}/></div>
                 {err && <p className="auth-err">{err}</p>}
                 {info && <p className="auth-info">{info}</p>}
                 <button type="submit" className="btn-primary full" disabled={loading}>
