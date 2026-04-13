@@ -91,10 +91,7 @@ export default function Profile() {
           ) : (
             <span>{name.charAt(0).toUpperCase()}</span>
           )}
-          <div className="profile-level-badge" style={{ background: level.color }}>
-            {level.icon}
-          </div>
-          <div style={{position:'absolute', bottom:-2, right:-2, width:20, height:20, borderRadius:'50%', background:'var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--bg)'}}>
+          <div style={{position:'absolute', bottom:-2, right:-2, width:22, height:22, borderRadius:'50%', background:'var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--bg)'}}>
             <Edit3 size={10} color="#fff"/>
           </div>
         </div>
@@ -276,6 +273,16 @@ export default function Profile() {
         <button className="settings-item" onClick={() => nav('/terms')}>
           <div className="si-icon"><FileText size={18}/></div>
           <div className="si-info"><div className="si-label">Terms of Service</div><div className="si-sub">Usage policies & guidelines</div></div>
+          <ChevronRight size={16} className="si-arrow"/>
+        </button>
+        <button className="settings-item" onClick={() => {
+          const newPass = prompt('Enter new password (min 6 chars):')
+          if (newPass && newPass.length >= 6) {
+            api.updateUser(phone, { password_hash: newPass }).then(() => alert('Password updated!')).catch(() => alert('Failed to update'))
+          } else if (newPass) { alert('Password must be at least 6 characters') }
+        }}>
+          <div className="si-icon"><Lock size={18}/></div>
+          <div className="si-info"><div className="si-label">Change Password</div><div className="si-sub">Update your login password</div></div>
           <ChevronRight size={16} className="si-arrow"/>
         </button>
       </div>

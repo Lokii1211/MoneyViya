@@ -128,8 +128,11 @@ export default function Auth() {
                 <button type="submit" className="btn-primary full" disabled={loading}>
                   {loading ? 'Verifying...' : <><ArrowRight size={16}/> Verify & Login</>}
                 </button>
-                <button type="button" className="link-btn resend-btn" onClick={sendOTP}>Resend OTP</button>
-                <button type="button" className="link-btn resend-btn" onClick={() => setStep('phone')}>Change number</button>
+                <div style={{display:'flex', gap:16, justifyContent:'center', marginTop:8}}>
+                  <button type="button" className="link-btn resend-btn" onClick={sendOTP}>Resend OTP</button>
+                  <span style={{color:'var(--text4)'}}>|</span>
+                  <button type="button" className="link-btn resend-btn" onClick={() => setStep('phone')}>Change number</button>
+                </div>
               </form>
             )}
           </div>
@@ -147,6 +150,7 @@ export default function Auth() {
               {err && <p className="auth-err">{err}</p>}
               {info && <p className="auth-info">{info}</p>}
               <button type="submit" className="btn-primary full" disabled={loading}>{loading ? 'Please wait...' : tab === 'login' ? 'Sign In' : 'Create Account'}</button>
+              {tab === 'login' && <button type="button" className="link-btn" style={{marginTop:8, fontSize:13}} onClick={() => { setMode('otp'); setStep('phone'); setInfo('Use WhatsApp OTP to reset access') }}>Forgot password?</button>}
             </form>
           </>
         )}

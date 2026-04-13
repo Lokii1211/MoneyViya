@@ -1036,8 +1036,12 @@ export default async function handler(req, res) {
       if (!records.length) return res.status(200).json({ success: false, message: 'OTP expired or not found' });
       
       const stored = records[0];
-      if (stored.title !== otp) return res.status(200).json({ success: false, message: 'Wrong OTP' });
-      if (new Date(stored.description) < new Date()) return res.status(200).json({ success: false, message: 'OTP expired' });
+      if (stored.title !== otp) return res.status(200).json({ success: false, message: 'Wrong OTP. Please check and try again.' });
+      // Generous 10-min expiry to handle timezone drift on serverless
+      const expiryTime = new Date(stored.description).getTime();
+      const nowTime = Date.now();
+      console.log(`[OTP] Expiry: ${stored.description}, Now: ${new Date().toISOString()}, Diff: ${(expiryTime - nowTime)/1000}s`);
+      if (expiryTime + 300000 < nowTime) return res.status(200).json({ success: false, message: 'OTP expired. Please request a new one.' });
       
       // Mark OTP as used
       await dbUpdate('notifications', `phone=eq.${phone}&type=eq.otp`, { is_read: true });
@@ -1155,6 +1159,7 @@ export default async function handler(req, res) {
     const challenge = req.query['hub.challenge'];
     const validTokens = [
       process.env.WHATSAPP_VERIFY_TOKEN,
+      'heyviya_webhook_2024',
       'moneyviya_verify_token_2024',
       'moneyviya_verify_2026',
     ].filter(Boolean).map(t => t.trim());
