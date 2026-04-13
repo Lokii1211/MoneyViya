@@ -993,31 +993,30 @@ export default async function handler(req, res) {
       const msg = decodeURIComponent(req.query.message || '');
       if (!msg) return res.status(200).json({ reply: 'Type a message!' });
       
-      // V8: Check for habit auto-detection in app chat too
-      if (phone) {
-        const habitResult = await detectAndCheckinHabit(msg, phone);
-        if (habitResult.matched && !habitResult.alreadyDone) {
-          const ctx = await buildUserContext(phone);
-          const aiReply = await askAI(msg, ctx + `\nUser just completed ${habitResult.habit}. Celebrate and give brief related tip.`);
-          const reply = `✅ ${habitResult.icon} *${habitResult.habit}* tracked! 🔥 ${habitResult.streak} day streak${aiReply ? `\n\n${aiReply}` : ''}`;
-          return res.status(200).json({ reply, habitCheckin: habitResult });
-        }
-      }
-      
-      // V10: ML-powered in-app chat
+      // V13: Use the SAME processMessage engine for app chat  
+      // This ensures expenses, habits, reminders work from BOTH WhatsApp AND app
       try {
-        const intent = classifyIntent(msg);
-        const sentiment = analyzeSentiment(msg);
-        const conversationCtx = phone ? await getConversationContext(phone) : '';
-        const ctx = phone ? await buildUserContext(phone) : '';
-        const sentimentCtx = sentiment.label === 'negative' ? `\n⚠️ User feeling ${sentiment.intensity} negative — empathize!` : '';
-        const reply = await askAI(msg, ctx + conversationCtx + sentimentCtx + `\nIntent: ${intent.primary}`);
+        const reply = await processMessage(msg, phone);
         if (reply) {
-          if (phone) await dbInsert('chat_history', { phone, role: 'assistant', content: reply.substring(0, 500), source: 'app' });
+          const intent = classifyIntent(msg);
+          const sentiment = analyzeSentiment(msg);
           return res.status(200).json({ reply, ml: { intent: intent.primary, sentiment: sentiment.label } });
         }
-      } catch (e) { console.error('Chat error:', e.message); }
-      return res.status(200).json({ reply: 'Let me try again — ask me anything about finance, health, or study!' });
+      } catch (e) { console.error('Chat processMessage error:', e.message); }
+      
+      // Fallback to pure AI if processMessage didn't handle it
+      try {
+        const conversationCtx = phone ? await getConversationContext(phone) : '';
+        const ctx = phone ? await buildUserContext(phone) : '';
+        const sentiment = analyzeSentiment(msg);
+        const sentimentCtx = sentiment.label === 'negative' ? `\n⚠️ User feeling ${sentiment.intensity} negative — empathize!` : '';
+        const reply = await askAI(msg, ctx + conversationCtx + sentimentCtx);
+        if (reply) {
+          if (phone) await dbInsert('chat_history', { phone, role: 'assistant', content: reply.substring(0, 500), source: 'app' });
+          return res.status(200).json({ reply, ml: { intent: classifyIntent(msg).primary, sentiment: sentiment.label } });
+        }
+      } catch (e) { console.error('Chat AI error:', e.message); }
+      return res.status(200).json({ reply: 'Let me try again — ask me anything about finance, health, or habits!' });
     }
 
     // --- OTP: SEND ---
