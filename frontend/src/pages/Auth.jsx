@@ -114,6 +114,9 @@ export default function Auth() {
                 <button type="submit" className="btn-primary full" disabled={loading}>
                   {loading ? 'Sending OTP...' : <><MessageCircle size={16}/> Send OTP via WhatsApp</>}
                 </button>
+                <p style={{fontSize:11, color:'var(--text4)', marginTop:8, textAlign:'center', lineHeight:1.5}}>
+                  💡 First time? Send <b>"Hi"</b> to <b>+91 73050 21304</b> on WhatsApp, then request OTP.
+                </p>
               </form>
             ) : (
               <form onSubmit={verifyOTP}>

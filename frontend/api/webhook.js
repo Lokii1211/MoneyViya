@@ -588,7 +588,7 @@ const INTENTS = [
       if (advanceUTC > new Date()) {
         await dbInsert('reminders', { phone: from, task: `⚡ Coming up: ${task}`, remind_at: advanceUTC.toISOString(), remind_at_display: `5 min before ${timeStr}`, status: 'pending' });
       }
-      return `⏰ *Reminder Set!*\n\n📋 *${task}*\n🕐 ${timeStr} on ${day}/${month+1}/${year}\n\n✅ You'll get:\n• ⚡ *5-min advance* alert\n• 🔔 *On-time* reminder\n\n_Viya never forgets!_ 💪`;
+      return `⏰ *Reminder Set!*\n\n📋 *${task}*\n🕐 ${timeStr} on ${day}/${month+1}/${year}\n\n✅ You'll get:\n• ⚡ *5-min advance* alert\n• 🔔 *On-time* reminder\n\n_Synced to app: heyviya.vercel.app_ 💪`;
     },
   },
 
@@ -599,7 +599,7 @@ const INTENTS = [
       const exp = detectExpense(text);
       if (!exp) return null;
       await dbInsert('transactions', { phone: from, type: 'expense', amount: exp.amount, category: exp.category, description: text.substring(0, 100) });
-      return `✅ *Expense Tracked!*\n\n💸 *₹${exp.amount.toLocaleString('en-IN')}* — ${exp.category}\n📅 ${new Date().toLocaleDateString('en-IN')}\n\n${exp.amount > 5000 ? '⚠️ _Big expense! Was it planned?_' : '✨ _Every rupee tracked = smarter spending!_'}\n\n📱 Sync'd to app: viya.vercel.app`;
+      return `✅ *Expense Tracked!*\n\n💸 *₹${exp.amount.toLocaleString('en-IN')}* — ${exp.category}\n📅 ${new Date().toLocaleDateString('en-IN')}\n\n${exp.amount > 5000 ? '⚠️ _Big expense! Was it planned?_' : '✨ _Every rupee tracked = smarter spending!_'}\n\n📱 _Synced to app: heyviya.vercel.app_`;
     },
   },
 
@@ -772,8 +772,20 @@ async function processMessage(text, from) {
   const trimmed = text.trim();
   if (!trimmed) return GREETINGS;
   
-  // Save to chat history
-  if (from) await dbInsert('chat_history', { phone: from, role: 'user', content: trimmed, source: 'whatsapp' });
+  // Save to chat history & auto-register user
+  if (from) {
+    await dbInsert('chat_history', { phone: from, role: 'user', content: trimmed, source: 'whatsapp' });
+    // Auto-register: ensure user exists in DB for app sync
+    const existing = await dbQuery('users', `?phone=eq.${from}&select=phone`);
+    if (!existing.length) {
+      const short = from.replace(/^91/, '').slice(-10);
+      const existShort = await dbQuery('users', `?phone=eq.${short}&select=phone`);
+      if (!existShort.length) {
+        await dbInsert('users', { phone: from, name: 'User', encrypted_password: String(Math.random()).slice(2, 8) });
+        console.log(`[AUTO-REG] New user registered via WhatsApp: ${from}`);
+      }
+    }
+  }
 
   // 0. BILL SCAN HANDLER — When image OCR detects a bill
   if (trimmed.startsWith('[BILL_SCANNED]')) {
