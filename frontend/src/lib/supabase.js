@@ -75,10 +75,10 @@ export const api = {
 
   // USER
   async getUser(phone) {
-    const users = await query('users', `?phone=eq.${phone}&select=*`)
+    const users = await query('users', `?${phoneFilter(phone)}&select=*`)
     const user = users[0]
     if (!user) return null
-    const txns = await query('transactions', `?phone=eq.${phone}&select=*&order=created_at.desc&limit=10`)
+    const txns = await query('transactions', `?${phoneFilter(phone)}&select=*&order=created_at.desc&limit=10`)
     return { ...user, recent_transactions: txns }
   },
   async updateUser(phone, data) { return update('users', `phone=eq.${phone}`, data) },
@@ -90,14 +90,14 @@ export const api = {
   async addExpense(phone, amount, category, note) {
     const r = await insert('transactions', { phone, type: 'expense', amount, category, description: note || '' })
     // Update user totals
-    const txns = await query('transactions', `?phone=eq.${phone}&type=eq.expense&select=amount`)
+    const txns = await query('transactions', `?${phoneFilter(phone)}&type=eq.expense&select=amount`)
     const total = txns.reduce((s, t) => s + Number(t.amount), 0)
     await update('users', `phone=eq.${phone}`, { monthly_expenses: total })
     return r
   },
   async addIncome(phone, amount, source) {
     const r = await insert('transactions', { phone, type: 'income', amount, category: source, description: source })
-    const txns = await query('transactions', `?phone=eq.${phone}&type=eq.income&select=amount`)
+    const txns = await query('transactions', `?${phoneFilter(phone)}&type=eq.income&select=amount`)
     const total = txns.reduce((s, t) => s + Number(t.amount), 0)
     await update('users', `phone=eq.${phone}`, { monthly_income: total })
     return r
