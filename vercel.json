@@ -14,11 +14,9 @@
       "maxDuration": 30
     },
     "api/cron/check-reminders.py": {
-      "runtime": "@vercel/python@4.0.0",
       "maxDuration": 60
     },
     "api/whatsapp.py": {
-      "runtime": "@vercel/python@4.0.0",
       "maxDuration": 30
     }
   },
