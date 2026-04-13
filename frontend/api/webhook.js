@@ -9,15 +9,20 @@
 
 // ===== DB HELPERS =====
 function dbHeaders() {
-  const key = (process.env.VITE_SUPABASE_ANON_KEY || '').trim();
+  const key = (process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
   return { 'apikey': key, 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' };
 }
-function dbUrl() { return (process.env.VITE_SUPABASE_URL || '').trim(); }
+function dbUrl() { return (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim(); }
 async function dbQuery(table, params = '') {
   try { const r = await fetch(`${dbUrl()}/rest/v1/${table}${params}`, { headers: dbHeaders() }); return r.ok ? await r.json() : []; } catch { return []; }
 }
 async function dbInsert(table, data) {
-  try { const r = await fetch(`${dbUrl()}/rest/v1/${table}`, { method: 'POST', headers: { ...dbHeaders(), 'Prefer': 'return=representation' }, body: JSON.stringify(data) }); const res = await r.json(); return Array.isArray(res) ? res[0] : res; } catch { return null; }
+  try {
+    const url = `${dbUrl()}/rest/v1/${table}`;
+    const r = await fetch(url, { method: 'POST', headers: { ...dbHeaders(), 'Prefer': 'return=representation' }, body: JSON.stringify(data) });
+    if (!r.ok) { console.error(`[DB] INSERT ${table} failed: ${r.status} ${await r.text().catch(() => '')}`); return null; }
+    const res = await r.json(); return Array.isArray(res) ? res[0] : res;
+  } catch (e) { console.error(`[DB] INSERT ${table} error:`, e.message); return null; }
 }
 async function dbUpdate(table, filter, data) {
   try { await fetch(`${dbUrl()}/rest/v1/${table}?${filter}`, { method: 'PATCH', headers: { ...dbHeaders(), 'Prefer': 'return=minimal' }, body: JSON.stringify(data) }); } catch {}
