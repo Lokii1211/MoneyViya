@@ -584,6 +584,7 @@ WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "heyviya_webhook_2024
 
 
 @app.get("/webhook/whatsapp-cloud")
+@app.get("/api/webhook/whatsapp-cloud")
 async def verify_whatsapp_webhook(request: Request):
     """Verify webhook for WhatsApp Cloud API (Meta)"""
     try:
@@ -606,6 +607,7 @@ async def verify_whatsapp_webhook(request: Request):
 
 
 @app.post("/webhook/whatsapp-cloud")
+@app.post("/api/webhook/whatsapp-cloud")
 async def handle_whatsapp_cloud_webhook(request: Request):
     """Handle incoming messages from WhatsApp Cloud API (Meta Official)"""
     try:
