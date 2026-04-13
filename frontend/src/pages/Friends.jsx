@@ -68,6 +68,9 @@ export default function Friends() {
     }
 
     await api.sendFriendRequest(phone, clean)
+    // Create notification for the receiver
+    const senderName = user?.name || phone
+    await api.addNotification(clean, `🤝 ${senderName} sent you a friend request!`, 'friend_request')
     showToast(`✅ Friend request sent to ${target.name || clean}!`)
     setFriendPhone(''); setShowAdd(false)
     loadAll()
@@ -75,6 +78,9 @@ export default function Friends() {
 
   const accept = async (inv) => {
     await api.respondFamilyInvite(inv.id, 'accepted')
+    // Notify the sender that their request was accepted
+    const myName = user?.name || phone
+    await api.addNotification(inv.owner_phone, `✅ ${myName} accepted your friend request!`, 'friend_accepted')
     showToast(`✅ You're now friends with ${inv.name}! 🤝`)
     loadAll()
   }

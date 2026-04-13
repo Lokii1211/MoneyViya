@@ -212,4 +212,8 @@ export const api = {
   async sendFriendRequest(ownerPhone, memberPhone) {
     return insert('family_connections', { owner_phone: ownerPhone, member_phone: memberPhone, relation: 'Friend', connection_type: 'friend', status: 'pending' })
   },
+  // NOTIFICATIONS (uses existing table: id, phone, type, title, description, is_read, created_at)
+  async addNotification(phone, message, type = 'general') {
+    return insert('notifications', { phone, title: message, description: message, type, is_read: false })
+  },
 }

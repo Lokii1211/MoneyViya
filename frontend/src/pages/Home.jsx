@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useCountUp, getCurrentFestival } from '../lib/utils'
-import { TrendingUp, Plus, Sun, Flame, Target, Wallet, BarChart3, Landmark, CalendarCheck, ArrowUpRight, Sparkles, MessageCircle, Zap, Phone, PiggyBank, Users } from 'lucide-react'
+import { TrendingUp, Plus, Sun, Flame, Target, Wallet, BarChart3, Landmark, CalendarCheck, ArrowUpRight, Sparkles, MessageCircle, Zap, Phone, PiggyBank, Users, Heart } from 'lucide-react'
 
 // Daily tips based on time of day — keeps users coming back
 const DAILY_TIPS = {
@@ -93,7 +93,7 @@ export default function Home() {
     { icon: <Target size={18} />, label: 'Goals', color: 'rose', to: '/goals' },
     { icon: <PiggyBank size={18} />, label: 'Invest', color: 'gold', to: '/chat?q=best+SIP+mutual+funds+for+beginners+india' },
     { icon: <BarChart3 size={18} />, label: 'Report', color: 'cyan', to: '/report' },
-    { icon: <Landmark size={18} />, label: 'Tax Save', color: 'green', to: '/chat?q=tax+saving+tips+for+salaried' },
+    { icon: <Heart size={18} />, label: 'Friends', color: 'violet', to: '/friends' },
     { icon: <Users size={18} />, label: 'Family', color: 'rose', to: '/family' },
   ]
 
