@@ -27,6 +27,17 @@ async function dbInsert(table, data) {
 async function dbUpdate(table, filter, data) {
   try { await fetch(`${dbUrl()}/rest/v1/${table}?${filter}`, { method: 'PATCH', headers: { ...dbHeaders(), 'Prefer': 'return=minimal' }, body: JSON.stringify(data) }); } catch {}
 }
+// Resolve phone to the format that exists in users table (fixes FK constraint)
+// WhatsApp sends 919003360494, app uses 9003360494 — we need whichever is in users table
+async function resolvePhone(phone) {
+  if (!phone) return phone;
+  const short = phone.replace(/^91/, '').slice(-10);
+  const long = phone.length === 10 ? '91' + phone : phone;
+  // Check which format exists in users table
+  const users = await dbQuery('users', `?or=(phone.eq.${short},phone.eq.${long})&select=phone&limit=1`);
+  if (users.length) return users[0].phone; // Return the format that's actually in the DB
+  return short; // Default to 10-digit format
+}
 async function dbDelete(table, filter) {
   try { await fetch(`${dbUrl()}/rest/v1/${table}?${filter}`, { method: 'DELETE', headers: dbHeaders() }); } catch {}
 }
@@ -479,6 +490,7 @@ const HABIT_PATTERNS = [
 ];
 
 async function detectAndCheckinHabit(text, phone) {
+  phone = await resolvePhone(phone); // Normalize for FK constraints
   const today = new Date().toISOString().split('T')[0];
   const userHabits = await dbQuery('habits', `?phone=eq.${phone}&select=*`);
   
@@ -598,18 +610,19 @@ const INTENTS = [
     handler: async (text, from) => {
       const exp = detectExpense(text);
       if (!exp) return null;
+      const dbPhone = await resolvePhone(from);
       
-      // Check for duplicate (same amount + category in last 5 minutes)
-      const recent = await dbQuery('transactions', `?phone=eq.${from}&type=eq.expense&amount=eq.${exp.amount}&order=created_at.desc&limit=1&select=created_at,category`);
+      // Check for duplicate (same amount in last 5 minutes)
+      const recent = await dbQuery('transactions', `?phone=eq.${dbPhone}&type=eq.expense&amount=eq.${exp.amount}&order=created_at.desc&limit=1&select=created_at,category`);
       if (recent.length) {
         const lastTime = new Date(recent[0].created_at).getTime();
         const now = Date.now();
-        if (now - lastTime < 300000) { // 5 minutes
+        if (now - lastTime < 300000) {
           return `⚠️ *Duplicate Detected!*\n\nYou already logged *₹${exp.amount.toLocaleString('en-IN')}* (${recent[0].category}) just ${Math.round((now - lastTime)/60000)} min ago.\n\nIf this is a separate expense, reply:\n*"add ₹${exp.amount} ${exp.category}"*`;
         }
       }
       
-      const result = await dbInsert('transactions', { phone: from, type: 'expense', amount: exp.amount, category: exp.category, description: text.substring(0, 100) });
+      const result = await dbInsert('transactions', { phone: dbPhone, type: 'expense', amount: exp.amount, category: exp.category, description: text.substring(0, 100) });
       if (!result) {
         console.error('[EXPENSE] Failed to save expense for', from, exp);
         return `⚠️ Expense noted but sync failed. Please try again or add it in the app: heyviya.vercel.app`;
@@ -632,10 +645,11 @@ const INTENTS = [
     handler: async (text, from) => {
       const m = text.match(/(\d[\d,]+)/); if (!m) return null;
       const amount = parseInt(m[1].replace(/,/g, ''));
-      if (amount < 100) return null; // Ignore tiny amounts
+      if (amount < 100) return null;
+      const dbPhone = await resolvePhone(from);
       
       // Duplicate check (same income within 10 minutes)
-      const recent = await dbQuery('transactions', `?phone=eq.${from}&type=eq.income&amount=eq.${amount}&order=created_at.desc&limit=1&select=created_at`);
+      const recent = await dbQuery('transactions', `?phone=eq.${dbPhone}&type=eq.income&amount=eq.${amount}&order=created_at.desc&limit=1&select=created_at`);
       if (recent.length) {
         const lastTime = new Date(recent[0].created_at).getTime();
         if (Date.now() - lastTime < 600000) {
@@ -643,7 +657,7 @@ const INTENTS = [
         }
       }
       
-      const result = await dbInsert('transactions', { phone: from, type: 'income', amount, category: '💼 Income', description: text.substring(0, 100) });
+      const result = await dbInsert('transactions', { phone: dbPhone, type: 'income', amount, category: '💼 Income', description: text.substring(0, 100) });
       if (!result) return `⚠️ Income noted but save failed. Please try again.`;
       
       // Smart budget suggestions
@@ -814,18 +828,21 @@ async function processMessage(text, from) {
   const trimmed = text.trim();
   if (!trimmed) return GREETINGS;
   
-  // Save to chat history & auto-register user
+  // V13.5 CRITICAL: Resolve phone to format that exists in users table
+  // WhatsApp sends 919003360494, app uses 9003360494 — FK constraints require matching phone
   if (from) {
+    from = await resolvePhone(from); // Normalize ONCE for ALL handlers below
+    
     await dbInsert('chat_history', { phone: from, role: 'user', content: trimmed, source: 'whatsapp' });
-    // Auto-register: ensure user exists in DB for app sync
+    // Auto-register: ensure user exists in DB for app sync (use 10-digit format)
     const short = from.replace(/^91/, '').slice(-10);
     const existing = await dbQuery('users', `?or=(phone.eq.${from},phone.eq.${short})&select=phone,onboarding_complete,name`);
     if (!existing.length) {
-      await dbInsert('users', { phone: from, name: 'User', password_hash: String(Math.random()).slice(2, 8) });
-      console.log(`[AUTO-REG] New user registered via WhatsApp: ${from}`);
-      // First-time user: prompt them to register on the app
+      await dbInsert('users', { phone: short, name: 'User', password_hash: String(Math.random()).slice(2, 8) });
+      from = short; // Update from to match the newly created user
+      console.log(`[AUTO-REG] New user registered via WhatsApp: ${short}`);
       const welcome = `🎉 *Welcome to Viya!*\n\nI've set up your account. To get the *full experience*, complete your profile on our app:\n\n📲 *heyviya.vercel.app*\n\nYou can:\n• 📊 See your spending dashboard\n• 🎯 Track goals & habits visually\n• 🔔 Get smart reminders\n• 📈 View insights & reports\n\nMeanwhile, just chat with me here — I'll track everything for you! 😊`;
-      await sendWhatsAppMessage(from, welcome);
+      await sendWhatsAppMessage(from.length === 10 ? '91' + from : from, welcome);
     }
   }
 
@@ -1327,7 +1344,8 @@ export default async function handler(req, res) {
                         if (amtMatch) {
                           const amt = parseFloat((amtMatch[1] || amtMatch[2]).replace(/,/g, ''));
                           if (amt > 0 && amt < 500000) {
-                            await dbInsert('transactions', { phone: from, amount: amt, type: 'expense', category: '🛒 Shopping', description: 'Bill scan via WhatsApp', source: 'whatsapp' });
+                            const billPhone = await resolvePhone(from);
+                            await dbInsert('transactions', { phone: billPhone, amount: amt, type: 'expense', category: '🛒 Shopping', description: 'Bill scan via WhatsApp', source: 'whatsapp' });
                             text = `[BILL_SCANNED] Amount: ₹${amt}. ${ocrText.substring(0, 200)}`;
                           }
                         }
