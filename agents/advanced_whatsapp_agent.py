@@ -130,39 +130,16 @@ I can help you:
 *Just chat naturally!*
 Example: "Spent 500 on groceries" or "How much did I spend this week?"
 """,
-                "expense_logged": """✅ *Expense Recorded!*
-
-💸 Amount: ₹{amount}
-📁 Category: {category}
-📅 {date}
-
-💰 Today's Total Spending: ₹{today_total}
-📊 Remaining Budget: ₹{remaining}
-
+                "expense_logged": """✅ ₹{amount} — {category}
+💰 Today: ₹{today_total} | Left: ₹{remaining}
 {tip}""",
-                "income_logged": """✅ *Income Recorded!*
-
-💵 Amount: ₹{amount}
-📁 Source: {category}
-📅 {date}
-
-💰 *Today's Earnings:* ₹{today_income}
-🎯 *Goal Progress:* +₹{amount} closer!
-
+                "income_logged": """✅ +₹{amount} income — {category}
+💰 Today's earnings: ₹{today_income}
 {motivation}""",
-                "balance_summary": """📊 *Your Financial Summary*
-
-💰 *Current Balance:* ₹{balance}
-━━━━━━━━━━━━━━━━━
-📈 Income: ₹{income}
-📉 Expenses: ₹{expenses}
-💵 Savings: ₹{savings}
-━━━━━━━━━━━━━━━━━
-
-🎯 Goal: {goal_name}
-📊 Progress: {goal_progress}%
-📅 Days Left: {days_left}
-
+                "balance_summary": """📊 *Balance*
+💰 ₹{balance}
+📈 In: ₹{income} | 📉 Out: ₹{expenses} | 💵 Saved: ₹{savings}
+🎯 {goal_name}: {goal_progress}%
 {insight}""",
                 "help_menu": """📱 *MoneyViya Help*
 
@@ -184,41 +161,15 @@ I understand context and can help with:
 • Financial planning
 
 Type anything to get started! 💪""",
-                "morning_reminder": """☀️ *Good Morning, {name}!*
-
-📅 *Today's Financial Plan:*
-━━━━━━━━━━━━━━━━━
-💰 Daily Budget: ₹{daily_budget}
-🎯 Savings Target: ₹{daily_target}
-📊 Yesterday: ₹{yesterday_saved} saved
-━━━━━━━━━━━━━━━━━
-
+                "morning_reminder": """☀️ Morning {name}!
+💰 Budget: ₹{daily_budget} | 🎯 Save: ₹{daily_target}
 {motivation}
-
-💡 *Tip:* {daily_tip}
-
-*Track expenses by just texting!*
-Example: "Spent 50 on tea" """,
-                "evening_checkout": """🌙 *Daily Closing - {date}*
-
-📊 *Today's Summary:*
-━━━━━━━━━━━━━━━━━
-💵 Income: ₹{income}
-💸 Expenses: ₹{expenses}
-💰 Net: ₹{net}
-━━━━━━━━━━━━━━━━━
-
-{comparison}
-
-🎯 *Goal Progress:*
-{progress_bar}
-₹{saved}/₹{target} ({progress}%)
-
+Just text your expenses! 💪""",
+                "evening_checkout": """🌙 Day done!
+📈 In: ₹{income} | 📉 Out: ₹{expenses} | 💰 Net: ₹{net}
+🎯 Goal: {progress}% done
 {advice}
-
-*Is this complete?* Reply Yes/No
-Or add: "Also spent 100 on..."
-""",
+Missed anything? Just text it!""",
                 "otp_sent": """🔐 *Your MoneyViya Login Code:*
 
 *{otp}*

@@ -54,7 +54,7 @@ export default function Onboarding() {
   const nav = useNavigate()
   const [step, setStep] = useState(0)
   const [form, setForm] = useState({
-    language: 'en', name: '', age: '', city: '', occupation: '', persona: '', customPersona: '',
+    language: 'en', name: '', age: '', city: '', gender: '', occupation: '', persona: '', customPersona: '',
     income: '', daily_budget: '', goal: '', customGoal: '', selectedHabits: [], customHabit: '',
     notifyAllowed: false
   })
@@ -84,6 +84,7 @@ export default function Onboarding() {
         name: form.name || 'User',
         age: form.age ? Number(form.age) : null,
         city: form.city || null,
+        gender: form.gender || null,
         occupation: occupation || null,
         persona: persona,
         monthly_income: Number(form.income) || 0,
@@ -157,6 +158,16 @@ export default function Onboarding() {
           <div className="ob-input-row">
             <input type="number" className="form-input ob-input" placeholder="Age" value={form.age} onChange={e => set('age', e.target.value)} />
             <input type="text" className="form-input ob-input" placeholder="City (e.g. Chennai)" value={form.city} onChange={e => set('city', e.target.value)} />
+          </div>
+          <div style={{marginBottom:8}}>
+            <div style={{fontSize:12, fontWeight:700, color:'var(--text3)', marginBottom:6}}>GENDER</div>
+            <div style={{display:'flex', gap:8}}>
+              {[{v:'male',l:'👨 Male'},{v:'female',l:'👩 Female'},{v:'other',l:'🧑 Other'}].map(g => (
+                <button key={g.v} className={'ob-option' + (form.gender === g.v ? ' active' : '')} style={{flex:1, padding:'10px 6px', fontSize:13, borderRadius:10}} onClick={() => set('gender', g.v)}>
+                  {g.l}
+                </button>
+              ))}
+            </div>
           </div>
           <input type="text" className="form-input ob-input" placeholder="Occupation (optional)" value={form.occupation} onChange={e => set('occupation', e.target.value)} />
         </div>

@@ -10,23 +10,34 @@ const SUGGESTIONS = [
   '📖 Study schedule for exams',
   '🏠 Household budget tips',
   '📈 Best SIP for beginners',
-  '🧮 Calculate my protein needs',
   '💼 Tax saving tips',
 ]
 
 export default function Chat() {
-  const { phone } = useApp()
-  const [messages, setMessages] = useState([
-    { role: 'assistant', content: '👋 Hey! I\'m **Viya** — your personal AI assistant.\n\nI can help with:\n• 💰 Budget & Savings\n• 🏋️ Gym & Diet plans\n• 📖 Study schedules\n• 📊 Financial planning\n• 🎯 Goal tracking\n\nJust type anything!' }
-  ])
+  const { phone, user } = useApp()
+  const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const endRef = useRef(null)
 
-  // Load chat history
+  // Build personalized greeting based on gender
+  const getGreeting = () => {
+    const name = user?.name || 'there'
+    const gender = user?.gender || ''
+    const hour = new Date().getHours()
+    const timeGreet = hour < 12 ? '☀️ Good morning' : hour < 18 ? '🌤️ Good afternoon' : '🌙 Good evening'
+    
+    let pronoun = ''
+    if (gender === 'male') pronoun = 'bro'
+    else if (gender === 'female') pronoun = 'sis'
+    
+    return `${timeGreet} ${name}${pronoun ? ` ${pronoun}` : ''}! 👋\n\nI'm **Viya** — your AI assistant.\n\n• 💰 Budget & Savings\n• 🏋️ Gym & Diet plans\n• 📖 Study schedules\n• 📈 Financial planning\n\nJust type anything!`
+  }
+
   useEffect(() => {
+    setMessages([{ role: 'assistant', content: getGreeting() }])
     if (!phone) return
-    api.getChatHistory(phone, 30).then(history => {
+    api.getChatHistory(phone, 20).then(history => {
       if (history.length > 0) {
         const msgs = history.reverse().map(h => ({ role: h.role, content: h.content }))
         setMessages(prev => [prev[0], ...msgs])

@@ -97,11 +97,10 @@ class handler(BaseHTTPRequestHandler):
                         desc = rem.get("description", "")
                         icon = rem.get("icon", "⏰")
                         
-                        # Send via WhatsApp
-                        msg = f"{icon} *Reminder: {title}*\n"
+                        # Send SHORT WhatsApp message
+                        msg = f"{icon} *{title}*"
                         if desc:
-                            msg += f"📝 {desc}\n"
-                        msg += f"⏰ {current_time} IST"
+                            msg += f"\n{desc}"
                         
                         wa_sent = self._send_whatsapp(phone, msg)
                         
@@ -183,7 +182,7 @@ class handler(BaseHTTPRequestHandler):
             }
             
             with httpx.Client(timeout=15.0) as client:
-                resp = client.get(f"{SUPABASE_URL}/rest/v1/users?select=phone,name,monthly_income", headers=headers)
+                resp = client.get(f"{SUPABASE_URL}/rest/v1/users?select=phone,name,gender,monthly_income", headers=headers)
                 if resp.status_code != 200:
                     return
                 
@@ -191,13 +190,21 @@ class handler(BaseHTTPRequestHandler):
                 for user in users:
                     phone = user.get("phone", "")
                     name = user.get("name", "Friend")
+                    gender = user.get("gender", "")
                     if not phone:
                         continue
                     
+                    # Gender-aware short greeting
+                    tag = ""
+                    if gender == "male":
+                        tag = " bro"
+                    elif gender == "female":
+                        tag = " sis"
+                    
                     if briefing_type == "morning":
-                        msg = f"☀️ Good morning {name}!\n\nReady to track your expenses today? Just send me what you spend.\n\n💡 Tip: \"200 chai\" or \"500 lunch\" — I understand!\n\n🔥 Keep your streak alive!"
+                        msg = f"☀️ Morning{tag}! Ready to track today?\nJust text: \"200 chai\" 🔥"
                     else:
-                        msg = f"🌙 Evening check-in, {name}!\n\nHow was your spending today? Send me any expenses you haven't logged.\n\n📊 I'll have your daily summary ready!\n\nGood night 💤"
+                        msg = f"🌙 Hey {name}! Log any remaining expenses.\nGood night{tag}! 💤"
                     
                     self._send_whatsapp(phone, msg)
         except:
