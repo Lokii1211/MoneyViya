@@ -216,4 +216,18 @@ export const api = {
   async addNotification(phone, message, type = 'general') {
     return insert('notifications', { phone, title: message, description: message, type, is_read: false })
   },
+
+  // USER REMINDERS (synced to WhatsApp via cron)
+  async getUserReminders(phone) {
+    return query('user_reminders', `?phone=eq.${phone}&select=*&order=time.asc`)
+  },
+  async createUserReminder(data) {
+    return insert('user_reminders', data)
+  },
+  async updateUserReminder(id, data) {
+    return update('user_reminders', `id=eq.${id}`, data)
+  },
+  async deleteUserReminder(id) {
+    return remove('user_reminders', `id=eq.${id}`)
+  },
 }
