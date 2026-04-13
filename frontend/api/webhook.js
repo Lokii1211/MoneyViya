@@ -626,14 +626,33 @@ const INTENTS = [
     },
   },
 
-  // ===== INCOME =====
+  // ===== INCOME (with budget suggestions) =====
   {
     name: 'income', patterns: [/(?:received|got|earned|income|salary|credited)\s/i, /salary\s*(?:is|of|=)?\s*\d/i],
     handler: async (text, from) => {
       const m = text.match(/(\d[\d,]+)/); if (!m) return null;
       const amount = parseInt(m[1].replace(/,/g, ''));
-      await dbInsert('transactions', { phone: from, type: 'income', amount, category: '💼 Income', description: text.substring(0, 100) });
-      return `✅ *Income Recorded!*\n\n💰 *₹${amount.toLocaleString('en-IN')}*\n\n*50-30-20 Split:*\n🏠 Needs: ₹${Math.round(amount*0.5).toLocaleString('en-IN')}\n🎮 Wants: ₹${Math.round(amount*0.3).toLocaleString('en-IN')}\n💰 Save: ₹${Math.round(amount*0.2).toLocaleString('en-IN')}\n\n🔥 _SIP ₹${Math.round(amount*0.2).toLocaleString('en-IN')}/month → ~₹${Math.round(amount*0.2*195).toLocaleString('en-IN')} in 10 years!_`;
+      if (amount < 100) return null; // Ignore tiny amounts
+      
+      // Duplicate check (same income within 10 minutes)
+      const recent = await dbQuery('transactions', `?phone=eq.${from}&type=eq.income&amount=eq.${amount}&order=created_at.desc&limit=1&select=created_at`);
+      if (recent.length) {
+        const lastTime = new Date(recent[0].created_at).getTime();
+        if (Date.now() - lastTime < 600000) {
+          return `⚠️ *Already Recorded!*\n\nYou logged *₹${amount.toLocaleString('en-IN')}* income just ${Math.round((Date.now() - lastTime)/60000)} min ago.\n\nIf this is different income, reply:\n*"earned ₹${amount}"*`;
+        }
+      }
+      
+      const result = await dbInsert('transactions', { phone: from, type: 'income', amount, category: '💼 Income', description: text.substring(0, 100) });
+      if (!result) return `⚠️ Income noted but save failed. Please try again.`;
+      
+      // Smart budget suggestions
+      const essentials = Math.round(amount * 0.50);
+      const lifestyle = Math.round(amount * 0.30);
+      const save = Math.round(amount * 0.20);
+      const dailyBudget = Math.round(amount / 30);
+      
+      return `✅ *Income Recorded!*\n\n💰 *₹${amount.toLocaleString('en-IN')}*\n\n📊 *Smart Budget Plan:*\n🏠 Essentials (50%): *₹${essentials.toLocaleString('en-IN')}*\n  _Rent, food, transport, bills_\n🎯 Lifestyle (30%): *₹${lifestyle.toLocaleString('en-IN')}*\n  _Shopping, dining, entertainment_\n💰 Savings (20%): *₹${save.toLocaleString('en-IN')}*\n  _SIP, FD, emergency fund_\n\n📅 Daily budget: *₹${dailyBudget.toLocaleString('en-IN')}/day*\n\n💡 _Tip: Invest ₹${save.toLocaleString('en-IN')}/month in SIP → ~₹${Math.round(save*195).toLocaleString('en-IN')} in 10 years!_`;
     },
   },
 

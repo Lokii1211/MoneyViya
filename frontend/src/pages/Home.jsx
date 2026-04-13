@@ -67,10 +67,14 @@ export default function Home() {
     }
   }, [phone])
 
-  const income = data?.monthly_income || 0, expense = data?.monthly_expenses || 0
-  const savings = data?.current_savings || 0, budget = data?.daily_budget || 1000
+  // Calculate income/expenses from ACTUAL transactions (not stale user profile fields)
+  const allTxns = data?.recent_transactions || []
+  const income = allTxns.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0) || data?.monthly_income || 0
+  const expense = allTxns.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0) || data?.monthly_expenses || 0
+  const savings = Math.max(income - expense, 0)
+  const budget = data?.daily_budget || 1000
   const name = data?.name || user?.name || 'User'
-  const todaySpent = (data?.recent_transactions || []).filter(t => {
+  const todaySpent = allTxns.filter(t => {
     if (t.type !== 'expense') return false
     return new Date(t.created_at).toDateString() === new Date().toDateString()
   }).reduce((s, t) => s + Number(t.amount), 0)

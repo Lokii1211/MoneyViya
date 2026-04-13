@@ -78,7 +78,7 @@ export const api = {
     const users = await query('users', `?${phoneFilter(phone)}&select=*`)
     const user = users[0]
     if (!user) return null
-    const txns = await query('transactions', `?${phoneFilter(phone)}&select=*&order=created_at.desc&limit=10`)
+    const txns = await query('transactions', `?${phoneFilter(phone)}&select=*&order=created_at.desc&limit=100`)
     return { ...user, recent_transactions: txns }
   },
   async updateUser(phone, data) { return update('users', `phone=eq.${phone}`, data) },
