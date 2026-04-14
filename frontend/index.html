@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/logo.png" />
-    <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo-192.png" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#00c853" />
@@ -12,23 +12,83 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="application-name" content="Viya" />
     <meta name="apple-mobile-web-app-title" content="Viya" />
-    <meta name="description" content="Viya — Your AI Life & Wealth Partner. Track expenses, build habits, and get personalized financial advice." />
-    <meta name="keywords" content="finance, AI, wealth, habits, expenses, budgeting, goals, India" />
+    <meta name="description" content="Viya — Your AI Life & Wealth Partner. Track expenses, build habits, and get personalized financial advice via WhatsApp & App." />
+    <meta name="keywords" content="finance, AI, wealth, habits, expenses, budgeting, goals, India, personal finance, money tracker" />
     <meta property="og:title" content="Viya — AI Life & Wealth Partner" />
     <meta property="og:description" content="Track, save, and grow with AI. Your personal finance companion." />
-    <meta property="og:image" content="/logo.png" />
+    <meta property="og:image" content="/logo-512.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://heyviya.vercel.app" />
     <title>Viya — AI Life & Wealth Partner</title>
+    <style>
+      /* Splash Screen */
+      #splash {
+        position: fixed; inset: 0; z-index: 9999;
+        background: linear-gradient(135deg, #050508 0%, #0a1628 50%, #0d2137 100%);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        transition: opacity 0.5s ease, visibility 0.5s ease;
+      }
+      #splash.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+      #splash img { width: 80px; height: 80px; border-radius: 20px; animation: splashPulse 1.5s ease infinite; }
+      #splash h1 { font-family: 'Inter', sans-serif; font-size: 24px; font-weight: 900; color: #fff; margin-top: 16px; }
+      #splash p { font-family: 'Inter', sans-serif; font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 4px; }
+      #splash .loader { width: 40px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-top: 24px; overflow: hidden; }
+      #splash .loader-bar { width: 60%; height: 100%; background: #00c853; border-radius: 2px; animation: splashLoad 1.2s ease infinite; }
+      @keyframes splashPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+      @keyframes splashLoad { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
+      /* Offline Banner */
+      #offline-banner {
+        position: fixed; top: 0; left: 0; right: 0; z-index: 9998;
+        background: linear-gradient(135deg, #ff5252, #d32f2f);
+        color: #fff; text-align: center; padding: 8px;
+        font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700;
+        transform: translateY(-100%); transition: transform 0.3s ease;
+      }
+      #offline-banner.show { transform: translateY(0); }
+    </style>
   </head>
   <body>
+    <!-- Splash Screen -->
+    <div id="splash">
+      <img src="/logo-192.png" alt="Viya" />
+      <h1>Viya</h1>
+      <p>AI Life & Wealth Partner</p>
+      <div class="loader"><div class="loader-bar"></div></div>
+    </div>
+
+    <!-- Offline Banner -->
+    <div id="offline-banner">⚡ You're offline — some features may not work</div>
+
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
-      // Register Service Worker for PWA
+      // Splash screen — hide after app loads
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const splash = document.getElementById('splash');
+          if (splash) splash.classList.add('hide');
+          setTimeout(() => splash?.remove(), 600);
+        }, 1200);
+      });
+
+      // Offline detection
+      function updateOnline() {
+        const banner = document.getElementById('offline-banner');
+        if (banner) {
+          if (!navigator.onLine) banner.classList.add('show');
+          else banner.classList.remove('show');
+        }
+      }
+      window.addEventListener('online', updateOnline);
+      window.addEventListener('offline', updateOnline);
+      updateOnline();
+
+      // Register Service Worker
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
             .then(reg => console.log('SW registered:', reg.scope))
-            .catch(err => console.log('SW registration failed:', err));
+            .catch(err => console.log('SW failed:', err));
         });
       }
     </script>
