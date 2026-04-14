@@ -101,7 +101,7 @@ export default function Home() {
     { icon: <Users size={18} />, label: 'Family', color: 'rose', to: '/family' },
   ]
 
-  const moneyLeft = Math.round(budget/30 - todaySpent)
+  const moneyLeft = Math.round(budget - todaySpent)
   const animatedMoneyLeft = useCountUp(Math.abs(moneyLeft), 900)
   const animatedIncome = useCountUp(income, 700)
   const animatedExpense = useCountUp(expense, 700)
@@ -141,7 +141,7 @@ export default function Home() {
           ₹{animatedMoneyLeft.toLocaleString('en-IN')}
         </div>
         <div className={`wealth-change ${moneyLeft >= 0 ? 'up' : 'down'}`}>
-          <TrendingUp size={14} /> {moneyLeft >= 0 ? `₹${Math.round(budget/30)} daily budget` : `Over budget by ₹${Math.abs(moneyLeft)}`}
+          <TrendingUp size={14} /> {moneyLeft >= 0 ? `₹${budget} daily budget` : `Over budget by ₹${Math.abs(moneyLeft)}`}
         </div>
         <div className="wealth-stats">
           <div><div className="ws-label">INCOME</div><div className="ws-val green">₹{animatedIncome.toLocaleString('en-IN')}</div></div>
