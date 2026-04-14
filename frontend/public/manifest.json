@@ -7,7 +7,7 @@
   "display": "standalone",
   "display_override": ["standalone"],
   "orientation": "portrait",
-  "background_color": "#050508",
+  "background_color": "#ffffff",
   "theme_color": "#050508",
   "scope": "/",
   "lang": "en",
