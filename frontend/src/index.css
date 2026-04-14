@@ -969,3 +969,114 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
 @media (min-width:431px) {
   .app-shell { border-left:1px solid var(--border); border-right:1px solid var(--border); box-shadow:0 0 60px rgba(0,0,0,0.5); }
 }
+
+/* ===== NATIVE APP FEEL ===== */
+
+/* Disable text selection on UI (native apps don't allow it) */
+button, .nav-item, .nav-fab, .qa-item, .settings-item, .habit-card, .txn-item,
+.goal-card, .cat-chip, .preset-btn, .ob-option, .ob-persona, .ob-goal, .chip,
+.notif-card, .search-chip, .search-recent, .streak-card {
+  -webkit-user-select:none; user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* Native-like touch feedback */
+button:active, .qa-item:active, .settings-item:active,
+.habit-card:active, .txn-item:active, .goal-card:active,
+.ob-option:active, .ob-persona:active, .chip:active,
+.notif-card:active, .search-chip:active {
+  transform:scale(0.97) !important;
+  transition:transform 0.1s ease !important;
+}
+
+/* Smooth overscroll (rubber-band feel) */
+.app-main {
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+}
+
+/* Hardware accelerated transitions for pages */
+.page {
+  will-change:opacity, transform;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+}
+
+/* Safe area padding for notched phones */
+.app-shell {
+  padding-top:env(safe-area-inset-top, 0);
+}
+.bottom-nav {
+  padding-bottom:env(safe-area-inset-bottom, 0);
+}
+
+/* Smoother scrolling everywhere */
+* {
+  scrollbar-width:none;
+}
+*::-webkit-scrollbar { display:none; }
+
+/* No bounce/overscroll on the body */
+html, body {
+  overscroll-behavior:none;
+  touch-action:pan-y;
+}
+
+/* Disable long-press context menu (native apps don't have it) */
+* {
+  -webkit-touch-callout:none;
+}
+
+/* Smoother image rendering */
+img {
+  -webkit-user-drag:none;
+  user-select:none;
+}
+
+/* Active state for bottom nav */
+.nav-item:active {
+  transform:scale(0.9) !important;
+}
+.nav-fab:active {
+  transform:scale(0.92) !important;
+}
+
+/* Wealth card premium glow on touch */
+.wealth-card:active {
+  transform:scale(0.98) !important;
+  transition:transform 0.15s ease !important;
+}
+
+/* Smoother page transitions */
+@keyframes pageSlideIn {
+  from { opacity:0; transform:translateX(8px); }
+  to { opacity:1; transform:translateX(0); }
+}
+@keyframes pageSlideOut {
+  from { opacity:1; transform:translateX(0); }
+  to { opacity:0; transform:translateX(-8px); }
+}
+
+/* Status bar blending */
+.app-header {
+  padding-top:max(14px, env(safe-area-inset-top, 14px));
+}
+
+/* Premium input focus glow */
+input:focus, textarea:focus {
+  box-shadow:0 0 0 3px var(--primary-dim) !important;
+  transition:box-shadow 0.2s ease !important;
+}
+
+/* Subtle card entrance animations */
+@keyframes cardEntrance {
+  from { opacity:0; transform:translateY(12px) scale(0.98); }
+  to { opacity:1; transform:translateY(0) scale(1); }
+}
+.wealth-card, .streak-card, .goal-card, .habit-card,
+.txn-item, .psg-card {
+  animation:cardEntrance 0.4s var(--ease) both;
+}
+.wealth-card { animation-delay:0.05s; }
+.streak-card { animation-delay:0.1s; }
+
