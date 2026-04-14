@@ -8,5 +8,15 @@
         "FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9E:09:D5:2B:88:82:DB:62:4C:A9:D4:C0:0C:F5:31:F3"
       ]
     }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.vercel.heyviya.twa",
+      "sha256_cert_fingerprints": [
+        "FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9E:09:D5:2B:88:82:DB:62:4C:A9:D4:C0:0C:F5:31:F3"
+      ]
+    }
   }
 ]

@@ -5,10 +5,10 @@
   "id": "/",
   "start_url": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": ["standalone"],
   "orientation": "portrait",
-  "background_color": "#0a0f1a",
-  "theme_color": "#00c853",
+  "background_color": "#050508",
+  "theme_color": "#050508",
   "scope": "/",
   "lang": "en",
   "dir": "ltr",
@@ -41,12 +41,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    },
-    {
-      "src": "/logo.png",
-      "sizes": "1024x1024",
-      "type": "image/png",
-      "purpose": "any"
     }
   ],
   "screenshots": [
@@ -55,14 +49,14 @@
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Viya Dashboard — Track your money & habits"
+      "label": "Viya Dashboard"
     },
     {
       "src": "/logo-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Viya Dashboard — Desktop View"
+      "label": "Viya Desktop"
     }
   ],
   "shortcuts": [
@@ -77,20 +71,12 @@
       "short_name": "Chat",
       "url": "/chat",
       "icons": [{ "src": "/logo-48.png", "sizes": "48x48", "type": "image/png" }]
-    },
-    {
-      "name": "My Habits",
-      "short_name": "Habits",
-      "url": "/habits",
-      "icons": [{ "src": "/logo-48.png", "sizes": "48x48", "type": "image/png" }]
     }
   ],
   "share_target": {
     "action": "/chat",
     "method": "GET",
-    "params": {
-      "text": "q"
-    }
+    "params": { "text": "q" }
   },
   "related_applications": [],
   "prefer_related_applications": false
