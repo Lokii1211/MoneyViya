@@ -28,3 +28,7 @@ Thumbs.db
 
 # Test
 test_db.py
+
+signing-key-info.txt
+signing.keystore
+assetlinks.json
