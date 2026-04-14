@@ -19,6 +19,7 @@ import Family from './pages/Family'
 import Terms from './pages/Terms'
 import Friends from './pages/Friends'
 import Onboarding from './pages/Onboarding'
+import DeleteAccount from './pages/DeleteAccount'
 import Layout from './components/Layout'
 import './index.css'
 
@@ -52,6 +53,7 @@ export default function App() {
 <Route path="family" element={<Family />} />
 <Route path="terms" element={<Terms />} />
 <Route path="friends" element={<Friends />} />
+<Route path="delete-account" element={<DeleteAccount />} />
           </Route>
         </Routes>
       </BrowserRouter>
