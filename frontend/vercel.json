@@ -1,7 +1,16 @@
 {
   "rewrites": [
     { "source": "/api/webhook", "destination": "/api/webhook.js" },
-    { "source": "/((?!api|assets).*)", "destination": "/index.html" }
+    { "source": "/((?!api|assets|\\.well-known).*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/.well-known/assetlinks.json",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    }
   ],
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
