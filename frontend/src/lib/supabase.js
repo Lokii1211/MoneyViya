@@ -238,4 +238,90 @@ export const api = {
   async deleteUserReminder(id) {
     return remove('user_reminders', `id=eq.${id}`)
   },
+
+  // ===== V2 APIS — NEW TABLES =====
+
+  // HEALTH LOGS
+  async getHealthLog(phone, date) {
+    const d = date || new Date().toISOString().split('T')[0]
+    const logs = await query('health_logs', `?${phoneFilter(phone)}&log_date=eq.${d}&select=*`)
+    return logs[0] || null
+  },
+  async upsertHealthLog(phone, data) {
+    return upsert('health_logs', { phone, log_date: new Date().toISOString().split('T')[0], ...data })
+  },
+  async getHealthHistory(phone, days = 30) {
+    const since = new Date(Date.now() - days * 86400000).toISOString().split('T')[0]
+    return query('health_logs', `?${phoneFilter(phone)}&log_date=gte.${since}&select=*&order=log_date.desc`)
+  },
+
+  // MEALS
+  async getMeals(phone, date) {
+    const d = date || new Date().toISOString().split('T')[0]
+    return query('meals', `?${phoneFilter(phone)}&meal_date=eq.${d}&select=*&order=created_at.asc`)
+  },
+  async addMeal(phone, data) { return insert('meals', { phone, meal_date: new Date().toISOString().split('T')[0], ...data }) },
+  async deleteMeal(id) { return remove('meals', `id=eq.${id}`) },
+
+  // MEDICINES
+  async getMedicines(phone) { return query('medicines', `?${phoneFilter(phone)}&active=eq.true&select=*&order=time.asc`) },
+  async addMedicine(phone, data) { return insert('medicines', { phone, ...data }) },
+  async deleteMedicine(id) { return remove('medicines', `id=eq.${id}`) },
+  async getMedicineCheckins(phone, date) {
+    const d = date || new Date().toISOString().split('T')[0]
+    return query('medicine_checkins', `?${phoneFilter(phone)}&checked_date=eq.${d}&select=*`)
+  },
+  async checkinMedicine(medicineId, phone) {
+    const today = new Date().toISOString().split('T')[0]
+    return upsert('medicine_checkins', { medicine_id: medicineId, phone, checked_date: today, taken: true })
+  },
+
+  // BILLS & DUES
+  async getBills(phone) { return query('bills_and_dues', `?${phoneFilter(phone)}&select=*&order=due_date.asc`) },
+  async addBill(phone, data) { return insert('bills_and_dues', { phone, ...data }) },
+  async updateBill(id, data) { return update('bills_and_dues', `id=eq.${id}`, data) },
+  async deleteBill(id) { return remove('bills_and_dues', `id=eq.${id}`) },
+  async markBillPaid(id) { return update('bills_and_dues', `id=eq.${id}`, { status: 'paid', last_paid_at: new Date().toISOString() }) },
+
+  // INVESTMENTS
+  async getInvestments(phone) { return query('investments', `?${phoneFilter(phone)}&select=*&order=created_at.desc`) },
+  async addInvestment(phone, data) { return insert('investments', { phone, ...data }) },
+  async updateInvestment(id, data) { return update('investments', `id=eq.${id}`, data) },
+  async deleteInvestment(id) { return remove('investments', `id=eq.${id}`) },
+  async getSIPs(phone) { return query('investments', `?${phoneFilter(phone)}&is_sip=eq.true&select=*&order=name.asc`) },
+
+  // EMAILS
+  async getEmails(phone, limit = 20) { return query('emails', `?${phoneFilter(phone)}&select=*&order=received_at.desc&limit=${limit}`) },
+  async getActionEmails(phone) { return query('emails', `?${phoneFilter(phone)}&action_required=eq.true&is_handled=eq.false&select=*&order=received_at.desc`) },
+  async markEmailHandled(id) { return update('emails', `id=eq.${id}`, { is_handled: true }) },
+  async markEmailRead(id) { return update('emails', `id=eq.${id}`, { is_read: true }) },
+
+  // CALENDAR EVENTS
+  async getCalendarEvents(phone, date) {
+    const d = date || new Date().toISOString().split('T')[0]
+    return query('calendar_events', `?${phoneFilter(phone)}&event_date=eq.${d}&select=*&order=start_time.asc`)
+  },
+  async getUpcomingEvents(phone, days = 7) {
+    const today = new Date().toISOString().split('T')[0]
+    const end = new Date(Date.now() + days * 86400000).toISOString().split('T')[0]
+    return query('calendar_events', `?${phoneFilter(phone)}&event_date=gte.${today}&event_date=lte.${end}&select=*&order=event_date.asc,start_time.asc`)
+  },
+  async addCalendarEvent(phone, data) { return insert('calendar_events', { phone, ...data }) },
+  async deleteCalendarEvent(id) { return remove('calendar_events', `id=eq.${id}`) },
+
+  // AI MEMORY
+  async getMemories(phone, category) {
+    const filter = category ? `&category=eq.${category}` : ''
+    return query('viya_memory', `?${phoneFilter(phone)}${filter}&select=*&order=importance.desc,created_at.desc&limit=50`)
+  },
+  async addMemory(phone, content, type = 'fact', category = 'general', importance = 5) {
+    return insert('viya_memory', { phone, content, memory_type: type, category, importance })
+  },
+  async searchMemories(phone, searchTerm) {
+    return query('viya_memory', `?${phoneFilter(phone)}&content=ilike.*${encodeURIComponent(searchTerm)}*&select=*&order=importance.desc&limit=20`)
+  },
+  async deleteMemory(id) { return remove('viya_memory', `id=eq.${id}`) },
+
+  // AGENT LOGS
+  async logAgentCall(phone, data) { return insert('agent_logs', { phone, ...data }) },
 }

@@ -1,94 +1,90 @@
+// Indian number format: ₹1,50,000
+export function formatINR(num, showSign = false) {
+  if (num == null || isNaN(num)) return '₹0'
+  const n = Number(num), abs = Math.abs(n)
+  const sign = n < 0 ? '-' : (showSign && n > 0 ? '+' : '')
+  const str = abs.toFixed(0)
+  if (str.length <= 3) return `${sign}₹${str}`
+  const last3 = str.slice(-3), rest = str.slice(0, -3)
+  return `${sign}₹${rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',')},${last3}`
+}
+export function formatINRShort(num) {
+  const n = Math.abs(Number(num))
+  if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)}Cr`
+  if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`
+  if (n >= 1000) return `₹${(n / 1000).toFixed(1)}K`
+  return `₹${n}`
+}
+export function getGreeting() {
+  const h = new Date().getHours()
+  if (h < 5) return 'Good night'; if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'; return 'Good evening'
+}
+export function getGreetingEmoji() {
+  const h = new Date().getHours()
+  if (h < 5) return '🌙'; if (h < 12) return '☀️'; if (h < 17) return '🌤️'; return '🌙'
+}
+export function timeAgo(date) {
+  if (!date) return ''
+  const diff = (Date.now() - new Date(date)) / 1000
+  if (diff < 60) return 'Just now'; if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`; if (diff < 172800) return 'Yesterday'
+  return new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+}
+export function formatDate(d) { return d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '' }
+export function formatTime(d) { return d ? new Date(d).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true }) : '' }
+export function getCategoryIcon(c) {
+  const m = { 'Food & Dining':'🍔','Food':'🍔','food':'🍔','Transport':'🚗','transport':'🚗','Shopping':'🛍️','shopping':'🛍️','Groceries':'🥦','groceries':'🥦','Health':'💊','health':'💊','Entertainment':'🎬','entertainment':'🎬','Bills & Utilities':'📱','bills':'📱','Education':'📚','education':'📚','Travel':'✈️','travel':'✈️','Finance':'📊','finance':'📊','Family':'👨‍👩‍👧','family':'👨‍👩‍👧','Income':'💰','income':'💰','Rent':'🏠','rent':'🏠','Investment':'📈' }
+  return m[c] || '💳'
+}
+export function getCategoryColor(c) {
+  const m = { 'Food & Dining':'#FF6B6B','Food':'#FF6B6B','food':'#FF6B6B','Transport':'#4ECDC4','transport':'#4ECDC4','Shopping':'#A78BFA','shopping':'#A78BFA','Groceries':'#34D399','groceries':'#34D399','Health':'#F472B6','health':'#F472B6','Entertainment':'#FBBF24','entertainment':'#FBBF24','Bills & Utilities':'#60A5FA','bills':'#60A5FA','Education':'#818CF8' }
+  return m[c] || '#94A3B8'
+}
+export function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8) }
+export function haptic(type = 'light') { if (navigator.vibrate) navigator.vibrate({ light: 10, medium: 25, heavy: 50 }[type] || 10) }
+export function formatPhone(p) { const c = p?.replace(/[^\d]/g, '').replace(/^91/, '').slice(-10) || ''; return c.length === 10 ? `+91 ${c.slice(0, 5)} ${c.slice(5)}` : p || '' }
+export function streakText(s) { if (s >= 30) return '🔥 Legendary!'; if (s >= 14) return '🔥 On fire!'; if (s >= 7) return '🔥 Great!'; if (s >= 3) return '🔥 Building!'; return s > 0 ? '✨ Started!' : '' }
+
+// Animated count-up hook
 import { useState, useEffect, useRef } from 'react'
-
-// ===== COUNTING ANIMATION HOOK =====
-// Animates a number from 0 to target over duration
-export function useCountUp(target, duration = 800, startOnMount = true) {
-  const [value, setValue] = useState(0)
-  const rafRef = useRef(null)
-  const startRef = useRef(null)
-
+export function useCountUp(target, duration = 800) {
+  const [val, setVal] = useState(0)
+  const prev = useRef(0)
   useEffect(() => {
-    if (!startOnMount || target === 0) { setValue(target); return }
-    
-    const animate = (timestamp) => {
-      if (!startRef.current) startRef.current = timestamp
-      const elapsed = timestamp - startRef.current
+    const start = prev.current, diff = target - start
+    if (diff === 0) return
+    const startTime = Date.now()
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - startTime
       const progress = Math.min(elapsed / duration, 1)
-      
-      // Ease out cubic
-      const eased = 1 - Math.pow(1 - progress, 3)
-      setValue(Math.round(eased * target))
-      
-      if (progress < 1) {
-        rafRef.current = requestAnimationFrame(animate)
-      }
-    }
-    
-    startRef.current = null
-    rafRef.current = requestAnimationFrame(animate)
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
-  }, [target, duration, startOnMount])
-
-  return value
+      const eased = 1 - Math.pow(1 - progress, 3) // ease-out cubic
+      setVal(Math.round(start + diff * eased))
+      if (progress >= 1) { clearInterval(timer); prev.current = target }
+    }, 16)
+    return () => clearInterval(timer)
+  }, [target, duration])
+  return val
 }
 
-// ===== FESTIVAL THEME DETECTION =====
-// Returns current Indian festival with theme colors
+// Indian festival detection
 export function getCurrentFestival() {
   const now = new Date()
-  const month = now.getMonth() + 1 // 1-based
-  const day = now.getDate()
-  
-  // Major Indian festivals (approximate dates — vary each year)
+  const m = now.getMonth() + 1, d = now.getDate()
   const festivals = [
-    // Diwali season (Oct-Nov)
-    { name: 'Diwali', emoji: '🪔', check: () => (month === 10 && day >= 20) || (month === 11 && day <= 15), 
-      colors: { primary: '#FFD700', accent: '#FF6B35', bg: 'linear-gradient(135deg, #1a0a2e, #2d1b69)', greeting: 'Happy Diwali! 🪔✨' }},
-    // Holi (March)
-    { name: 'Holi', emoji: '🎨', check: () => month === 3 && day >= 20 && day <= 30,
-      colors: { primary: '#FF1493', accent: '#00FF7F', bg: 'linear-gradient(135deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3)', greeting: 'Happy Holi! 🎨🌈' }},
-    // New Year (Jan 1-3)
-    { name: 'New Year', emoji: '🎉', check: () => month === 1 && day <= 3,
-      colors: { primary: '#FFD700', accent: '#00D4FF', bg: 'linear-gradient(135deg, #0c0c1d, #1a1a3e)', greeting: 'Happy New Year! 🎉' }},
-    // Republic Day (Jan 26)
-    { name: 'Republic Day', emoji: '🇮🇳', check: () => month === 1 && day === 26,
-      colors: { primary: '#FF9933', accent: '#138808', bg: 'linear-gradient(135deg, #FF9933, #FFFFFF, #138808)', greeting: 'Happy Republic Day! 🇮🇳' }},
-    // Independence Day (Aug 15)
-    { name: 'Independence Day', emoji: '🇮🇳', check: () => month === 8 && day === 15,
-      colors: { primary: '#FF9933', accent: '#138808', bg: 'linear-gradient(135deg, #FF9933, #fff, #138808)', greeting: 'Happy Independence Day! 🇮🇳' }},
-    // Navratri (Oct)
-    { name: 'Navratri', emoji: '🪘', check: () => month === 10 && day >= 3 && day <= 12,
-      colors: { primary: '#E94B3C', accent: '#FFD700', bg: 'linear-gradient(135deg, #8B0000, #FF4500)', greeting: 'Happy Navratri! 🪘' }},
-    // Christmas (Dec 24-26)
-    { name: 'Christmas', emoji: '🎄', check: () => month === 12 && day >= 24 && day <= 26,
-      colors: { primary: '#C41E3A', accent: '#228B22', bg: 'linear-gradient(135deg, #1a3a1a, #2d0f0f)', greeting: 'Merry Christmas! 🎄' }},
-    // Ganesh Chaturthi (Sep)
-    { name: 'Ganesh Chaturthi', emoji: '🙏', check: () => month === 9 && day >= 5 && day <= 15,
-      colors: { primary: '#FF6B35', accent: '#FFD700', bg: 'linear-gradient(135deg, #FF6B35, #FFA07A)', greeting: 'Ganpati Bappa Morya! 🙏' }},
-    // Pongal / Makar Sankranti (Jan 14-16)
-    { name: 'Pongal', emoji: '🌾', check: () => month === 1 && day >= 14 && day <= 16,
-      colors: { primary: '#FF9933', accent: '#228B22', bg: 'linear-gradient(135deg, #FFD700, #FF9933)', greeting: 'Happy Pongal! 🌾' }},
+    { month: 1, day: 1, name: 'New Year', emoji: '🎉', greeting: 'Happy New Year!', colors: { bg: 'linear-gradient(135deg,#667eea,#764ba2)' } },
+    { month: 1, day: 14, name: 'Makar Sankranti', emoji: '🪁', greeting: 'Happy Makar Sankranti!', colors: { bg: 'linear-gradient(135deg,#f093fb,#f5576c)' } },
+    { month: 1, day: 15, name: 'Pongal', emoji: '🍚', greeting: 'Happy Pongal!', colors: { bg: 'linear-gradient(135deg,#4facfe,#00f2fe)' } },
+    { month: 1, day: 26, name: 'Republic Day', emoji: '🇮🇳', greeting: 'Happy Republic Day!', colors: { bg: 'linear-gradient(135deg,#ff6a00,#138808)' } },
+    { month: 3, day: 8, name: 'Women\'s Day', emoji: '👩', greeting: 'Happy Women\'s Day!', colors: { bg: 'linear-gradient(135deg,#f093fb,#f5576c)' } },
+    { month: 3, day: 25, name: 'Holi', emoji: '🎨', greeting: 'Happy Holi!', colors: { bg: 'linear-gradient(135deg,#f5af19,#f12711)' } },
+    { month: 8, day: 15, name: 'Independence Day', emoji: '🇮🇳', greeting: 'Jai Hind!', colors: { bg: 'linear-gradient(135deg,#ff6a00,#138808)' } },
+    { month: 10, day: 2, name: 'Gandhi Jayanti', emoji: '🕊️', greeting: 'Happy Gandhi Jayanti!', colors: { bg: 'linear-gradient(135deg,#667eea,#764ba2)' } },
+    { month: 10, day: 12, name: 'Dussehra', emoji: '🏹', greeting: 'Happy Dussehra!', colors: { bg: 'linear-gradient(135deg,#f093fb,#f5576c)' } },
+    { month: 10, day: 31, name: 'Diwali', emoji: '🪔', greeting: 'Happy Diwali!', colors: { bg: 'linear-gradient(135deg,#f5af19,#f12711)' } },
+    { month: 11, day: 1, name: 'Diwali', emoji: '🪔', greeting: 'Happy Diwali!', colors: { bg: 'linear-gradient(135deg,#f5af19,#f12711)' } },
+    { month: 12, day: 25, name: 'Christmas', emoji: '🎄', greeting: 'Merry Christmas!', colors: { bg: 'linear-gradient(135deg,#11998e,#38ef7d)' } },
   ]
-  
-  return festivals.find(f => f.check()) || null
-}
-
-// ===== INDIAN NUMBER FORMAT =====
-export function formatINR(num) {
-  if (num === undefined || num === null) return '₹0'
-  const abs = Math.abs(Number(num))
-  if (abs >= 10000000) return `₹${(abs/10000000).toFixed(1)}Cr`
-  if (abs >= 100000) return `₹${(abs/100000).toFixed(1)}L`
-  return `₹${abs.toLocaleString('en-IN')}`
-}
-
-// ===== SAVINGS RATE SCORE =====
-export function getSavingsGrade(income, expenses) {
-  if (income <= 0) return { grade: '?', color: 'var(--text3)', msg: 'Add income to see your grade' }
-  const rate = ((income - expenses) / income) * 100
-  if (rate >= 30) return { grade: 'A+', color: '#00D084', msg: 'Outstanding! You\'re a savings machine! 🏆' }
-  if (rate >= 20) return { grade: 'A', color: '#00D084', msg: 'Excellent savings rate! Keep it up! 💪' }
-  if (rate >= 10) return { grade: 'B', color: '#FFD700', msg: 'Good, but aim for 20%+ savings rate 📈' }
-  if (rate >= 0) return { grade: 'C', color: '#FF9933', msg: 'Try to cut 1-2 unnecessary expenses 🤔' }
-  return { grade: 'D', color: '#FF3366', msg: 'Spending more than earning — let\'s fix this! ⚠️' }
+  const today = festivals.find(f => f.month === m && Math.abs(f.day - d) <= 1)
+  return today || null
 }

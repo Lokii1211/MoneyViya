@@ -193,6 +193,30 @@ export default function Profile() {
         </div>
       )}
 
+      {/* V2 Life Modules */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10, paddingLeft: 2 }}>Life Modules</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+          {[
+            { path: '/health', emoji: '❤️', label: 'Health', gradient: 'linear-gradient(135deg, #FF6B6B, #FF3D71)' },
+            { path: '/bills', emoji: '📋', label: 'Bills', gradient: 'linear-gradient(135deg, #0D0020, #1a0040)' },
+            { path: '/wealth', emoji: '📈', label: 'Wealth', gradient: 'linear-gradient(135deg, #4CAF50, #2E7D32)' },
+            { path: '/email', emoji: '📧', label: 'Email AI', gradient: 'linear-gradient(135deg, #0091FF, #0052CC)' },
+            { path: '/calendar', emoji: '📅', label: 'Calendar', gradient: 'linear-gradient(135deg, #7C3AED, #5B21B6)' },
+            { path: '/chat', emoji: '🧠', label: 'Viya AI', gradient: 'var(--gradient-primary)' },
+          ].map((mod, i) => (
+            <button key={i} onClick={() => nav(mod.path)} style={{
+              padding: '14px 8px', borderRadius: 'var(--radius-lg)', background: mod.gradient,
+              color: 'white', border: 'none', cursor: 'pointer', textAlign: 'center',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)', transition: 'transform 0.15s',
+            }}>
+              <div style={{ fontSize: 22, marginBottom: 4 }}>{mod.emoji}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.3 }}>{mod.label}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Settings */}
       <div className="settings-list">
         <button className="settings-item" onClick={toggleTheme}>

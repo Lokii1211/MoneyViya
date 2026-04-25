@@ -66,31 +66,56 @@ class handler(BaseHTTPRequestHandler):
             
             print(f"[WA] From: {from_phone}, Text: {text}")
             
-            # Process via agent
+            # Process via V2 Orchestrator (with v1 fallback)
             try:
-                from agents.advanced_whatsapp_agent import AdvancedWhatsAppAgent
-                import httpx, asyncio
+                import httpx
+                reply = None
                 
-                agent = AdvancedWhatsAppAgent()
-                SUPABASE_URL = os.getenv("VITE_SUPABASE_URL", os.getenv("SUPABASE_URL", ""))
-                SUPABASE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY", ""))
+                # Try V2 Orchestrator first
+                try:
+                    from agents.v2_orchestrator import V2Orchestrator
+                    from agents.advanced_whatsapp_agent import AdvancedWhatsAppAgent
+                    
+                    base_agent = AdvancedWhatsAppAgent()
+                    orchestrator = V2Orchestrator(base_agent=base_agent)
+                    
+                    import asyncio
+                    loop = asyncio.new_event_loop()
+                    result = loop.run_until_complete(orchestrator.process(from_phone, text))
+                    loop.close()
+                    
+                    reply = result.get("response", "")
+                    specialist = result.get("specialist", "master")
+                    tier = result.get("tier", "unknown")
+                    print(f"[WA V2] Specialist={specialist}, Tier={tier}")
+                except Exception as v2_err:
+                    print(f"[WA V2] Orchestrator error, falling back to v1: {v2_err}")
                 
-                user_data = {"phone": from_phone, "name": "Friend"}
-                if SUPABASE_URL and SUPABASE_KEY:
-                    with httpx.Client(timeout=10) as client:
-                        resp = client.get(
-                            f"{SUPABASE_URL}/rest/v1/users?phone=eq.{from_phone}&select=*",
-                            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
-                        )
-                        if resp.status_code == 200 and resp.json():
-                            user_data = resp.json()[0]
-                            user_data["phone"] = from_phone
+                # Fallback to v1 agent
+                if not reply:
+                    from agents.advanced_whatsapp_agent import AdvancedWhatsAppAgent
+                    agent = AdvancedWhatsAppAgent()
+                    
+                    SUPABASE_URL = os.getenv("VITE_SUPABASE_URL", os.getenv("SUPABASE_URL", ""))
+                    SUPABASE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY", ""))
+                    
+                    user_data = {"phone": from_phone, "name": "Friend"}
+                    if SUPABASE_URL and SUPABASE_KEY:
+                        with httpx.Client(timeout=10) as client:
+                            resp = client.get(
+                                f"{SUPABASE_URL}/rest/v1/users?phone=eq.{from_phone}&select=*",
+                                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
+                            )
+                            if resp.status_code == 200 and resp.json():
+                                user_data = resp.json()[0]
+                                user_data["phone"] = from_phone
+                    
+                    import asyncio
+                    loop = asyncio.new_event_loop()
+                    reply = loop.run_until_complete(agent.process_message(from_phone, text, user_data))
+                    loop.close()
                 
-                loop = asyncio.new_event_loop()
-                reply = loop.run_until_complete(agent.process_message(from_phone, text, user_data))
-                loop.close()
-                
-                self._send_reply(from_phone, reply)
+                self._send_reply(from_phone, reply or "Hey! Got your message 🙏")
             except Exception as e:
                 print(f"[WA] Agent error: {e}")
                 self._send_reply(from_phone, "Hey! Got your message. Try again shortly 🙏")

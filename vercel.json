@@ -2,31 +2,49 @@
   "version": 2,
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
+  "installCommand": "cd frontend && npm install",
   "rewrites": [
-    { "source": "/api/cron/check-reminders", "destination": "/api/cron/check-reminders.py" },
-    { "source": "/api/whatsapp", "destination": "/api/whatsapp.py" },
-    { "source": "/api/(.*)", "destination": "/api/index.py" },
-    { "source": "/((?!api|assets).*)", "destination": "/index.html" }
+    { "source": "/api/webhook", "destination": "/frontend/api/webhook.js" },
+    { "source": "/api/cron/check-reminders", "destination": "/frontend/api/cron/check-reminders.js" },
+    { "source": "/api/cron/daily-report", "destination": "/frontend/api/cron/daily-report.js" },
+    { "source": "/((?!api|assets|\\.well-known).*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/.well-known/assetlinks.json",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
+      ]
+    }
   ],
   "functions": {
-    "api/index.py": {
-      "runtime": "@vercel/python@4.0.0",
-      "maxDuration": 30
-    },
-    "api/cron/check-reminders.py": {
+    "frontend/api/webhook.js": {
       "maxDuration": 60
     },
-    "api/whatsapp.py": {
+    "frontend/api/cron/check-reminders.js": {
+      "maxDuration": 30
+    },
+    "frontend/api/cron/daily-report.js": {
       "maxDuration": 30
     }
   },
   "crons": [
     {
       "path": "/api/cron/check-reminders",
-      "schedule": "0 2,15 * * *"
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/daily-report",
+      "schedule": "30 14 * * *"
     }
-  ],
-  "env": {
-    "OPENAI_API_KEY": "@openai-api-key"
-  }
+  ]
 }
