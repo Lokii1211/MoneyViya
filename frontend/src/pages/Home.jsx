@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useCountUp, getCurrentFestival, formatINR, getGreeting, getGreetingEmoji } from '../lib/utils'
-import { TrendingUp, TrendingDown, Plus, Flame, Target, Wallet, BarChart3, Zap, PiggyBank, Users, Heart, ArrowUpRight, Sparkles, Bell, MessageCircle, Mic, ClipboardList, AlertTriangle, Activity, Droplets, Moon, CreditCard } from 'lucide-react'
+import { TrendingUp, TrendingDown, Plus, Flame, Target, Wallet, BarChart3, Zap, PiggyBank, Users, Heart, ArrowUpRight, Sparkles, Bell, MessageCircle, ClipboardList, AlertTriangle, Activity, Droplets, Moon, CreditCard } from 'lucide-react'
 
 const BRIEF_ITEMS_POOL = {
   morning: [
@@ -44,7 +44,7 @@ export default function Home() {
   const [habits, setHabits] = useState([])
   const [checkins, setCheckins] = useState([])
   const [goals, setGoals] = useState([])
-  const [fabOpen, setFabOpen] = useState(false)
+
   const nav = useNavigate()
   const period = getPeriod()
   const festival = getCurrentFestival()
@@ -102,11 +102,6 @@ export default function Home() {
     { icon: <BarChart3 size={18}/>, label: 'Report', to: '/report', color: 'var(--viya-primary-400)' },
   ]
 
-  const fabActions = [
-    { icon: <Plus size={18}/>, label: 'Expense', to: '/expenses', angle: 225 },
-    { icon: <ClipboardList size={18}/>, label: 'Task', to: '/reminders', angle: 270 },
-    { icon: <Bell size={18}/>, label: 'Remind', to: '/reminders', angle: 315 },
-  ]
 
   return (
     <div className="page" style={{ paddingTop: 8 }}>
@@ -352,41 +347,34 @@ export default function Home() {
         )}
       </div>
 
-      {/* ═══ FAB with Radial Menu ═══ */}
-      {fabOpen && <div onClick={() => setFabOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', zIndex: 140, animation: 'fadeIn 0.2s ease' }} />}
-      {fabOpen && fabActions.map((a, i) => {
-        const rad = (a.angle * Math.PI) / 180
-        const dist = 80
-        const x = Math.cos(rad) * dist
-        const y = Math.sin(rad) * dist
-        return (
-          <div key={i} onClick={() => { setFabOpen(false); nav(a.to) }} style={{
-            position: 'fixed', bottom: `calc(var(--nav-height) + var(--safe-bottom) + 40px + ${-y}px)`,
-            right: `calc(50% - 195px + ${-x}px)`, zIndex: 152,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer',
-            animation: `scaleIn 0.2s var(--ease-spring) ${i * 0.05}s backwards`,
-          }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: '50%', background: 'var(--bg-card)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: 'var(--shadow-3)', color: 'var(--viya-primary-500)',
-            }}>{a.icon}</div>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'white' }}>{a.label}</span>
-          </div>
-        )
-      })}
-      <button onClick={() => setFabOpen(!fabOpen)} style={{
-        position: 'fixed', bottom: 'calc(var(--nav-height) + var(--safe-bottom) + 20px)', right: 'calc(50% - 195px)',
-        width: 60, height: 60, borderRadius: '50%', background: fabOpen ? 'var(--viya-error)' : 'var(--gradient-primary)',
-        color: '#fff', fontSize: 24, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        boxShadow: fabOpen ? '0 8px 24px rgba(255,59,48,0.4)' : 'var(--shadow-teal)', zIndex: 151,
-        transition: 'transform 0.2s, background 0.3s',
-        transform: fabOpen ? 'rotate(45deg)' : 'scale(1)',
-        animation: fabOpen ? 'none' : 'fabBreathe 3s ease-in-out infinite',
-        border: 'none', cursor: 'pointer',
-      }}>
-        <Mic size={24} />
-      </button>
+      {/* ═══ Quick Add Bar (inline, scrollable) ═══ */}
+      <div style={{ marginBottom: 24 }}>
+        <div className="title-m" style={{ marginBottom: 10, fontSize: 15 }}>⚡ Quick Add</div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {[
+            { icon: <Plus size={18}/>, label: 'Expense', to: '/expenses', bg: 'var(--gradient-primary)', color: 'white' },
+            { icon: <ClipboardList size={18}/>, label: 'Task', to: '/reminders', bg: 'var(--bg-card)', color: 'var(--viya-violet-500)' },
+            { icon: <Bell size={18}/>, label: 'Reminder', to: '/reminders', bg: 'var(--bg-card)', color: 'var(--viya-gold-500)' },
+            { icon: <Activity size={18}/>, label: 'Health Log', to: '/health', bg: 'var(--bg-card)', color: '#FF6B6B' },
+          ].map((a, i) => (
+            <button key={i} onClick={() => nav(a.to)} style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+              padding: '14px 8px', borderRadius: 'var(--radius-lg)',
+              background: a.bg, color: a.color,
+              border: i === 0 ? 'none' : '1px solid var(--border-light)',
+              boxShadow: i === 0 ? 'var(--shadow-teal)' : 'var(--shadow-1)',
+              cursor: 'pointer', transition: 'transform 0.1s',
+            }}>
+              {a.icon}
+              <span style={{ fontSize: 11, fontWeight: 600 }}>{a.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Bottom spacing for nav bar */}
+      <div style={{ height: 20 }} />
     </div>
   )
 }
+
