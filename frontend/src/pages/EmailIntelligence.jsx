@@ -28,6 +28,21 @@ export default function EmailIntelligence() {
   const [emails, setEmails] = useState([])
   const [loading, setLoading] = useState(true)
   const [connected, setConnected] = useState(false)
+  const [connectedEmail, setConnectedEmail] = useState('')
+
+  // Check URL params for OAuth callback result
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('connected') === 'true') {
+      setConnected(true)
+      setConnectedEmail(params.get('email') || '')
+      // Clean URL
+      window.history.replaceState({}, '', '/email')
+    }
+    if (params.get('error')) {
+      console.error('Gmail OAuth error:', params.get('error'))
+    }
+  }, [])
 
   const loadData = useCallback(async () => {
     if (!phone) return
@@ -43,6 +58,11 @@ export default function EmailIntelligence() {
   }, [phone])
 
   useEffect(() => { loadData() }, [loadData])
+
+  const handleConnectGmail = () => {
+    // Redirect to real OAuth flow
+    window.location.href = `/api/auth/gmail?phone=${encodeURIComponent(phone)}`
+  }
 
   const handleMarkRead = async (email) => {
     await api.markEmailRead(email.id)
@@ -81,7 +101,7 @@ export default function EmailIntelligence() {
             Viya will scan your emails to auto-detect bills, meetings, deliveries, and investments — so you never miss anything.
           </p>
 
-          <button onClick={() => setConnected(true)} style={{
+          <button onClick={handleConnectGmail} style={{
             width: '100%', maxWidth: 320, padding: '16px 24px', borderRadius: 'var(--radius-full)',
             background: 'var(--gradient-primary)', color: 'white', border: 'none',
             fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: 'var(--shadow-teal)',
@@ -89,21 +109,42 @@ export default function EmailIntelligence() {
           }}>
             <Mail size={18}/> Connect Gmail
           </button>
-          <button onClick={() => setConnected(true)} style={{
-            width: '100%', maxWidth: 320, padding: '16px 24px', borderRadius: 'var(--radius-full)',
-            background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1.5px solid var(--border-color)',
-            fontSize: 16, fontWeight: 600, cursor: 'pointer', margin: '0 auto 24px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          }}>
-            <Mail size={18}/> Connect Outlook
-          </button>
+          <p className="body-s text-tertiary" style={{ textAlign: 'center', marginBottom: 24, maxWidth: 300, margin: '0 auto 24px' }}>
+            🔒 Read-only access · We never send or modify your emails
+          </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left', maxWidth: 300, margin: '0 auto' }}>
-            {['Auto-detect bills & due dates', 'Extract meeting invites', 'Track deliveries in real-time', 'Spot investment transactions'].map((f, i) => (
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>What Viya can see:</div>
+            {[
+              { icon: '✅', text: 'Read email subjects & senders' },
+              { icon: '✅', text: 'Read email snippets (first 2 lines)' },
+              { icon: '✅', text: 'See email labels (inbox, sent)' },
+            ].map((f, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)' }}>
-                <CheckCircle size={16} color="var(--viya-success)"/> {f}
+                <span>{f.icon}</span> {f.text}
               </div>
             ))}
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginTop: 8, marginBottom: 4 }}>What Viya CANNOT do:</div>
+            {[
+              { icon: '🚫', text: 'Send emails on your behalf' },
+              { icon: '🚫', text: 'Delete or modify any email' },
+              { icon: '🚫', text: 'Access attachments or passwords' },
+            ].map((f, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)' }}>
+                <span>{f.icon}</span> {f.text}
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginTop: 24, textAlign: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 300, margin: '0 auto' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>🧠 What AI detects from your emails:</div>
+              {['Auto-detect bills & due dates 💳', 'Extract meeting invites 📅', 'Track deliveries in real-time 📦', 'Spot investment transactions 📈'].map((f, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)' }}>
+                  <CheckCircle size={16} color="var(--viya-success)"/> {f}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
