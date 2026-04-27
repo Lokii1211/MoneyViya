@@ -60,8 +60,37 @@ export default function EmailIntelligence() {
   useEffect(() => { loadData() }, [loadData])
 
   const handleConnectGmail = () => {
-    // Redirect to real OAuth flow
-    window.location.href = `/api/auth/gmail?phone=${encodeURIComponent(phone)}`
+    // Open OAuth in popup instead of redirect (feels more native)
+    const width = 500, height = 600
+    const left = (window.innerWidth - width) / 2 + window.screenX
+    const top = (window.innerHeight - height) / 2 + window.screenY
+    const popup = window.open(
+      `/api/auth/gmail?phone=${encodeURIComponent(phone)}`,
+      'gmail_oauth',
+      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`
+    )
+
+    // Poll for popup close (callback redirects back to /email)
+    const pollTimer = setInterval(() => {
+      try {
+        if (!popup || popup.closed) {
+          clearInterval(pollTimer)
+          // Reload data after popup closes
+          setTimeout(() => loadData(), 1000)
+        }
+        // Check if popup landed on our callback
+        if (popup?.location?.href?.includes('/email')) {
+          const url = new URL(popup.location.href)
+          if (url.searchParams.get('connected') === 'true') {
+            setConnected(true)
+            setConnectedEmail(url.searchParams.get('email') || '')
+            popup.close()
+            clearInterval(pollTimer)
+            loadData()
+          }
+        }
+      } catch (e) { /* cross-origin - ignore */ }
+    }, 500)
   }
 
   const handleMarkRead = async (email) => {
@@ -83,7 +112,7 @@ export default function EmailIntelligence() {
     { id: 'insights', label: 'Insights' },
   ]
 
-  // Connect flow
+  // Connect flow — user-friendly native feel
   if (!connected && !loading) {
     return (
       <div className="page" style={{ paddingTop: 8 }}>
@@ -94,58 +123,89 @@ export default function EmailIntelligence() {
           </div>
         </div>
 
-        <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-          <div style={{ fontSize: 64, marginBottom: 16 }}>📧</div>
-          <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 8 }}>Connect Your Email</h2>
-          <p className="body-m text-secondary" style={{ marginBottom: 24, maxWidth: 280, margin: '0 auto 24px' }}>
-            Viya will scan your emails to auto-detect bills, meetings, deliveries, and investments — so you never miss anything.
+        {/* Hero Card */}
+        <div style={{
+          background: 'var(--gradient-night)', borderRadius: 'var(--radius-2xl)', padding: 28,
+          marginBottom: 20, color: 'white', textAlign: 'center',
+          boxShadow: '0 8px 32px rgba(13,0,32,0.4)',
+        }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>📧</div>
+          <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 20, marginBottom: 8 }}>
+            Let Viya Watch Your Inbox
+          </h2>
+          <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 20, lineHeight: 1.5 }}>
+            Viya reads your emails and auto-detects bills, meetings, deliveries & investments — so you never miss anything important.
           </p>
 
+          {/* Primary: Popup-based connect (native feel) */}
           <button onClick={handleConnectGmail} style={{
-            width: '100%', maxWidth: 320, padding: '16px 24px', borderRadius: 'var(--radius-full)',
-            background: 'var(--gradient-primary)', color: 'white', border: 'none',
-            fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: 'var(--shadow-teal)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, margin: '0 auto 12px',
+            width: '100%', maxWidth: 300, padding: '14px 24px', borderRadius: 'var(--radius-full)',
+            background: 'white', color: '#1a1a1a', border: 'none',
+            fontSize: 15, fontWeight: 700, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, margin: '0 auto 12px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
           }}>
-            <Mail size={18}/> Connect Gmail
+            <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+            Continue with Google
           </button>
-          <p className="body-s text-tertiary" style={{ textAlign: 'center', marginBottom: 24, maxWidth: 300, margin: '0 auto 24px' }}>
-            🔒 Read-only access · We never send or modify your emails
+
+          <p style={{ fontSize: 11, opacity: 0.5, marginTop: 8 }}>
+            Opens a secure popup · Powered by Google OAuth 2.0
           </p>
+        </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left', maxWidth: 300, margin: '0 auto' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>What Viya can see:</div>
-            {[
-              { icon: '✅', text: 'Read email subjects & senders' },
-              { icon: '✅', text: 'Read email snippets (first 2 lines)' },
-              { icon: '✅', text: 'See email labels (inbox, sent)' },
-            ].map((f, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)' }}>
-                <span>{f.icon}</span> {f.text}
-              </div>
-            ))}
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginTop: 8, marginBottom: 4 }}>What Viya CANNOT do:</div>
-            {[
-              { icon: '🚫', text: 'Send emails on your behalf' },
-              { icon: '🚫', text: 'Delete or modify any email' },
-              { icon: '🚫', text: 'Access attachments or passwords' },
-            ].map((f, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)' }}>
-                <span>{f.icon}</span> {f.text}
-              </div>
-            ))}
-          </div>
-
-          <div style={{ marginTop: 24, textAlign: 'center' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 300, margin: '0 auto' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>🧠 What AI detects from your emails:</div>
-              {['Auto-detect bills & due dates 💳', 'Extract meeting invites 📅', 'Track deliveries in real-time 📦', 'Spot investment transactions 📈'].map((f, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)' }}>
-                  <CheckCircle size={16} color="var(--viya-success)"/> {f}
-                </div>
-              ))}
+        {/* Trust Indicators */}
+        <div className="card" style={{ padding: 20, marginBottom: 16, border: '1px solid var(--border-light)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: '#E8F5E9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🔒</div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>Your Privacy is Protected</div>
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Google-verified secure connection</div>
             </div>
           </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {[
+              { icon: '✅', text: 'Read-only access' },
+              { icon: '✅', text: 'No passwords stored' },
+              { icon: '🚫', text: "Can't send emails" },
+              { icon: '🚫', text: "Can't delete anything" },
+            ].map((f, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)' }}>
+                <span>{f.icon}</span> {f.text}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* What AI Detects */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>🧠 What Viya detects from your inbox:</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {[
+              { emoji: '💳', label: 'Bills & Due Dates', color: '#F44336' },
+              { emoji: '📅', label: 'Meeting Invites', color: '#2196F3' },
+              { emoji: '📦', label: 'Delivery Tracking', color: '#FF9800' },
+              { emoji: '📈', label: 'Investments', color: '#4CAF50' },
+            ].map((d, i) => (
+              <div key={i} style={{
+                padding: '12px 14px', borderRadius: 'var(--radius-lg)',
+                background: d.color + '10', border: `1px solid ${d.color}20`,
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span style={{ fontSize: 20 }}>{d.emoji}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: d.color }}>{d.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Disconnect anytime notice */}
+        <div style={{ textAlign: 'center', padding: '12px 0 20px' }}>
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+            You can disconnect anytime from Profile → Settings.
+            <br/>Viya never stores your email content permanently.
+          </p>
         </div>
       </div>
     )
