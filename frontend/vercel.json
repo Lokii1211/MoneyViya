@@ -39,6 +39,14 @@
     },
     "api/cron/daily-report.js": {
       "maxDuration": 30
+    },
+    "api/auth/gmail/index.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 15
+    },
+    "api/auth/gmail/callback.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 30
     }
   },
   "buildCommand": "npm run build",
