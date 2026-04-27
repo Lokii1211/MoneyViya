@@ -27,6 +27,18 @@
     }
   ],
   "functions": {
+    "api/whatsapp.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 60
+    },
+    "api/auth/gmail/index.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 15
+    },
+    "api/auth/gmail/callback.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 30
+    },
     "frontend/api/webhook.js": {
       "maxDuration": 60
     },
