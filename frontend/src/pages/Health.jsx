@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { formatINR } from '../lib/utils'
-import { Activity, Droplets, Moon, Footprints, Flame, Apple, Pill, Plus, TrendingUp, ChevronRight, Heart, Dumbbell, Brain } from 'lucide-react'
+import { Activity, Droplets, Moon, Footprints, Flame, Apple, Pill, Plus, TrendingUp, ChevronRight, Heart, Dumbbell, Brain, Camera, X } from 'lucide-react'
 
 const HEALTH_TIPS = [
   '💧 Drink water first thing in the morning — boosts metabolism 30%',
@@ -74,6 +74,8 @@ export default function Health() {
   const [tab, setTab] = useState('overview')
   const [timeRange, setTimeRange] = useState('today')
   const [mood, setMood] = useState(null)
+  const [foodScanOpen, setFoodScanOpen] = useState(false)
+  const [scanResult, setScanResult] = useState(null)
   const tip = HEALTH_TIPS[Math.floor(Date.now() / 3600000) % HEALTH_TIPS.length]
 
   const [healthData, setHealthData] = useState(DEFAULT_HEALTH)
@@ -186,9 +188,9 @@ export default function Health() {
             marginBottom: 16, display: 'flex', alignItems: 'center', gap: 20, color: 'white',
             boxShadow: '0 8px 24px rgba(255,107,107,0.3)',
           }}>
-            <CircleProgress value={score} max={100} size={100} stroke={8} color="white">
-              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 28, color: 'white' }}>{score}</div>
-              <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.8 }}>SCORE</div>
+            <CircleProgress value={score} max={100} size={160} stroke={12} color="white">
+              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 40, color: 'white' }}>{score}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.8, letterSpacing: 1 }}>SCORE</div>
             </CircleProgress>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, marginBottom: 4 }}>
@@ -312,10 +314,17 @@ export default function Health() {
           <div style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <span className="title-m" style={{ fontSize: 15 }}>Today's Meals</span>
-              <button onClick={() => nav('/chat?q=log+meal')} style={{
-                padding: '6px 12px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 600,
-                background: 'var(--viya-gold-100)', color: 'var(--viya-gold-500)', border: 'none', cursor: 'pointer',
-              }}>+ Log Meal</button>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => setFoodScanOpen(true)} style={{
+                  padding: '6px 12px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 600,
+                  background: 'var(--gradient-health)', color: 'white', border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}><Camera size={12} /> Scan Food</button>
+                <button onClick={() => nav('/chat?q=log+meal')} style={{
+                  padding: '6px 12px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 600,
+                  background: 'var(--viya-gold-100)', color: 'var(--viya-gold-500)', border: 'none', cursor: 'pointer',
+                }}>+ Log Meal</button>
+              </div>
             </div>
             {meals.length === 0 && (
               <div className="card" style={{ textAlign: 'center', padding: 24, color: 'var(--text-tertiary)' }}>
@@ -384,6 +393,125 @@ export default function Health() {
             })}
           </div>
         </>
+      )}
+
+      {/* ═══ FOOD SCANNER MODAL (PRD lines 1020-1035) ═══ */}
+      {foodScanOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 999,
+          background: '#000', display: 'flex', flexDirection: 'column',
+          animation: 'fadeIn 0.2s ease',
+        }}>
+          {/* Header */}
+          <div style={{
+            padding: '50px 20px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <div style={{ color: 'white', fontSize: 18, fontWeight: 700, fontFamily: "'Sora',sans-serif" }}>
+              📷 Food Scanner
+            </div>
+            <button onClick={() => { setFoodScanOpen(false); setScanResult(null) }} style={{
+              width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.15)',
+              border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}><X size={18} color="white" /></button>
+          </div>
+
+          {/* Camera Viewfinder */}
+          <div style={{
+            flex: 1, margin: '0 20px', borderRadius: 'var(--r-xl)', overflow: 'hidden',
+            background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+            position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {/* Scan Frame Corners */}
+            {[[0,0],[1,0],[0,1],[1,1]].map(([x,y], i) => (
+              <div key={i} style={{
+                position: 'absolute',
+                [y === 0 ? 'top' : 'bottom']: 24,
+                [x === 0 ? 'left' : 'right']: 24,
+                width: 40, height: 40,
+                borderTop: y === 0 ? '3px solid var(--teal-500)' : 'none',
+                borderBottom: y === 1 ? '3px solid var(--teal-500)' : 'none',
+                borderLeft: x === 0 ? '3px solid var(--teal-500)' : 'none',
+                borderRight: x === 1 ? '3px solid var(--teal-500)' : 'none',
+              }} />
+            ))}
+
+            {/* Scanning line animation */}
+            {!scanResult && (
+              <div style={{
+                position: 'absolute', left: 24, right: 24, height: 2,
+                background: 'linear-gradient(90deg, transparent, var(--teal-500), transparent)',
+                animation: 'scanLine 2s ease-in-out infinite',
+              }} />
+            )}
+
+            {!scanResult ? (
+              <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+                <Camera size={48} style={{ marginBottom: 12, opacity: 0.4 }} />
+                <div style={{ fontSize: 14 }}>Point camera at your food</div>
+                <div style={{ fontSize: 12, marginTop: 4 }}>AI will detect nutrition info</div>
+              </div>
+            ) : (
+              <div style={{
+                background: 'rgba(0,0,0,0.85)', borderRadius: 'var(--r-xl)', padding: 20,
+                margin: 16, width: 'calc(100% - 32px)',
+              }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'white', marginBottom: 12, textAlign: 'center' }}>
+                  🍛 Chicken Biryani
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+                  {[
+                    { label: 'Calories', val: '520 kcal', color: '#FF6B6B' },
+                    { label: 'Protein', val: '28g', color: '#00E5D4' },
+                    { label: 'Carbs', val: '62g', color: '#FFB800' },
+                    { label: 'Fat', val: '18g', color: '#0091FF' },
+                  ].map((n, i) => (
+                    <div key={i} style={{
+                      padding: '8px 12px', borderRadius: 'var(--r-md)',
+                      background: n.color + '15', textAlign: 'center',
+                    }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: n.color }}>{n.val}</div>
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{n.label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--teal-400)', textAlign: 'center', marginBottom: 12 }}>
+                  ✅ Fits your daily target · 1,680 kcal remaining
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => { setFoodScanOpen(false); setScanResult(null); nav('/chat?q=log+chicken+biryani+520+cal') }} style={{
+                    flex: 1, padding: '10px', borderRadius: 'var(--r-full)', fontSize: 13, fontWeight: 600,
+                    background: 'var(--gradient-health)', color: 'white', border: 'none', cursor: 'pointer',
+                  }}>Log This Meal</button>
+                  <button onClick={() => setScanResult(null)} style={{
+                    flex: 1, padding: '10px', borderRadius: 'var(--r-full)', fontSize: 13, fontWeight: 600,
+                    background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer',
+                  }}>Scan Again</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Controls */}
+          <div style={{ padding: '20px 20px 40px', display: 'flex', justifyContent: 'center' }}>
+            {!scanResult && (
+              <button onClick={() => setScanResult(true)} style={{
+                width: 72, height: 72, borderRadius: '50%',
+                background: 'var(--gradient-hero)', border: '4px solid rgba(255,255,255,0.3)',
+                cursor: 'pointer', boxShadow: '0 0 30px rgba(0,229,212,0.4)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Camera size={28} color="white" />
+              </button>
+            )}
+          </div>
+
+          <style>{`
+            @keyframes scanLine {
+              0%, 100% { top: 24px; }
+              50% { top: calc(100% - 24px); }
+            }
+          `}</style>
+        </div>
       )}
     </div>
   )

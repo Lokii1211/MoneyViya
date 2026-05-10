@@ -69,7 +69,7 @@ export default function Splash({ onComplete }) {
         color: 'rgba(255,255,255,0.6)', fontWeight: 400,
         opacity: phase >= 3 ? 1 : 0, transform: phase >= 3 ? 'translateY(0)' : 'translateY(8px)',
         transition: 'all 0.3s ease',
-      }}>AI Life & Wealth Partner</div>
+      }}>Your AI Second Brain</div>
 
       {/* Progress Bar */}
       <div style={{
@@ -89,7 +89,7 @@ export default function Splash({ onComplete }) {
         position: 'absolute', bottom: 36, fontSize: 10, fontWeight: 500,
         letterSpacing: 0.5, color: 'rgba(255,255,255,0.25)',
         opacity: phase >= 4 ? 1 : 0, transition: 'opacity 0.3s',
-      }}>Powered by AI</div>
+      }}>Powered by Gemini AI</div>
 
       <style>{`
         @keyframes pulseRing {

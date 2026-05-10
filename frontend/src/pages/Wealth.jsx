@@ -63,6 +63,8 @@ export default function Wealth() {
     { id: 'overview', label: 'Overview' },
     { id: 'holdings', label: 'Holdings' },
     { id: 'sip', label: 'SIPs' },
+    { id: 'goals', label: 'Goals' },
+    { id: 'tax', label: 'Tax' },
   ]
 
   return (
@@ -392,6 +394,130 @@ export default function Wealth() {
                 fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 8,
                 boxShadow: 'var(--shadow-teal)',
               }}>+ Start New SIP with AI Guidance</button>
+            </div>
+          )}
+
+          {/* Goals Tab (PRD lines 920-940) */}
+          {tab === 'goals' && (
+            <div style={{ marginBottom: 16 }}>
+              {/* Goal Cards */}
+              {[
+                { name: 'Emergency Fund', emoji: '🛡️', target: 300000, saved: 185000, color: '#00B0B6', deadline: 'Dec 2025' },
+                { name: 'New Laptop', emoji: '💻', target: 85000, saved: 42000, color: '#6B00FF', deadline: 'Aug 2025' },
+                { name: 'Goa Trip', emoji: '✈️', target: 40000, saved: 28000, color: '#FF9500', deadline: 'Jul 2025' },
+              ].map((g, i) => {
+                const pct = Math.round((g.saved / g.target) * 100)
+                return (
+                  <div key={i} style={{
+                    background: 'var(--bg-card)', borderRadius: 'var(--r-xl)', padding: 16,
+                    border: '1px solid var(--border-light)', marginBottom: 12,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 24 }}>{g.emoji}</span>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 700 }}>{g.name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Target: {g.deadline}</div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: g.color }}>{pct}%</div>
+                    </div>
+                    <div style={{ height: 8, borderRadius: 99, background: 'var(--viya-neutral-100)', overflow: 'hidden', marginBottom: 8 }}>
+                      <div style={{ width: `${pct}%`, height: '100%', borderRadius: 99, background: g.color, transition: 'width 0.6s ease' }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>₹{(g.saved / 1000).toFixed(0)}K saved</span>
+                      <span style={{ fontWeight: 600 }}>₹{(g.target / 1000).toFixed(0)}K goal</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                      <button onClick={() => nav(`/chat?q=add+money+to+${encodeURIComponent(g.name)}`)} style={{
+                        padding: '6px 14px', borderRadius: 'var(--r-full)', fontSize: 12, fontWeight: 600,
+                        background: g.color, color: 'white', border: 'none', cursor: 'pointer',
+                      }}>+ Add Money</button>
+                      <button style={{
+                        padding: '6px 14px', borderRadius: 'var(--r-full)', fontSize: 12, fontWeight: 600,
+                        background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)', cursor: 'pointer',
+                      }}>Edit Goal</button>
+                    </div>
+                  </div>
+                )
+              })}
+              <button onClick={() => nav('/chat?q=create+new+savings+goal')} style={{
+                width: '100%', padding: 14, borderRadius: 'var(--r-lg)',
+                background: 'var(--gradient-primary)', color: 'white', border: 'none',
+                fontSize: 15, fontWeight: 600, cursor: 'pointer', boxShadow: 'var(--shadow-teal)',
+              }}>+ Create New Goal</button>
+            </div>
+          )}
+
+          {/* Tax Tab (PRD lines 941-965) */}
+          {tab === 'tax' && (
+            <div style={{ marginBottom: 16 }}>
+              {/* 80C Tracker */}
+              <div style={{
+                background: 'var(--bg-card)', borderRadius: 'var(--r-xl)', padding: 20,
+                border: '1px solid var(--border-light)', marginBottom: 16,
+              }}>
+                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Section 80C Tracker</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>FY 2024–25 · Limit: ₹1,50,000</div>
+                <div style={{ height: 12, borderRadius: 99, background: 'var(--viya-neutral-100)', overflow: 'hidden', marginBottom: 12, display: 'flex' }}>
+                  <div style={{ width: '40%', height: '100%', background: '#4CAF50' }} />
+                  <div style={{ width: '20%', height: '100%', background: '#FF9800' }} />
+                  <div style={{ width: '10%', height: '100%', background: '#9C27B0' }} />
+                </div>
+                {[
+                  { section: 'ELSS (Mutual Funds)', amt: 60000, color: '#4CAF50' },
+                  { section: 'PPF', amt: 30000, color: '#FF9800' },
+                  { section: 'LIC Premium', amt: 15000, color: '#9C27B0' },
+                ].map((s, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: i < 2 ? '1px solid var(--border-light)' : 'none' }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: s.color }} />
+                    <span style={{ flex: 1, fontSize: 13 }}>{s.section}</span>
+                    <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, fontSize: 13 }}>₹{(s.amt / 1000).toFixed(0)}K</span>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, padding: '8px 0', borderTop: '1px solid var(--border-light)' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>Used: ₹1,05,000</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--emerald-500)' }}>₹45,000 remaining</span>
+                </div>
+              </div>
+
+              {/* Tax Estimate */}
+              <div style={{
+                background: 'var(--cosmos-50)', borderRadius: 'var(--r-lg)', padding: 16,
+                border: '1.5px solid var(--cosmos-100)', marginBottom: 16,
+              }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--cosmos-600)', marginBottom: 6 }}>💡 Tax Saving Tip</div>
+                <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: 8 }}>
+                  Invest ₹45,000 more in ELSS before March to save ~₹14,040 in tax (30% bracket).
+                </div>
+                <button onClick={() => nav('/chat?q=best+ELSS+funds+for+tax+saving')} style={{
+                  padding: '6px 16px', borderRadius: 'var(--r-full)', fontSize: 12, fontWeight: 600,
+                  background: 'var(--cosmos-400)', color: 'white', border: 'none', cursor: 'pointer',
+                }}>Show ELSS Options →</button>
+              </div>
+
+              {/* Other Sections */}
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Other Deductions</div>
+              {[
+                { section: '80D (Health Insurance)', limit: '₹25,000', used: '₹18,500', pct: 74, color: '#FF6B6B' },
+                { section: '80E (Education Loan)', limit: 'No limit', used: '₹48,000', pct: 100, color: '#0091FF' },
+                { section: 'HRA Exemption', limit: '₹2,40,000', used: '₹2,40,000', pct: 100, color: '#4CAF50' },
+              ].map((s, i) => (
+                <div key={i} style={{
+                  background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 14,
+                  border: '1px solid var(--border-light)', marginBottom: 8,
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>{s.section}</span>
+                    <span style={{ fontSize: 12, color: s.color, fontWeight: 600 }}>{s.used}</span>
+                  </div>
+                  <div style={{ height: 4, borderRadius: 99, background: 'var(--viya-neutral-100)', overflow: 'hidden' }}>
+                    <div style={{ width: `${s.pct}%`, height: '100%', borderRadius: 99, background: s.color }} />
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>Limit: {s.limit}</div>
+                </div>
+              ))}
             </div>
           )}
         </>
