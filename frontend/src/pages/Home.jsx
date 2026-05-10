@@ -44,6 +44,8 @@ export default function Home() {
   const [habits, setHabits] = useState([])
   const [checkins, setCheckins] = useState([])
   const [goals, setGoals] = useState([])
+  const [bills, setBills] = useState([])
+  const [fabOpen, setFabOpen] = useState(false)
 
   const nav = useNavigate()
   const period = getPeriod()
@@ -55,6 +57,7 @@ export default function Home() {
       api.getHabits(phone).then(h => { if (h) setHabits(h) })
       api.getCheckins(phone).then(c => { if (c) setCheckins(c) })
       api.getGoals(phone).then(g => { if (g) setGoals(g) })
+      api.getBills(phone).then(b => { if (b) setBills(b) })
     }
   }, [phone])
 
@@ -430,13 +433,116 @@ export default function Home() {
       </div>
 
       {/* ═══ FAB — Talk to Viya ═══ */}
-      <div onClick={() => nav('/chat')} className="fab" aria-label="Talk to Viya">
-        <img src="/logo.png" alt="Viya" style={{ width: 30, height: 30, objectFit: 'contain' }} />
+      {/* EMAIL ACTION STRIP (PRD lines 581-608) */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <span className="title-m" style={{ fontSize: 15, color: 'var(--coral-500)' }}>📧 Needs Attention</span>
+          <button onClick={() => nav('/email')} style={{ fontSize: 12, fontWeight: 600, color: 'var(--viya-primary-500)', background: 'none', border: 'none', cursor: 'pointer' }}>View All →</button>
+        </div>
+        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
+          {[
+            { icon: '🔴', title: 'Credit Card Due', sub: 'Check your bills section', border: 'var(--coral-500)', actions: ['Pay Now', 'Remind'] },
+            { icon: '📅', title: 'Upcoming Meetings', sub: 'Check calendar for details', border: 'var(--info-500)', actions: ['View', 'Dismiss'] },
+            { icon: '📦', title: 'Package Updates', sub: 'Track your deliveries', border: 'var(--cosmos-400)', actions: ['Track', 'Alert'] },
+          ].map((c, i) => (
+            <div key={i} onClick={() => nav('/email')} style={{
+              minWidth: 260, padding: 14, borderRadius: 'var(--r-xl)', background: 'var(--bg-card)',
+              border: '1px solid var(--border-light)', borderLeft: `4px solid ${c.border}`,
+              boxShadow: 'var(--sh-2)', cursor: 'pointer',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <span>{c.icon}</span>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{c.title}</span>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>{c.sub}</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {c.actions.map((a, j) => (
+                  <button key={j} style={{
+                    padding: '4px 12px', borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 600,
+                    background: j === 0 ? c.border : 'var(--bg-secondary)',
+                    color: j === 0 ? 'white' : 'var(--text-secondary)', border: 'none', cursor: 'pointer',
+                  }}>{a}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Bottom spacing for nav bar */}
+      {/* BILLS DUE STRIP (PRD lines 666-673) */}
+      {bills.filter(b => b.status !== 'paid').length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span className="title-m" style={{ fontSize: 15 }}>🧾 Upcoming Bills</span>
+            <button onClick={() => nav('/bills')} style={{ fontSize: 12, fontWeight: 600, color: 'var(--viya-primary-500)', background: 'none', border: 'none', cursor: 'pointer' }}>All Bills →</button>
+          </div>
+          {bills.filter(b => b.status !== 'paid').slice(0, 4).map((b, i) => {
+            const daysLeft = b.due_date ? Math.ceil((new Date(b.due_date) - Date.now()) / 86400000) : 99
+            const dotColor = daysLeft <= 1 ? 'var(--coral-500)' : daysLeft <= 3 ? 'var(--amber-500)' : 'var(--emerald-500)'
+            return (
+              <div key={b.id || i} onClick={() => nav('/bills')} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0',
+                borderBottom: i < 3 ? '1px solid var(--border-light)' : 'none', cursor: 'pointer',
+              }}>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>{b.name}</div>
+                  <div className="body-s text-secondary">{b.due_date ? new Date(b.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'No date'}</div>
+                </div>
+                <div className="num-s" style={{ fontWeight: 600, color: dotColor }}>{formatINR(b.amount)}</div>
+                {daysLeft <= 1 && <button style={{ padding: '4px 10px', borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 600, background: 'var(--coral-500)', color: 'white', border: 'none' }}>Pay Now</button>}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* FAB with Radial Menu (PRD lines 674-693) */}
+      {fabOpen && <div onClick={() => setFabOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', zIndex: 140 }} />}
+      <div style={{ position: 'fixed', bottom: 'calc(var(--nav-height) + var(--safe-bottom) + 20px)', right: 'calc(50% - 195px)', zIndex: 160 }}>
+        {fabOpen && [
+          { emoji: '🎤', label: 'Voice', to: '/chat', angle: -90 },
+          { emoji: '➕', label: 'Expense', to: '/expenses', angle: -144 },
+          { emoji: '🔔', label: 'Remind', to: '/reminders', angle: -198 },
+          { emoji: '✅', label: 'Task', to: '/reminders', angle: -252 },
+          { emoji: '📝', label: 'Note', to: '/chat', angle: -306 },
+          { emoji: '📸', label: 'Scan', to: '/chat?q=scan', angle: -360 },
+        ].map((item, i) => {
+          const rad = (item.angle * Math.PI) / 180
+          const x = Math.cos(rad) * 80, y = Math.sin(rad) * 80
+          return (
+            <div key={i} onClick={() => { setFabOpen(false); nav(item.to) }} style={{
+              position: 'absolute', bottom: 30 - y, left: 30 + x - 25,
+              width: 50, height: 50, borderRadius: '50%', background: 'var(--bg-card)',
+              boxShadow: 'var(--sh-3)', display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+              animation: `scaleIn 0.2s var(--ease-spring) ${i * 40}ms both`,
+            }}>
+              <span style={{ fontSize: 18 }}>{item.emoji}</span>
+              <span style={{ fontSize: 8, fontWeight: 600, color: 'var(--text-secondary)' }}>{item.label}</span>
+            </div>
+          )
+        })}
+        <div
+          onClick={() => { if (!fabOpen) nav('/chat') }}
+          onContextMenu={(e) => { e.preventDefault(); setFabOpen(!fabOpen) }}
+          onTouchStart={() => { const t = setTimeout(() => setFabOpen(true), 400); window._fabTimer = t }}
+          onTouchEnd={() => clearTimeout(window._fabTimer)}
+          style={{
+            width: 60, height: 60, borderRadius: 'var(--r-full)',
+            background: fabOpen ? 'var(--coral-500)' : 'var(--gradient-hero)',
+            color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: 'var(--sh-teal)', cursor: 'pointer', transition: 'transform 0.15s, background 0.2s',
+            transform: fabOpen ? 'rotate(45deg)' : 'scale(1)',
+            animation: fabOpen ? 'none' : 'fabBreathe 4s ease-in-out infinite',
+          }}
+          aria-label="Talk to Viya"
+        >
+          {fabOpen ? <Plus size={26} /> : <img src="/logo.png" alt="Viya" style={{ width: 30, height: 30, objectFit: 'contain' }} />}
+        </div>
+      </div>
+
       <div style={{ height: 20 }} />
     </div>
   )
 }
-

@@ -72,6 +72,8 @@ export default function Health() {
   const { phone } = useApp()
   const nav = useNavigate()
   const [tab, setTab] = useState('overview')
+  const [timeRange, setTimeRange] = useState('today')
+  const [mood, setMood] = useState(null)
   const tip = HEALTH_TIPS[Math.floor(Date.now() / 3600000) % HEALTH_TIPS.length]
 
   const [healthData, setHealthData] = useState(DEFAULT_HEALTH)
@@ -160,6 +162,22 @@ export default function Health() {
         ))}
       </div>
 
+      {/* Time Range Tabs (PRD line 957) */}
+      {tab === 'overview' && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16, justifyContent: 'center' }}>
+          {['today', 'week', 'month'].map(t => (
+            <button key={t} onClick={() => setTimeRange(t)} style={{
+              padding: '6px 18px', borderRadius: 'var(--r-full)', fontSize: 12, fontWeight: 600,
+              background: timeRange === t ? 'var(--gradient-health)' : 'transparent',
+              color: timeRange === t ? 'white' : 'var(--text-secondary)',
+              border: timeRange === t ? 'none' : '1px solid var(--border-light)',
+              cursor: 'pointer', transition: 'all 0.2s',
+              boxShadow: timeRange === t ? '0 4px 12px rgba(255,107,107,0.25)' : 'none',
+            }}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>
+          ))}
+        </div>
+      )}
+
       {tab === 'overview' && (
         <>
           {/* Health Score Circle */}
@@ -222,6 +240,45 @@ export default function Health() {
               </button>
             ))}
           </div>
+
+          {/* Mood Log (PRD lines 1016-1019 — Evening 6-9 PM) */}
+          {(() => {
+            const hr = new Date().getHours()
+            const isEvening = hr >= 18 && hr <= 21
+            return (
+              <div style={{
+                background: 'var(--bg-card)', borderRadius: 'var(--r-xl)', padding: 16,
+                border: '1px solid var(--border-light)', marginBottom: 16,
+                opacity: isEvening ? 1 : 0.6,
+              }}>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>
+                  {isEvening ? 'How are you feeling tonight?' : '🌙 Mood check available 6–9 PM'}
+                </div>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                  {[
+                    { emoji: '😄', label: 'Great' },
+                    { emoji: '😊', label: 'Good' },
+                    { emoji: '😐', label: 'Okay' },
+                    { emoji: '😟', label: 'Low' },
+                    { emoji: '😔', label: 'Sad' },
+                    { emoji: '😡', label: 'Angry' },
+                  ].map(m => (
+                    <button key={m.emoji} onClick={() => setMood(m.emoji)} style={{
+                      fontSize: 28, background: mood === m.emoji ? 'var(--teal-50)' : 'none',
+                      border: mood === m.emoji ? '2px solid var(--teal-500)' : '2px solid transparent',
+                      borderRadius: 'var(--r-md)', padding: '6px 4px', cursor: 'pointer',
+                      transition: 'all 0.15s', transform: mood === m.emoji ? 'scale(1.15)' : 'scale(1)',
+                    }}>{m.emoji}</button>
+                  ))}
+                </div>
+                {mood && (
+                  <div style={{ textAlign: 'center', marginTop: 8, fontSize: 12, color: 'var(--emerald-500)', fontWeight: 600 }}>
+                    Mood logged: {mood} ✓
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </>
       )}
 

@@ -180,6 +180,124 @@ export default function Wealth() {
                   <div style={{ fontSize: 12, color: 'var(--viya-gold-500)', marginTop: 2 }}>Total assets</div>
                 </div>
               </div>
+
+              {/* Time Range Tabs (PRD line 895) */}
+              <div style={{ display: 'flex', gap: 4, marginBottom: 16, justifyContent: 'center' }}>
+                {['30D', '3M', '6M', '1Y', 'ALL'].map(r => (
+                  <button key={r} style={{
+                    padding: '5px 14px', borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 600,
+                    background: r === '30D' ? 'var(--gradient-wealth)' : 'transparent',
+                    color: r === '30D' ? 'white' : 'var(--text-secondary)',
+                    border: r === '30D' ? 'none' : '1px solid var(--border-light)',
+                    cursor: 'pointer',
+                  }}>{r}</button>
+                ))}
+              </div>
+
+              {/* Spending Donut Chart (PRD lines 900-904) */}
+              <div style={{
+                background: 'var(--bg-card)', borderRadius: 'var(--r-xl)', padding: 20,
+                border: '1px solid var(--border-light)', marginBottom: 16, boxShadow: 'var(--sh-3)',
+              }}>
+                <div className="title-m" style={{ fontSize: 15, marginBottom: 14 }}>Spending Breakdown</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                  {/* SVG Donut */}
+                  <div style={{ position: 'relative', width: 140, height: 140, flexShrink: 0 }}>
+                    <svg width={140} height={140} viewBox="0 0 140 140">
+                      {(() => {
+                        const cats = [
+                          { label: 'Food', pct: 28, color: '#FF5722' },
+                          { label: 'Transport', pct: 18, color: '#0091FF' },
+                          { label: 'Shopping', pct: 22, color: '#9C27B0' },
+                          { label: 'Bills', pct: 20, color: '#FF5252' },
+                          { label: 'Other', pct: 12, color: '#808080' },
+                        ]
+                        const r = 55, cx = 70, cy = 70, circ = 2 * Math.PI * r
+                        let offset = 0
+                        return cats.map((c, i) => {
+                          const dash = (c.pct / 100) * circ
+                          const el = (
+                            <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={c.color} strokeWidth={22}
+                              strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset={-offset}
+                              style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%', transition: 'all 0.6s ease' }} />
+                          )
+                          offset += dash
+                          return el
+                        })
+                      })()}
+                    </svg>
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 16 }}>₹14,320</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>spent</div>
+                    </div>
+                  </div>
+                  {/* Legend */}
+                  <div style={{ flex: 1 }}>
+                    {[
+                      { label: 'Food', pct: 28, amt: '₹4,010', color: '#FF5722' },
+                      { label: 'Transport', pct: 18, amt: '₹2,578', color: '#0091FF' },
+                      { label: 'Shopping', pct: 22, amt: '₹3,150', color: '#9C27B0' },
+                      { label: 'Bills', pct: 20, amt: '₹2,864', color: '#FF5252' },
+                      { label: 'Other', pct: 12, amt: '₹1,718', color: '#808080' },
+                    ].map((c, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: c.color }} />
+                        <span style={{ fontSize: 12, flex: 1 }}>{c.label}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>{c.pct}%</span>
+                      </div>
+                    ))}
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--emerald-500)', marginTop: 6 }}>₹10,680 remaining</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Upcoming Events Timeline (PRD lines 906-913) */}
+              <div style={{
+                background: 'var(--bg-card)', borderRadius: 'var(--r-xl)', padding: 16,
+                border: '1px solid var(--border-light)', marginBottom: 16,
+              }}>
+                <div className="title-m" style={{ fontSize: 15, marginBottom: 12 }}>📅 Upcoming</div>
+                {[
+                  { date: 'Jun 14', icon: '🔴', text: 'Credit Card Due', amt: '₹12,400', action: 'Pay Now', color: 'var(--coral-500)' },
+                  { date: 'Jun 15', icon: '💰', text: 'SIP Deduction', amt: '₹10,000', action: 'Auto', color: 'var(--emerald-500)' },
+                  { date: 'Jun 24', icon: '📱', text: 'Jio Recharge', amt: '₹479', action: 'Recharge', color: 'var(--info-500)' },
+                  { date: 'Jul 5', icon: '🏦', text: 'Home Loan EMI', amt: '₹22,000', action: 'Auto-debit', color: 'var(--amber-500)' },
+                ].map((e, i) => (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
+                    borderBottom: i < 3 ? '1px solid var(--border-light)' : 'none',
+                  }}>
+                    <div style={{
+                      padding: '2px 8px', borderRadius: 'var(--r-xs)', fontSize: 10, fontWeight: 700,
+                      background: e.color + '15', color: e.color, whiteSpace: 'nowrap',
+                    }}>{e.date}</div>
+                    <span style={{ fontSize: 16 }}>{e.icon}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{e.text}</div>
+                    </div>
+                    <div className="num-s" style={{ fontWeight: 600, fontSize: 13 }}>{e.amt}</div>
+                    <div style={{
+                      padding: '3px 8px', borderRadius: 'var(--r-full)', fontSize: 10, fontWeight: 600,
+                      background: e.color, color: 'white',
+                    }}>{e.action}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Viya Insight Box (PRD lines 915-919) */}
+              <div style={{
+                background: 'var(--cosmos-50)', borderRadius: 'var(--r-lg)', padding: 16,
+                border: '1.5px solid var(--cosmos-100)', marginBottom: 16,
+              }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--cosmos-600)', marginBottom: 6 }}>💡 Viya's Insight</div>
+                <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: 10 }}>
+                  Your food spending is 28% of total — that's ₹1,200 above last month. Consider meal-prepping on weekends to save ~₹3,000/month.
+                </div>
+                <button onClick={() => nav('/chat?q=reduce+food+spending')} style={{
+                  padding: '6px 16px', borderRadius: 'var(--r-full)', fontSize: 12, fontWeight: 600,
+                  background: 'none', color: 'var(--cosmos-500)', border: 'none', cursor: 'pointer',
+                }}>Act on this →</button>
+              </div>
             </>
           )}
 
