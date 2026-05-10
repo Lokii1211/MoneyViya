@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
+import { formatINR } from '../lib/utils'
 import { AlertTriangle } from 'lucide-react'
 
 const CAT_META = {
@@ -67,9 +68,9 @@ export default function Budget() {
           </div>
         </div>
         <div className="budget-meta">
-          <div className="bm-row"><span className="bm-label">Total Budget</span><span className="bm-val">₹{totalBudget.toLocaleString('en-IN')}</span></div>
-          <div className="bm-row"><span className="bm-label">Spent</span><span className="bm-val red">₹{totalSpent.toLocaleString('en-IN')}</span></div>
-          <div className="bm-row"><span className="bm-label">Remaining</span><span className={'bm-val ' + (remaining >= 0 ? 'green' : 'red')}>₹{remaining.toLocaleString('en-IN')}</span></div>
+          <div className="bm-row"><span className="bm-label">Total Budget</span><span className="bm-val">₹{totalBudget}</span></div>
+          <div className="bm-row"><span className="bm-label">Spent</span><span className="bm-val red">₹{totalSpent}</span></div>
+          <div className="bm-row"><span className="bm-label">Remaining</span><span className={'bm-val ' + (remaining >= 0 ? 'green' : 'red')}>₹{remaining}</span></div>
         </div>
       </div>
       {isOver && <div className="budget-alert"><AlertTriangle size={16} /> <span>You've used {pct}% of your budget!</span></div>}
@@ -85,7 +86,7 @@ export default function Budget() {
                 <span className="bc-emoji">{c.emoji}</span>
                 <div className="bc-info">
                   <div className="bc-name">{c.name}</div>
-                  <div className="bc-amounts">₹{c.spent.toLocaleString('en-IN')} / ₹{c.budget.toLocaleString('en-IN')}</div>
+                  <div className="bc-amounts">₹{c.spent} / ₹{c.budget}</div>
                 </div>
                 <div className={'bc-pct' + (catPct > 90 ? ' over' : '')}>{catPct}%</div>
               </div>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
+import { formatINR } from '../lib/utils'
 import { Globe, User, Briefcase, DollarSign, PiggyBank, Target, Shield, ChevronRight, ChevronLeft, Check, Sparkles, Smartphone, Bell, Plus } from 'lucide-react'
 
 const LANGUAGES = [
@@ -205,7 +206,7 @@ export default function Onboarding() {
           <div className="ob-amount-wrap"><span className="ob-currency">₹</span><input type="number" className="form-input ob-amount" placeholder="25000" value={form.income} onChange={e => set('income', e.target.value)} /></div>
           {monthlyIncome > 0 && (
             <div className="ob-insight">
-              <Sparkles size={14}/> 50-30-20 split: <strong>₹{Math.round(monthlyIncome*0.5).toLocaleString('en-IN')}</strong> needs, <strong>₹{Math.round(monthlyIncome*0.3).toLocaleString('en-IN')}</strong> wants, <strong>₹{Math.round(monthlyIncome*0.2).toLocaleString('en-IN')}</strong> savings
+              <Sparkles size={14}/> 50-30-20 split: <strong>₹{Math.round(monthlyIncome*0.5)}</strong> needs, <strong>₹{Math.round(monthlyIncome*0.3)}</strong> wants, <strong>₹{Math.round(monthlyIncome*0.2)}</strong> savings
             </div>
           )}
         </div>
@@ -217,7 +218,7 @@ export default function Onboarding() {
           <h2>Daily Budget</h2>
           <p className="ob-sub">How much can you spend per day?</p>
           <div className="ob-amount-wrap"><span className="ob-currency">₹</span><input type="number" className="form-input ob-amount" placeholder={suggestedBudget.toString()} value={form.daily_budget} onChange={e => set('daily_budget', e.target.value)} /></div>
-          {suggestedBudget > 0 && <p className="ob-hint">💡 Suggested: ₹{suggestedBudget.toLocaleString('en-IN')}/day based on your income</p>}
+          {suggestedBudget > 0 && <p className="ob-hint">💡 Suggested: ₹{suggestedBudget}/day based on your income</p>}
         </div>
       )}
 
@@ -292,8 +293,8 @@ export default function Onboarding() {
             <div className="ob-sum-row"><span>Name</span><span>{form.name || 'User'}</span></div>
             {form.city && <div className="ob-sum-row"><span>City</span><span>{form.city}</span></div>}
             <div className="ob-sum-row"><span>Type</span><span>{displayPersona}</span></div>
-            <div className="ob-sum-row"><span>Income</span><span>₹{Number(form.income || 0).toLocaleString('en-IN')}/mo</span></div>
-            <div className="ob-sum-row"><span>Budget</span><span>₹{Number(form.daily_budget || suggestedBudget).toLocaleString('en-IN')}/day</span></div>
+            <div className="ob-sum-row"><span>Income</span><span>₹{Number(form.income || 0)}/mo</span></div>
+            <div className="ob-sum-row"><span>Budget</span><span>₹{Number(form.daily_budget || suggestedBudget)}/day</span></div>
             <div className="ob-sum-row"><span>Goal</span><span>{displayGoal}</span></div>
             <div className="ob-sum-row"><span>Habits</span><span>{form.selectedHabits.length} selected</span></div>
           </div>

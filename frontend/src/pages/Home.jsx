@@ -82,7 +82,7 @@ export default function Home() {
   if (maxStreak > 0) briefItems.push({ icon: '🔥', text: `${maxStreak}-day streak going strong — don't break it!` })
   if (goals.length > 0) {
     const g = goals.find(g => g.current_amount < g.target_amount)
-    if (g) briefItems.push({ icon: '🎯', text: `${g.name}: ₹${Number(g.current_amount).toLocaleString('en-IN')} of ₹${Number(g.target_amount).toLocaleString('en-IN')}` })
+    if (g) briefItems.push({ icon: '🎯', text: `${g.name}: ₹${Number(g.current_amount)} of ₹${Number(g.target_amount)}` })
   }
   // Pad with period tips
   const poolItems = BRIEF_ITEMS_POOL[period]
@@ -258,7 +258,7 @@ export default function Home() {
                     <div className="progress-fill" style={{ width: pct + '%' }} />
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="body-s text-secondary">₹{Number(g.current_amount).toLocaleString('en-IN')} / ₹{Number(g.target_amount).toLocaleString('en-IN')}</span>
+                    <span className="body-s text-secondary">₹{Number(g.current_amount)} / ₹{Number(g.target_amount)}</span>
                     <span className="num-s" style={{ color: 'var(--viya-primary-500)', fontWeight: 700, fontSize: 13 }}>{pct}%</span>
                   </div>
                 </div>
@@ -336,7 +336,7 @@ export default function Home() {
               color: t.type === 'income' ? 'var(--viya-success)' : 'var(--viya-error)',
               fontWeight: 600,
             }}>
-              {t.type === 'income' ? '+' : '-'}₹{Number(t.amount).toLocaleString('en-IN')}
+              {t.type === 'income' ? '+' : '-'}₹{Number(t.amount)}
             </div>
           </div>
         ))}

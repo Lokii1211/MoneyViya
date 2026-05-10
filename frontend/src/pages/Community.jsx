@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
+import { formatINR } from '../lib/utils'
 import { ArrowLeft, Users, Trophy, Share2, Heart, MessageCircle, Crown, Flame, Target, Medal, Star, Award, Zap } from 'lucide-react'
 
 // Achievement Badges System
@@ -103,7 +104,7 @@ export default function Community() {
           <h2 style={{fontSize:20, fontWeight:800}}>Community</h2>
         </div>
         <div style={{display:'flex', gap:6}}>
-          <button onClick={() => shareAchievement(`saved ₹${totalSaved.toLocaleString('en-IN')} and built a ${maxStreak}-day streak!`)} className="btn-primary" style={{padding:'6px 12px', fontSize:12, borderRadius:8}}><Share2 size={14}/> Share</button>
+          <button onClick={() => shareAchievement(`saved ₹${totalSaved} and built a ${maxStreak}-day streak!`)} className="btn-primary" style={{padding:'6px 12px', fontSize:12, borderRadius:8}}><Share2 size={14}/> Share</button>
         </div>
       </div>
 
@@ -171,7 +172,7 @@ export default function Community() {
                 <div style={{fontSize:13, fontWeight:700}}>{l.name} {l.isMe && <span style={{fontSize:10, color:'var(--primary)', fontWeight:800}}>YOU</span>}</div>
                 <div style={{fontSize:10, color:'var(--text3)'}}>{l.city} · {l.streak}🔥 streak</div>
               </div>
-              <div style={{fontFamily:'var(--mono)', fontSize:14, fontWeight:800, color:'var(--primary)'}}>₹{l.saved.toLocaleString('en-IN')}</div>
+              <div style={{fontFamily:'var(--mono)', fontSize:14, fontWeight:800, color:'var(--primary)'}}>₹{l.saved}</div>
             </div>
           ))}
         </div>

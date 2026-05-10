@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
+import { formatINR } from '../lib/utils'
 import { Activity, Droplets, Moon, Footprints, Flame, Apple, Pill, Plus, TrendingUp, ChevronRight, Heart, Dumbbell, Brain } from 'lucide-react'
 
 const HEALTH_TIPS = [
@@ -49,7 +50,7 @@ function PillarCard({ icon, label, value, unit, target, color, onClick }) {
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</span>
       </div>
       <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, fontSize: 24, color: 'var(--text-primary)', marginBottom: 2 }}>
-        {value.toLocaleString('en-IN')}<span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)', marginLeft: 2 }}>{unit}</span>
+        {value}<span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)', marginLeft: 2 }}>{unit}</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
         <div style={{ flex: 1, height: 4, borderRadius: 99, background: 'var(--viya-neutral-100)', overflow: 'hidden' }}>

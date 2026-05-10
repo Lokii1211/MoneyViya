@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
+import { formatINR } from '../lib/utils'
 import { Plus, ArrowUpRight, ArrowDownLeft, Clock, Bell, Percent, User, Calendar, Check, X } from 'lucide-react'
 import PageTransition from '../components/PageTransition'
 

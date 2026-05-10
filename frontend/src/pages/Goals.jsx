@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
+import { formatINR } from '../lib/utils'
 import { Target, Plus, Trash2, TrendingUp, Trophy, Share2, Star } from 'lucide-react'
 
 const ICONS = ['🏍️','💻','🏠','✈️','📱','🎓','💍','🚗','👶','💊','💎','🎸','📷','🏋️','🎮']
@@ -65,7 +66,7 @@ export default function Goals() {
 
   const shareGoal = (g) => {
     const pct = g.target_amount > 0 ? Math.round((g.current_amount / g.target_amount) * 100) : 0
-    const text = `${g.icon} I've saved ₹${Number(g.current_amount).toLocaleString('en-IN')} towards my "${g.name}" goal (${pct}%)! 🎯\n\nTracking with Viya — my AI money friend 💚\nhttps://heyviya.vercel.app`
+    const text = `${g.icon} I've saved ₹${Number(g.current_amount)} towards my "${g.name}" goal (${pct}%)! 🎯\n\nTracking with Viya — my AI money friend 💚\nhttps://heyviya.vercel.app`
     if (navigator.share) {
       navigator.share({ title: 'My Savings Goal', text })
     } else {
@@ -102,8 +103,8 @@ export default function Goals() {
       {goals.length > 0 && (
         <div style={{background:'linear-gradient(135deg, var(--primary-dim), var(--cyan-dim))', border:'1px solid var(--border2)', borderRadius:18, padding:24, marginBottom:20, textAlign:'center'}}>
           <div style={{fontSize:11, color:'var(--text3)', letterSpacing:2, fontWeight:700}}>TOTAL SAVED</div>
-          <div style={{fontFamily:'var(--mono)', fontSize:36, fontWeight:900, color:'var(--primary)', margin:'4px 0'}}>₹{totalSaved.toLocaleString('en-IN')}</div>
-          <div style={{fontSize:13, color:'var(--text2)'}}>of ₹{totalTarget.toLocaleString('en-IN')} target</div>
+          <div style={{fontFamily:'var(--mono)', fontSize:36, fontWeight:900, color:'var(--primary)', margin:'4px 0'}}>₹{totalSaved}</div>
+          <div style={{fontSize:13, color:'var(--text2)'}}>of ₹{totalTarget} target</div>
           <div className="progress-bar" style={{marginTop:12}}>
             <div className="progress-fill" style={{width: totalTarget > 0 ? Math.min((totalSaved/totalTarget)*100, 100) + '%' : '0%'}} />
           </div>
@@ -175,15 +176,15 @@ export default function Goals() {
               </div>
               
               <div className="goal-amounts">
-                <span>₹{Number(g.current_amount).toLocaleString('en-IN')}</span>
-                <span>₹{Number(g.target_amount).toLocaleString('en-IN')}</span>
+                <span>₹{Number(g.current_amount)}</span>
+                <span>₹{Number(g.target_amount)}</span>
               </div>
               
               {/* Next milestone prompt */}
               {pct < 100 && (
                 <div style={{background:'var(--primary-dim)', borderRadius:10, padding:'8px 12px', marginTop:8, display:'flex', alignItems:'center', gap:8, fontSize:12}}>
                   <span>{nextMs.emoji}</span>
-                  <span style={{color:'var(--text2)'}}>₹{toNext.toLocaleString('en-IN')} to <strong style={{color:'var(--primary)'}}>{nextMs.label}</strong></span>
+                  <span style={{color:'var(--text2)'}}>₹{toNext} to <strong style={{color:'var(--primary)'}}>{nextMs.label}</strong></span>
                 </div>
               )}
               {pct >= 100 && (

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
+import { formatINR } from '../lib/utils'
 import { CreditCard, Zap, Wifi, Phone, Home, ShieldCheck, Calendar, AlertTriangle, CheckCircle, Clock, ChevronRight, Plus, TrendingUp } from 'lucide-react'
 
 const BILL_ICONS = {
@@ -98,7 +99,7 @@ export default function Bills() {
       }}>
         <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.6, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Total Pending</div>
         <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 36, marginBottom: 8 }}>
-          ₹{totalPending.toLocaleString('en-IN')}
+          ₹{totalPending}
         </div>
         <div style={{ display: 'flex', gap: 16, fontSize: 12 }}>
           {overdue.length > 0 && (
@@ -158,7 +159,7 @@ export default function Bills() {
                           <div className="body-s" style={{ color: 'var(--viya-error)' }}>Overdue by {Math.abs(bill._daysLeft)} days</div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div className="num-s" style={{ fontWeight: 700, color: 'var(--viya-error)' }}>₹{Number(bill.amount).toLocaleString('en-IN')}</div>
+                          <div className="num-s" style={{ fontWeight: 700, color: 'var(--viya-error)' }}>₹{Number(bill.amount)}</div>
                           <button onClick={() => handleMarkPaid(bill)} style={{
                             marginTop: 4, padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 600,
                             background: 'var(--viya-error)', color: 'white', border: 'none', cursor: 'pointer',
@@ -188,7 +189,7 @@ export default function Bills() {
                           <div className="body-s text-secondary">Due in {bill._daysLeft} day{bill._daysLeft !== 1 ? 's' : ''}</div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div className="num-s" style={{ fontWeight: 700 }}>₹{Number(bill.amount).toLocaleString('en-IN')}</div>
+                          <div className="num-s" style={{ fontWeight: 700 }}>₹{Number(bill.amount)}</div>
                           {bill.auto_debit && <span style={{ fontSize: 10, color: 'var(--viya-success)', fontWeight: 600 }}>Auto-debit</span>}
                         </div>
                       </div>
@@ -216,7 +217,7 @@ export default function Bills() {
                         <div className="body-s text-secondary">Due in {bill._daysLeft} days</div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <div className="num-s" style={{ fontWeight: 600 }}>₹{Number(bill.amount).toLocaleString('en-IN')}</div>
+                        <div className="num-s" style={{ fontWeight: 600 }}>₹{Number(bill.amount)}</div>
                         {bill.auto_debit && <span style={{ fontSize: 10, color: 'var(--viya-success)', fontWeight: 600 }}>Auto</span>}
                       </div>
                     </div>
@@ -234,9 +235,9 @@ export default function Bills() {
               }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--viya-violet-500)', marginBottom: 4 }}>Monthly Subscriptions</div>
                 <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 28, color: 'var(--viya-violet-600)' }}>
-                  ₹{totalSubs.toLocaleString('en-IN')}/mo
+                  ₹{totalSubs}/mo
                 </div>
-                <div className="body-s text-secondary" style={{ marginTop: 4 }}>₹{(totalSubs * 12).toLocaleString('en-IN')}/year</div>
+                <div className="body-s text-secondary" style={{ marginTop: 4 }}>₹{(totalSubs * 12)}/year</div>
               </div>
               {subscriptions.length === 0 && (
                 <div className="card" style={{ textAlign: 'center', padding: 24, color: 'var(--text-tertiary)' }}>No subscriptions tracked. Tell Viya: "Track Netflix subscription" 📺</div>
@@ -251,7 +252,7 @@ export default function Bills() {
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{sub.name}</div>
                     <div className="body-s text-secondary">{sub.frequency || 'monthly'}</div>
                   </div>
-                  <div className="num-s" style={{ fontWeight: 600 }}>₹{Number(sub.amount).toLocaleString('en-IN')}/mo</div>
+                  <div className="num-s" style={{ fontWeight: 600 }}>₹{Number(sub.amount)}/mo</div>
                 </div>
               ))}
             </div>
@@ -274,7 +275,7 @@ export default function Bills() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <div><div className="body-s text-secondary">EMI Amount</div><div className="num-s" style={{ fontWeight: 700 }}>₹{Number(bill.amount).toLocaleString('en-IN')}</div></div>
+                    <div><div className="body-s text-secondary">EMI Amount</div><div className="num-s" style={{ fontWeight: 700 }}>₹{Number(bill.amount)}</div></div>
                     <div style={{ textAlign: 'right' }}><div className="body-s text-secondary">Status</div><div className="num-s" style={{ fontWeight: 700, color: bill.status === 'paid' ? 'var(--viya-success)' : 'var(--viya-warning)' }}>{bill.status}</div></div>
                   </div>
                 </div>

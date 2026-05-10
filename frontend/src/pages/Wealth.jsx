@@ -88,11 +88,11 @@ export default function Wealth() {
         <div style={{ position: 'absolute', top: -30, right: -30, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
         <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Total Portfolio</div>
         <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 36, marginBottom: 4 }}>
-          ₹{currentValue.toLocaleString('en-IN')}
+          ₹{currentValue}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, marginBottom: 16 }}>
           {returns >= 0 ? <TrendingUp size={16}/> : <TrendingDown size={16}/>}
-          <span style={{ fontWeight: 600 }}>{returns >= 0 ? '+' : ''}₹{returns.toLocaleString('en-IN')}</span>
+          <span style={{ fontWeight: 600 }}>{returns >= 0 ? '+' : ''}₹{returns}</span>
           <span style={{ padding: '2px 8px', borderRadius: 99, background: 'rgba(255,255,255,0.2)', fontSize: 12, fontWeight: 600 }}>
             {returns >= 0 ? '+' : ''}{returnPct}%
           </span>
@@ -100,7 +100,7 @@ export default function Wealth() {
         <div style={{ display: 'flex', gap: 20 }}>
           <div>
             <div style={{ fontSize: 11, opacity: 0.65 }}>Invested</div>
-            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, fontSize: 15 }}>₹{totalInvested.toLocaleString('en-IN')}</div>
+            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, fontSize: 15 }}>₹{totalInvested}</div>
           </div>
           <div>
             <div style={{ fontSize: 11, opacity: 0.65 }}>Active SIPs</div>
@@ -152,7 +152,7 @@ export default function Wealth() {
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{a.label}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{a.pct}% of portfolio</div>
                     </div>
-                    <div className="num-s" style={{ fontWeight: 600 }}>₹{a.total.toLocaleString('en-IN')}</div>
+                    <div className="num-s" style={{ fontWeight: 600 }}>₹{a.total}</div>
                   </div>
                 ))}
               </div>
@@ -168,7 +168,7 @@ export default function Wealth() {
                     {sipInvestments.length}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--viya-primary-500)', marginTop: 2 }}>
-                    ₹{totalSIP.toLocaleString('en-IN')}/mo
+                    ₹{totalSIP}/mo
                   </div>
                 </div>
                 <div style={{
@@ -205,12 +205,12 @@ export default function Wealth() {
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 13, fontWeight: 600 }}>{inv.name}</div>
                           <div className="body-s text-secondary">
-                            Invested: ₹{Number(inv.invested_amount).toLocaleString('en-IN')}
+                            Invested: ₹{Number(inv.invested_amount)}
                             {inv.broker && ` · ${inv.broker}`}
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div className="num-s" style={{ fontWeight: 700, fontSize: 14 }}>₹{Number(inv.current_value || inv.invested_amount).toLocaleString('en-IN')}</div>
+                          <div className="num-s" style={{ fontWeight: 700, fontSize: 14 }}>₹{Number(inv.current_value || inv.invested_amount)}</div>
                           <div style={{
                             fontSize: 12, fontWeight: 600,
                             color: retPct >= 0 ? 'var(--viya-success)' : 'var(--viya-error)',
@@ -236,10 +236,10 @@ export default function Wealth() {
               }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--viya-primary-600)', marginBottom: 4 }}>Monthly SIP Investment</div>
                 <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 32, color: 'var(--viya-primary-600)' }}>
-                  ₹{totalSIP.toLocaleString('en-IN')}
+                  ₹{totalSIP}
                 </div>
                 <div className="body-s text-secondary" style={{ marginTop: 4 }}>
-                  ₹{(totalSIP * 12).toLocaleString('en-IN')}/year
+                  ₹{(totalSIP * 12)}/year
                 </div>
               </div>
 
@@ -262,7 +262,7 @@ export default function Wealth() {
                     <div className="body-s text-secondary">{inv.broker || 'N/A'} · Active SIP</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div className="num-s" style={{ fontWeight: 700, color: 'var(--viya-primary-600)' }}>₹{Number(inv.sip_amount || 0).toLocaleString('en-IN')}/mo</div>
+                    <div className="num-s" style={{ fontWeight: 700, color: 'var(--viya-primary-600)' }}>₹{Number(inv.sip_amount || 0)}/mo</div>
                     <div style={{ fontSize: 11, color: 'var(--viya-success)', fontWeight: 600 }}>+{inv.return_pct || 0}%</div>
                   </div>
                 </div>

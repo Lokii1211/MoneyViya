@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
+import { formatINR } from '../lib/utils'
 import { useCountUp } from '../lib/utils'
 import { Plus, TrendingDown, TrendingUp, Trash2, Camera, Upload, X, Check, Sparkles } from 'lucide-react'
 
@@ -232,21 +233,21 @@ export default function Expenses() {
         <div style={{position:'absolute', top:-20, right:-20, width:100, height:100, background:'var(--primary)', opacity:0.05, borderRadius:'50%'}} />
         <div style={{fontSize:11, letterSpacing:2, fontWeight:700, color:'var(--text3)', marginBottom:4}}>MONEY LEFT TODAY</div>
         <div style={{fontFamily:'var(--mono)', fontSize:42, fontWeight:900, color: moneyLeft >= 0 ? 'var(--primary)' : 'var(--red)', lineHeight:1.1}}>
-          ₹{animatedMoneyLeft.toLocaleString('en-IN')}
+          ₹{animatedMoneyLeft}
         </div>
         {moneyLeft < 0 && <div style={{fontSize:12, color:'var(--red)', fontWeight:700, marginTop:4}}>⚠️ Over budget by ₹{Math.abs(moneyLeft)}</div>}
-        <div style={{fontSize:12, color:'var(--text2)', marginTop:6}}>Daily budget: ₹{dailyBudget.toLocaleString('en-IN')} · Spent: ₹{todayExpenses.toLocaleString('en-IN')}</div>
+        <div style={{fontSize:12, color:'var(--text2)', marginTop:6}}>Daily budget: ₹{dailyBudget} · Spent: ₹{todayExpenses}</div>
       </div>
 
       {/* Summary Cards */}
       <div style={{display:'flex', gap:10, marginBottom:16}}>
         <div style={{flex:1, background:'var(--primary-dim)', border:'1px solid rgba(0,208,132,0.2)', borderRadius:12, padding:'14px 16px'}}>
           <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:4}}><TrendingUp size={14} color="var(--primary)" /><span style={{fontSize:11, color:'var(--text3)', fontWeight:700}}>INCOME</span></div>
-          <div style={{fontFamily:'var(--mono)', fontSize:20, fontWeight:800, color:'var(--primary)'}}>₹{animatedIncome.toLocaleString('en-IN')}</div>
+          <div style={{fontFamily:'var(--mono)', fontSize:20, fontWeight:800, color:'var(--primary)'}}>₹{animatedIncome}</div>
         </div>
         <div style={{flex:1, background:'var(--red-dim)', border:'1px solid rgba(255,71,87,0.2)', borderRadius:12, padding:'14px 16px'}}>
           <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:4}}><TrendingDown size={14} color="var(--red)" /><span style={{fontSize:11, color:'var(--text3)', fontWeight:700}}>SPENT</span></div>
-          <div style={{fontFamily:'var(--mono)', fontSize:20, fontWeight:800, color:'var(--red)'}}>₹{animatedExpense.toLocaleString('en-IN')}</div>
+          <div style={{fontFamily:'var(--mono)', fontSize:20, fontWeight:800, color:'var(--red)'}}>₹{animatedExpense}</div>
         </div>
       </div>
 
@@ -325,7 +326,7 @@ export default function Expenses() {
               <div style={{display:'flex', justifyContent:'space-between', marginBottom:6}}>
                 <span style={{fontSize:12, color:'var(--text3)'}}>Detected</span>
                 <span style={{fontFamily:'var(--mono)', fontSize:18, fontWeight:800, color: smsResult.isIncome ? 'var(--primary)' : 'var(--red)'}}>
-                  {smsResult.isIncome ? '+' : '-'}₹{smsResult.amount.toLocaleString('en-IN')}
+                  {smsResult.isIncome ? '+' : '-'}₹{smsResult.amount}
                 </span>
               </div>
               <div style={{display:'flex', justifyContent:'space-between'}}>
@@ -364,7 +365,7 @@ export default function Expenses() {
               <div key={i} style={{minWidth:120, background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:12, padding:'10px 12px', flexShrink:0}}>
                 <div style={{fontSize:18, marginBottom:4}}>{s.icon}</div>
                 <div style={{fontSize:12, fontWeight:700, marginBottom:2}}>{s.name}</div>
-                <div style={{fontFamily:'var(--mono)', fontSize:13, fontWeight:800, color:'var(--red)'}}>₹{Math.round(s.total/s.count).toLocaleString('en-IN')}/avg</div>
+                <div style={{fontFamily:'var(--mono)', fontSize:13, fontWeight:800, color:'var(--red)'}}>₹{Math.round(s.total/s.count)}/avg</div>
                 <div style={{fontSize:10, color:'var(--text3)'}}>{s.count}x logged</div>
               </div>
             ))}
@@ -433,7 +434,7 @@ export default function Expenses() {
               <div className="txn-cat">{formatDate(t.created_at)}</div>
             </div>
             <div style={{display:'flex', alignItems:'center', gap:8}}>
-              <div className={`txn-amount ${t.type}`}>{t.type === 'income' ? '+' : '-'}₹{Number(t.amount).toLocaleString('en-IN')}</div>
+              <div className={`txn-amount ${t.type}`}>{t.type === 'income' ? '+' : '-'}₹{Number(t.amount)}</div>
               <button style={{background:'none', border:'none', color:'var(--text3)', cursor:'pointer', opacity:0.4, padding:4}} onClick={() => removeTxn(t.id)}><Trash2 size={14} /></button>
             </div>
             {/* Swipe delete background */}

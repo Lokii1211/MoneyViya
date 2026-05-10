@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
+import { formatINR } from '../lib/utils'
 import { Mail, CreditCard, Calendar, Package, TrendingUp, Tag, Star, Clock, CheckCircle, AlertTriangle, ChevronRight, Filter, Search, Bell, Zap, ArrowRight } from 'lucide-react'
 
 const EMAIL_CATEGORIES = {
@@ -249,7 +250,7 @@ export default function EmailIntelligence() {
         </div>
         <div style={{ fontSize: 15, lineHeight: 1.5, opacity: 0.9, marginBottom: 12 }}>
           {emails.length === 0 ? 'No emails synced yet. Connect your inbox to get started!' :
-            `You have ${billEmails.length > 0 ? `**${billEmails.length} bill${billEmails.length > 1 ? 's' : ''}**${billTotal > 0 ? ` totaling **₹${billTotal.toLocaleString('en-IN')}**` : ''}` : 'no bills'}, ${meetingEmails.length > 0 ? `**${meetingEmails.length} meeting${meetingEmails.length > 1 ? 's' : ''}**` : 'no meetings'}, and ${actionEmails.length} action items.`
+            `You have ${billEmails.length > 0 ? `**${billEmails.length} bill${billEmails.length > 1 ? 's' : ''}**${billTotal > 0 ? ` totaling **₹${billTotal}**` : ''}` : 'no bills'}, ${meetingEmails.length > 0 ? `**${meetingEmails.length} meeting${meetingEmails.length > 1 ? 's' : ''}**` : 'no meetings'}, and ${actionEmails.length} action items.`
           }
         </div>
         {actionEmails.length > 0 && (
@@ -334,7 +335,7 @@ export default function EmailIntelligence() {
                       <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                         {data.amount && (
                           <span style={{ padding: '3px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: 'var(--viya-error-light)', color: 'var(--viya-error)' }}>
-                            ₹{Number(data.amount).toLocaleString('en-IN')}
+                            ₹{Number(data.amount)}
                           </span>
                         )}
                         {data.dueDate && (
@@ -378,7 +379,7 @@ export default function EmailIntelligence() {
       {tab === 'insights' && (
         <div style={{ marginBottom: 16 }}>
           {[
-            billEmails.length > 0 && { icon: '💳', title: 'Bill Detection', desc: `${billEmails.length} bill${billEmails.length > 1 ? 's' : ''} found${billTotal > 0 ? ` totaling ₹${billTotal.toLocaleString('en-IN')}` : ''}`, color: 'var(--viya-error)' },
+            billEmails.length > 0 && { icon: '💳', title: 'Bill Detection', desc: `${billEmails.length} bill${billEmails.length > 1 ? 's' : ''} found${billTotal > 0 ? ` totaling ₹${billTotal}` : ''}`, color: 'var(--viya-error)' },
             meetingEmails.length > 0 && { icon: '📅', title: 'Meetings Extracted', desc: `${meetingEmails.length} meeting${meetingEmails.length > 1 ? 's' : ''} detected`, color: 'var(--viya-info)' },
             deliveryEmails.length > 0 && { icon: '📦', title: 'Delivery Tracking', desc: `${deliveryEmails.length} delivery update${deliveryEmails.length > 1 ? 's' : ''}`, color: 'var(--viya-gold-500)' },
             investEmails.length > 0 && { icon: '📈', title: 'Investment Activity', desc: `${investEmails.length} investment update${investEmails.length > 1 ? 's' : ''}`, color: 'var(--viya-success)' },

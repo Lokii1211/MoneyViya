@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
+import { formatINR } from '../lib/utils'
 import { useNavigate } from 'react-router-dom'
 import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown, Clock, FileText, Lock } from 'lucide-react'
 import { LANGUAGES } from '../lib/i18n'
@@ -164,12 +165,12 @@ export default function Profile() {
       <div className="profile-stats-grid">
         <div className="psg-card" onClick={() => nav('/expenses')}>
           <TrendingUp size={18} className="psg-icon green"/>
-          <div className="psg-val">₹{stats.income.toLocaleString('en-IN')}</div>
+          <div className="psg-val">₹{stats.income}</div>
           <div className="psg-label">Income</div>
         </div>
         <div className="psg-card" onClick={() => nav('/expenses')}>
           <Wallet size={18} className="psg-icon red"/>
-          <div className="psg-val">₹{stats.expenses.toLocaleString('en-IN')}</div>
+          <div className="psg-val">₹{stats.expenses}</div>
           <div className="psg-label">Expenses</div>
         </div>
         <div className="psg-card" onClick={() => nav('/habits')}>

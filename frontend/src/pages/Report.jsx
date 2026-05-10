@@ -24,9 +24,9 @@ export default function Report() {
     const text = `📊 ${name}'s Viya Weekly Report
 📅 ${report.period}
 
-💰 Income: ₹${report.totalIncome.toLocaleString('en-IN')}
-💸 Expenses: ₹${report.totalExpenses.toLocaleString('en-IN')}
-💎 Saved: ₹${Math.max(0, report.saved).toLocaleString('en-IN')}
+💰 Income: ₹${report.totalIncome}
+💸 Expenses: ₹${report.totalExpenses}
+💎 Saved: ₹${Math.max(0, report.saved)}
 📝 Transactions: ${report.txnCount}
 
 ${report.habits.maxStreak > 0 ? `🔥 Best Streak: ${report.habits.maxStreak} days` : ''}
@@ -83,7 +83,7 @@ https://heyviya.vercel.app`
       <div style={{background:'linear-gradient(135deg, var(--primary-dim), var(--cyan-dim))', border:'1px solid var(--border2)', borderRadius:18, padding:24, marginBottom:16, textAlign:'center'}}>
         <div style={{fontSize:11, color:'var(--text3)', letterSpacing:2, fontWeight:700}}>NET SAVINGS THIS WEEK</div>
         <div style={{fontFamily:'var(--mono)', fontSize:36, fontWeight:900, color: report.saved >= 0 ? 'var(--primary)' : 'var(--red)', margin:'8px 0'}}>
-          {report.saved >= 0 ? '+' : ''}₹{report.saved.toLocaleString('en-IN')}
+          {report.saved >= 0 ? '+' : ''}₹{report.saved}
         </div>
         {report.totalIncome > 0 && (
           <div style={{fontSize:12, color:'var(--text2)'}}>
@@ -100,21 +100,21 @@ https://heyviya.vercel.app`
             <TrendingUp size={14} color="var(--primary)"/>
             <span style={{fontSize:11, color:'var(--text3)', fontWeight:700}}>INCOME</span>
           </div>
-          <div style={{fontFamily:'var(--mono)', fontSize:22, fontWeight:800, color:'var(--primary)'}}>₹{report.totalIncome.toLocaleString('en-IN')}</div>
+          <div style={{fontFamily:'var(--mono)', fontSize:22, fontWeight:800, color:'var(--primary)'}}>₹{report.totalIncome}</div>
         </div>
         <div style={{flex:1, background:'var(--red-dim)', border:'1px solid rgba(255,71,87,0.2)', borderRadius:14, padding:'16px'}}>
           <div style={{display:'flex', alignItems:'center', gap:4, marginBottom:6}}>
             <TrendingDown size={14} color="var(--red)"/>
             <span style={{fontSize:11, color:'var(--text3)', fontWeight:700}}>EXPENSES</span>
           </div>
-          <div style={{fontFamily:'var(--mono)', fontSize:22, fontWeight:800, color:'var(--red)'}}>₹{report.totalExpenses.toLocaleString('en-IN')}</div>
+          <div style={{fontFamily:'var(--mono)', fontSize:22, fontWeight:800, color:'var(--red)'}}>₹{report.totalExpenses}</div>
         </div>
       </div>
 
       {/* Daily Average */}
       <div style={{background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:14, padding:'14px 16px', marginBottom:16, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
         <span style={{fontSize:13, color:'var(--text2)'}}>Daily Average Spending</span>
-        <span style={{fontFamily:'var(--mono)', fontSize:16, fontWeight:800, color:'var(--text)'}}>₹{report.dailyAvg.toLocaleString('en-IN')}/day</span>
+        <span style={{fontFamily:'var(--mono)', fontSize:16, fontWeight:800, color:'var(--text)'}}>₹{report.dailyAvg}/day</span>
       </div>
 
       {/* Top Categories */}
@@ -124,7 +124,7 @@ https://heyviya.vercel.app`
           {report.topCategories.map((cat, i) => (
             <div key={i} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 14px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, marginBottom:6}}>
               <span style={{fontSize:13}}>{cat.category}</span>
-              <span style={{fontFamily:'var(--mono)', fontSize:14, fontWeight:700, color:'var(--red)'}}>₹{cat.amount.toLocaleString('en-IN')}</span>
+              <span style={{fontFamily:'var(--mono)', fontSize:14, fontWeight:700, color:'var(--red)'}}>₹{cat.amount}</span>
             </div>
           ))}
         </div>
@@ -154,8 +154,8 @@ https://heyviya.vercel.app`
               </div>
               <div className="progress-bar"><div className="progress-fill" style={{width: g.pct + '%'}} /></div>
               <div style={{display:'flex', justifyContent:'space-between', marginTop:4, fontSize:11, color:'var(--text3)'}}>
-                <span>₹{g.saved.toLocaleString('en-IN')}</span>
-                <span>₹{g.target.toLocaleString('en-IN')}</span>
+                <span>₹{g.saved}</span>
+                <span>₹{g.target}</span>
               </div>
             </div>
           ))}

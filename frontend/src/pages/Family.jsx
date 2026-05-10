@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
+import { formatINR } from '../lib/utils'
 import { ArrowLeft, Plus, Users, Trash2, TrendingUp, TrendingDown, Phone, Check, X, Send, UserPlus, Eye, ArrowUpRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -130,11 +131,11 @@ export default function Family() {
         <div style={{fontSize:11, letterSpacing:2, fontWeight:700, color:'var(--text3)'}}>FAMILY OVERVIEW</div>
         <div style={{display:'flex', justifyContent:'space-around', marginTop:12}}>
           <div>
-            <div style={{fontFamily:'var(--mono)', fontSize:18, fontWeight:800, color:'var(--primary)'}}>₹{totalFamilyIncome.toLocaleString('en-IN')}</div>
+            <div style={{fontFamily:'var(--mono)', fontSize:18, fontWeight:800, color:'var(--primary)'}}>₹{totalFamilyIncome}</div>
             <div style={{fontSize:10, color:'var(--text3)'}}>TOTAL INCOME</div>
           </div>
           <div>
-            <div style={{fontFamily:'var(--mono)', fontSize:18, fontWeight:800, color:'var(--red)'}}>₹{totalFamilyExpense.toLocaleString('en-IN')}</div>
+            <div style={{fontFamily:'var(--mono)', fontSize:18, fontWeight:800, color:'var(--red)'}}>₹{totalFamilyExpense}</div>
             <div style={{fontSize:10, color:'var(--text3)'}}>TOTAL SPENT</div>
           </div>
           <div>
@@ -233,8 +234,8 @@ export default function Family() {
               </div>
             </div>
             <div style={{textAlign:'right'}}>
-              <div style={{fontFamily:'var(--mono)', fontSize:14, fontWeight:800, color:'var(--primary)'}}>₹{Number(user?.monthly_income || 0).toLocaleString('en-IN')}</div>
-              <div style={{fontFamily:'var(--mono)', fontSize:12, color:'var(--red)'}}>-₹{Number(user?.monthly_expenses || 0).toLocaleString('en-IN')}</div>
+              <div style={{fontFamily:'var(--mono)', fontSize:14, fontWeight:800, color:'var(--primary)'}}>₹{Number(user?.monthly_income || 0)}</div>
+              <div style={{fontFamily:'var(--mono)', fontSize:12, color:'var(--red)'}}>-₹{Number(user?.monthly_expenses || 0)}</div>
             </div>
           </div>
         </div>
@@ -256,8 +257,8 @@ export default function Family() {
                 </div>
                 <div style={{display:'flex', alignItems:'center', gap:8}}>
                   <div style={{textAlign:'right'}}>
-                    <div style={{fontFamily:'var(--mono)', fontSize:14, fontWeight:800, color:'var(--primary)'}}>₹{Number(m.userData?.monthly_income || 0).toLocaleString('en-IN')}</div>
-                    <div style={{fontFamily:'var(--mono)', fontSize:11, color:'var(--red)'}}>-₹{Number(m.userData?.monthly_expenses || 0).toLocaleString('en-IN')}</div>
+                    <div style={{fontFamily:'var(--mono)', fontSize:14, fontWeight:800, color:'var(--primary)'}}>₹{Number(m.userData?.monthly_income || 0)}</div>
+                    <div style={{fontFamily:'var(--mono)', fontSize:11, color:'var(--red)'}}>-₹{Number(m.userData?.monthly_expenses || 0)}</div>
                   </div>
                   <button style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)', padding:4}} onClick={(e) => { e.stopPropagation(); removeMember(m) }}><Trash2 size={14}/></button>
                 </div>
@@ -282,12 +283,12 @@ export default function Family() {
           <div style={{display:'flex', gap:10, marginBottom:12}}>
             <div style={{flex:1, background:'var(--primary-dim)', borderRadius:10, padding:12, textAlign:'center'}}>
               <TrendingUp size={16} color="var(--primary)"/>
-              <div style={{fontFamily:'var(--mono)', fontSize:16, fontWeight:800, color:'var(--primary)'}}>₹{Number(memberData.monthly_income || 0).toLocaleString('en-IN')}</div>
+              <div style={{fontFamily:'var(--mono)', fontSize:16, fontWeight:800, color:'var(--primary)'}}>₹{Number(memberData.monthly_income || 0)}</div>
               <div style={{fontSize:10, color:'var(--text3)'}}>Income</div>
             </div>
             <div style={{flex:1, background:'var(--red-dim)', borderRadius:10, padding:12, textAlign:'center'}}>
               <TrendingDown size={16} color="var(--red)"/>
-              <div style={{fontFamily:'var(--mono)', fontSize:16, fontWeight:800, color:'var(--red)'}}>₹{Number(memberData.monthly_expenses || 0).toLocaleString('en-IN')}</div>
+              <div style={{fontFamily:'var(--mono)', fontSize:16, fontWeight:800, color:'var(--red)'}}>₹{Number(memberData.monthly_expenses || 0)}</div>
               <div style={{fontSize:10, color:'var(--text3)'}}>Expenses</div>
             </div>
           </div>
@@ -303,7 +304,7 @@ export default function Family() {
                 <span style={{fontSize:12}}>{t.description || t.category?.split(' ').slice(1).join(' ') || t.category}</span>
               </div>
               <span style={{fontFamily:'var(--mono)', fontSize:12, fontWeight:700, color: t.type === 'income' ? 'var(--primary)' : 'var(--red)'}}>
-                {t.type === 'income' ? '+' : '-'}₹{Number(t.amount).toLocaleString('en-IN')}
+                {t.type === 'income' ? '+' : '-'}₹{Number(t.amount)}
               </span>
             </div>
           ))}
