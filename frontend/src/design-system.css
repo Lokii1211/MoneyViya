@@ -4,50 +4,71 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
-  --viya-primary-900:#003D40; --viya-primary-800:#005F63; --viya-primary-700:#007A7E;
-  --viya-primary-600:#009499; --viya-primary-500:#00B0B6; --viya-primary-400:#00CDD4;
-  --viya-primary-300:#4DDDEA; --viya-primary-200:#99ECF2; --viya-primary-100:#CCF5F8;
-  --viya-primary-50:#E8FBFC;
+  /* PRD §2.1 — Aurora Teal (Intelligence + Life) */
+  --teal-500:#00E5D4; --teal-400:#1AFFED; --teal-300:#4DFFF1;
+  --teal-600:#00B8A9; --teal-700:#008B80; --teal-50:#E6FFFD; --teal-100:#B3FFF9;
+  /* Aliases for backward compat */
+  --viya-primary-900:#003D40; --viya-primary-800:#005F63; --viya-primary-700:#008B80;
+  --viya-primary-600:#00B8A9; --viya-primary-500:#00E5D4; --viya-primary-400:#1AFFED;
+  --viya-primary-300:#4DFFF1; --viya-primary-200:#99F5EE; --viya-primary-100:#B3FFF9;
+  --viya-primary-50:#E6FFFD;
+  /* PRD §2.1 — Deep Cosmos (AI + Premium) */
+  --cosmos-500:#6B00FF; --cosmos-400:#8033FF; --cosmos-600:#5500CC;
+  --cosmos-50:#F3EEFF; --cosmos-100:#E0CCFF;
   --viya-violet-900:#1A0633; --viya-violet-800:#2D0D59; --viya-violet-700:#3F1480;
-  --viya-violet-600:#521BA6; --viya-violet-500:#6422CC; --viya-violet-400:#834DE0;
-  --viya-violet-300:#A278EA; --viya-violet-200:#C1A3F2; --viya-violet-100:#E0D1F9;
-  --viya-violet-50:#F5F0FD;
-  --viya-gold-500:#FFB800; --viya-gold-400:#FFC933; --viya-gold-300:#FFD966;
-  --viya-gold-200:#FFE999; --viya-gold-100:#FFF4CC;
-  --viya-success:#00D084; --viya-success-light:#E6FBF4;
-  --viya-warning:#FF9500; --viya-warning-light:#FFF4E6;
-  --viya-error:#FF3B30; --viya-error-light:#FFEBE9;
+  --viya-violet-600:#5500CC; --viya-violet-500:#6B00FF; --viya-violet-400:#8033FF;
+  --viya-violet-300:#A278EA; --viya-violet-200:#C1A3F2; --viya-violet-100:#E0CCFF;
+  --viya-violet-50:#F3EEFF;
+  /* PRD §2.1 — Sunrise Gold (Achievement + India) */
+  --gold-300:#FFD93D; --gold-500:#F5A623; --gold-100:#FFFBEB;
+  --viya-gold-500:#F5A623; --viya-gold-400:#FFC933; --viya-gold-300:#FFD93D;
+  --viya-gold-200:#FFE999; --viya-gold-100:#FFFBEB;
+  /* PRD §2.1 — Semantic */
+  --emerald-500:#00C853; --coral-500:#FF5252; --amber-500:#FF9800; --info-500:#0091FF;
+  --viya-success:#00C853; --viya-success-light:#E6FBF4;
+  --viya-warning:#FF9800; --viya-warning-light:#FFF4E6;
+  --viya-error:#FF5252; --viya-error-light:#FFEBE9;
+  --viya-info:#0091FF; --viya-info-light:#E8F4FF;
+  /* Neutrals */
   --viya-neutral-900:#0D0D0D; --viya-neutral-800:#1A1A1A; --viya-neutral-700:#333;
   --viya-neutral-600:#4D4D4D; --viya-neutral-500:#666; --viya-neutral-400:#808080;
   --viya-neutral-300:#B3B3B3; --viya-neutral-200:#CCC; --viya-neutral-100:#E6E6E6;
   --viya-neutral-50:#F5F5F5; --viya-neutral-0:#FFF;
-  --gradient-primary:linear-gradient(135deg,#00B0B6 0%,#6422CC 100%);
-  --gradient-gold:linear-gradient(135deg,#FFB800 0%,#FF6B35 100%);
-  --gradient-success:linear-gradient(135deg,#00D084 0%,#00B0B6 100%);
-  --gradient-night:linear-gradient(180deg,#0D0D2B 0%,#1A0633 100%);
-  --gradient-morning:linear-gradient(135deg,#FFB800 0%,#FF9500 30%,#00B0B6 100%);
-  --gradient-card:linear-gradient(145deg,#FFF 0%,#F0FAFA 100%);
-  --gradient-hero:linear-gradient(135deg,#00B0B6 0%,#6422CC 100%);
-  --gradient-wealth:linear-gradient(135deg,#4CAF50 0%,#00B0B6 100%);
-  --gradient-health:linear-gradient(135deg,#FF6B6B 0%,#FF9800 100%);
-  --gradient-glass:linear-gradient(145deg,rgba(255,255,255,.9) 0%,rgba(240,250,250,.8) 100%);
-  --gradient-dark:linear-gradient(180deg,#0D0020 0%,#001A1B 100%);
-  --viya-info:#0091FF; --viya-info-light:#E8F4FF;
+  /* PRD §2.1 — Gradients (EXACT values) */
+  --gradient-primary:linear-gradient(135deg,#00E5D4 0%,#6B00FF 100%);
+  --gradient-hero:linear-gradient(135deg,#00E5D4 0%,#6B00FF 100%);
+  --gradient-gold:linear-gradient(135deg,#FFD93D 0%,#F5A623 100%);
+  --gradient-wealth:linear-gradient(135deg,#00C853 0%,#00E5D4 100%);
+  --gradient-health:linear-gradient(135deg,#FF6B6B 0%,#FF9800 50%,#FFD93D 100%);
+  --gradient-night:linear-gradient(180deg,#0A0019 0%,#001917 100%);
+  --gradient-morning:linear-gradient(135deg,#F5A623 0%,#FF6B6B 30%,#00E5D4 100%);
+  --gradient-card:linear-gradient(145deg,#FFFFFF 0%,#F0FFFD 100%);
+  --gradient-success:linear-gradient(135deg,#00C853 0%,#00E5D4 100%);
+  --gradient-glass:linear-gradient(145deg,rgba(255,255,255,.9) 0%,rgba(240,255,253,.8) 100%);
+  --gradient-dark:linear-gradient(180deg,#0A0019 0%,#001917 100%);
+  /* Category */
   --cat-finance:#00C853; --cat-health:#FF6B6B; --cat-work:#0091FF;
   --cat-family:#FF9800; --cat-shopping:#9C27B0; --cat-travel:#00BCD4;
-  --cat-food:#FF5722; --cat-email:#E91E63; --cat-investment:#4CAF50; --cat-bills:#F44336;
+  --cat-food:#FF5722; --cat-email:#E91E63; --cat-investment:#4CAF50; --cat-bills:#FF5252;
+  /* PRD §2.3 — Spacing (4px grid) */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px;
+  --sp-5:20px; --sp-6:24px; --sp-8:32px; --sp-10:40px; --sp-12:48px;
   --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px;
   --space-5:20px; --space-6:24px; --space-8:32px; --space-10:40px;
   --space-12:48px; --space-16:64px; --space-20:80px;
-  --radius-sm:8px; --radius-md:12px; --radius-lg:16px;
-  --radius-xl:20px; --radius-2xl:24px; --radius-full:9999px;
-  --shadow-1:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
-  --shadow-2:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.05);
-  --shadow-3:0 10px 15px rgba(0,0,0,.08),0 4px 6px rgba(0,0,0,.05);
-  --shadow-4:0 20px 25px rgba(0,0,0,.10),0 10px 10px rgba(0,0,0,.04);
-  --shadow-teal:0 8px 24px rgba(0,176,182,.30);
-  --shadow-violet:0 8px 24px rgba(100,34,204,.25);
-  --shadow-gold:0 8px 24px rgba(255,184,0,.30);
+  /* PRD §2.3 — Border radius */
+  --r-xs:6px; --r-sm:10px; --r-md:14px; --r-lg:18px; --r-xl:22px; --r-2xl:28px; --r-full:9999px;
+  --radius-sm:10px; --radius-md:14px; --radius-lg:18px;
+  --radius-xl:22px; --radius-2xl:28px; --radius-full:9999px;
+  /* PRD §2.3 — Shadows */
+  --sh-1:0 1px 4px rgba(0,0,0,0.05); --sh-2:0 4px 8px rgba(0,0,0,0.07);
+  --sh-3:0 8px 16px rgba(0,0,0,0.09); --sh-4:0 16px 32px rgba(0,0,0,0.12);
+  --sh-teal:0 8px 24px rgba(0,229,212,0.30);
+  --sh-cosmos:0 8px 24px rgba(107,0,255,0.25);
+  --sh-gold:0 8px 24px rgba(255,217,61,0.35);
+  --shadow-1:var(--sh-1); --shadow-2:var(--sh-2); --shadow-3:var(--sh-3); --shadow-4:var(--sh-4);
+  --shadow-teal:var(--sh-teal); --shadow-violet:var(--sh-cosmos); --shadow-gold:var(--sh-gold);
+  /* Semantic aliases */
   --bg-primary:var(--viya-neutral-0); --bg-secondary:var(--viya-neutral-50);
   --bg-card:var(--viya-neutral-0); --text-primary:var(--viya-neutral-900);
   --text-secondary:var(--viya-neutral-500); --text-tertiary:var(--viya-neutral-300);
@@ -56,11 +77,13 @@
   --screen-margin:20px; --header-height:64px; --nav-height:80px;
   --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
 }
+/* PRD §2.1 — Dark Mode (exact values) */
 [data-theme="dark"] {
-  --bg-primary:#0D0D0D; --bg-secondary:#1A1A1A; --bg-card:#242424;
-  --text-primary:#F5F5F5; --text-secondary:#B3B3B3; --text-tertiary:#666;
-  --border-color:#333; --border-light:#242424;
-  --gradient-card:linear-gradient(145deg,#242424 0%,#1A2A2A 100%);
+  --bg-primary:#080812; --bg-secondary:#0F0F1E; --bg-card:#161628;
+  --text-primary:#F0F0FF; --text-secondary:#9090BB; --text-tertiary:#4D4D6B;
+  --border-color:#2E2E50; --border-light:#1E1E35;
+  --gradient-card:linear-gradient(145deg,#161628 0%,#1E1E35 100%);
+  --viya-neutral-50:#1E1E35; --viya-neutral-100:#262645;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16px;-webkit-text-size-adjust:100%}
