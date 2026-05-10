@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
-import { Plus, Flame, Check, Trash2, Calendar, TrendingUp } from 'lucide-react'
+import { Plus, Flame, Check, Trash2, Calendar, TrendingUp, Snowflake } from 'lucide-react'
 
 const PRESETS = [
   { icon: '💰', name: 'Track expenses' },
@@ -20,6 +20,8 @@ const PRESETS = [
   { icon: '🚶', name: 'Walk 5000 steps' },
 ]
 
+const MAX_FREE_FREEZES = 2
+
 export default function Habits() {
   const { phone } = useApp()
   const [habits, setHabits] = useState([])
@@ -27,6 +29,8 @@ export default function Habits() {
   const [showAdd, setShowAdd] = useState(false)
   const [custom, setCustom] = useState('')
   const [toast, setToast] = useState('')
+  const [freezesLeft, setFreezesLeft] = useState(MAX_FREE_FREEZES)
+  const [frozenHabits, setFrozenHabits] = useState({})
 
   const loadData = async () => {
     const h = await api.getHabits(phone)
@@ -154,6 +158,10 @@ export default function Habits() {
           <div style={{fontFamily:'var(--mono)', fontSize:24, fontWeight:800, color:'var(--gold)'}}>{bestStreak}⭐</div>
           <div style={{fontSize:11, color:'var(--text2)', fontWeight:600}}>BEST</div>
         </div>
+        <div style={{flex:1, background:'rgba(56,189,248,0.08)', border:'1px solid rgba(56,189,248,0.15)', borderRadius:12, padding:'14px 16px', textAlign:'center'}}>
+          <div style={{fontFamily:'var(--mono)', fontSize:24, fontWeight:800, color:'#38bdf8'}}>{freezesLeft}🧊</div>
+          <div style={{fontSize:11, color:'var(--text2)', fontWeight:600}}>FREEZES</div>
+        </div>
       </div>
 
       {/* Motivation bar */}
@@ -248,6 +256,18 @@ export default function Habits() {
               </div>
             </div>
             <div style={{display:'flex', alignItems:'center', gap:8}}>
+              {!checkins[h.id] && !frozenHabits[h.id] && freezesLeft > 0 && (h.current_streak || 0) > 0 && (
+                <button className="checkin-btn" onClick={() => {
+                  setFrozenHabits(prev => ({ ...prev, [h.id]: true }))
+                  setFreezesLeft(prev => prev - 1)
+                  showToast(`🧊 Streak frozen for ${h.name}! Protected.`)
+                }} style={{color:'#38bdf8', opacity:0.7}} title="Freeze streak">
+                  <Snowflake size={16} />
+                </button>
+              )}
+              {frozenHabits[h.id] && (
+                <span style={{fontSize:11, color:'#38bdf8', fontWeight:700, padding:'4px 8px', borderRadius:6, background:'rgba(56,189,248,0.1)'}}>🧊 Frozen</span>
+              )}
               <button className={`checkin-btn${checkins[h.id] ? ' checked' : ''}`} onClick={() => toggleCheckin(h.id)}>
                 {checkins[h.id] ? <Check size={24} /> : <div style={{width:24, height:24, borderRadius:6, border:'2px solid var(--text3)'}} />}
               </button>

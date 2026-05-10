@@ -1,66 +1,142 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { Home, Receipt, Flame, MessageCircle, User, Bell, Search } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useNotificationStore } from '../stores'
+import { useHaptics } from '../hooks/useHaptics'
+
+const NAV_ITEMS = [
+  { to: '/', icon: Home, label: 'Home', end: true },
+  { to: '/expenses', icon: Receipt, label: 'Money' },
+  { to: '/chat', icon: MessageCircle, label: 'Viya', center: true },
+  { to: '/habits', icon: Flame, label: 'Life' },
+  { to: '/profile', icon: User, label: 'Profile' },
+]
+
+function AnimatedTabBar() {
+  const location = useLocation()
+  const haptics = useHaptics()
+
+  const activeIndex = NAV_ITEMS.findIndex(item =>
+    item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)
+  )
+
+  return (
+    <nav className="bottom-nav" style={{ position: 'relative' }}>
+      {/* Animated active indicator */}
+      <motion.div
+        layoutId="tab-indicator"
+        style={{
+          position: 'absolute', top: 0, left: `${(activeIndex >= 0 ? activeIndex : 0) * 20}%`,
+          width: '20%', height: 3, borderRadius: '0 0 3px 3px',
+          background: 'var(--gradient-primary)',
+        }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+      />
+
+      {NAV_ITEMS.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          end={item.end}
+          className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
+          onClick={() => haptics.light()}
+          style={item.center ? { position: 'relative' } : {}}
+        >
+          {item.center ? (
+            <motion.div
+              whileTap={{ scale: 0.9 }}
+              transition={{ type: 'spring', damping: 15, stiffness: 300 }}
+              style={{
+                width: 48, height: 48, borderRadius: '50%',
+                background: 'var(--gradient-primary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: 'var(--shadow-teal)',
+                marginTop: -16,
+              }}
+            >
+              <item.icon size={22} color="white" />
+            </motion.div>
+          ) : (
+            <>
+              <motion.div whileTap={{ scale: 0.85 }} transition={{ duration: 0.1 }}>
+                <item.icon size={22} className="nav-icon" />
+              </motion.div>
+              <span className="nav-label">{item.label}</span>
+            </>
+          )}
+        </NavLink>
+      ))}
+    </nav>
+  )
+}
 
 export default function Layout() {
   const nav = useNavigate()
+  const location = useLocation()
   const unread = useNotificationStore(s => s.unreadCount)
 
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => nav('/')}>
+        <motion.div
+          style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
+          onClick={() => nav('/')}
+          whileTap={{ scale: 0.97 }}
+        >
           <img src="/logo.png" alt="Viya" style={{
             width: 34, height: 34, borderRadius: 10, objectFit: 'contain',
             filter: 'drop-shadow(0 2px 8px rgba(0,176,182,0.3))',
           }} />
           <span style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 20, letterSpacing: -0.5 }}>Viya</span>
-        </div>
+        </motion.div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <button className="btn-ghost" style={{ width: 40, height: 40, padding: 0, borderRadius: '50%' }} onClick={() => nav('/search')} aria-label="Search">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            className="btn-ghost"
+            style={{ width: 40, height: 40, padding: 0, borderRadius: '50%' }}
+            onClick={() => nav('/search')}
+            aria-label="Search"
+          >
             <Search size={20} />
-          </button>
-          <button className="btn-ghost" style={{ width: 40, height: 40, padding: 0, borderRadius: '50%', position: 'relative' }} onClick={() => nav('/notifications')} aria-label="Notifications">
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            className="btn-ghost"
+            style={{ width: 40, height: 40, padding: 0, borderRadius: '50%', position: 'relative' }}
+            onClick={() => nav('/notifications')}
+            aria-label="Notifications"
+          >
             <Bell size={20} />
-            {unread > 0 && <span className="badge" style={{ position: 'absolute', top: 4, right: 4, minWidth: 16, height: 16, fontSize: 9 }}>{unread > 9 ? '9+' : unread}</span>}
-          </button>
+            {unread > 0 && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="badge"
+                style={{ position: 'absolute', top: 4, right: 4, minWidth: 16, height: 16, fontSize: 9 }}
+              >
+                {unread > 9 ? '9+' : unread}
+              </motion.span>
+            )}
+          </motion.button>
         </div>
       </header>
 
       <main className="app-main">
-        <Outlet />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            style={{ width: '100%', minHeight: '100%' }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
 
-      <nav className="bottom-nav">
-        <NavLink to="/" end className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
-          <Home size={22} className="nav-icon" />
-          <span className="nav-label">Home</span>
-        </NavLink>
-        <NavLink to="/expenses" className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
-          <Receipt size={22} className="nav-icon" />
-          <span className="nav-label">Money</span>
-        </NavLink>
-        <NavLink to="/chat" className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')} style={{ position: 'relative' }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: '50%',
-            background: 'var(--gradient-primary)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: 'var(--shadow-teal)',
-            marginTop: -16,
-            transition: 'transform 0.15s var(--ease)',
-          }}>
-            <MessageCircle size={22} color="white" />
-          </div>
-        </NavLink>
-        <NavLink to="/habits" className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
-          <Flame size={22} className="nav-icon" />
-          <span className="nav-label">Habits</span>
-        </NavLink>
-        <NavLink to="/profile" className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
-          <User size={22} className="nav-icon" />
-          <span className="nav-label">Profile</span>
-        </NavLink>
-      </nav>
+      <AnimatedTabBar />
     </div>
   )
 }

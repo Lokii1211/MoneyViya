@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Viya</string>
+    <string name="title_activity_main">Viya</string>
+    <string name="package_name">com.viya.app</string>
+    <string name="custom_url_scheme">com.viya.app</string>
+</resources>

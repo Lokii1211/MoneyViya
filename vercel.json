@@ -39,6 +39,50 @@
       "runtime": "@vercel/python@4.5.0",
       "maxDuration": 30
     },
+    "api/sms/process.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 30
+    },
+    "api/gamification/xp.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 15
+    },
+    "api/gamification/leaderboard.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 15
+    },
+    "api/insights/weekly.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 30
+    },
+    "api/ocr/receipt.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 30
+    },
+    "api/cron/morning-brief.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 60
+    },
+    "api/cron/habit-nudge.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 30
+    },
+    "api/cron/weekly-summary.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 60
+    },
+    "api/cron/check-reminders.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 30
+    },
+    "api/cron/medicine-alert.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 30
+    },
+    "api/cron/monthly-report.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 60
+    },
     "frontend/api/webhook.js": {
       "maxDuration": 60
     },
@@ -51,12 +95,32 @@
   },
   "crons": [
     {
+      "path": "/api/cron/morning-brief",
+      "schedule": "30 1 * * *"
+    },
+    {
       "path": "/api/cron/check-reminders",
       "schedule": "0 8 * * *"
     },
     {
       "path": "/api/cron/daily-report",
       "schedule": "30 14 * * *"
+    },
+    {
+      "path": "/api/cron/habit-nudge",
+      "schedule": "30 15 * * *"
+    },
+    {
+      "path": "/api/cron/medicine-alert",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/weekly-summary",
+      "schedule": "30 14 * * 0"
+    },
+    {
+      "path": "/api/cron/monthly-report",
+      "schedule": "30 3 1 * *"
     }
   ]
 }
