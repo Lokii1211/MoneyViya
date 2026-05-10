@@ -1,15 +1,15 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { Home, Receipt, Flame, MessageCircle, User, Bell, Search } from 'lucide-react'
+import { Home, Mail, Wallet, Heart, User, Bell, Search } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNotificationStore } from '../stores'
 import { useHaptics } from '../hooks/useHaptics'
 
 const NAV_ITEMS = [
   { to: '/', icon: Home, label: 'Home', end: true },
-  { to: '/expenses', icon: Receipt, label: 'Money' },
-  { to: '/chat', icon: MessageCircle, label: 'Viya', center: true },
-  { to: '/habits', icon: Flame, label: 'Life' },
-  { to: '/profile', icon: User, label: 'Profile' },
+  { to: '/email', icon: Mail, label: 'Inbox' },
+  { to: '/wealth', icon: Wallet, label: 'Wealth', center: true },
+  { to: '/health', icon: Heart, label: 'Health' },
+  { to: '/profile', icon: User, label: 'Me' },
 ]
 
 function AnimatedTabBar() {

@@ -180,7 +180,7 @@ export default function Home() {
         }}>
           <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Money Left</div>
           <div className="num-m" style={{ color: moneyLeft >= 0 ? '#fff' : '#FFB3B3', fontSize: 28, fontWeight: 700 }}>
-            {moneyLeft < 0 ? '-' : ''}₹{animatedMoney.toLocaleString('en-IN')}
+            {formatINR(moneyLeft < 0 ? -animatedMoney : animatedMoney)}
           </div>
           <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
             {moneyLeft >= 0 ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
@@ -211,7 +211,7 @@ export default function Home() {
         <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Monthly Overview</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 }}>
           <div>
-            <div className="num-l" style={{ fontSize: 32, color: 'white', lineHeight: 1.1 }}>₹{animatedIncome.toLocaleString('en-IN')}</div>
+            <div className="num-l" style={{ fontSize: 32, color: 'white', lineHeight: 1.1 }}>{formatINR(animatedIncome)}</div>
             <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>Total Income</div>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -226,11 +226,11 @@ export default function Home() {
         <div style={{ display: 'flex', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FCA5A5' }} />
-            <span style={{ fontSize: 12, opacity: 0.85 }}>Spent ₹{animatedExpense.toLocaleString('en-IN')}</span>
+            <span style={{ fontSize: 12, opacity: 0.85 }}>Spent {formatINR(animatedExpense)}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FDE68A' }} />
-            <span style={{ fontSize: 12, opacity: 0.85 }}>Saved ₹{savings.toLocaleString('en-IN')}</span>
+            <span style={{ fontSize: 12, opacity: 0.85 }}>Saved {formatINR(savings)}</span>
           </div>
         </div>
       </div>
@@ -370,6 +370,11 @@ export default function Home() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* ═══ FAB — Talk to Viya ═══ */}
+      <div onClick={() => nav('/chat')} className="fab" aria-label="Talk to Viya">
+        <img src="/logo.png" alt="Viya" style={{ width: 30, height: 30, objectFit: 'contain' }} />
       </div>
 
       {/* Bottom spacing for nav bar */}
