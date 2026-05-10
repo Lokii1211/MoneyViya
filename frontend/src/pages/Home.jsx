@@ -347,6 +347,63 @@ export default function Home() {
         )}
       </div>
 
+      {/* ═══ GOALS ROW (horizontal scroll) ═══ */}
+      {goals.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span className="title-m" style={{ fontSize: 15 }}>🎯 Your Goals</span>
+            <button onClick={() => nav('/goals')} style={{ fontSize: 12, fontWeight: 600, color: 'var(--viya-primary-500)', background: 'none', border: 'none', cursor: 'pointer' }}>All Goals →</button>
+          </div>
+          <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4, scrollSnapType: 'x mandatory' }}>
+            {goals.slice(0, 5).map(g => {
+              const pct = g.target_amount > 0 ? Math.round((g.current_amount / g.target_amount) * 100) : 0
+              return (
+                <div key={g.id} onClick={() => nav('/goals')} style={{
+                  minWidth: 200, padding: 16, borderRadius: 'var(--radius-xl)',
+                  background: 'var(--bg-card)', border: '1px solid var(--border-light)',
+                  boxShadow: 'var(--shadow-2)', cursor: 'pointer', scrollSnapAlign: 'start',
+                }}>
+                  <div style={{ fontSize: 32, marginBottom: 6 }}>{g.icon || '🎯'}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>{g.name}</div>
+                  <div style={{ height: 6, borderRadius: 99, background: 'var(--viya-neutral-100)', overflow: 'hidden', marginBottom: 6 }}>
+                    <div style={{ width: `${pct}%`, height: '100%', borderRadius: 99, background: 'var(--gradient-primary)', transition: 'width 0.6s ease' }} />
+                  </div>
+                  <div className="num-s" style={{ fontSize: 13, fontWeight: 600 }}>{formatINR(g.current_amount)} / {formatINR(g.target_amount)}</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ HEALTH TODAY (2-card row) ═══ */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <div onClick={() => nav('/health')} style={{
+          flex: 1, padding: 16, borderRadius: 'var(--radius-xl)', cursor: 'pointer',
+          background: 'linear-gradient(135deg, #FF6B6B 0%, #FF9800 100%)', color: 'white',
+          boxShadow: '0 4px 16px rgba(255,107,107,0.25)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+            <Droplets size={14} /> <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>STEPS</span>
+          </div>
+          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 22, lineHeight: 1 }}>0</div>
+          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>/ 10,000 steps</div>
+          <div style={{ fontSize: 11, fontWeight: 600, marginTop: 6, opacity: 0.85 }}>Open Health 💪</div>
+        </div>
+        <div onClick={() => nav('/health')} style={{
+          flex: 1, padding: 16, borderRadius: 'var(--radius-xl)', cursor: 'pointer',
+          background: 'linear-gradient(135deg, #00C853 0%, #00B0B6 100%)', color: 'white',
+          boxShadow: '0 4px 16px rgba(0,200,83,0.25)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+            <Heart size={14} /> <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>CALORIES</span>
+          </div>
+          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 22, lineHeight: 1 }}>0</div>
+          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>/ 2,200 kcal</div>
+          <div style={{ fontSize: 11, fontWeight: 600, marginTop: 6, opacity: 0.85 }}>Log Meal 🍽️</div>
+        </div>
+      </div>
+
       {/* ═══ Quick Add Bar (inline, scrollable) ═══ */}
       <div style={{ marginBottom: 24 }}>
         <div className="title-m" style={{ marginBottom: 10, fontSize: 15 }}>⚡ Quick Add</div>
