@@ -108,9 +108,11 @@ export default function EmailIntelligence() {
   const unread = emails.filter(e => !e.is_read).length
 
   const tabs = [
-    { id: 'action', label: `Action (${actionEmails.length})` },
-    { id: 'all', label: 'All Mail' },
-    { id: 'insights', label: 'Insights' },
+    { id: 'action', label: `Action`, count: actionEmails.length },
+    { id: 'meetings', label: 'Meetings', count: emails.filter(e => e.category === 'meeting').length },
+    { id: 'finance', label: 'Finance', count: emails.filter(e => ['bill', 'investment'].includes(e.category)).length },
+    { id: 'orders', label: 'Orders', count: emails.filter(e => e.category === 'delivery').length },
+    { id: 'all', label: 'All', count: emails.length },
   ]
 
   // Connect flow — user-friendly native feel
@@ -278,27 +280,45 @@ export default function EmailIntelligence() {
         })}
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 16, padding: 4, background: 'var(--bg-secondary)', borderRadius: 'var(--radius-full)' }}>
+      {/* Tabs (PRD 5-tab: Action/Meetings/Finance/Orders/All) */}
+      <div style={{ display: 'flex', gap: 2, marginBottom: 16, padding: 3, background: 'var(--bg-secondary)', borderRadius: 'var(--radius-full)', overflowX: 'auto' }}>
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
-            flex: 1, padding: '8px 12px', borderRadius: 'var(--radius-full)', fontSize: 13, fontWeight: 600,
+            flex: '0 0 auto', padding: '7px 12px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 600,
             background: tab === t.id ? 'var(--bg-card)' : 'transparent',
             color: tab === t.id ? 'var(--text-primary)' : 'var(--text-secondary)',
             boxShadow: tab === t.id ? 'var(--shadow-1)' : 'none',
             transition: 'all 0.2s', cursor: 'pointer', border: 'none',
-          }}>{t.label}</button>
+            display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap',
+          }}>
+            {t.label}
+            {t.count > 0 && (
+              <span style={{
+                background: tab === t.id ? 'var(--viya-primary-500)' : 'var(--viya-neutral-200)',
+                color: tab === t.id ? 'white' : 'var(--text-secondary)',
+                fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 99,
+                minWidth: 16, textAlign: 'center',
+              }}>{t.count}</span>
+            )}
+          </button>
         ))}
       </div>
 
-      {(tab === 'action' || tab === 'all') && (
+      {/* Email list — filtered by tab */}
+      {(() => {
+        let filtered = emails
+        if (tab === 'action') filtered = actionEmails
+        else if (tab === 'meetings') filtered = emails.filter(e => e.category === 'meeting')
+        else if (tab === 'finance') filtered = emails.filter(e => ['bill', 'investment'].includes(e.category))
+        else if (tab === 'orders') filtered = emails.filter(e => e.category === 'delivery')
+        return (
         <div style={{ marginBottom: 16 }}>
-          {displayEmails.length === 0 && (
+          {filtered.length === 0 && (
             <div className="card" style={{ textAlign: 'center', padding: 32, color: 'var(--text-tertiary)' }}>
-              {tab === 'action' ? 'No action items! You\'re all caught up 🎉' : 'No emails synced yet. Connect your inbox to get started.'}
+              {tab === 'action' ? 'No action items! You\'re all caught up 🎉' : `No ${tab} emails found.`}
             </div>
           )}
-          {displayEmails.map((email) => {
+          {filtered.map((email) => {
             const cat = EMAIL_CATEGORIES[email.category] || EMAIL_CATEGORIES.work
             const pri = PRIORITY_COLORS[email.priority] || PRIORITY_COLORS.medium
             const data = email.extracted_data || {}
@@ -374,10 +394,114 @@ export default function EmailIntelligence() {
             )
           })}
         </div>
+        )
+      })()}
+
+      {/* PRD-spec Typed Card Previews (shown when no real emails) */}
+      {emails.length === 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>📋 What your inbox will look like:</div>
+
+          {/* Bill Card (PRD lines 803-821) */}
+          <div style={{
+            padding: 16, marginBottom: 10, borderRadius: 'var(--r-xl)',
+            background: 'var(--bg-card)', border: '1px solid var(--border-light)',
+            borderLeft: '4px solid var(--coral-500)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>🏦</span><span style={{ fontSize: 13, fontWeight: 700 }}>HDFC Bank</span>
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--coral-500)', padding: '2px 8px', borderRadius: 99, background: 'var(--viya-error-light)' }}>🔴 URGENT</span>
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Credit Card Statement — June 2024</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>VIYA EXTRACTED:</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, fontSize: 12, marginBottom: 10 }}>
+              <div>Full Amount Due: <strong>₹12,400</strong></div>
+              <div>Minimum Due: <strong>₹1,240</strong></div>
+              <div>Due Date: <strong>14 Jun (Tomorrow)</strong></div>
+              <div>Late fee after 18 Jun: <strong>₹1,000</strong></div>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button style={{ padding: '5px 12px', borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 600, background: 'var(--coral-500)', color: 'white', border: 'none' }}>Pay Full ₹12,400</button>
+              <button style={{ padding: '5px 12px', borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 600, background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}>Pay Minimum ₹1,240</button>
+              <button style={{ padding: '5px 12px', borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 600, background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}>Remind Jun 13</button>
+            </div>
+          </div>
+
+          {/* Meeting Card (PRD lines 824-840) */}
+          <div style={{
+            padding: 16, marginBottom: 10, borderRadius: 'var(--r-xl)',
+            background: 'var(--bg-card)', border: '1px solid var(--border-light)',
+            borderLeft: '4px solid var(--info-500)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>👤</span><span style={{ fontSize: 13, fontWeight: 700 }}>Priya Sharma</span>
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--info-500)', padding: '2px 8px', borderRadius: 99, background: 'var(--viya-info-light)' }}>📅 MEETING</span>
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Q2 Performance Review — Calendar Invite</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, fontSize: 12, marginBottom: 8 }}>
+              <div>What: <strong>Q2 Review</strong></div>
+              <div>When: <strong>Tomorrow, 3–4 PM</strong></div>
+              <div>Where: <strong>Conf Room B + Zoom</strong></div>
+              <div>With: <strong>Priya, Ankit, You</strong></div>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--emerald-500)', fontWeight: 600, marginBottom: 8 }}>✅ Your calendar is FREE at this time</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button style={{ padding: '5px 12px', borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 600, background: 'var(--info-500)', color: 'white', border: 'none' }}>✅ Accept</button>
+              <button style={{ padding: '5px 12px', borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 600, background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}>❌ Decline</button>
+              <button style={{ padding: '5px 12px', borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 600, background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}>📅 Suggest Time</button>
+            </div>
+          </div>
+
+          {/* Delivery Card (PRD lines 843-853) */}
+          <div style={{
+            padding: 16, marginBottom: 10, borderRadius: 'var(--r-xl)',
+            background: 'var(--bg-card)', border: '1px solid var(--border-light)',
+            borderLeft: '4px solid var(--cosmos-400)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <span>📦</span><span style={{ fontSize: 13, fontWeight: 700 }}>Amazon India</span>
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Out for Delivery Today!</div>
+            <div style={{ fontSize: 12, marginBottom: 4 }}>Item: <strong>boAt Airdopes 141 (Black)</strong></div>
+            <div style={{ fontSize: 12, marginBottom: 10 }}>Status: 🚚 Out for delivery · ETA: <strong>Today by 8 PM</strong></div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button style={{ padding: '5px 12px', borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 600, background: 'var(--cosmos-400)', color: 'white', border: 'none' }}>📍 Track Live</button>
+              <button style={{ padding: '5px 12px', borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 600, background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}>🔔 Alert 30min Before</button>
+            </div>
+          </div>
+
+          {/* Investment Card (PRD lines 856-867) */}
+          <div style={{
+            padding: 16, marginBottom: 10, borderRadius: 'var(--r-xl)',
+            background: 'var(--viya-success-light)', border: '1px solid var(--border-light)',
+            borderLeft: '4px solid var(--emerald-500)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>📈</span><span style={{ fontSize: 13, fontWeight: 700 }}>Kuvera</span>
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--emerald-500)', padding: '2px 8px', borderRadius: 99, background: 'rgba(0,200,83,0.1)' }}>💰 INVESTED</span>
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>SIP Executed — Axis Bluechip Direct Growth</div>
+            <div style={{ fontSize: 12, marginBottom: 4 }}>Amount: <strong>₹3,000</strong> · NAV: ₹52.34 · Units: 57.319</div>
+            <div style={{ fontSize: 12, marginBottom: 8 }}>Portfolio total: <strong>₹4,80,234</strong> (+₹3,200 today)</div>
+            <div style={{ fontSize: 12, color: 'var(--emerald-500)', fontWeight: 600, marginBottom: 8 }}>✅ Added to your portfolio tracker automatically</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button style={{ padding: '5px 12px', borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 600, background: 'var(--emerald-500)', color: 'white', border: 'none' }}>View Portfolio</button>
+              <button style={{ padding: '5px 12px', borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 600, background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}>Increase SIP?</button>
+            </div>
+          </div>
+        </div>
       )}
 
-      {tab === 'insights' && (
+      {/* Insights Summary (always visible at bottom when emails exist) */}
+      {emails.length > 0 && (
         <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>🧠 AI Insights</div>
           {[
             billEmails.length > 0 && { icon: '💳', title: 'Bill Detection', desc: `${billEmails.length} bill${billEmails.length > 1 ? 's' : ''} found${billTotal > 0 ? ` totaling ₹${billTotal}` : ''}`, color: 'var(--viya-error)' },
             meetingEmails.length > 0 && { icon: '📅', title: 'Meetings Extracted', desc: `${meetingEmails.length} meeting${meetingEmails.length > 1 ? 's' : ''} detected`, color: 'var(--viya-info)' },
@@ -397,11 +521,6 @@ export default function EmailIntelligence() {
               <ChevronRight size={16} color="var(--text-tertiary)"/>
             </div>
           ))}
-          {emails.length === 0 && (
-            <div className="card" style={{ textAlign: 'center', padding: 32, color: 'var(--text-tertiary)' }}>
-              No email insights yet. Sync your inbox to get AI-powered analysis.
-            </div>
-          )}
         </div>
       )}
     </div>

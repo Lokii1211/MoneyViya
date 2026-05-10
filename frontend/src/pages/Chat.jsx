@@ -77,8 +77,12 @@ export default function Chat() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [showActions, setShowActions] = useState(false)
+  const [voiceOpen, setVoiceOpen] = useState(false)
+  const [recording, setRecording] = useState(false)
+  const [recTime, setRecTime] = useState(0)
   const endRef = useRef(null)
   const inputRef = useRef(null)
+  const recTimerRef = useRef(null)
 
   const name = user?.name || 'there'
   const hour = new Date().getHours()
@@ -323,18 +327,133 @@ export default function Chat() {
           onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
         />
 
-        <button onClick={() => sendMsg()} disabled={!input.trim() || loading}
-          style={{
-            width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
-            background: input.trim() ? 'var(--gradient-primary)' : 'var(--viya-neutral-100)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: input.trim() ? 'white' : 'var(--text-tertiary)',
-            boxShadow: input.trim() ? 'var(--shadow-teal)' : 'none',
-            transition: 'all 0.2s var(--ease)', cursor: 'pointer', border: 'none',
-          }}>
-          <Send size={18} />
-        </button>
+        {input.trim() ? (
+          <button onClick={() => sendMsg()} disabled={loading}
+            style={{
+              width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+              background: 'var(--gradient-primary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'white', boxShadow: 'var(--shadow-teal)',
+              transition: 'all 0.2s var(--ease)', cursor: 'pointer', border: 'none',
+            }}>
+            <Send size={18} />
+          </button>
+        ) : (
+          <button onClick={() => setVoiceOpen(true)}
+            style={{
+              width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+              background: 'var(--gradient-hero)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'white', boxShadow: 'var(--sh-cosmos)',
+              transition: 'all 0.2s var(--ease)', cursor: 'pointer', border: 'none',
+            }}>
+            <Mic size={18} />
+          </button>
+        )}
       </div>
+
+      {/* ═══ VOICE OVERLAY (PRD lines 703-791, fullscreen mic) ═══ */}
+      {voiceOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 999,
+          background: 'linear-gradient(180deg, #0A0019 0%, #001917 100%)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          animation: 'fadeIn 0.25s ease',
+        }}>
+          {/* Close */}
+          <button onClick={() => {
+            setVoiceOpen(false); setRecording(false); setRecTime(0);
+            clearInterval(recTimerRef.current);
+          }} style={{
+            position: 'absolute', top: 60, right: 24, fontSize: 28, color: 'white',
+            background: 'none', border: 'none', cursor: 'pointer', opacity: 0.7,
+          }}>✕</button>
+
+          {/* Viya Orb with pulse rings */}
+          <div style={{ position: 'relative', width: 160, height: 160, marginBottom: 40 }}>
+            {recording && [0,1,2].map(i => (
+              <div key={i} style={{
+                position: 'absolute', inset: -20 - i * 20, borderRadius: '50%',
+                border: '2px solid rgba(0,229,212,0.3)',
+                animation: `pulse 1.5s ease-in-out ${i * 0.5}s infinite`,
+              }} />
+            ))}
+            <div style={{
+              width: 160, height: 160, borderRadius: '50%',
+              background: recording ? 'var(--gradient-hero)' : 'rgba(255,255,255,0.1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: recording ? '0 0 60px rgba(0,229,212,0.4)' : 'none',
+              transition: 'all 0.3s ease',
+              animation: recording ? 'fabBreathe 1.5s ease-in-out infinite' : 'none',
+            }}>
+              <Mic size={48} color="white" />
+            </div>
+          </div>
+
+          {/* Timer */}
+          <div style={{
+            fontFamily: "'JetBrains Mono',monospace", fontSize: 28, color: 'white',
+            fontWeight: 600, marginBottom: 8,
+          }}>
+            {Math.floor(recTime / 60).toString().padStart(2, '0')}:{(recTime % 60).toString().padStart(2, '0')}
+          </div>
+          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 40 }}>
+            {recording ? 'Listening...' : 'Tap to start recording'}
+          </div>
+
+          {/* Waveform visualization */}
+          {recording && (
+            <div style={{ display: 'flex', gap: 3, alignItems: 'center', height: 40, marginBottom: 40 }}>
+              {Array.from({ length: 24 }).map((_, i) => (
+                <div key={i} style={{
+                  width: 3, borderRadius: 2, background: 'var(--teal-500)',
+                  height: `${10 + Math.random() * 30}px`,
+                  animation: `pulse ${0.3 + Math.random() * 0.5}s ease-in-out infinite alternate`,
+                  animationDelay: `${i * 0.05}s`,
+                }} />
+              ))}
+            </div>
+          )}
+
+          {/* Controls */}
+          <div style={{ display: 'flex', gap: 24 }}>
+            {recording ? (
+              <>
+                <button onClick={() => {
+                  setRecording(false); clearInterval(recTimerRef.current);
+                  setVoiceOpen(false); setRecTime(0);
+                }} style={{
+                  width: 56, height: 56, borderRadius: '50%', background: 'rgba(255,82,82,0.2)',
+                  border: '2px solid var(--coral-500)', color: 'var(--coral-500)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 20, cursor: 'pointer',
+                }}>✕</button>
+                <button onClick={() => {
+                  setRecording(false); clearInterval(recTimerRef.current);
+                  setVoiceOpen(false); setRecTime(0);
+                  sendMsg('Voice message recorded — process my request');
+                }} style={{
+                  width: 56, height: 56, borderRadius: '50%', background: 'var(--gradient-hero)',
+                  border: 'none', color: 'white',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: 'var(--sh-teal)', cursor: 'pointer',
+                }}><Send size={22} /></button>
+              </>
+            ) : (
+              <button onClick={() => {
+                setRecording(true); setRecTime(0);
+                recTimerRef.current = setInterval(() => setRecTime(t => t + 1), 1000);
+              }} style={{
+                width: 72, height: 72, borderRadius: '50%', background: 'var(--gradient-hero)',
+                border: 'none', color: 'white',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 0 40px rgba(0,229,212,0.4)', cursor: 'pointer',
+                fontSize: 14, fontWeight: 600,
+              }}>Start</button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
