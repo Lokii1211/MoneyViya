@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { TrendingUp, TrendingDown, PiggyBank, Landmark, BarChart3, Plus, ChevronRight, ArrowUpRight, Shield } from 'lucide-react'
+import { formatINR } from '../lib/utils'
 
 const typeConfig = {
   mutual_fund: { emoji: '📈', color: 'var(--viya-primary-500)', label: 'Mutual Fund' },
