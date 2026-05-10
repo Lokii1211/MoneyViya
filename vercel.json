@@ -83,6 +83,10 @@
       "runtime": "@vercel/python@4.5.0",
       "maxDuration": 60
     },
+    "api/cron/lending-reminder.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 30
+    },
     "frontend/api/webhook.js": {
       "maxDuration": 60
     },
@@ -113,6 +117,10 @@
     {
       "path": "/api/cron/medicine-alert",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/lending-reminder",
+      "schedule": "30 4 * * *"
     },
     {
       "path": "/api/cron/weekly-summary",

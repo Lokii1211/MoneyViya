@@ -324,4 +324,11 @@ export const api = {
 
   // AGENT LOGS
   async logAgentCall(phone, data) { return insert('agent_logs', { phone, ...data }) },
+
+  // LENDING / BORROWING
+  async getLendings(phone) { return query('lending', `?user_phone=eq.${phone}&select=*&order=created_at.desc`) },
+  async addLending(data) { return insert('lending', data) },
+  async updateLending(id, data) { return update('lending', `id=eq.${id}`, data) },
+  async settleLending(id) { return update('lending', `id=eq.${id}`, { status: 'settled', settled_at: new Date().toISOString() }) },
+  async deleteLending(id) { return remove('lending', `id=eq.${id}`) },
 }

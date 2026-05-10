@@ -48,6 +48,7 @@ const Leaderboard = lazy(() => import('./pages/Leaderboard'))
 const Insights = lazy(() => import('./pages/Insights'))
 const Predictions = lazy(() => import('./pages/Predictions'))
 const Settings = lazy(() => import('./pages/Settings'))
+const Lending = lazy(() => import('./pages/Lending'))
 
 // Loading fallback with V3 skeleton
 function PageLoader() {
@@ -92,6 +93,7 @@ function AppContent() {
           <Route path="report" element={<Report />} />
           <Route path="subscriptions" element={<Subscriptions />} />
           <Route path="splits" element={<Splits />} />
+          <Route path="lending" element={<Lending />} />
           {/* Life */}
           <Route path="habits" element={<Habits />} />
           <Route path="health" element={<Health />} />
