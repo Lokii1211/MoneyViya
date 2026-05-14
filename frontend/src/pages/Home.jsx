@@ -45,7 +45,6 @@ export default function Home() {
   const [checkins, setCheckins] = useState([])
   const [goals, setGoals] = useState([])
   const [bills, setBills] = useState([])
-  const [fabOpen, setFabOpen] = useState(false)
 
   const nav = useNavigate()
   const period = getPeriod()
@@ -96,28 +95,55 @@ export default function Home() {
 
   const actions = [
     { icon: <Plus size={18}/>, label: 'Add Expense', to: '/expenses', color: 'var(--viya-success)' },
-    { icon: <Sparkles size={18}/>, label: 'AI Briefing', to: '/chat?q=morning+briefing', color: 'var(--viya-primary-500)' },
     { icon: <Flame size={18}/>, label: 'Habits', to: '/habits', color: 'var(--viya-gold-500)' },
     { icon: <Target size={18}/>, label: 'Goals', to: '/goals', color: 'var(--viya-error)' },
     { icon: <Activity size={18}/>, label: 'Health', to: '/health', color: '#FF6B6B' },
     { icon: <CreditCard size={18}/>, label: 'Bills', to: '/bills', color: 'var(--viya-warning)' },
     { icon: <Users size={18}/>, label: 'Lending', to: '/lending', color: '#f59e0b' },
     { icon: <BarChart3 size={18}/>, label: 'Report', to: '/report', color: 'var(--viya-primary-400)' },
+    { icon: <Sparkles size={18}/>, label: 'Premium', to: '/premium', color: 'var(--viya-primary-500)' },
   ]
 
 
   return (
     <div className="page" style={{ paddingTop: 8 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div className="avatar" style={{ width: 44, height: 44, fontSize: 18 }}>
-            {localStorage.getItem('mv_avatar') || name.charAt(0).toUpperCase()}
-          </div>
+      {/* Header with Viya Logo */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="/logo.png" alt="Viya AI" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover' }} />
           <div>
-            <div style={{ fontWeight: 600, fontSize: 16 }}>{getGreeting()}, {name.split(' ')[0]}! {getGreetingEmoji()}</div>
-            <div className="body-s text-secondary">Your AI Life Assistant</div>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>{getGreeting()}, {name.split(' ')[0]}! {getGreetingEmoji()}</div>
+            <div className="body-s text-secondary">Your Second Brain • Always with you</div>
           </div>
+        </div>
+        <button onClick={() => nav('/notifications')} style={{ width: 38, height: 38, borderRadius: 'var(--radius-xs)', background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}>
+          <Bell size={18} color="var(--text2)" />
+          <div style={{ position: 'absolute', top: 7, right: 7, width: 7, height: 7, borderRadius: '50%', background: 'var(--red)', boxShadow: '0 0 8px var(--red)' }} />
+        </button>
+      </div>
+
+      {/* ═══ TOP: Quick Actions Grid (2×4) — ALWAYS VISIBLE ═══ */}
+      <div className="stagger-children" style={{ marginBottom: 16 }}>
+        <div className="title-m" style={{ marginBottom: 8, fontSize: 14, color: 'var(--text2)' }}>⚡ Quick Actions</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+          {actions.map((a, i) => (
+            <button key={i} onClick={() => nav(a.to)} className="ripple" style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+              padding: '10px 4px', borderRadius: 'var(--radius-sm)',
+              background: i === 0 ? 'var(--gradient-primary)' : 'var(--surface)',
+              border: i === 0 ? 'none' : '1px solid var(--border)',
+              cursor: 'pointer', color: i === 0 ? 'white' : 'inherit',
+              boxShadow: i === 0 ? '0 4px 16px var(--primary-glow)' : 'var(--shadow-sm)',
+            }}>
+              <div style={{
+                width: 34, height: 34, borderRadius: 9,
+                background: i === 0 ? 'rgba(255,255,255,0.2)' : a.color + '15',
+                color: i === 0 ? 'white' : a.color,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>{a.icon}</div>
+              <span style={{ fontSize: 10, fontWeight: 600, color: i === 0 ? 'white' : 'var(--text2)' }}>{a.label}</span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -271,43 +297,38 @@ export default function Home() {
         </div>
       )}
 
-      {/* ═══ SECTION E: Ask Viya ═══ */}
-      <div className="card" onClick={() => nav('/chat')} style={{
+      {/* ═══ SECTION E: Ask Viya (card with logo) ═══ */}
+      <div className="card-press" onClick={() => nav('/chat')} style={{
         padding: '14px 16px', marginBottom: 16, cursor: 'pointer',
         display: 'flex', alignItems: 'center', gap: 12,
         background: 'var(--gradient-night)', color: 'white', border: 'none',
+        borderRadius: 'var(--radius)',
       }}>
-        <div style={{ width: 40, height: 40, borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
-          <img src="/logo.png" alt="Viya" style={{ width: 38, height: 38, objectFit: 'contain' }} />
-        </div>
+        <img src="/logo.png" alt="Viya AI" style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>Ask Viya anything</div>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>Diet, study plan, tax tips, mental health...</div>
+          <div style={{ fontSize: 12, opacity: 0.7 }}>Create, update, delete, check-in — all in chat</div>
         </div>
         <Zap size={16} color="var(--viya-gold-500)" />
       </div>
 
-      {/* ═══ SECTION F: Quick Actions Grid (2×4) ═══ */}
+      {/* ═══ SECTION F: SaaS Quick Links ═══ */}
       <div style={{ marginBottom: 16 }}>
-        <div className="title-m" style={{ marginBottom: 10, fontSize: 15 }}>What do you need?</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-          {actions.map((a, i) => (
-            <button key={i} onClick={() => nav(a.to)} style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-              padding: '12px 4px', borderRadius: 'var(--radius-lg)',
-              background: i === 0 ? 'var(--gradient-primary)' : 'var(--bg-card)',
-              border: i === 0 ? 'none' : '1px solid var(--border-light)',
-              cursor: 'pointer', transition: 'transform 0.1s',
-              color: i === 0 ? 'white' : 'inherit',
-              boxShadow: i === 0 ? 'var(--shadow-teal)' : 'var(--shadow-1)',
+        <div className="title-m" style={{ marginBottom: 10, fontSize: 15 }}>🚀 Explore More</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {[
+            { emoji: '📊', label: 'Weekly Report', to: '/weekly-report', bg: 'var(--violet-dim)', color: 'var(--violet)' },
+            { emoji: '☀️', label: 'Morning Brief', to: '/morning-brief', bg: 'var(--gold-dim)', color: 'var(--gold)' },
+            { emoji: '✂️', label: 'Sub Audit', to: '/subscription-audit', bg: 'var(--red-dim)', color: 'var(--red)' },
+            { emoji: '🎁', label: 'Refer & Earn', to: '/referral', bg: 'var(--primary-dim)', color: 'var(--primary)' },
+          ].map((l, i) => (
+            <button key={i} onClick={() => nav(l.to)} className="ripple" style={{
+              display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
+              borderRadius: 'var(--radius-sm)', background: 'var(--surface)', border: '1px solid var(--border)',
+              cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', color: 'var(--text)',
             }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 10,
-                background: i === 0 ? 'rgba(255,255,255,0.2)' : a.color + '15',
-                color: i === 0 ? 'white' : a.color,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>{a.icon}</div>
-              <span style={{ fontSize: 11, fontWeight: 500, color: i === 0 ? 'white' : 'var(--text-secondary)' }}>{a.label}</span>
+              <span style={{ fontSize: 22 }}>{l.emoji}</span>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{l.label}</span>
             </button>
           ))}
         </div>
@@ -407,26 +428,26 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ═══ Quick Add Bar (inline, scrollable) ═══ */}
-      <div style={{ marginBottom: 24 }}>
-        <div className="title-m" style={{ marginBottom: 10, fontSize: 15 }}>⚡ Quick Add</div>
-        <div style={{ display: 'flex', gap: 10 }}>
+      {/* ═══ Quick Add Bar (inline) ═══ */}
+      <div style={{ marginBottom: 20 }}>
+        <div className="title-m" style={{ marginBottom: 8, fontSize: 14, color: 'var(--text2)' }}>✏️ Manual Quick Add</div>
+        <div style={{ display: 'flex', gap: 8 }}>
           {[
             { icon: <Plus size={18}/>, label: 'Expense', to: '/expenses', bg: 'var(--gradient-primary)', color: 'white' },
-            { icon: <ClipboardList size={18}/>, label: 'Task', to: '/reminders', bg: 'var(--bg-card)', color: 'var(--viya-violet-500)' },
-            { icon: <Bell size={18}/>, label: 'Reminder', to: '/reminders', bg: 'var(--bg-card)', color: 'var(--viya-gold-500)' },
-            { icon: <Activity size={18}/>, label: 'Health Log', to: '/health', bg: 'var(--bg-card)', color: '#FF6B6B' },
+            { icon: <ClipboardList size={18}/>, label: 'Task', to: '/reminders', bg: 'var(--surface)', color: 'var(--violet)' },
+            { icon: <Bell size={18}/>, label: 'Reminder', to: '/reminders', bg: 'var(--surface)', color: 'var(--gold)' },
+            { icon: <Activity size={18}/>, label: 'Health', to: '/health', bg: 'var(--surface)', color: 'var(--red)' },
           ].map((a, i) => (
-            <button key={i} onClick={() => nav(a.to)} style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-              padding: '14px 8px', borderRadius: 'var(--radius-lg)',
+            <button key={i} onClick={() => nav(a.to)} className="ripple" style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+              padding: '12px 6px', borderRadius: 'var(--radius-sm)',
               background: a.bg, color: a.color,
-              border: i === 0 ? 'none' : '1px solid var(--border-light)',
-              boxShadow: i === 0 ? 'var(--shadow-teal)' : 'var(--shadow-1)',
-              cursor: 'pointer', transition: 'transform 0.1s',
+              border: i === 0 ? 'none' : '1px solid var(--border)',
+              boxShadow: i === 0 ? '0 4px 16px var(--primary-glow)' : 'var(--shadow-sm)',
+              cursor: 'pointer',
             }}>
               {a.icon}
-              <span style={{ fontSize: 11, fontWeight: 600 }}>{a.label}</span>
+              <span style={{ fontSize: 10, fontWeight: 600 }}>{a.label}</span>
             </button>
           ))}
         </div>
@@ -497,50 +518,14 @@ export default function Home() {
         </div>
       )}
 
-      {/* FAB with Radial Menu (PRD lines 674-693) */}
-      {fabOpen && <div onClick={() => setFabOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', zIndex: 140 }} />}
-      <div style={{ position: 'fixed', bottom: 'calc(var(--nav-height) + var(--safe-bottom) + 20px)', right: 'calc(50% - 195px)', zIndex: 160 }}>
-        {fabOpen && [
-          { emoji: '🎤', label: 'Voice', to: '/chat', angle: -90 },
-          { emoji: '➕', label: 'Expense', to: '/expenses', angle: -144 },
-          { emoji: '🔔', label: 'Remind', to: '/reminders', angle: -198 },
-          { emoji: '✅', label: 'Task', to: '/reminders', angle: -252 },
-          { emoji: '📝', label: 'Note', to: '/chat', angle: -306 },
-          { emoji: '📸', label: 'Scan', to: '/chat?q=scan', angle: -360 },
-        ].map((item, i) => {
-          const rad = (item.angle * Math.PI) / 180
-          const x = Math.cos(rad) * 80, y = Math.sin(rad) * 80
-          return (
-            <div key={i} onClick={() => { setFabOpen(false); nav(item.to) }} style={{
-              position: 'absolute', bottom: 30 - y, left: 30 + x - 25,
-              width: 50, height: 50, borderRadius: '50%', background: 'var(--bg-card)',
-              boxShadow: 'var(--sh-3)', display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-              animation: `scaleIn 0.2s var(--ease-spring) ${i * 40}ms both`,
-            }}>
-              <span style={{ fontSize: 18 }}>{item.emoji}</span>
-              <span style={{ fontSize: 8, fontWeight: 600, color: 'var(--text-secondary)' }}>{item.label}</span>
-            </div>
-          )
-        })}
-        <div
-          onClick={() => { if (!fabOpen) nav('/chat') }}
-          onContextMenu={(e) => { e.preventDefault(); setFabOpen(!fabOpen) }}
-          onTouchStart={() => { const t = setTimeout(() => setFabOpen(true), 400); window._fabTimer = t }}
-          onTouchEnd={() => clearTimeout(window._fabTimer)}
-          style={{
-            width: 60, height: 60, borderRadius: 'var(--r-full)',
-            background: fabOpen ? 'var(--coral-500)' : 'var(--gradient-hero)',
-            color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: 'var(--sh-teal)', cursor: 'pointer', transition: 'transform 0.15s, background 0.2s',
-            transform: fabOpen ? 'rotate(45deg)' : 'scale(1)',
-            animation: fabOpen ? 'none' : 'fabBreathe 4s ease-in-out infinite',
-          }}
-          aria-label="Talk to Viya"
-        >
-          {fabOpen ? <Plus size={26} /> : <img src="/logo.png" alt="Viya" style={{ width: 30, height: 30, objectFit: 'contain' }} />}
-        </div>
-      </div>
+      {/* ═══ FIXED FAB — Always visible chat button ═══ */}
+      <button
+        className="viya-fab-fixed"
+        onClick={() => nav('/chat')}
+        aria-label="Talk to Viya"
+      >
+        <MessageCircle size={26} />
+      </button>
 
       <div style={{ height: 20 }} />
     </div>

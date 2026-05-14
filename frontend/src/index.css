@@ -1202,3 +1202,90 @@ html, body {
   --radius-full: 999px;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   VIYA v3.7 — MICRO-ANIMATIONS & INTERACTION SYSTEM
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Button press effect — all buttons get a tactile scale */
+button, [role="button"], .qa-item, .settings-item, .nav-item {
+  transition: transform 0.15s var(--ease), box-shadow 0.2s var(--ease), opacity 0.15s !important;
+}
+button:active, [role="button"]:active, .qa-item:active, .settings-item:active {
+  transform: scale(0.96) !important;
+  opacity: 0.85;
+}
+
+/* Card press & hover */
+.card-press { transition: transform 0.2s var(--ease), box-shadow 0.25s var(--ease); }
+.card-press:hover { transform: translateY(-2px); box-shadow: var(--card-hover-shadow); }
+.card-press:active { transform: scale(0.98) translateY(0); }
+
+/* FAB breathing animation (always visible) */
+@keyframes fabBreathe {
+  0%, 100% { box-shadow: 0 4px 20px var(--primary-glow); }
+  50% { box-shadow: 0 6px 32px var(--primary-glow), 0 0 48px rgba(0,208,132,0.18); }
+}
+
+/* Scroll reveal */
+.scroll-reveal {
+  opacity: 0; transform: translateY(16px);
+  transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
+}
+.scroll-reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* Stagger children */
+.stagger-children > *:nth-child(1) { transition-delay: 0s; }
+.stagger-children > *:nth-child(2) { transition-delay: 0.05s; }
+.stagger-children > *:nth-child(3) { transition-delay: 0.06s; }
+.stagger-children > *:nth-child(4) { transition-delay: 0.12s; }
+.stagger-children > *:nth-child(5) { transition-delay: 0.16s; }
+.stagger-children > *:nth-child(6) { transition-delay: 0.2s; }
+.stagger-children > *:nth-child(7) { transition-delay: 0.24s; }
+.stagger-children > *:nth-child(8) { transition-delay: 0.28s; }
+
+@keyframes scaleIn { from { opacity:0; transform:scale(0.85); } to { opacity:1; transform:scale(1); } }
+@keyframes slideRight { from { opacity:0; transform:translateX(24px); } to { opacity:1; transform:translateX(0); } }
+@keyframes bounceIn { 0% { transform:scale(0); } 60% { transform:scale(1.12); } 100% { transform:scale(1); } }
+
+.animate-scaleIn { animation: scaleIn 0.35s var(--ease) both; }
+.animate-slideRight { animation: slideRight 0.4s var(--ease) both; }
+.animate-bounceIn { animation: bounceIn 0.5s var(--ease) both; }
+
+/* Ripple for buttons */
+.ripple { position:relative; overflow:hidden; }
+.ripple::after {
+  content:''; position:absolute; width:100%; height:100%; top:0; left:0; pointer-events:none;
+  background-image:radial-gradient(circle, rgba(255,255,255,0.3) 10%, transparent 10.01%);
+  background-repeat:no-repeat; background-position:50%;
+  transform:scale(10); opacity:0; transition:transform 0.5s, opacity 0.8s;
+}
+.ripple:active::after { transform:scale(0); opacity:0.5; transition:0s; }
+
+/* Smooth scroll snap */
+.scroll-snap-x {
+  display:flex; overflow-x:auto; scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch; scrollbar-width:none;
+}
+.scroll-snap-x::-webkit-scrollbar { display:none; }
+.scroll-snap-x > * { scroll-snap-align:start; flex-shrink:0; }
+
+/* Fixed FAB */
+.viya-fab-fixed {
+  position:fixed; bottom:84px; right:max(calc(50% - 195px), 16px); z-index:160;
+  width:60px; height:60px; border-radius:50%;
+  background:linear-gradient(135deg, var(--primary), #34D399);
+  color:#fff; display:flex; align-items:center; justify-content:center;
+  border:none; cursor:pointer;
+  box-shadow:0 6px 28px var(--primary-glow);
+  animation:fabBreathe 3s ease-in-out infinite;
+  transition:transform 0.2s var(--ease), background 0.2s;
+}
+.viya-fab-fixed:active { transform:scale(0.92) !important; }
+.viya-fab-fixed img { width:30px; height:30px; object-fit:contain; filter:brightness(10); }
+
+/* Skeleton shimmer */
+@keyframes shimmer { 0% { background-position:-200% 0; } 100% { background-position:200% 0; } }
+.skeleton {
+  background:linear-gradient(90deg, var(--surface2) 25%, var(--surface3) 50%, var(--surface2) 75%);
+  background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:var(--radius-xs);
+}
