@@ -481,3 +481,130 @@ class TestObservability:
         assert "business" in summary
         assert "alerts" in summary
 
+
+class TestDatabaseSchema:
+    """Tests for database schema (PRD Section 5.1)"""
+
+    def test_all_required_tables_present(self):
+        """Schema has all 27 required tables"""
+        from services.database_schema import validate_schema
+        result = validate_schema()
+        assert result["valid"] is True
+        assert result["total_tables"] >= 27
+        assert len(result["missing"]) == 0
+
+    def test_transactions_partitioned(self):
+        """Transactions table uses range partitioning"""
+        from services.database_schema import TABLES
+        ddl = TABLES["transactions"]
+        assert "PARTITION BY RANGE" in ddl
+        assert "transaction_date" in ddl
+
+    def test_pgvector_columns(self):
+        """viya_memory and conversations have vector columns"""
+        from services.database_schema import TABLES
+        assert "vector(1536)" in TABLES["viya_memory"]
+        assert "vector(1536)" in TABLES["conversations"]
+
+    def test_composite_indexes(self):
+        """Composite indexes for common query patterns exist"""
+        from services.database_schema import INDEXES
+        index_text = " ".join(INDEXES)
+        assert "user_id, transaction_date DESC" in index_text
+        assert "user_id, category, transaction_date" in index_text
+        assert "user_id, status, due_at" in index_text
+
+    def test_seed_plans(self):
+        """All 3 plans seeded with correct pricing"""
+        from services.database_schema import SEED_PLANS
+        plans = {p["name"]: p for p in SEED_PLANS}
+        assert plans["free"]["price_inr"] == 0
+        assert plans["premium"]["price_inr"] == 149
+        assert plans["enterprise"]["price_inr"] == 999
+        assert plans["free"]["limits"]["max_goals"] == 3
+        assert plans["premium"]["limits"]["max_goals"] == -1  # unlimited
+
+
+class TestDataSecurity:
+    """Tests for data security (PRD Section 5.2)"""
+
+    def test_field_encryption_roundtrip(self):
+        """Encrypt → decrypt returns original value"""
+        from services.data_security import FieldEncryption
+        enc = FieldEncryption("test-master-key-32-bytes-long!!")
+        original = "9876543210"
+        encrypted = enc.encrypt(original, "user-1")
+        assert encrypted.startswith("enc::")
+        assert original not in encrypted
+        decrypted = enc.decrypt(encrypted, "user-1")
+        assert decrypted == original
+
+    def test_field_classification(self):
+        """Fields classified into correct tiers"""
+        from services.data_security import FieldEncryption
+        enc = FieldEncryption()
+        assert enc.classify_field("phone_number") == "tier_1_critical"
+        assert enc.classify_field("access_token") == "tier_1_critical"
+        assert enc.classify_field("medication_name") == "tier_2_sensitive"
+        assert enc.classify_field("goal_name") == "tier_3_standard"
+
+    def test_pii_masking_phone(self):
+        """PII masker redacts phone numbers"""
+        from services.data_security import PIIMasker
+        text = "Call me at 9876543210 or +919876543210"
+        masked = PIIMasker.mask(text)
+        assert "9876543210" not in masked
+        assert "***PHONE***" in masked
+
+    def test_pii_masking_email(self):
+        """PII masker redacts emails"""
+        from services.data_security import PIIMasker
+        text = "Send to user@example.com please"
+        masked = PIIMasker.mask(text)
+        assert "user@example.com" not in masked
+        assert "***EMAIL***" in masked
+
+    def test_pii_masking_dict(self):
+        """PII masker redacts sensitive dict keys"""
+        from services.data_security import PIIMasker
+        data = {"phone": "9876543210", "name": "Rahul", "otp": "1234"}
+        masked = PIIMasker.mask_dict(data)
+        assert masked["phone"] == "***REDACTED***"
+        assert masked["otp"] == "***REDACTED***"
+        assert masked["name"] == "Rahul"  # Not sensitive
+
+    def test_retention_policies(self):
+        """Retention policies match PRD spec"""
+        from services.data_security import RETENTION_POLICIES
+        assert RETENTION_POLICIES["conversations"]["retention_days"] == 90
+        assert RETENTION_POLICIES["email_bodies"]["retention_days"] == 0
+        assert RETENTION_POLICIES["audit_logs"]["retention_days"] == 730
+        assert RETENTION_POLICIES["deleted_accounts"]["retention_days"] == 30
+
+    def test_gdpr_data_export(self):
+        """GDPR export returns correct structure"""
+        from services.data_security import GDPRCompliance
+        g = GDPRCompliance()
+        export = g.request_data_export("user-1")
+        assert export["status"] == "processing"
+        assert "json" in export["format"]
+        assert "csv" in export["format"]
+        assert len(export["tables"]) >= 9
+
+    def test_gdpr_deletion_request(self):
+        """GDPR deletion schedules 30-day processing"""
+        from services.data_security import GDPRCompliance
+        g = GDPRCompliance()
+        deletion = g.request_deletion("user-1")
+        assert deletion["sla_days"] == 30
+        assert deletion["status"] == "scheduled"
+        assert len(deletion["tables_to_delete"]) >= 14
+
+    def test_secrets_audit(self):
+        """Secrets audit checks all required keys"""
+        from services.data_security import audit_secrets, REQUIRED_SECRETS
+        result = audit_secrets()
+        assert result["total_required"] == len(REQUIRED_SECRETS)
+        assert "missing" in result
+        assert "configured" in result
+
