@@ -1424,3 +1424,29 @@ button:active, [role="button"]:active, .qa-item:active, .settings-item:active {
   height:8px; border-radius:99px; transition:width 0.6s var(--ease);
 }
 
+/* ═══ PRD 3.3: Touch Target Minimums ═══ */
+/* "44×44pt iOS / 48×48dp Android minimum" */
+button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
+  min-height:44px; /* WCAG 2.1 AA minimum */
+}
+/* Exception: inline text links and grouped items */
+.inline-link, .text-link { min-height:auto; }
+/* Primary CTA targets */
+.btn-primary, .btn-secondary { min-height:48px; }
+
+/* ═══ PRD 3.3: Color Independence ═══ */
+/* "Never convey info with color alone — always pair Color + Icon + Label" */
+.status-label { display:inline-flex; align-items:center; gap:4px; }
+.status-label::before { content:''; width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.status-label.overdue::before { background:var(--red); }
+.status-label.overdue { color:var(--red); }
+.status-label.due-soon::before { background:var(--orange); }
+.status-label.due-soon { color:var(--orange); }
+.status-label.paid::before { background:var(--primary); }
+.status-label.paid { color:var(--primary); }
+
+/* ═══ PRD 3.5: Offline Banner Animation ═══ */
+@keyframes slideDown {
+  from { transform:translateX(-50%) translateY(-100%); }
+  to { transform:translateX(-50%) translateY(0); }
+}

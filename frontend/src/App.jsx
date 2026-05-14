@@ -5,6 +5,7 @@ import { ToastProvider } from './components/Toast'
 import Layout from './components/Layout'
 import Splash from './pages/Splash'
 import { HomeSkeleton } from './components/SkeletonLoader'
+import OfflineBanner from './components/OfflineBanner'
 import './design-system.css'
 import './index.css'
 
@@ -87,63 +88,67 @@ function AppContent() {
   }
 
   return (
-    <Suspense fallback={<PageLoader />}>
-      <Routes>
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
-        <Route path="/" element={<Protected><Layout /></Protected>}>
-          <Route index element={<Home />} />
-          {/* Money */}
-          <Route path="expenses" element={<Expenses />} />
-          <Route path="budget" element={<Budget />} />
-          <Route path="goals" element={<Goals />} />
-          <Route path="bills" element={<Bills />} />
-          <Route path="wealth" element={<Wealth />} />
-          <Route path="report" element={<Report />} />
-          <Route path="subscriptions" element={<Subscriptions />} />
-          <Route path="splits" element={<Splits />} />
-          <Route path="lending" element={<Lending />} />
-          {/* Life */}
-          <Route path="habits" element={<Habits />} />
-          <Route path="health" element={<Health />} />
-          <Route path="calendar" element={<CalendarScreen />} />
-          <Route path="reminders" element={<Reminders />} />
-          <Route path="journal" element={<Journal />} />
-          <Route path="medicine" element={<Medicine />} />
-          <Route path="sleep" element={<SleepTracker />} />
-          <Route path="meals" element={<Meals />} />
-          {/* Intelligence */}
-          <Route path="chat" element={<Chat />} />
-          <Route path="email" element={<EmailIntelligence />} />
-          <Route path="insights" element={<Insights />} />
-          <Route path="predictions" element={<Predictions />} />
-          {/* Social */}
-          <Route path="friends" element={<Friends />} />
-          <Route path="family" element={<Family />} />
-          <Route path="community" element={<Community />} />
-          <Route path="leaderboard" element={<Leaderboard />} />
-          {/* Profile & Settings */}
-          <Route path="profile" element={<Profile />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="rewards" element={<Rewards />} />
-          <Route path="premium" element={<PremiumUpgrade />} />
-          <Route path="notification-settings" element={<NotificationSettings />} />
-          <Route path="referral" element={<ReferralProgram />} />
-          <Route path="admin" element={<AdminDashboard />} />
-          <Route path="subscription-audit" element={<SubscriptionAudit />} />
-          <Route path="weekly-report" element={<WeeklyReport />} />
-          <Route path="morning-brief" element={<MorningBrief />} />
-          <Route path="review" element={<Review />} />
-          <Route path="search" element={<Search />} />
-          <Route path="notifications" element={<Notifications />} />
-          {/* Static */}
-          <Route path="privacy" element={<Privacy />} />
-          <Route path="help" element={<Help />} />
-          <Route path="terms" element={<Terms />} />
-          <Route path="delete-account" element={<DeleteAccount />} />
-        </Route>
-      </Routes>
-    </Suspense>
+    <>
+      <a href="#main-content" className="skip-to-content">Skip to main content</a>
+      <OfflineBanner />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
+          <Route path="/" element={<Protected><Layout /></Protected>}>
+            <Route index element={<Home />} />
+            {/* Money */}
+            <Route path="expenses" element={<Expenses />} />
+            <Route path="budget" element={<Budget />} />
+            <Route path="goals" element={<Goals />} />
+            <Route path="bills" element={<Bills />} />
+            <Route path="wealth" element={<Wealth />} />
+            <Route path="report" element={<Report />} />
+            <Route path="subscriptions" element={<Subscriptions />} />
+            <Route path="splits" element={<Splits />} />
+            <Route path="lending" element={<Lending />} />
+            {/* Life */}
+            <Route path="habits" element={<Habits />} />
+            <Route path="health" element={<Health />} />
+            <Route path="calendar" element={<CalendarScreen />} />
+            <Route path="reminders" element={<Reminders />} />
+            <Route path="journal" element={<Journal />} />
+            <Route path="medicine" element={<Medicine />} />
+            <Route path="sleep" element={<SleepTracker />} />
+            <Route path="meals" element={<Meals />} />
+            {/* Intelligence */}
+            <Route path="chat" element={<Chat />} />
+            <Route path="email" element={<EmailIntelligence />} />
+            <Route path="insights" element={<Insights />} />
+            <Route path="predictions" element={<Predictions />} />
+            {/* Social */}
+            <Route path="friends" element={<Friends />} />
+            <Route path="family" element={<Family />} />
+            <Route path="community" element={<Community />} />
+            <Route path="leaderboard" element={<Leaderboard />} />
+            {/* Profile & Settings */}
+            <Route path="profile" element={<Profile />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="rewards" element={<Rewards />} />
+            <Route path="premium" element={<PremiumUpgrade />} />
+            <Route path="notification-settings" element={<NotificationSettings />} />
+            <Route path="referral" element={<ReferralProgram />} />
+            <Route path="admin" element={<AdminDashboard />} />
+            <Route path="subscription-audit" element={<SubscriptionAudit />} />
+            <Route path="weekly-report" element={<WeeklyReport />} />
+            <Route path="morning-brief" element={<MorningBrief />} />
+            <Route path="review" element={<Review />} />
+            <Route path="search" element={<Search />} />
+            <Route path="notifications" element={<Notifications />} />
+            {/* Static */}
+            <Route path="privacy" element={<Privacy />} />
+            <Route path="help" element={<Help />} />
+            <Route path="terms" element={<Terms />} />
+            <Route path="delete-account" element={<DeleteAccount />} />
+          </Route>
+        </Routes>
+      </Suspense>
+    </>
   )
 }
 
