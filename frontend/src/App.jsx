@@ -56,6 +56,8 @@ const NotificationSettings = lazy(() => import('./pages/NotificationSettings'))
 const ReferralProgram = lazy(() => import('./pages/ReferralProgram'))
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 const SubscriptionAudit = lazy(() => import('./pages/SubscriptionAudit'))
+const WeeklyReport = lazy(() => import('./pages/WeeklyReport'))
+const MorningBrief = lazy(() => import('./pages/MorningBrief'))
 
 // Loading fallback with V3 skeleton
 function PageLoader() {
@@ -129,6 +131,8 @@ function AppContent() {
           <Route path="referral" element={<ReferralProgram />} />
           <Route path="admin" element={<AdminDashboard />} />
           <Route path="subscription-audit" element={<SubscriptionAudit />} />
+          <Route path="weekly-report" element={<WeeklyReport />} />
+          <Route path="morning-brief" element={<MorningBrief />} />
           <Route path="review" element={<Review />} />
           <Route path="search" element={<Search />} />
           <Route path="notifications" element={<Notifications />} />
