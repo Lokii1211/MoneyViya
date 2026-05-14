@@ -1,7 +1,7 @@
 // Settings — Full settings hub with toggles
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Bell, Moon, Shield, Smartphone, Mail, MessageCircle, Globe, Trash2, LogOut, ChevronRight, Volume2 } from 'lucide-react'
+import { Bell, Moon, Shield, Smartphone, Mail, MessageCircle, Globe, Trash2, LogOut, ChevronRight, Volume2, Crown, Gift, BellRing } from 'lucide-react'
 import PageTransition from '../components/PageTransition'
 import { useApp } from '../lib/store'
 import { useNavigate } from 'react-router-dom'
@@ -70,9 +70,17 @@ export default function Settings() {
           <p className="body-s text-secondary">Customize your Viya ⚙️</p>
         </div>
 
+        {/* Premium & Growth */}
+        <div className="card" style={{ padding: '4px 16px', marginBottom: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', padding: '12px 0 4px', textTransform: 'uppercase', letterSpacing: 0.5 }}>Plan & Rewards</div>
+          <SettingsLink label="⭐ Upgrade to Premium" desc="Unlock unlimited AI, tax planning, family mode" icon={Crown} onClick={() => nav('/premium')} />
+          <SettingsLink label="Invite Friends" desc="Give ₹50, Get ₹50 — referral rewards" icon={Gift} onClick={() => nav('/referral')} />
+        </div>
+
         {/* Notifications */}
         <div className="card" style={{ padding: '4px 16px', marginBottom: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', padding: '12px 0 4px', textTransform: 'uppercase', letterSpacing: 0.5 }}>Notifications</div>
+          <SettingsLink label="Notification Preferences" desc="Channels, categories, quiet hours" icon={BellRing} onClick={() => nav('/notification-settings')} />
           <SettingsToggle label="Push Notifications" desc="Bill reminders, habit nudges" value={pushNotifs} onChange={setPushNotifs} icon={Bell} />
           <SettingsToggle label="WhatsApp Alerts" desc="Daily briefs, proactive messages" value={whatsappNotifs} onChange={setWhatsappNotifs} icon={MessageCircle} />
           <SettingsToggle label="Sound & Haptics" desc="Vibration on interactions" value={haptics} onChange={setHaptics} icon={Volume2} />
@@ -106,7 +114,7 @@ export default function Settings() {
         </div>
 
         <div style={{ textAlign: 'center', padding: '24px 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
-          Viya V3.0.0 · Made with ❤️ in India
+          Viya V3.5.0 · Made with ❤️ in India
         </div>
       </div>
     </PageTransition>

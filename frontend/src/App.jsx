@@ -50,6 +50,11 @@ const Predictions = lazy(() => import('./pages/Predictions'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Lending = lazy(() => import('./pages/Lending'))
 
+// SaaS Upgrade Pages
+const PremiumUpgrade = lazy(() => import('./pages/PremiumUpgrade'))
+const NotificationSettings = lazy(() => import('./pages/NotificationSettings'))
+const ReferralProgram = lazy(() => import('./pages/ReferralProgram'))
+
 // Loading fallback with V3 skeleton
 function PageLoader() {
   return (
@@ -117,6 +122,9 @@ function AppContent() {
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
           <Route path="rewards" element={<Rewards />} />
+          <Route path="premium" element={<PremiumUpgrade />} />
+          <Route path="notification-settings" element={<NotificationSettings />} />
+          <Route path="referral" element={<ReferralProgram />} />
           <Route path="review" element={<Review />} />
           <Route path="search" element={<Search />} />
           <Route path="notifications" element={<Notifications />} />
