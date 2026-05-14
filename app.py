@@ -94,14 +94,28 @@ from config import SUPPORTED_LANGUAGES, VOICES_DIR
 
 
 # ================= APP SETUP =================
-# BUILD VERSION: 2026-01-12-v6 - MoneyViya Personal Finance Manager
-AGENT_VERSION = "6.0.0-MoneyViya"
-print(f"[STARTUP] MoneyViya API starting with agent version: {AGENT_VERSION}")
+# BUILD VERSION: 2026-05-14-v3.6 - Viya LifeOS SaaS Platform
+AGENT_VERSION = "3.6.0-ViyaLifeOS"
+print(f"[STARTUP] Viya LifeOS API starting with version: {AGENT_VERSION}")
+
+# SaaS Middleware (PRD Section 4)
+try:
+    from services.saas_middleware import (
+        logger, api_response, api_error, paginated_response,
+        rate_limiter, check_plan_access, check_plan_limit,
+        health_check_response, idempotency_store, ErrorCodes,
+        is_feature_enabled, PLAN_LIMITS
+    )
+    logger.info("saas_middleware_loaded", version=AGENT_VERSION)
+    SAAS_MIDDLEWARE = True
+except Exception as e:
+    print(f"[STARTUP] SaaS middleware not loaded: {e}")
+    SAAS_MIDDLEWARE = False
 
 
 app = FastAPI(
-    title="VittaSaathi API",
-    description="WhatsApp Financial Advisor for Gig Workers & Daily Earners - Track, Save, Grow",
+    title="Viya LifeOS API",
+    description="AI-powered personal life operating system — Finance, Health, Email, Reminders",
     version=AGENT_VERSION
 )
 
@@ -143,19 +157,23 @@ async def root():
 async def landing():
     return RedirectResponse(url="/static/landing.html")
 
-# Health check and debug endpoint
+# Health check endpoints (PRD Section 4.5 lines 1245-1252)
 @app.get("/health")
-async def health_check():
-    import pytz
-    from datetime import datetime
-    ist = pytz.timezone('Asia/Kolkata')
-    return {
-        "status": "healthy",
-        "version": AGENT_VERSION,
-        "agent": "AdvancedWhatsAppAgent",
-        "server_time_ist": datetime.now(ist).strftime("%Y-%m-%d %I:%M:%S %p IST"),
-        "features": ["language_selection", "ist_timezone", "accumulated_earnings", "otp_auth", "password_auth"]
-    }
+async def health_basic():
+    """Basic health: Returns 200 if service is running"""
+    return {"status": "healthy", "version": AGENT_VERSION}
+
+@app.get("/health/ready")
+async def health_ready():
+    """Readiness: Returns 200 if service can handle requests. Checks DB, Redis, AI, WhatsApp."""
+    if SAAS_MIDDLEWARE:
+        return health_check_response()
+    return {"status": "healthy", "version": AGENT_VERSION}
+
+@app.get("/health/live")
+async def health_live():
+    """Liveness: Returns 200 if process is alive (for ECS health checks)"""
+    return {"status": "alive"}
 
 # Debug reset endpoint (for testing)
 @app.get("/debug/reset-user/{phone}")
@@ -208,18 +226,24 @@ except ImportError as e:
     print(f"Warning: Extended API not loaded: {e}")
 
 
-# Health check and status endpoints
+# Health check and status endpoints (PRD Section 4.5)
 @app.get("/api/health")
-def health_check():
-    """Health check endpoint"""
-    return {
+def api_health_check():
+    """Full health check with service status"""
+    data = {
         "status": "ok",
         "version": AGENT_VERSION,
-        "whatsapp_cloud_configured": whatsapp_cloud_service.is_available(),
-        "openai_configured": openai_service.is_available(),
-        "moneyview_available": MONEYVIEW_AVAILABLE,
+        "services": {
+            "whatsapp": whatsapp_cloud_service.is_available(),
+            "openai": openai_service.is_available(),
+            "moneyview": MONEYVIEW_AVAILABLE,
+            "saas_middleware": SAAS_MIDDLEWARE,
+        },
         "moneyview_error": MONEYVIEW_ERROR[:500] if MONEYVIEW_ERROR else None
     }
+    if SAAS_MIDDLEWARE:
+        return api_response(data)
+    return data
 
 
 # ============== BAILEYS BOT API ENDPOINT ==============
