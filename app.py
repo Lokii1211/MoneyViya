@@ -146,6 +146,14 @@ try:
 except Exception as e:
     print(f"[STARTUP] Dashboard API not available: {e}")
 
+# Include REST API v1 (PRD Section 4.1)
+try:
+    from routes.api_v1 import router as api_v1_router
+    app.include_router(api_v1_router)
+    print("[STARTUP] REST API v1 router included (/api/v1/*)")
+except Exception as e:
+    print(f"[STARTUP] API v1 not available: {e}")
+
 
 # Root redirect to new dashboard
 @app.get("/")

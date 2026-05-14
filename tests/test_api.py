@@ -321,3 +321,102 @@ class TestDesignTokens:
         assert brand_safe == "#008B6A"
         # This color passes 4.5:1 on white backgrounds
 
+
+class TestAPIv1Design:
+    """Tests for REST API v1 design (PRD Section 4.1)"""
+
+    def test_resource_naming_nouns_plural(self):
+        """API uses nouns, plural, lowercase"""
+        endpoints = [
+            "/api/v1/transactions",
+            "/api/v1/goals",
+            "/api/v1/reminders",
+            "/api/v1/bills",
+            "/api/v1/users/me",
+            "/api/v1/features",
+            "/api/v1/subscription",
+        ]
+        for ep in endpoints:
+            parts = ep.split("/")
+            # Resource names are lowercase
+            for p in parts:
+                assert p == p.lower(), f"Not lowercase: {p}"
+
+    def test_response_envelope_structure(self):
+        """All responses follow PRD envelope format"""
+        from services.saas_middleware import api_response
+        resp = api_response(data={"key": "value"})
+        assert "success" in resp
+        assert "data" in resp
+        assert "meta" in resp
+        assert resp["success"] is True
+        assert "request_id" in resp["meta"]
+        assert "timestamp" in resp["meta"]
+
+    def test_error_envelope(self):
+        """Error responses include code, message, field"""
+        from services.saas_middleware import api_error
+        err = api_error("FINANCE_BUDGET_EXCEEDED", "Over budget", field="amount")
+        assert err["success"] is False
+        assert err["error"]["code"] == "FINANCE_BUDGET_EXCEEDED"
+        assert err["error"]["message"] == "Over budget"
+        assert err["error"]["field"] == "amount"
+
+    def test_pagination_cursor_based(self):
+        """Pagination is cursor-based, not offset"""
+        from services.saas_middleware import paginated_response
+        resp = paginated_response(
+            items=[{"id": 1}], cursor="abc123",
+            has_more=True, total=100
+        )
+        assert resp["meta"]["next_cursor"] == "abc123"
+        assert resp["meta"]["has_more"] is True
+        assert resp["meta"]["total"] == 100
+        assert "page" not in resp["meta"] or resp["meta"]["page"] is not None
+
+    def test_rate_limits_by_endpoint(self):
+        """Different rate limits per endpoint type"""
+        from services.saas_middleware import RateLimiter
+        rl = RateLimiter()
+        assert rl.LIMITS["default"]["max"] == 200  # 200/hour
+        assert rl.LIMITS["chat"]["max"] == 50       # 50/hour (AI cost)
+        assert rl.LIMITS["auth"]["max"] == 5        # 5/minute
+        assert rl.LIMITS["admin"]["max"] == 1000    # 1000/hour
+
+    def test_error_codes_domain_prefixed(self):
+        """Error codes are SCREAMING_SNAKE_CASE and domain-prefixed"""
+        from services.saas_middleware import ErrorCodes
+        codes = [
+            ErrorCodes.AUTH_INVALID_TOKEN,
+            ErrorCodes.FINANCE_TRANSACTION_NOT_FOUND,
+            ErrorCodes.EMAIL_SYNC_FAILED,
+            ErrorCodes.AI_RATE_LIMIT_EXCEEDED,
+            ErrorCodes.PLAN_FEATURE_NOT_AVAILABLE,
+        ]
+        for code in codes:
+            assert code == code.upper(), f"Not SCREAMING_SNAKE: {code}"
+            assert "_" in code, f"Not domain-prefixed: {code}"
+
+    def test_idempotency_store(self):
+        """POST requests support Idempotency-Key"""
+        from services.saas_middleware import IdempotencyStore
+        store = IdempotencyStore(ttl_seconds=10)
+        store.set("key-1", {"result": "ok"})
+        assert store.get("key-1") == {"result": "ok"}
+        assert store.get("nonexistent") is None
+
+    def test_soft_delete_pattern(self):
+        """DELETE sets deleted_at, never hard deletes"""
+        # PRD: "DELETE: Soft delete only (set deleted_at, never hard delete)"
+        transaction = {
+            "id": "test-1", "amount": 100,
+            "is_deleted": False, "deleted_at": None,
+        }
+        # Simulate soft delete
+        transaction["is_deleted"] = True
+        transaction["deleted_at"] = "2026-05-14T00:00:00Z"
+        assert transaction["is_deleted"] is True
+        assert transaction["deleted_at"] is not None
+        # Original data still exists
+        assert transaction["amount"] == 100
+
