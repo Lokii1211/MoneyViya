@@ -106,11 +106,12 @@ export default function Home() {
 
 
   return (
-    <div className="page" style={{ paddingTop: 8 }}>
+    <>
+    <div className="page" style={{ paddingTop: 8, paddingBottom: 80 }}>
       {/* Header with Viya Logo */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src="/logo.png" alt="Viya AI" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover' }} />
+          <img src="/logo.png" alt="Viya AI" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'contain', background: 'var(--surface)' }} />
           <div>
             <div style={{ fontWeight: 700, fontSize: 16 }}>{getGreeting()}, {name.split(' ')[0]}! {getGreetingEmoji()}</div>
             <div className="body-s text-secondary">Your Second Brain • Always with you</div>
@@ -122,7 +123,44 @@ export default function Home() {
         </button>
       </div>
 
-      {/* ═══ TOP: Quick Actions Grid (2×4) — ALWAYS VISIBLE ═══ */}
+      {/* ═══ TOP: NEEDS ATTENTION — Most important, shown first ═══ */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <span className="title-m" style={{ fontSize: 15, color: 'var(--coral-500)' }}>🔔 Needs Attention</span>
+          <button onClick={() => nav('/email')} style={{ fontSize: 12, fontWeight: 600, color: 'var(--viya-primary-500)', background: 'none', border: 'none', cursor: 'pointer' }}>View All →</button>
+        </div>
+        <div className="scroll-snap-x" style={{ gap: 12, paddingBottom: 4 }}>
+          {[
+            { icon: '🔴', title: 'Credit Card Due', sub: 'Check your bills section', border: 'var(--coral-500)', actions: ['Pay Now', 'Remind'], to: '/bills' },
+            { icon: '📅', title: 'Upcoming Meetings', sub: 'Check calendar for details', border: 'var(--info-500)', actions: ['View', 'Dismiss'], to: '/calendar' },
+            { icon: '📦', title: 'Package Updates', sub: 'Track your deliveries', border: 'var(--cosmos-400)', actions: ['Track', 'Alert'], to: '/email' },
+          ].map((c, i) => (
+            <div key={i} onClick={() => nav(c.to)} className="card-press" style={{
+              minWidth: 260, padding: 14, borderRadius: 'var(--radius)',
+              background: 'var(--surface)', border: '1px solid var(--border)',
+              borderLeft: `4px solid ${c.border}`, cursor: 'pointer',
+              boxShadow: 'var(--shadow-sm)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <span>{c.icon}</span>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{c.title}</span>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 10 }}>{c.sub}</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {c.actions.map((a, j) => (
+                  <button key={j} className="ripple" style={{
+                    padding: '4px 12px', borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 600,
+                    background: j === 0 ? c.border : 'var(--surface)', color: j === 0 ? 'white' : 'var(--text2)',
+                    border: j === 0 ? 'none' : '1px solid var(--border)', cursor: 'pointer',
+                  }}>{a}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ═══ Quick Actions Grid (2×4) ═══ */}
       <div className="stagger-children" style={{ marginBottom: 16 }}>
         <div className="title-m" style={{ marginBottom: 8, fontSize: 14, color: 'var(--text2)' }}>⚡ Quick Actions</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
@@ -453,43 +491,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ═══ FAB — Talk to Viya ═══ */}
-      {/* EMAIL ACTION STRIP (PRD lines 581-608) */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <span className="title-m" style={{ fontSize: 15, color: 'var(--coral-500)' }}>📧 Needs Attention</span>
-          <button onClick={() => nav('/email')} style={{ fontSize: 12, fontWeight: 600, color: 'var(--viya-primary-500)', background: 'none', border: 'none', cursor: 'pointer' }}>View All →</button>
-        </div>
-        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
-          {[
-            { icon: '🔴', title: 'Credit Card Due', sub: 'Check your bills section', border: 'var(--coral-500)', actions: ['Pay Now', 'Remind'] },
-            { icon: '📅', title: 'Upcoming Meetings', sub: 'Check calendar for details', border: 'var(--info-500)', actions: ['View', 'Dismiss'] },
-            { icon: '📦', title: 'Package Updates', sub: 'Track your deliveries', border: 'var(--cosmos-400)', actions: ['Track', 'Alert'] },
-          ].map((c, i) => (
-            <div key={i} onClick={() => nav('/email')} style={{
-              minWidth: 260, padding: 14, borderRadius: 'var(--r-xl)', background: 'var(--bg-card)',
-              border: '1px solid var(--border-light)', borderLeft: `4px solid ${c.border}`,
-              boxShadow: 'var(--sh-2)', cursor: 'pointer',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                <span>{c.icon}</span>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{c.title}</span>
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>{c.sub}</div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {c.actions.map((a, j) => (
-                  <button key={j} style={{
-                    padding: '4px 12px', borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 600,
-                    background: j === 0 ? c.border : 'var(--bg-secondary)',
-                    color: j === 0 ? 'white' : 'var(--text-secondary)', border: 'none', cursor: 'pointer',
-                  }}>{a}</button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* BILLS DUE STRIP (PRD lines 666-673) */}
       {bills.filter(b => b.status !== 'paid').length > 0 && (
         <div style={{ marginBottom: 20 }}>
@@ -503,7 +504,7 @@ export default function Home() {
             return (
               <div key={b.id || i} onClick={() => nav('/bills')} style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0',
-                borderBottom: i < 3 ? '1px solid var(--border-light)' : 'none', cursor: 'pointer',
+                borderBottom: i < 3 ? '1px solid var(--border)' : 'none', cursor: 'pointer',
               }}>
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
                 <div style={{ flex: 1 }}>
@@ -511,23 +512,24 @@ export default function Home() {
                   <div className="body-s text-secondary">{b.due_date ? new Date(b.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'No date'}</div>
                 </div>
                 <div className="num-s" style={{ fontWeight: 600, color: dotColor }}>{formatINR(b.amount)}</div>
-                {daysLeft <= 1 && <button style={{ padding: '4px 10px', borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 600, background: 'var(--coral-500)', color: 'white', border: 'none' }}>Pay Now</button>}
+                {daysLeft <= 1 && <button className="ripple" style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 600, background: 'var(--coral-500)', color: 'white', border: 'none', cursor: 'pointer' }}>Pay Now</button>}
               </div>
             )
           })}
         </div>
       )}
 
-      {/* ═══ FIXED FAB — Always visible chat button ═══ */}
-      <button
-        className="viya-fab-fixed"
-        onClick={() => nav('/chat')}
-        aria-label="Talk to Viya"
-      >
-        <MessageCircle size={26} />
-      </button>
-
       <div style={{ height: 20 }} />
     </div>
+
+    {/* ═══ FIXED FAB — OUTSIDE .page so it's truly fixed on screen ═══ */}
+    <button
+      className="viya-fab-fixed"
+      onClick={() => nav('/chat')}
+      aria-label="Talk to Viya"
+    >
+      <MessageCircle size={26} />
+    </button>
+    </>
   )
 }
