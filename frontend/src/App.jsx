@@ -54,6 +54,8 @@ const Lending = lazy(() => import('./pages/Lending'))
 const PremiumUpgrade = lazy(() => import('./pages/PremiumUpgrade'))
 const NotificationSettings = lazy(() => import('./pages/NotificationSettings'))
 const ReferralProgram = lazy(() => import('./pages/ReferralProgram'))
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
+const SubscriptionAudit = lazy(() => import('./pages/SubscriptionAudit'))
 
 // Loading fallback with V3 skeleton
 function PageLoader() {
@@ -125,6 +127,8 @@ function AppContent() {
           <Route path="premium" element={<PremiumUpgrade />} />
           <Route path="notification-settings" element={<NotificationSettings />} />
           <Route path="referral" element={<ReferralProgram />} />
+          <Route path="admin" element={<AdminDashboard />} />
+          <Route path="subscription-audit" element={<SubscriptionAudit />} />
           <Route path="review" element={<Review />} />
           <Route path="search" element={<Search />} />
           <Route path="notifications" element={<Notifications />} />
