@@ -660,3 +660,106 @@ async def upgrade_plan(
         "trial_days": 14,
         "message": "Redirecting to payment...",
     })
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 8. OBSERVABILITY (PRD Section 4.5)
+# ═══════════════════════════════════════════════════════════════════
+
+@router.get("/admin/observability")
+async def get_observability(user: dict = Depends(require_plan("enterprise"))):
+    """
+    GET /api/v1/admin/observability
+    PRD 4.5: Full metrics dashboard — enterprise/admin only
+    """
+    from services.observability import get_observability_summary
+    return api_response(data=get_observability_summary())
+
+
+@router.get("/admin/alerts")
+async def get_alerts(user: dict = Depends(require_plan("enterprise"))):
+    """GET /api/v1/admin/alerts — Active SLA alerts"""
+    from services.observability import sla_monitor
+    return api_response(data={
+        "active": sla_monitor.get_active_alerts(),
+        "thresholds": {
+            k: {"threshold": v["threshold"], "operator": v["operator"],
+                "priority": v["priority"].value, "message": v["message"]}
+            for k, v in __import__('services.observability',
+                                   fromlist=['SLA_THRESHOLDS']).SLA_THRESHOLDS.items()
+        },
+    })
+
+
+@router.post("/admin/alerts/{alert_id}/acknowledge")
+async def acknowledge_alert(
+    alert_id: str,
+    user: dict = Depends(require_plan("enterprise")),
+):
+    """POST /api/v1/admin/alerts/:id/acknowledge"""
+    from services.observability import sla_monitor
+    sla_monitor.acknowledge(alert_id)
+    return api_response(data={"acknowledged": True, "alert_id": alert_id})
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 9. NOTIFICATIONS (PRD Section 4.4)
+# ═══════════════════════════════════════════════════════════════════
+
+@router.get("/notifications/stats")
+async def get_notification_stats(user: dict = Depends(require_auth)):
+    """GET /api/v1/notifications/stats — Delivery funnel stats"""
+    from services.notification_templates import notification_manager
+    return api_response(data=notification_manager.get_delivery_stats())
+
+
+@router.post("/notifications/send")
+async def send_notification(
+    request: Request,
+    user: dict = Depends(require_auth),
+):
+    """
+    POST /api/v1/notifications/send
+    PRD 4.4: Queue notification for delivery via channel fallback
+    Body: {template_key, variables, language}
+    """
+    from services.notification_templates import notification_manager
+    data = await request.json()
+    result = notification_manager.queue_notification(
+        user_id=user.get("user_id", ""),
+        template_key=data.get("template_key", ""),
+        variables=data.get("variables", {}),
+        language=data.get("language", "en"),
+    )
+    if result["success"]:
+        return api_response(data=result["notification"])
+    else:
+        raise HTTPException(400, detail=api_error(
+            "NOTIFICATION_FAILED", result.get("error", "Unknown error")
+        ))
+
+
+@router.get("/notifications/preferences")
+async def get_notification_preferences(user: dict = Depends(require_auth)):
+    """GET /api/v1/notifications/preferences"""
+    from services.notification_templates import DEFAULT_PREFERENCES
+    return api_response(data=DEFAULT_PREFERENCES)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 10. JOBS (PRD Section 4.3)
+# ═══════════════════════════════════════════════════════════════════
+
+@router.get("/admin/jobs")
+async def get_job_metrics(user: dict = Depends(require_plan("enterprise"))):
+    """GET /api/v1/admin/jobs — Job scheduler metrics"""
+    from services.job_scheduler import job_scheduler
+    return api_response(data=job_scheduler.get_metrics())
+
+
+@router.get("/admin/jobs/dead-letter")
+async def get_dead_letter_queue(user: dict = Depends(require_plan("enterprise"))):
+    """GET /api/v1/admin/jobs/dead-letter — Failed jobs for ops review"""
+    from services.job_scheduler import job_scheduler
+    return api_response(data=job_scheduler.get_dead_letter_queue())
+

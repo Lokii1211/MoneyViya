@@ -420,3 +420,64 @@ class TestAPIv1Design:
         # Original data still exists
         assert transaction["amount"] == 100
 
+
+class TestObservability:
+    """Tests for observability stack (PRD Section 4.5)"""
+
+    def test_metrics_counter(self):
+        """Counters track event counts"""
+        from services.observability import MetricsCollector
+        m = MetricsCollector()
+        m.increment("test.counter", 5)
+        m.increment("test.counter", 3)
+        assert m.get_counter("test.counter") == 8
+
+    def test_metrics_percentiles(self):
+        """Timings compute p50/p95/p99"""
+        from services.observability import MetricsCollector
+        m = MetricsCollector()
+        for v in [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]:
+            m.timing("test.latency", v)
+        p = m.get_percentiles("test.latency")
+        assert p["p50"] > 0
+        assert p["p95"] >= p["p50"]
+        assert p["count"] == 10
+
+    def test_sla_threshold_breach(self):
+        """SLA monitor detects threshold breach"""
+        from services.observability import SLAMonitor
+        monitor = SLAMonitor()
+        alert = monitor.check_sla("api_p95_latency_ms", 3000)  # > 2000 threshold
+        assert alert is not None
+        assert alert["priority"] == "P2"
+        assert alert["status"] == "firing"
+
+    def test_sla_threshold_ok(self):
+        """SLA monitor returns None when within threshold"""
+        from services.observability import SLAMonitor
+        monitor = SLAMonitor()
+        alert = monitor.check_sla("api_p95_latency_ms", 500)  # Under 2000
+        assert alert is None
+
+    def test_request_tracer(self):
+        """Tracer records request flow"""
+        from services.observability import RequestTracer
+        t = RequestTracer(sample_rate=1.0)  # 100% sampling for test
+        trace = t.start_trace("req-1", "/api/v1/transactions", "user-1")
+        t.add_span(trace, "db_query", "postgres", 15.3)
+        t.add_span(trace, "format_response", "api", 2.1)
+        t.complete_trace(trace, 200)
+        assert trace["status"] == "ok"
+        assert len(trace["spans"]) == 2
+        assert trace["duration_ms"] >= 0
+
+    def test_observability_summary(self):
+        """Summary returns all metric categories"""
+        from services.observability import get_observability_summary
+        summary = get_observability_summary()
+        assert "api" in summary
+        assert "ai" in summary
+        assert "notifications" in summary
+        assert "business" in summary
+        assert "alerts" in summary
+
