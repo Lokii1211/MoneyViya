@@ -608,3 +608,140 @@ class TestDataSecurity:
         assert "missing" in result
         assert "configured" in result
 
+
+class TestMigrationManager:
+    """Tests for migration manager (PRD Section 5.3)"""
+
+    def test_migrations_ordered(self):
+        """Migrations are in sequential version order"""
+        from services.migration_manager import MIGRATIONS
+        versions = [m.version for m in MIGRATIONS]
+        assert versions == sorted(versions)
+        assert len(versions) >= 13
+
+    def test_concurrent_indexes(self):
+        """Index migrations use CONCURRENTLY"""
+        from services.migration_manager import MIGRATIONS
+        index_migrations = [m for m in MIGRATIONS if "INDEX" in m.sql]
+        for m in index_migrations:
+            assert "CONCURRENTLY" in m.sql, f"v{m.version} missing CONCURRENTLY"
+
+    def test_runner_apply_all(self):
+        """Migration runner applies all pending"""
+        from services.migration_manager import MigrationRunner, MIGRATIONS
+        runner = MigrationRunner()
+        assert len(runner.get_pending()) == len(MIGRATIONS)
+        result = runner.apply_all_pending()
+        assert result["applied"] == len(MIGRATIONS)
+        assert result["failed"] == 0
+        assert len(runner.get_pending()) == 0
+
+    def test_checksum_validation(self):
+        """Checksums detect modified migrations"""
+        from services.migration_manager import MigrationRunner, MIGRATIONS
+        runner = MigrationRunner()
+        runner.apply_all_pending()
+        check = runner.validate_checksums()
+        assert check["valid"] is True
+
+    def test_zero_downtime_add_column(self):
+        """Zero-downtime add column generates nullable first"""
+        from services.migration_manager import ZeroDowntimePatterns
+        steps = ZeroDowntimePatterns.add_column("users", "age", "INTEGER")
+        assert len(steps) >= 1
+        assert "NOT NULL" not in steps[0]  # Nullable first!
+
+    def test_backup_strategy(self):
+        """Backup strategy has correct RTO/RPO"""
+        from services.migration_manager import BACKUP_STRATEGY
+        assert BACKUP_STRATEGY["recovery_targets"]["rto_hours"] == 2
+        assert BACKUP_STRATEGY["recovery_targets"]["rpo_hours"] == 1
+        assert BACKUP_STRATEGY["cross_region"]["primary"] == "ap-south-1"
+
+
+class TestSecurityEngine:
+    """Tests for security engine (PRD Section 6)"""
+
+    def test_threat_model_covers_all_risks(self):
+        """Threat model covers all 5 PRD risks"""
+        from services.security_engine import THREAT_MODEL
+        assert "account_takeover" in THREAT_MODEL
+        assert "financial_data_exposure" in THREAT_MODEL
+        assert "ai_prompt_injection" in THREAT_MODEL
+        assert "oauth_token_theft" in THREAT_MODEL
+        assert "whatsapp_bot_abuse" in THREAT_MODEL
+
+    def test_otp_rate_limiter(self):
+        """OTP rate limit enforces 3/hour per phone"""
+        from services.security_engine import OTPRateLimiter
+        limiter = OTPRateLimiter()
+        for _ in range(3):
+            result = limiter.can_request("+919876543210")
+            assert result["allowed"] is True
+        result = limiter.can_request("+919876543210")
+        assert result["allowed"] is False
+
+    def test_device_tracker(self):
+        """Device tracker detects unknown devices"""
+        from services.security_engine import DeviceTracker
+        tracker = DeviceTracker()
+        tracker.register_device("user-1", "fp-abc123", {"model": "iPhone 15"})
+        known = tracker.is_known_device("user-1", "fp-abc123")
+        assert known["known"] is True
+        assert known["suspicious"] is False
+        unknown = tracker.is_known_device("user-1", "fp-unknown")
+        assert unknown["known"] is False
+        assert unknown["suspicious"] is True
+
+    def test_audit_logger_immutable(self):
+        """Audit log entries are created with integrity hash"""
+        from services.security_engine import AuditLogger
+        logger = AuditLogger()
+        entry = logger.log("account_created", "user-1", resource_type="users")
+        assert entry["integrity_hash"] is not None
+        assert len(entry["integrity_hash"]) == 24
+
+    def test_audit_integrity_chain(self):
+        """Audit log chain integrity is verifiable"""
+        from services.security_engine import AuditLogger
+        logger = AuditLogger()
+        logger.log("account_created", "user-1")
+        logger.log("payment_upgrade", "user-1")
+        logger.log("data_export_requested", "user-1")
+        result = logger.verify_integrity()
+        assert result["valid"] is True
+        assert result["entries"] == 3
+
+    def test_circuit_breaker_opens(self):
+        """Circuit opens after failure threshold"""
+        from services.security_engine import CircuitBreaker, CircuitState
+        cb = CircuitBreaker("test", failure_threshold=3, cooldown_seconds=30)
+        assert cb.can_execute() is True
+        for _ in range(3):
+            cb.record_failure()
+        assert cb.state == CircuitState.OPEN
+        assert cb.can_execute() is False
+
+    def test_circuit_breaker_recovery(self):
+        """Circuit recovers after cooldown"""
+        from services.security_engine import CircuitBreaker, CircuitState
+        cb = CircuitBreaker("test", failure_threshold=2, cooldown_seconds=0)  # 0s cooldown for test
+        cb.record_failure()
+        cb.record_failure()
+        assert cb.state == CircuitState.OPEN
+        # With 0s cooldown, should transition to half-open
+        assert cb.can_execute() is True
+        assert cb.state == CircuitState.HALF_OPEN
+        cb.record_success()
+        assert cb.state == CircuitState.CLOSED
+
+    def test_security_posture_summary(self):
+        """Security posture returns all categories"""
+        from services.security_engine import get_security_posture
+        posture = get_security_posture()
+        assert "threat_model" in posture
+        assert "circuit_breakers" in posture
+        assert "degradation" in posture
+        assert "audit_stats" in posture
+        assert "dr_plan" in posture
+
