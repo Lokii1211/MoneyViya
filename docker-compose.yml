@@ -1,0 +1,56 @@
+# ─── Viya AI — Local Development ───
+# PRD Section 2.3: development → Local Docker Compose
+
+version: '3.9'
+
+services:
+  # ─── API Server ───
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - ENVIRONMENT=development
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./app.py:/app/app.py
+      - ./services:/app/services
+      - ./routes:/app/routes
+      - ./agents:/app/agents
+    depends_on:
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ─── Redis (cache, sessions, rate limiting, queues) ───
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+
+  # ─── Frontend Dev Server ───
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - frontend_nm:/app/node_modules
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install && npx vite --host"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+
+volumes:
+  redis_data:
+  frontend_nm:
