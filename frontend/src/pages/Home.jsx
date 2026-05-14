@@ -108,19 +108,15 @@ export default function Home() {
   return (
     <>
     <div className="page" style={{ paddingTop: 8, paddingBottom: 80 }}>
-      {/* Header with Viya Logo */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src="/logo.png" alt="Viya AI" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'contain', background: 'var(--surface)' }} />
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>{getGreeting()}, {name.split(' ')[0]}! {getGreetingEmoji()}</div>
-            <div className="body-s text-secondary">Your Second Brain • Always with you</div>
-          </div>
+      {/* Greeting Row — NO bell (Layout header already has logo + search + bell) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <div className="avatar" style={{ width: 44, height: 44, fontSize: 18, flexShrink: 0 }}>
+          {localStorage.getItem('mv_avatar') || name.charAt(0).toUpperCase()}
         </div>
-        <button onClick={() => nav('/notifications')} style={{ width: 38, height: 38, borderRadius: 'var(--radius-xs)', background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}>
-          <Bell size={18} color="var(--text2)" />
-          <div style={{ position: 'absolute', top: 7, right: 7, width: 7, height: 7, borderRadius: '50%', background: 'var(--red)', boxShadow: '0 0 8px var(--red)' }} />
-        </button>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{getGreeting()}, {name.split(' ')[0]}! {getGreetingEmoji()}</div>
+          <div className="body-s text-secondary">Your Second Brain • Always with you</div>
+        </div>
       </div>
 
       {/* ═══ TOP: NEEDS ATTENTION — Most important, shown first ═══ */}
@@ -156,31 +152,6 @@ export default function Home() {
                 ))}
               </div>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ═══ Quick Actions Grid (2×4) ═══ */}
-      <div className="stagger-children" style={{ marginBottom: 16 }}>
-        <div className="title-m" style={{ marginBottom: 8, fontSize: 14, color: 'var(--text2)' }}>⚡ Quick Actions</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-          {actions.map((a, i) => (
-            <button key={i} onClick={() => nav(a.to)} className="ripple" style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-              padding: '10px 4px', borderRadius: 'var(--radius-sm)',
-              background: i === 0 ? 'var(--gradient-primary)' : 'var(--surface)',
-              border: i === 0 ? 'none' : '1px solid var(--border)',
-              cursor: 'pointer', color: i === 0 ? 'white' : 'inherit',
-              boxShadow: i === 0 ? '0 4px 16px var(--primary-glow)' : 'var(--shadow-sm)',
-            }}>
-              <div style={{
-                width: 34, height: 34, borderRadius: 9,
-                background: i === 0 ? 'rgba(255,255,255,0.2)' : a.color + '15',
-                color: i === 0 ? 'white' : a.color,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>{a.icon}</div>
-              <span style={{ fontSize: 10, fontWeight: 600, color: i === 0 ? 'white' : 'var(--text2)' }}>{a.label}</span>
-            </button>
           ))}
         </div>
       </div>
@@ -342,12 +313,37 @@ export default function Home() {
         background: 'var(--gradient-night)', color: 'white', border: 'none',
         borderRadius: 'var(--radius)',
       }}>
-        <img src="/logo.png" alt="Viya AI" style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
+        <img src="/logo.png" alt="Viya AI" style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'contain', flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>Ask Viya anything</div>
           <div style={{ fontSize: 12, opacity: 0.7 }}>Create, update, delete, check-in — all in chat</div>
         </div>
         <Zap size={16} color="var(--viya-gold-500)" />
+      </div>
+
+      {/* ═══ Quick Actions Grid (2×4) — Below daily brief ═══ */}
+      <div className="stagger-children" style={{ marginBottom: 16 }}>
+        <div className="title-m" style={{ marginBottom: 8, fontSize: 14, color: 'var(--text2)' }}>⚡ Quick Actions</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+          {actions.map((a, i) => (
+            <button key={i} onClick={() => nav(a.to)} className="ripple" style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+              padding: '10px 4px', borderRadius: 'var(--radius-sm)',
+              background: i === 0 ? 'var(--gradient-primary)' : 'var(--surface)',
+              border: i === 0 ? 'none' : '1px solid var(--border)',
+              cursor: 'pointer', color: i === 0 ? 'white' : 'inherit',
+              boxShadow: i === 0 ? '0 4px 16px var(--primary-glow)' : 'var(--shadow-sm)',
+            }}>
+              <div style={{
+                width: 34, height: 34, borderRadius: 9,
+                background: i === 0 ? 'rgba(255,255,255,0.2)' : a.color + '15',
+                color: i === 0 ? 'white' : a.color,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>{a.icon}</div>
+              <span style={{ fontSize: 10, fontWeight: 600, color: i === 0 ? 'white' : 'var(--text2)' }}>{a.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ═══ SECTION F: SaaS Quick Links ═══ */}
