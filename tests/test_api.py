@@ -745,3 +745,103 @@ class TestSecurityEngine:
         assert "audit_stats" in posture
         assert "dr_plan" in posture
 
+
+class TestDeploymentOps:
+    """Tests for deployment & operations (PRD Section 7)"""
+
+    def test_terraform_modules(self):
+        """All 9 Terraform modules defined"""
+        from services.deployment_ops import TERRAFORM_MODULES
+        required = ["vpc", "ecs", "rds", "elasticache", "alb", "cloudfront", "waf", "iam", "monitoring"]
+        for module in required:
+            assert module in TERRAFORM_MODULES, f"Missing module: {module}"
+
+    def test_ecs_config(self):
+        """ECS Fargate has correct resource allocations"""
+        from services.deployment_ops import TERRAFORM_MODULES
+        ecs = TERRAFORM_MODULES["ecs"]["config"]
+        assert ecs["api_service"]["vcpu"] == 2
+        assert ecs["api_service"]["memory_gb"] == 4
+        assert ecs["min_tasks"] == 2
+        assert ecs["max_tasks"] == 20
+
+    def test_scaling_triggers(self):
+        """Auto-scaling triggers match PRD spec"""
+        from services.deployment_ops import SCALING_CONFIG
+        out = SCALING_CONFIG["horizontal"]["scale_out"]
+        assert out["cpu_threshold_pct"] == 70
+        assert out["memory_threshold_pct"] == 75
+        sin = SCALING_CONFIG["horizontal"]["scale_in"]
+        assert sin["cpu_threshold_pct"] == 30
+
+    def test_feature_flags_initialized(self):
+        """All 5 PRD feature flags present"""
+        from services.deployment_ops import FeatureFlagManager
+        fm = FeatureFlagManager()
+        status = fm.get_status()
+        assert status["total_flags"] == 5
+        assert "new_email_intelligence_v2" in status["flags"]
+        assert "premium_investment_ai" in status["flags"]
+        assert "dark_mode_system_default" in status["flags"]
+
+    def test_boolean_flag_evaluation(self):
+        """Boolean flag evaluates for all users"""
+        from services.deployment_ops import FeatureFlagManager
+        fm = FeatureFlagManager()
+        assert fm.evaluate("dark_mode_system_default") is True
+
+    def test_plan_based_flag(self):
+        """Plan-based flag gates by plan level"""
+        from services.deployment_ops import FeatureFlagManager
+        fm = FeatureFlagManager()
+        assert fm.evaluate("premium_investment_ai", {"plan": "free"}) is False
+        assert fm.evaluate("premium_investment_ai", {"plan": "premium"}) is True
+        assert fm.evaluate("premium_investment_ai", {"plan": "enterprise"}) is True
+
+    def test_killswitch_activation(self):
+        """Killswitch instantly disables feature"""
+        from services.deployment_ops import FeatureFlagManager
+        fm = FeatureFlagManager()
+        # Before: AI chat works
+        assert fm.evaluate("disable_ai_chat") is True
+        # Activate killswitch
+        result = fm.activate_killswitch("disable_ai_chat")
+        assert result["activated"] is True
+        assert fm.evaluate("disable_ai_chat") is False
+        # Deactivate
+        fm.deactivate_killswitch("disable_ai_chat")
+        assert fm.evaluate("disable_ai_chat") is True
+
+    def test_killswitches_list(self):
+        """All 4 PRD killswitches defined"""
+        from services.deployment_ops import FeatureFlagManager
+        fm = FeatureFlagManager()
+        ks = fm.get_status()["killswitches"]
+        assert "disable_ai_chat" in ks
+        assert "disable_email_sync" in ks
+        assert "disable_bank_sync" in ks
+        assert "enable_maintenance_mode" in ks
+
+    def test_load_test_profiles(self):
+        """All 5 load test profiles defined"""
+        from services.deployment_ops import LOAD_TEST_PROFILES
+        required = ["smoke", "load", "stress", "spike", "soak"]
+        for profile in required:
+            assert profile in LOAD_TEST_PROFILES, f"Missing: {profile}"
+        assert LOAD_TEST_PROFILES["load"]["sla"]["p95_ms"] == 500
+        assert LOAD_TEST_PROFILES["smoke"]["sla"]["error_rate_pct"] == 0
+
+    def test_k6_script_generation(self):
+        """k6 script generates valid JavaScript"""
+        from services.deployment_ops import generate_k6_script
+        script = generate_k6_script("smoke")
+        assert "import http" in script
+        assert "k6/http" in script
+        assert "export default function" in script
+        assert "viya.ai" in script
+
+    def test_cost_target(self):
+        """Cost per user target matches PRD"""
+        from services.deployment_ops import COST_MANAGEMENT
+        assert COST_MANAGEMENT["target_cost_per_user_usd"] == 0.08
+
