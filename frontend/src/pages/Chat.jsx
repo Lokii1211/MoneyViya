@@ -15,8 +15,12 @@ const SUGGESTIONS = [
 
 const QUICK_ACTIONS = [
   { emoji: '💸', label: 'Add Expense', prompt: 'I spent ₹' },
-  { emoji: '📝', label: 'Morning Brief', prompt: 'Give me my morning briefing' },
-  { emoji: '🎯', label: 'Goal Update', prompt: 'How are my goals doing?' },
+  { emoji: '🎯', label: 'Create Goal', prompt: 'Create a new goal: ' },
+  { emoji: '✅', label: 'Check-in', prompt: 'Mark my habit as done: ' },
+  { emoji: '🔔', label: 'Reminder', prompt: 'Remind me to ' },
+  { emoji: '📊', label: 'Brief', prompt: 'Give me my morning briefing' },
+  { emoji: '📝', label: 'Update', prompt: 'Update my ' },
+  { emoji: '🗑️', label: 'Delete', prompt: 'Delete my ' },
   { emoji: '🧠', label: 'Remember', prompt: 'Remember that ' },
 ]
 
@@ -59,16 +63,26 @@ function getQuickReplies(lastMsg) {
   if (!lastMsg) return []
   const lower = lastMsg.toLowerCase()
   if (lower.includes('expense') || lower.includes('spent'))
-    return ['Add another', 'View this month', 'Set budget', 'Find savings']
+    return ['Add another expense', 'View this month', 'Set budget', 'Delete last expense']
   if (lower.includes('goal'))
-    return ['Add ₹500', 'Change target', 'View all goals', 'Boost savings']
+    return ['Add ₹500 to goal', 'Create new goal', 'Update target', 'Delete goal']
   if (lower.includes('habit') || lower.includes('streak'))
-    return ['Log workout', 'Skip today', 'View streaks', 'Add habit']
+    return ['Check-in habit', 'Create new habit', 'Skip today', 'View all streaks']
   if (lower.includes('remind') || lower.includes('reminder'))
-    return ['Edit reminder', 'View all reminders', 'Set another']
+    return ['Set another reminder', 'View all reminders', 'Delete reminder']
   if (lower.includes('morning') || lower.includes('briefing'))
-    return ['Handle all', 'Show expenses', 'Check goals', 'View habits']
-  return ['Tell me more', 'Thanks!', 'What else?']
+    return ['Handle all', 'Show expenses', 'Check goals', 'Log health']
+  if (lower.includes('health') || lower.includes('step') || lower.includes('calorie'))
+    return ['Log 30min walk', 'Log meal', 'Check weight', 'View health report']
+  if (lower.includes('bill') || lower.includes('emi'))
+    return ['Pay bill now', 'Add new bill', 'View upcoming', 'Cancel subscription']
+  if (lower.includes('lend') || lower.includes('borrow'))
+    return ['Add new lending', 'Mark as returned', 'Send reminder', 'View all']
+  if (lower.includes('delete') || lower.includes('remove'))
+    return ['Confirm delete', 'Cancel', 'View item first']
+  if (lower.includes('update') || lower.includes('edit') || lower.includes('change'))
+    return ['Save changes', 'Cancel', 'View current']
+  return ['Tell me more', 'Thanks!', 'What else can you do?']
 }
 
 export default function Chat() {
@@ -91,7 +105,7 @@ export default function Chat() {
   useEffect(() => {
     setMessages([{
       role: 'assistant',
-      content: `${timeGreet} ${name}! 👋\n\nI'm **Viya** — your AI second brain.\n\n• 💰 Track money & budgets\n• 🏋️ Gym & diet plans\n• 📖 Study schedules\n• 🧠 Remember anything\n• 📈 Investment advice\n\nJust type or tap a suggestion!`,
+      content: `${timeGreet} ${name}! 👋\n\nI'm **Viya** — your AI second brain.\n\n**✨ What I can do:**\n• 💰 **Create**: "spent ₹500 on food" / "create goal Goa Trip"\n• ✅ **Check-in**: "done with morning run" / "took medicine"\n• 📝 **Update**: "change goal target to ₹1 lakh"\n• 🗑️ **Delete**: "delete last expense" / "remove reminder"\n• 📊 **Review**: "weekly report" / "morning briefing"\n• 🧠 **Remember**: "remember mom's birthday is Dec 5"\n• 🏋️ Gym plans, diet, study, investments & more!\n\nJust type naturally — I understand you!`,
       time: new Date().toISOString()
     }])
     if (!phone) return
