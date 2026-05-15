@@ -97,7 +97,7 @@ export default function Home() {
     { icon: <Plus size={18}/>, label: 'Add Expense', to: '/expenses', color: 'var(--viya-success)' },
     { icon: <Flame size={18}/>, label: 'Habits', to: '/habits', color: 'var(--viya-gold-500)' },
     { icon: <Target size={18}/>, label: 'Goals', to: '/goals', color: 'var(--viya-error)' },
-    { icon: <Activity size={18}/>, label: 'Health', to: '/health', color: '#FF6B6B' },
+    { icon: <Activity size={18}/>, label: 'Health', to: '/health', color: '#FF7062' },
     { icon: <CreditCard size={18}/>, label: 'Bills', to: '/bills', color: 'var(--viya-warning)' },
     { icon: <Users size={18}/>, label: 'Lending', to: '/lending', color: '#f59e0b' },
     { icon: <BarChart3 size={18}/>, label: 'Report', to: '/report', color: 'var(--viya-primary-400)' },

@@ -297,7 +297,7 @@ export default function Health() {
             </CircleProgress>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 12 }}>
               {[
-                { label: 'Protein', val: `${meals.reduce((s,m) => s + (Number(m.protein) || 0), 0)}g`, color: '#FF6B6B' },
+                { label: 'Protein', val: `${meals.reduce((s,m) => s + (Number(m.protein) || 0), 0)}g`, color: '#FF7062' },
                 { label: 'Carbs', val: `${meals.reduce((s,m) => s + (Number(m.carbs) || 0), 0)}g`, color: '#FFB800' },
                 { label: 'Fat', val: `${meals.reduce((s,m) => s + (Number(m.fat) || 0), 0)}g`, color: '#0091FF' },
               ].map((m, i) => (
@@ -460,8 +460,8 @@ export default function Health() {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
                   {[
-                    { label: 'Calories', val: '520 kcal', color: '#FF6B6B' },
-                    { label: 'Protein', val: '28g', color: '#00E5D4' },
+                    { label: 'Calories', val: '520 kcal', color: '#FF7062' },
+                    { label: 'Protein', val: '28g', color: '#00E5B0' },
                     { label: 'Carbs', val: '62g', color: '#FFB800' },
                     { label: 'Fat', val: '18g', color: '#0091FF' },
                   ].map((n, i) => (

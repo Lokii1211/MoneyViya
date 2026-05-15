@@ -8,7 +8,7 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const EVENT_COLORS = {
   meeting: 'var(--viya-info)',
   personal: 'var(--viya-primary-500)',
-  health: '#FF6B6B',
+  health: '#FF7062',
   bill: 'var(--viya-warning)',
   reminder: 'var(--viya-violet-500)',
 }

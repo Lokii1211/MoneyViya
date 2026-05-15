@@ -51,7 +51,7 @@ const PLANS = [
     period: '/user/month',
     badge: '🏢 Teams',
     color: 'var(--cosmos-500)',
-    gradient: 'linear-gradient(135deg, #6B00FF, #8033FF)',
+    gradient: 'linear-gradient(135deg, #5514FF, #9972FF)',
     features: [
       { text: 'Unlimited AI (Opus model)', included: true },
       { text: 'Team shared workspace', included: true },

@@ -44,7 +44,7 @@ export default function ReferralProgram() {
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', paddingBottom: 100 }}>
       {/* Hero */}
       <div style={{
-        background: 'linear-gradient(135deg, #FFD93D 0%, #F5A623 50%, #FF6B6B 100%)',
+        background: 'linear-gradient(135deg, #FFD93D 0%, #F5A623 50%, #FF7062 100%)',
         padding: '50px 20px 28px', position: 'relative', overflow: 'hidden',
       }}>
         <div style={{

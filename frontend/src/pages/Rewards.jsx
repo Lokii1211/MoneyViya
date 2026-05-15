@@ -81,7 +81,7 @@ const CHALLENGES = [
 
 // Confetti particle component
 function ConfettiParticle({ delay, x }) {
-  const colors = ['#FFD700', '#FF6B6B', '#00B870', '#7C4DFF', '#00B0B6', '#FF9800']
+  const colors = ['#FFD700', '#FF7062', '#00B870', '#7C4DFF', '#00B0B6', '#FF9800']
   const color = colors[Math.floor(Math.random() * colors.length)]
   return (
     <motion.div

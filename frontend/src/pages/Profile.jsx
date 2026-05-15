@@ -199,7 +199,7 @@ export default function Profile() {
         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10, paddingLeft: 2 }}>Life Modules</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
           {[
-            { path: '/health', emoji: '❤️', label: 'Health', gradient: 'linear-gradient(135deg, #FF6B6B, #FF3D71)' },
+            { path: '/health', emoji: '❤️', label: 'Health', gradient: 'linear-gradient(135deg, #FF7062, #FF3D71)' },
             { path: '/bills', emoji: '📋', label: 'Bills', gradient: 'linear-gradient(135deg, #0D0020, #1a0040)' },
             { path: '/wealth', emoji: '📈', label: 'Wealth', gradient: 'linear-gradient(135deg, #4CAF50, #2E7D32)' },
             { path: '/email', emoji: '📧', label: 'Email AI', gradient: 'linear-gradient(135deg, #0091FF, #0052CC)' },

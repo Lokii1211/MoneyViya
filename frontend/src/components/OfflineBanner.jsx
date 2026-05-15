@@ -40,7 +40,7 @@ export default function OfflineBanner() {
         width: '100%', maxWidth: 430, zIndex: 9000,
         padding: '8px 16px',
         background: online
-          ? 'linear-gradient(135deg, #00C853, #00E5D4)'
+          ? 'linear-gradient(135deg, #00E87E, #00E5B0)'
           : 'linear-gradient(135deg, #F59E0B, #FF6B35)',
         color: 'white',
         display: 'flex', alignItems: 'center', gap: 8,

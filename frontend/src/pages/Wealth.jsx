@@ -211,7 +211,7 @@ export default function Wealth() {
                           { label: 'Food', pct: 28, color: '#FF5722' },
                           { label: 'Transport', pct: 18, color: '#0091FF' },
                           { label: 'Shopping', pct: 22, color: '#9C27B0' },
-                          { label: 'Bills', pct: 20, color: '#FF5252' },
+                          { label: 'Bills', pct: 20, color: '#FF5040' },
                           { label: 'Other', pct: 12, color: '#808080' },
                         ]
                         const r = 55, cx = 70, cy = 70, circ = 2 * Math.PI * r
@@ -239,7 +239,7 @@ export default function Wealth() {
                       { label: 'Food', pct: 28, amt: '₹4,010', color: '#FF5722' },
                       { label: 'Transport', pct: 18, amt: '₹2,578', color: '#0091FF' },
                       { label: 'Shopping', pct: 22, amt: '₹3,150', color: '#9C27B0' },
-                      { label: 'Bills', pct: 20, amt: '₹2,864', color: '#FF5252' },
+                      { label: 'Bills', pct: 20, amt: '₹2,864', color: '#FF5040' },
                       { label: 'Other', pct: 12, amt: '₹1,718', color: '#808080' },
                     ].map((c, i) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
@@ -403,7 +403,7 @@ export default function Wealth() {
               {/* Goal Cards */}
               {[
                 { name: 'Emergency Fund', emoji: '🛡️', target: 300000, saved: 185000, color: '#00B0B6', deadline: 'Dec 2025' },
-                { name: 'New Laptop', emoji: '💻', target: 85000, saved: 42000, color: '#6B00FF', deadline: 'Aug 2025' },
+                { name: 'New Laptop', emoji: '💻', target: 85000, saved: 42000, color: '#5514FF', deadline: 'Aug 2025' },
                 { name: 'Goa Trip', emoji: '✈️', target: 40000, saved: 28000, color: '#FF9500', deadline: 'Jul 2025' },
               ].map((g, i) => {
                 const pct = Math.round((g.saved / g.target) * 100)
@@ -500,7 +500,7 @@ export default function Wealth() {
               {/* Other Sections */}
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Other Deductions</div>
               {[
-                { section: '80D (Health Insurance)', limit: '₹25,000', used: '₹18,500', pct: 74, color: '#FF6B6B' },
+                { section: '80D (Health Insurance)', limit: '₹25,000', used: '₹18,500', pct: 74, color: '#FF7062' },
                 { section: '80E (Education Loan)', limit: 'No limit', used: '₹48,000', pct: 100, color: '#0091FF' },
                 { section: 'HRA Exemption', limit: '₹2,40,000', used: '₹2,40,000', pct: 100, color: '#4CAF50' },
               ].map((s, i) => (

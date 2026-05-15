@@ -64,7 +64,7 @@ export default function SubscriptionAudit() {
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', paddingBottom: 100 }}>
       {/* Hero */}
       <div style={{
-        background: 'linear-gradient(135deg, #FF6B6B 0%, #FF9800 50%, #FFD93D 100%)',
+        background: 'linear-gradient(135deg, #FF7062 0%, #FF9800 50%, #FFD93D 100%)',
         padding: '50px 20px 24px', position: 'relative', overflow: 'hidden',
       }}>
         <div style={{
