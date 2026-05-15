@@ -115,7 +115,7 @@ export default function Home() {
         </div>
         <div>
           <div style={{ fontWeight: 700, fontSize: 16 }}>{getGreeting()}, {name.split(' ')[0]}! {getGreetingEmoji()}</div>
-          <div className="body-s text-secondary">Your Second Brain • Always with you</div>
+          <div className="body-s text-secondary">Your AI Life & Wealth Partner</div>
         </div>
       </div>
 
@@ -438,8 +438,8 @@ export default function Home() {
       <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
         <div onClick={() => nav('/health')} style={{
           flex: 1, padding: 16, borderRadius: 'var(--radius-xl)', cursor: 'pointer',
-          background: 'linear-gradient(135deg, #FF6B6B 0%, #FF9800 100%)', color: 'white',
-          boxShadow: '0 4px 16px rgba(255,107,107,0.25)',
+          background: 'linear-gradient(135deg, #FF7062 0%, #FF9800 50%, #FFD700 100%)', color: 'white',
+          boxShadow: '0 4px 16px rgba(255,112,98,0.25)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
             <Droplets size={14} /> <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>STEPS</span>
@@ -450,8 +450,8 @@ export default function Home() {
         </div>
         <div onClick={() => nav('/health')} style={{
           flex: 1, padding: 16, borderRadius: 'var(--radius-xl)', cursor: 'pointer',
-          background: 'linear-gradient(135deg, #00C853 0%, #00B0B6 100%)', color: 'white',
-          boxShadow: '0 4px 16px rgba(0,200,83,0.25)',
+          background: 'linear-gradient(135deg, #00E87E 0%, #00E5B0 100%)', color: 'white',
+          boxShadow: '0 4px 16px rgba(0,232,126,0.25)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
             <Heart size={14} /> <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>CALORIES</span>
