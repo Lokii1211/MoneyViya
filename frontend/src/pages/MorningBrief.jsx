@@ -32,7 +32,7 @@ const TODAY_ITEMS = [
     actionRoute: '/medicine',
   },
   {
-    type: 'goal', priority: 'low', emoji: '🎯', color: 'var(--teal-500)',
+    type: 'goal', priority: 'low', emoji: '🎯', color:'var(--viya-primary-700)',
     title: 'Emergency Fund milestone!',
     detail: 'You crossed 60%! ₹1,85,000 of ₹3,00,000',
     action: 'View Goal',

@@ -5,7 +5,7 @@ import { ArrowLeft, Users, TrendingUp, Activity, Mail, Bell, CreditCard, ToggleL
 
 // Mock data for admin dashboard
 const OVERVIEW_METRICS = [
-  { label: 'DAU', value: '24,891', change: '+12%', target: '25K', color: 'var(--teal-500)', icon: <Users size={16} /> },
+  { label: 'DAU', value: '24,891', change: '+12%', target: '25K', color:'var(--viya-primary-700)', icon: <Users size={16} /> },
   { label: 'MAU', value: '1,48,203', change: '+8%', target: '150K', color: 'var(--info-500)', icon: <TrendingUp size={16} /> },
   { label: 'Revenue', value: '₹18.4L', change: '+22%', target: '₹20L', color: 'var(--emerald-500)', icon: <DollarSign size={16} /> },
   { label: 'Error Rate', value: '0.3%', change: '-0.1%', target: '<1%', color: 'var(--coral-500)', icon: <AlertTriangle size={16} /> },
@@ -321,7 +321,7 @@ export default function AdminDashboard() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {[
                 { label: 'WhatsApp', rate: '93%', sent: '32K', color: '#25D366' },
-                { label: 'Push', rate: '87%', sent: '8.2K', color: 'var(--teal-500)' },
+                { label: 'Push', rate: '87%', sent: '8.2K', color:'var(--viya-primary-700)' },
                 { label: 'SMS', rate: '98%', sent: '1.2K', color: 'var(--amber-500)' },
                 { label: 'Email', rate: '95%', sent: '3.8K', color: 'var(--info-500)' },
               ].map((ch, i) => (

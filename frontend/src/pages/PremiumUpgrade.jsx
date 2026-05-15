@@ -30,7 +30,7 @@ const PLANS = [
     price: 149,
     period: '/month',
     badge: '🔥 Most Popular',
-    color: 'var(--teal-500)',
+    color:'var(--viya-primary-700)',
     gradient: 'var(--gradient-hero)',
     features: [
       { text: '500 AI messages/day', included: true },

@@ -101,7 +101,7 @@ export default function Home() {
     { icon: <CreditCard size={18}/>, label: 'Bills', to: '/bills', color: 'var(--viya-warning)' },
     { icon: <Users size={18}/>, label: 'Lending', to: '/lending', color: '#f59e0b' },
     { icon: <BarChart3 size={18}/>, label: 'Report', to: '/report', color: 'var(--viya-primary-400)' },
-    { icon: <Sparkles size={18}/>, label: 'Premium', to: '/premium', color: 'var(--viya-primary-500)' },
+    { icon: <Sparkles size={18}/>, label: 'Premium', to: '/premium', color:'var(--viya-primary-700)' },
   ]
 
 
@@ -123,7 +123,7 @@ export default function Home() {
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <span className="title-m" style={{ fontSize: 15, color: 'var(--coral-500)' }}>🔔 Needs Attention</span>
-          <button onClick={() => nav('/email')} style={{ fontSize: 12, fontWeight: 600, color: 'var(--viya-primary-500)', background: 'none', border: 'none', cursor: 'pointer' }}>View All →</button>
+          <button onClick={() => nav('/email')} style={{ fontSize: 12, fontWeight: 600, color:'var(--viya-primary-700)', background: 'none', border: 'none', cursor: 'pointer' }}>View All →</button>
         </div>
         <div className="scroll-snap-x" style={{ gap: 12, paddingBottom: 4 }}>
           {[
@@ -294,7 +294,7 @@ export default function Home() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="body-s text-secondary">₹{Number(g.current_amount)} / ₹{Number(g.target_amount)}</span>
-                    <span className="num-s" style={{ color: 'var(--viya-primary-500)', fontWeight: 700, fontSize: 13 }}>{pct}%</span>
+                    <span className="num-s" style={{ color:'var(--viya-primary-700)', fontWeight: 700, fontSize: 13 }}>{pct}%</span>
                   </div>
                 </div>
               )
@@ -407,7 +407,7 @@ export default function Home() {
         <div style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <span className="title-m" style={{ fontSize: 15 }}>🎯 Your Goals</span>
-            <button onClick={() => nav('/goals')} style={{ fontSize: 12, fontWeight: 600, color: 'var(--viya-primary-500)', background: 'none', border: 'none', cursor: 'pointer' }}>All Goals →</button>
+            <button onClick={() => nav('/goals')} style={{ fontSize: 12, fontWeight: 600, color:'var(--viya-primary-700)', background: 'none', border: 'none', cursor: 'pointer' }}>All Goals →</button>
           </div>
           <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4, scrollSnapType: 'x mandatory' }}>
             {goals.slice(0, 5).map(g => {
@@ -489,7 +489,7 @@ export default function Home() {
         <div style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <span className="title-m" style={{ fontSize: 15 }}>🧾 Upcoming Bills</span>
-            <button onClick={() => nav('/bills')} style={{ fontSize: 12, fontWeight: 600, color: 'var(--viya-primary-500)', background: 'none', border: 'none', cursor: 'pointer' }}>All Bills →</button>
+            <button onClick={() => nav('/bills')} style={{ fontSize: 12, fontWeight: 600, color:'var(--viya-primary-700)', background: 'none', border: 'none', cursor: 'pointer' }}>All Bills →</button>
           </div>
           {bills.filter(b => b.status !== 'paid').slice(0, 4).map((b, i) => {
             const daysLeft = b.due_date ? Math.ceil((new Date(b.due_date) - Date.now()) / 86400000) : 99

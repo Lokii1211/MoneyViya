@@ -6,7 +6,7 @@ import { TrendingUp, TrendingDown, PiggyBank, Landmark, BarChart3, Plus, Chevron
 import { formatINR } from '../lib/utils'
 
 const typeConfig = {
-  mutual_fund: { emoji: '📈', color: 'var(--viya-primary-500)', label: 'Mutual Fund' },
+  mutual_fund: { emoji: '📈', color:'var(--viya-primary-700)', label: 'Mutual Fund' },
   stock: { emoji: '📊', color: 'var(--viya-violet-500)', label: 'Stock' },
   fd: { emoji: '🏦', color: 'var(--viya-gold-500)', label: 'Fixed Deposit' },
   ppf: { emoji: '🛡️', color: 'var(--viya-success)', label: 'PPF' },
@@ -169,7 +169,7 @@ export default function Wealth() {
                   <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 24, color: 'var(--viya-primary-600)' }}>
                     {sipInvestments.length}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--viya-primary-500)', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color:'var(--viya-primary-700)', marginTop: 2 }}>
                     ₹{totalSIP}/mo
                   </div>
                 </div>
@@ -375,7 +375,7 @@ export default function Wealth() {
                 }}>
                   <div style={{
                     width: 40, height: 40, borderRadius: 12, background: 'var(--viya-primary-500)15',
-                    color: 'var(--viya-primary-500)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+                    color:'var(--viya-primary-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
                   }}>📈</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{inv.name}</div>

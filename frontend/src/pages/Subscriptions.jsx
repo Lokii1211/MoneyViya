@@ -37,7 +37,7 @@ export default function Subscriptions() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
           <div className="card" style={{ padding: 16, textAlign: 'center' }}>
             <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 4 }}>Monthly</div>
-            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Sora',sans-serif", color: 'var(--viya-primary-500)' }}>
+            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Sora',sans-serif", color:'var(--viya-primary-700)' }}>
               ₹{totalMonthly.toLocaleString()}
             </div>
           </div>

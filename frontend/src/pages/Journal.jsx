@@ -86,7 +86,7 @@ export default function Journal() {
                 </div>
               )}
               {entry.aiInsight && (
-                <div style={{ fontSize: 12, color: 'var(--viya-primary-500)', background: 'var(--viya-primary-500)08', padding: '8px 12px', borderRadius: 10, borderLeft: '3px solid var(--viya-primary-500)' }}>
+                <div style={{ fontSize: 12, color:'var(--viya-primary-700)', background: 'var(--viya-primary-500)08', padding: '8px 12px', borderRadius: 10, borderLeft: '3px solid var(--viya-primary-500)' }}>
                   🧠 {entry.aiInsight}
                 </div>
               )}

@@ -81,7 +81,7 @@ export default function Splits() {
                         </span>
                       ) : (
                         <motion.button whileTap={{ scale: 0.9 }} style={{
-                          fontSize: 11, fontWeight: 600, color: 'var(--viya-primary-500)',
+                          fontSize: 11, fontWeight: 600, color:'var(--viya-primary-700)',
                           background: 'var(--viya-primary-500)11', border: 'none', borderRadius: 8,
                           padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2,
                         }}>

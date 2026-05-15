@@ -461,7 +461,7 @@ export default function Health() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
                   {[
                     { label: 'Calories', val: '520 kcal', color: '#FF7062' },
-                    { label: 'Protein', val: '28g', color: '#00E5B0' },
+                    { label: 'Protein', val: '28g', color:'var(--viya-primary-700)' },
                     { label: 'Carbs', val: '62g', color: '#FFB800' },
                     { label: 'Fat', val: '18g', color: '#0091FF' },
                   ].map((n, i) => (

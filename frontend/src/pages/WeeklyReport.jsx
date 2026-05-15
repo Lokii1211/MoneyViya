@@ -156,7 +156,7 @@ export default function WeeklyReport() {
             {[
               { label: 'Income', value: `₹${(FINANCE_SUMMARY.income/1000).toFixed(0)}K`, color: 'var(--emerald-500)' },
               { label: 'Spent', value: `₹${(FINANCE_SUMMARY.spent/1000).toFixed(1)}K`, color: 'var(--coral-500)' },
-              { label: 'Saved', value: `₹${(FINANCE_SUMMARY.saved/1000).toFixed(1)}K`, color: 'var(--teal-500)' },
+              { label: 'Saved', value: `₹${(FINANCE_SUMMARY.saved/1000).toFixed(1)}K`, color:'var(--viya-primary-700)' },
             ].map((s, i) => (
               <div key={i} style={{
                 background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 12,
@@ -259,7 +259,7 @@ export default function WeeklyReport() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, textAlign: 'center' }}>
               {[
                 { label: 'Processed', value: EMAIL_SUMMARY.processed, color: 'var(--info-500)' },
-                { label: 'Actions', value: EMAIL_SUMMARY.actionTaken, color: 'var(--teal-500)' },
+                { label: 'Actions', value: EMAIL_SUMMARY.actionTaken, color:'var(--viya-primary-700)' },
                 { label: 'Bills Found', value: EMAIL_SUMMARY.billsDetected, color: 'var(--coral-500)' },
               ].map((s, i) => (
                 <div key={i}>

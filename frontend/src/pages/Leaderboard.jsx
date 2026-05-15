@@ -70,7 +70,7 @@ export default function Leaderboard() {
                 <div style={{ fontSize: 14, fontWeight: 700 }}>{user.name} {user.isYou && '(You)'}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>🔥 {user.streak} day streak</div>
               </div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--viya-primary-500)' }}>{user.xp} XP</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color:'var(--viya-primary-700)' }}>{user.xp} XP</div>
             </motion.div>
           ))}
         </div>
