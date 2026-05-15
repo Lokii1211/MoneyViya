@@ -46,6 +46,9 @@
   --gradient-success:linear-gradient(135deg,#00E87E 0%,#00E5B0 100%);
   --gradient-glass:linear-gradient(145deg,rgba(255,255,255,.9) 0%,rgba(240,255,252,.8) 100%);
   --gradient-dark:linear-gradient(180deg,#08021A 0%,#001814 100%);
+  /* DESIGN BRIEF §3.1 — AI + Achievement gradients */
+  --gradient-ai:linear-gradient(135deg,#5514FF 0%,#9972FF 100%);
+  --gradient-achievement:linear-gradient(135deg,#FFD700 0%,#F5A623 100%);
   /* Category */
   --cat-finance:#00C853; --cat-health:#FF6B6B; --cat-work:#0091FF;
   --cat-family:#FF9800; --cat-shopping:#9C27B0; --cat-travel:#00BCD4;
@@ -63,9 +66,11 @@
   /* PRD §2.3 — Shadows */
   --sh-1:0 1px 4px rgba(0,0,0,0.05); --sh-2:0 4px 8px rgba(0,0,0,0.07);
   --sh-3:0 8px 16px rgba(0,0,0,0.09); --sh-4:0 16px 32px rgba(0,0,0,0.12);
-  --sh-teal:0 8px 24px rgba(0,229,212,0.30);
-  --sh-cosmos:0 8px 24px rgba(107,0,255,0.25);
-  --sh-gold:0 8px 24px rgba(255,217,61,0.35);
+  --sh-teal:0 8px 28px rgba(0,229,176,0.30);
+  --sh-cosmos:0 8px 28px rgba(85,20,255,0.25);
+  --sh-gold:0 8px 28px rgba(255,224,26,0.35);
+  --sh-emerald:0 8px 28px rgba(0,232,126,0.30);
+  --sh-coral:0 8px 28px rgba(255,80,64,0.25);
   --shadow-1:var(--sh-1); --shadow-2:var(--sh-2); --shadow-3:var(--sh-3); --shadow-4:var(--sh-4);
   --shadow-teal:var(--sh-teal); --shadow-violet:var(--sh-cosmos); --shadow-gold:var(--sh-gold);
   /* DESIGN BRIEF — Semantic aliases (WHITE primary bg) */
@@ -95,19 +100,21 @@ a{color:inherit;text-decoration:none}
 ul,ol{list-style:none}
 *{scrollbar-width:none;-webkit-touch-callout:none}
 *::-webkit-scrollbar{display:none}
-.display-xl{font-family:'Sora',sans-serif;font-weight:700;font-size:40px;line-height:48px;letter-spacing:-1px}
-.display-l{font-family:'Sora',sans-serif;font-weight:700;font-size:32px;line-height:40px;letter-spacing:-.5px}
-.display-m{font-family:'Sora',sans-serif;font-weight:600;font-size:24px;line-height:32px;letter-spacing:-.3px}
-.title-l{font-family:'Inter',sans-serif;font-weight:600;font-size:20px;line-height:28px}
-.title-m{font-family:'Inter',sans-serif;font-weight:600;font-size:18px;line-height:26px}
-.body-l{font-weight:400;font-size:18px;line-height:28px}
-.body-m{font-weight:400;font-size:16px;line-height:24px}
-.body-s{font-weight:400;font-size:14px;line-height:20px}
-.caption{font-weight:500;font-size:12px;line-height:16px;letter-spacing:.5px;text-transform:uppercase}
-.num-xl{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:56px;line-height:64px}
-.num-l{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:36px;line-height:44px}
-.num-m{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:24px;line-height:32px}
-.num-s{font-family:'JetBrains Mono',monospace;font-weight:400;font-size:16px;line-height:24px}
+/* DESIGN BRIEF §3.2 — Typography (exact type scale) */
+.hero{font-family:'Sora',sans-serif;font-weight:800;font-size:48px;line-height:56px;letter-spacing:-1.5px}
+.h1,.display-xl{font-family:'Sora',sans-serif;font-weight:700;font-size:34px;line-height:42px;letter-spacing:-.8px}
+.h2,.display-l{font-family:'Sora',sans-serif;font-weight:700;font-size:26px;line-height:34px;letter-spacing:-.4px}
+.h3,.display-m{font-family:'Sora',sans-serif;font-weight:600;font-size:22px;line-height:30px;letter-spacing:-.2px}
+.h4,.title-l,.title-m{font-family:'Inter',sans-serif;font-weight:600;font-size:18px;line-height:26px;letter-spacing:0}
+.body-l{font-weight:400;font-size:18px;line-height:28px;letter-spacing:.1px}
+.body-m{font-weight:400;font-size:16px;line-height:24px;letter-spacing:.1px}
+.body-s{font-weight:400;font-size:14px;line-height:20px;letter-spacing:.2px}
+.label{font-family:'Inter',sans-serif;font-weight:600;font-size:11px;line-height:16px;letter-spacing:1.2px;text-transform:uppercase}
+.caption{font-weight:400;font-size:12px;line-height:16px;letter-spacing:0}
+.num-xl{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:48px;line-height:56px;letter-spacing:-1px}
+.num-l{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:32px;line-height:40px;letter-spacing:-.5px}
+.num-m{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:22px;line-height:30px;letter-spacing:0}
+.num-s{font-family:'JetBrains Mono',monospace;font-weight:400;font-size:16px;line-height:24px;letter-spacing:0}
 .app-shell{max-width:430px;margin:0 auto;min-height:100dvh;background:var(--bg-primary);position:relative;overflow:hidden;display:flex;flex-direction:column}
 .app-header{height:var(--header-height);padding:0 var(--screen-margin);padding-top:max(14px,var(--safe-top));display:flex;align-items:center;justify-content:space-between;background:var(--bg-primary);position:sticky;top:0;z-index:100;backdrop-filter:blur(20px);border-bottom:1px solid var(--border-light)}
 .app-main{flex:1;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--nav-height) + var(--safe-bottom) + 16px)}
