@@ -82,12 +82,12 @@ https://heyviya.vercel.app`
       {/* Main Summary */}
       <div style={{background:'linear-gradient(135deg, var(--primary-dim), var(--cyan-dim))', border:'1px solid var(--border2)', borderRadius:18, padding:24, marginBottom:16, textAlign:'center'}}>
         <div style={{fontSize:11, color:'var(--text3)', letterSpacing:2, fontWeight:700}}>NET SAVINGS THIS WEEK</div>
-        <div style={{fontFamily:'var(--mono)', fontSize:36, fontWeight:900, color: report.saved >= 0 ? 'var(--primary)' : 'var(--red)', margin:'8px 0'}}>
+        <div style={{fontFamily:'var(--mono)', fontSize:36, fontWeight:900, color: report.saved >= 0 ? 'var(--primary)' : 'var(--cosmos-400)', margin:'8px 0'}}>
           {report.saved >= 0 ? '+' : ''}₹{report.saved}
         </div>
         {report.totalIncome > 0 && (
           <div style={{fontSize:12, color:'var(--text2)'}}>
-            Savings rate: <strong style={{color: savingsRate >= 20 ? 'var(--primary)' : 'var(--red)'}}>{savingsRate}%</strong>
+            Savings rate: <strong style={{color: savingsRate >= 20 ? 'var(--primary)' : 'var(--cosmos-400)'}}>{savingsRate}%</strong>
             {savingsRate >= 20 ? ' 🎉 Great!' : savingsRate >= 10 ? ' 👍 Good' : ' ⚠️ Needs improvement'}
           </div>
         )}
@@ -102,12 +102,12 @@ https://heyviya.vercel.app`
           </div>
           <div style={{fontFamily:'var(--mono)', fontSize:22, fontWeight:800, color:'var(--primary)'}}>₹{report.totalIncome}</div>
         </div>
-        <div style={{flex:1, background:'var(--red-dim)', border:'1px solid rgba(255,71,87,0.2)', borderRadius:14, padding:'16px'}}>
+        <div style={{flex:1, background:'var(--cosmos-50)', border:'1px solid rgba(85,20,255,0.15)', borderRadius:14, padding:'16px'}}>
           <div style={{display:'flex', alignItems:'center', gap:4, marginBottom:6}}>
-            <TrendingDown size={14} color="var(--red)"/>
+            <TrendingDown size={14} color="var(--cosmos-400)"/>
             <span style={{fontSize:11, color:'var(--text3)', fontWeight:700}}>EXPENSES</span>
           </div>
-          <div style={{fontFamily:'var(--mono)', fontSize:22, fontWeight:800, color:'var(--red)'}}>₹{report.totalExpenses}</div>
+          <div style={{fontFamily:'var(--mono)', fontSize:22, fontWeight:800, color:'var(--cosmos-400)'}}>₹{report.totalExpenses}</div>
         </div>
       </div>
 
@@ -124,7 +124,7 @@ https://heyviya.vercel.app`
           {report.topCategories.map((cat, i) => (
             <div key={i} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 14px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, marginBottom:6}}>
               <span style={{fontSize:13}}>{cat.category}</span>
-              <span style={{fontFamily:'var(--mono)', fontSize:14, fontWeight:700, color:'var(--red)'}}>₹{cat.amount}</span>
+              <span style={{fontFamily:'var(--mono)', fontSize:14, fontWeight:700, color:'var(--cosmos-400)'}}>₹{cat.amount}</span>
             </div>
           ))}
         </div>

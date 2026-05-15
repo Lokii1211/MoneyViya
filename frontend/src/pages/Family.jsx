@@ -135,7 +135,7 @@ export default function Family() {
             <div style={{fontSize:10, color:'var(--text3)'}}>TOTAL INCOME</div>
           </div>
           <div>
-            <div style={{fontFamily:'var(--mono)', fontSize:18, fontWeight:800, color:'var(--red)'}}>₹{totalFamilyExpense}</div>
+            <div style={{fontFamily:'var(--mono)', fontSize:18, fontWeight:800, color:'var(--cosmos-400)'}}>₹{totalFamilyExpense}</div>
             <div style={{fontSize:10, color:'var(--text3)'}}>TOTAL SPENT</div>
           </div>
           <div>
@@ -235,7 +235,7 @@ export default function Family() {
             </div>
             <div style={{textAlign:'right'}}>
               <div style={{fontFamily:'var(--mono)', fontSize:14, fontWeight:800, color:'var(--primary)'}}>₹{Number(user?.monthly_income || 0)}</div>
-              <div style={{fontFamily:'var(--mono)', fontSize:12, color:'var(--red)'}}>-₹{Number(user?.monthly_expenses || 0)}</div>
+              <div style={{fontFamily:'var(--mono)', fontSize:12, color:'var(--cosmos-400)'}}>-₹{Number(user?.monthly_expenses || 0)}</div>
             </div>
           </div>
         </div>
@@ -258,7 +258,7 @@ export default function Family() {
                 <div style={{display:'flex', alignItems:'center', gap:8}}>
                   <div style={{textAlign:'right'}}>
                     <div style={{fontFamily:'var(--mono)', fontSize:14, fontWeight:800, color:'var(--primary)'}}>₹{Number(m.userData?.monthly_income || 0)}</div>
-                    <div style={{fontFamily:'var(--mono)', fontSize:11, color:'var(--red)'}}>-₹{Number(m.userData?.monthly_expenses || 0)}</div>
+                    <div style={{fontFamily:'var(--mono)', fontSize:11, color:'var(--cosmos-400)'}}>-₹{Number(m.userData?.monthly_expenses || 0)}</div>
                   </div>
                   <button style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)', padding:4}} onClick={(e) => { e.stopPropagation(); removeMember(m) }}><Trash2 size={14}/></button>
                 </div>
@@ -286,9 +286,9 @@ export default function Family() {
               <div style={{fontFamily:'var(--mono)', fontSize:16, fontWeight:800, color:'var(--primary)'}}>₹{Number(memberData.monthly_income || 0)}</div>
               <div style={{fontSize:10, color:'var(--text3)'}}>Income</div>
             </div>
-            <div style={{flex:1, background:'var(--red-dim)', borderRadius:10, padding:12, textAlign:'center'}}>
-              <TrendingDown size={16} color="var(--red)"/>
-              <div style={{fontFamily:'var(--mono)', fontSize:16, fontWeight:800, color:'var(--red)'}}>₹{Number(memberData.monthly_expenses || 0)}</div>
+            <div style={{flex:1, background:'var(--cosmos-50)', borderRadius:10, padding:12, textAlign:'center'}}>
+              <TrendingDown size={16} color="var(--cosmos-400)"/>
+              <div style={{fontFamily:'var(--mono)', fontSize:16, fontWeight:800, color:'var(--cosmos-400)'}}>₹{Number(memberData.monthly_expenses || 0)}</div>
               <div style={{fontSize:10, color:'var(--text3)'}}>Expenses</div>
             </div>
           </div>
@@ -303,7 +303,7 @@ export default function Family() {
                 <span style={{fontSize:14}}>{t.category?.split(' ')[0] || '🛒'}</span>
                 <span style={{fontSize:12}}>{t.description || t.category?.split(' ').slice(1).join(' ') || t.category}</span>
               </div>
-              <span style={{fontFamily:'var(--mono)', fontSize:12, fontWeight:700, color: t.type === 'income' ? 'var(--primary)' : 'var(--red)'}}>
+              <span style={{fontFamily:'var(--mono)', fontSize:12, fontWeight:700, color: t.type === 'income' ? 'var(--primary)' : 'var(--cosmos-400)'}}>
                 {t.type === 'income' ? '+' : '-'}₹{Number(t.amount)}
               </span>
             </div>

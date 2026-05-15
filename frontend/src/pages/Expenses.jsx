@@ -245,9 +245,9 @@ export default function Expenses() {
           <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:4}}><TrendingUp size={14} color="var(--primary)" /><span style={{fontSize:11, color:'var(--text3)', fontWeight:700}}>INCOME</span></div>
           <div style={{fontFamily:'var(--mono)', fontSize:20, fontWeight:800, color:'var(--primary)'}}>₹{animatedIncome}</div>
         </div>
-        <div style={{flex:1, background:'var(--red-dim)', border:'1px solid rgba(255,71,87,0.2)', borderRadius:12, padding:'14px 16px'}}>
-          <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:4}}><TrendingDown size={14} color="var(--red)" /><span style={{fontSize:11, color:'var(--text3)', fontWeight:700}}>SPENT</span></div>
-          <div style={{fontFamily:'var(--mono)', fontSize:20, fontWeight:800, color:'var(--red)'}}>₹{animatedExpense}</div>
+        <div style={{flex:1, background:'var(--cosmos-50)', border:'1px solid rgba(85,20,255,0.15)', borderRadius:12, padding:'14px 16px'}}>
+          <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:4}}><TrendingDown size={14} color="var(--cosmos-400)" /><span style={{fontSize:11, color:'var(--text3)', fontWeight:700}}>SPENT</span></div>
+          <div style={{fontFamily:'var(--mono)', fontSize:20, fontWeight:800, color:'var(--cosmos-400)'}}>₹{animatedExpense}</div>
         </div>
       </div>
 
@@ -287,7 +287,7 @@ export default function Expenses() {
                   <span style={{fontSize:12, color:'var(--text3)'}}>Type</span>
                   <div style={{display:'flex', gap:4}}>
                     {['expense','income'].map(t => (
-                      <button key={t} onClick={() => setOcrResult({...ocrResult, type: t})} style={{padding:'4px 10px', borderRadius:6, fontSize:11, fontWeight:700, border:'1px solid', cursor:'pointer', fontFamily:'inherit', borderColor: ocrResult.type === t ? (t==='expense'?'var(--red)':'var(--primary)') : 'var(--border)', color: ocrResult.type === t ? (t==='expense'?'var(--red)':'var(--primary)') : 'var(--text3)', background: ocrResult.type === t ? (t==='expense'?'var(--red-dim)':'var(--primary-dim)') : 'transparent'}}>{t}</button>
+                      <button key={t} onClick={() => setOcrResult({...ocrResult, type: t})} style={{padding:'4px 10px', borderRadius:6, fontSize:11, fontWeight:700, border:'1px solid', cursor:'pointer', fontFamily:'inherit', borderColor: ocrResult.type === t ? (t==='expense'?'var(--cosmos-400)':'var(--primary)') : 'var(--border)', color: ocrResult.type === t ? (t==='expense'?'var(--cosmos-400)':'var(--primary)') : 'var(--text3)', background: ocrResult.type === t ? (t==='expense'?'var(--cosmos-50)':'var(--primary-dim)') : 'transparent'}}>{t}</button>
                     ))}
                   </div>
                 </div>
@@ -325,7 +325,7 @@ export default function Expenses() {
             <div style={{background:'var(--bg2)', borderRadius:12, padding:14, marginTop:10, marginBottom:10}}>
               <div style={{display:'flex', justifyContent:'space-between', marginBottom:6}}>
                 <span style={{fontSize:12, color:'var(--text3)'}}>Detected</span>
-                <span style={{fontFamily:'var(--mono)', fontSize:18, fontWeight:800, color: smsResult.isIncome ? 'var(--primary)' : 'var(--red)'}}>
+                <span style={{fontFamily:'var(--mono)', fontSize:18, fontWeight:800, color: smsResult.isIncome ? 'var(--primary)' : 'var(--cosmos-400)'}}>
                   {smsResult.isIncome ? '+' : '-'}₹{smsResult.amount}
                 </span>
               </div>
@@ -365,7 +365,7 @@ export default function Expenses() {
               <div key={i} style={{minWidth:120, background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:12, padding:'10px 12px', flexShrink:0}}>
                 <div style={{fontSize:18, marginBottom:4}}>{s.icon}</div>
                 <div style={{fontSize:12, fontWeight:700, marginBottom:2}}>{s.name}</div>
-                <div style={{fontFamily:'var(--mono)', fontSize:13, fontWeight:800, color:'var(--red)'}}>₹{Math.round(s.total/s.count)}/avg</div>
+                <div style={{fontFamily:'var(--mono)', fontSize:13, fontWeight:800, color:'var(--cosmos-400)'}}>₹{Math.round(s.total/s.count)}/avg</div>
                 <div style={{fontSize:10, color:'var(--text3)'}}>{s.count}x logged</div>
               </div>
             ))}
