@@ -14,18 +14,21 @@
   --viya-primary-50:#E0FFF9;
   /* DESIGN BRIEF §3.1 — Cosmos Violet (AI + Premium) */
   --cosmos-500:#5514FF; --cosmos-400:#7743FF; --cosmos-600:#4410CC;
-  --cosmos-50:#F2EEFF; --cosmos-100:#DDD0FF;
+  --cosmos-50:#F2EEFF; --cosmos-100:#DDD0FF; --cosmos-300:#9972FF;
+  --cosmos-700:#330C99; --cosmos-800:#220866; --cosmos-900:#110433; --cosmos-950:#08021A;
   --viya-violet-900:#110433; --viya-violet-800:#220866; --viya-violet-700:#330C99;
   --viya-violet-600:#4410CC; --viya-violet-500:#5514FF; --viya-violet-400:#7743FF;
   --viya-violet-300:#9972FF; --viya-violet-200:#BBA1FF; --viya-violet-100:#DDD0FF;
   --viya-violet-50:#F2EEFF;
   /* DESIGN BRIEF §3.1 — Solar Gold (Achievement) */
   --gold-300:#FFE84D; --gold-500:#FFD700; --gold-100:#FFFCE6;
+  --gold-200:#FFF080; --gold-400:#FFE01A; --gold-600:#CCAC00; --gold-700:#998100;
   --viya-gold-500:#FFD700; --viya-gold-400:#FFE01A; --viya-gold-300:#FFE84D;
   --viya-gold-200:#FFF080; --viya-gold-100:#FFFCE6;
   /* DESIGN BRIEF §3.1 — Semantic */
-  --emerald-500:#00E87E; --coral-500:#FF5040; --amber-500:#FF9800; --info-500:#0091FF;
-  --coral-50:#FFF5F3; --amber-50:#FFF8E1; --cosmos-200:#BBA1FF;
+  --emerald-500:#00E87E; --emerald-50:#E6FFF4; --emerald-100:#B3FFDF; --emerald-200:#80FFCA; --emerald-600:#00BA65;
+  --coral-500:#FF5040; --coral-50:#FFF5F3; --coral-100:#FFD0CB; --coral-200:#FFB0A8; --coral-300:#FF9085; --coral-400:#FF7062; --coral-600:#CC3F33; --coral-700:#992F26;
+  --amber-500:#FF9800; --amber-50:#FFF8E1; --cosmos-200:#BBA1FF; --info-500:#0091FF;
   --viya-success:#00E87E; --viya-success-light:#E6FFF4;
   --viya-warning:#FF9800; --viya-warning-light:#FFF3E0;
   --viya-error:#FF5040; --viya-error-light:#FFF0EE;
@@ -62,7 +65,7 @@
   --space-12:48px; --space-16:64px; --space-20:80px;
   /* PRD §2.3 — Border radius */
   --r-xs:6px; --r-sm:10px; --r-md:14px; --r-lg:18px; --r-xl:22px; --r-2xl:28px; --r-full:9999px;
-  --radius-sm:10px; --radius-md:14px; --radius-lg:18px;
+  --radius-xs:6px; --radius-sm:10px; --radius-md:14px; --radius-lg:18px;
   --radius-xl:22px; --radius-2xl:28px; --radius-full:9999px;
   /* PRD §2.3 — Shadows */
   --sh-1:0 1px 4px rgba(0,0,0,0.05); --sh-2:0 4px 8px rgba(0,0,0,0.07);
@@ -74,6 +77,11 @@
   --sh-coral:0 8px 28px rgba(255,80,64,0.25);
   --shadow-1:var(--sh-1); --shadow-2:var(--sh-2); --shadow-3:var(--sh-3); --shadow-4:var(--sh-4);
   --shadow-teal:var(--sh-teal); --shadow-violet:var(--sh-cosmos); --shadow-gold:var(--sh-gold);
+  --shadow-cosmos:var(--sh-cosmos); --shadow-emerald:var(--sh-emerald); --shadow-coral:var(--sh-coral);
+  /* DESIGN SYSTEM JSON — Dark mode palette */
+  --dark-bg:#080812; --dark-s1:#0E0E1C; --dark-s2:#161626; --dark-s3:#1E1E34; --dark-s4:#262644;
+  --dark-border:#2E2E50; --dark-border-hi:#3E3E68;
+  --dark-text-p:#EEEEFF; --dark-text-s:#9090BB; --dark-text-t:#606088;
   /* DESIGN BRIEF — Semantic aliases (WHITE primary bg) */
   --bg-primary:#FFFFFF; --bg-secondary:#F8FAFA;
   --bg-card:#FFFFFF; --text-primary:#0D1818;
