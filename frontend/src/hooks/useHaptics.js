@@ -27,11 +27,15 @@ export function useHaptics() {
     try { Haptics?.notification({ type: 'error' }) } catch {}
   }, [])
 
+  const warning = useCallback(() => {
+    try { Haptics?.notification({ type: 'warning' }) } catch {}
+  }, [])
+
   const selection = useCallback(() => {
     try { Haptics?.selectionChanged() } catch {}
   }, [])
 
-  return { light, medium, heavy, success, error, selection }
+  return { light, medium, heavy, success, warning, error, selection }
 }
 
 export default useHaptics

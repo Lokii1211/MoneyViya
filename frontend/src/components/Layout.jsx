@@ -1,4 +1,5 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
 import { Home, Mail, Wallet, Heart, User, Bell, Search } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNotificationStore } from '../stores'
@@ -74,10 +75,26 @@ export default function Layout() {
   const nav = useNavigate()
   const location = useLocation()
   const unread = useNotificationStore(s => s.unreadCount)
+  const mainRef = useRef(null)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const el = mainRef.current
+    if (!el) return
+    const handler = () => setScrolled(el.scrollTop > 32)
+    el.addEventListener('scroll', handler, { passive: true })
+    return () => el.removeEventListener('scroll', handler)
+  }, [])
 
   return (
     <div className="app-shell">
-      <header className="app-header">
+      <header className="app-header" style={{
+        backdropFilter: scrolled ? 'blur(20px)' : 'none',
+        WebkitBackdropFilter: scrolled ? 'blur(20px)' : 'none',
+        background: scrolled ? 'rgba(255,255,255,0.95)' : 'var(--bg-primary)',
+        boxShadow: scrolled ? '0 1px 8px rgba(0,0,0,0.06)' : 'none',
+        transition: 'background 0.2s, box-shadow 0.2s, backdrop-filter 0.2s',
+      }}>
         <motion.div
           style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
           onClick={() => nav('/')}
@@ -122,7 +139,7 @@ export default function Layout() {
         </div>
       </header>
 
-      <main className="app-main">
+      <main className="app-main" ref={mainRef}>
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
