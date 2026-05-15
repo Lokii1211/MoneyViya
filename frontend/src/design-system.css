@@ -152,10 +152,23 @@ ul,ol{list-style:none}
 .progress-fill{height:100%;border-radius:var(--radius-full);background:var(--gradient-primary);transition:width .6s var(--ease)}
 .avatar{width:40px;height:40px;border-radius:var(--radius-full);background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;flex-shrink:0}
 .avatar-lg{width:80px;height:80px;font-size:32px}
-.fab{position:fixed;bottom:calc(var(--nav-height) + var(--safe-bottom) + 20px);right:calc(50% - 195px);width:60px;height:60px;border-radius:var(--radius-full);background:var(--gradient-primary);color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-teal);z-index:150;animation:fabBreathe 3s ease-in-out infinite}
+/* DESIGN BRIEF §3.4 — FAB (Viya Orb breathing, 3.5s, scale 1→1.04) */
+.fab{position:fixed;bottom:calc(var(--nav-height) + var(--safe-bottom) + 20px);right:calc(50% - 195px);width:60px;height:60px;border-radius:var(--radius-full);background:var(--gradient-primary);color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-teal);z-index:150;animation:orbBreathe 3.5s ease-in-out infinite}
 .fab:active{transform:scale(.92);animation:none}
-@keyframes fabBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
-.sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;animation:fadeIn .2s var(--ease)}
+.fab::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--teal-500);opacity:0;animation:fabGlow 3.5s ease-in-out infinite}
+@keyframes orbBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+@keyframes fabGlow{0%,100%{transform:scale(1);opacity:0}50%{transform:scale(1.3);opacity:.3}}
+
+/* §3.4 — Viya Orb States */
+.orb-thinking{animation:orbThink .8s cubic-bezier(.34,1.56,.64,1) infinite}
+@keyframes orbThink{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.orb-speaking .orb-ring{animation:orbSpeak 1.2s ease-out infinite}
+@keyframes orbSpeak{0%{transform:scale(1);opacity:.5}100%{transform:scale(2.5);opacity:0}}
+.orb-success{animation:orbSuccess .4s cubic-bezier(.34,1.56,.64,1)}
+@keyframes orbSuccess{0%{transform:scale(1)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
+
+/* §3.4 — Sheets, Toasts, Overlays */
+.sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;animation:fadeIn .25s var(--ease)}
 .sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--bg-primary);border-radius:var(--radius-2xl) var(--radius-2xl) 0 0;padding:var(--space-5);padding-bottom:calc(var(--space-5) + var(--safe-bottom));z-index:501;animation:sheetUp .35s var(--ease-spring);max-height:90dvh;overflow-y:auto}
 .sheet-handle{width:40px;height:4px;border-radius:var(--radius-full);background:var(--viya-neutral-200);margin:0 auto var(--space-5)}
 @keyframes sheetUp{from{transform:translate(-50%,100%)}to{transform:translate(-50%,0)}}
@@ -163,6 +176,8 @@ ul,ol{list-style:none}
 @keyframes toastIn{from{transform:translate(-50%,-100%);opacity:0}to{transform:translate(-50%,0);opacity:1}}
 .skeleton{background:linear-gradient(90deg,var(--viya-neutral-100) 25%,var(--viya-neutral-50) 50%,var(--viya-neutral-100) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:var(--radius-md)}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* §3.4 — Core Animations (exact durations from brief) */
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 @keyframes scaleIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
@@ -170,11 +185,45 @@ ul,ol{list-style:none}
 @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* §3.4.2 — Button Press Physics (0.97→1.01→1.0) */
+.btn-press{transition:transform 80ms cubic-bezier(.4,0,1,1)}
+.btn-press:active{transform:scale(.97)}
+
+/* §3.4.3 — Card Depth Illusion */
+.card-press{transition:transform 80ms ease-in,box-shadow 80ms ease-in}
+.card-press:active{transform:scale(.98) translateY(1px)}
+
+/* §3.4.7 — Chat Message Entrance */
+.chat-viya-enter{animation:chatViyaIn .2s cubic-bezier(.34,1.56,.64,1)}
+@keyframes chatViyaIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+.chat-user-enter{animation:chatUserIn .15s var(--ease)}
+@keyframes chatUserIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
+.chat-action-enter{animation:chatActionIn .25s cubic-bezier(.34,1.56,.64,1)}
+@keyframes chatActionIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+/* §3.4.7 — Typing Indicator (3 dots, bounce, 120ms stagger) */
+.typing-dot{width:6px;height:6px;border-radius:50%;background:var(--viya-primary-400);animation:typingBounce .6s ease-in-out infinite}
+.typing-dot:nth-child(2){animation-delay:.12s}
+.typing-dot:nth-child(3){animation-delay:.24s}
+@keyframes typingBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+
+/* §3.4.6 — Streak Fire */
+.streak-fire{animation:streakFire .4s cubic-bezier(.34,1.56,.64,1)}
+@keyframes streakFire{0%{transform:translateY(0) scale(1)}40%{transform:translateY(-12px) scale(1.4)}100%{transform:translateY(0) scale(1)}}
+
+/* §3.4.5 — Progress Bar Milestone Pulse */
+.progress-milestone{animation:milestonePulse .4s ease-out}
+@keyframes milestonePulse{0%{transform:scaleY(1)}50%{transform:scaleY(1.02)}100%{transform:scaleY(1)}}
+
+/* §3.4 — Animation classes */
 .animate-fadeIn{animation:fadeIn .25s var(--ease)}
-.animate-slideUp{animation:slideUp .3s var(--ease)}
+.animate-slideUp{animation:slideUp .28s cubic-bezier(0,0,.2,1)}
 .animate-scaleIn{animation:scaleIn .25s var(--ease-spring)}
 .animate-popIn{animation:popIn .5s var(--ease-spring)}
 .stagger>*:nth-child(1){animation-delay:.05s}.stagger>*:nth-child(2){animation-delay:.1s}.stagger>*:nth-child(3){animation-delay:.15s}.stagger>*:nth-child(4){animation-delay:.2s}.stagger>*:nth-child(5){animation-delay:.25s}.stagger>*:nth-child(6){animation-delay:.3s}
+
+/* Utilities */
 .flex{display:flex}.flex-col{flex-direction:column}.items-center{align-items:center}.justify-center{justify-content:center}.justify-between{justify-content:space-between}
 .gap-1{gap:var(--space-1)}.gap-2{gap:var(--space-2)}.gap-3{gap:var(--space-3)}.gap-4{gap:var(--space-4)}.gap-5{gap:var(--space-5)}.gap-6{gap:var(--space-6)}
 .text-center{text-align:center}.w-full{width:100%}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -184,26 +233,21 @@ ul,ol{list-style:none}
 @media(min-width:431px){:root{--screen-margin:24px}.app-shell{border-left:1px solid var(--border-color);border-right:1px solid var(--border-color);box-shadow:0 0 60px rgba(0,0,0,.15)}}
 .currency{font-family:'JetBrains Mono',monospace}.currency-positive{color:var(--viya-success)}.currency-negative{color:var(--viya-error)}
 
-/* PRD §9 — Reduce Motion (accessibility) */
+/* §3.4 — Reduce Motion (accessibility) */
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important}
   .fab{animation:none!important}
 }
 
-/* PRD §6 — Material Floating Label Input */
+/* §3.4 — Material Floating Label Input */
 .input-float{position:relative}
 .input-float input{width:100%;height:56px;padding:20px 16px 6px;border:1.5px solid var(--border-color);border-radius:var(--r-sm);background:var(--bg-card);color:var(--text-primary);font-size:16px;outline:none;transition:border-color .2s,box-shadow .2s}
 .input-float label{position:absolute;left:16px;top:16px;font-size:16px;color:var(--text-tertiary);pointer-events:none;transition:all .2s var(--ease)}
 .input-float input:focus{border-color:var(--viya-primary-500);box-shadow:0 0 0 3px rgba(0,229,176,.15)}
 .input-float input:focus+label,.input-float input:not(:placeholder-shown)+label{top:6px;font-size:11px;font-weight:600;color:var(--viya-primary-500);letter-spacing:.5px}
 
-/* PRD §5.2 — FAB glow ring */
-.fab::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--teal-500);opacity:0;animation:fabGlow 4s ease-in-out infinite}
-@keyframes fabGlow{0%,100%{transform:scale(1);opacity:0}50%{transform:scale(1.3);opacity:.3}}
-@keyframes fabBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
-
-/* PRD §5.10 — Screen slide transitions */
-.slide-enter{animation:slideFromRight .28s ease-out}
-.slide-exit{animation:slideToRight .25s ease-in}
+/* §3.4.8 — Screen Transitions (280ms ease-out forward, 250ms ease-in back) */
+.slide-enter{animation:slideFromRight .28s cubic-bezier(0,0,.2,1)}
+.slide-exit{animation:slideToRight .25s cubic-bezier(.4,0,1,1)}
 @keyframes slideFromRight{from{transform:translateX(100%)}to{transform:translateX(0)}}
 @keyframes slideToRight{from{transform:translateX(0)}to{transform:translateX(100%)}}
