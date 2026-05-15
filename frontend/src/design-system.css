@@ -49,10 +49,10 @@
   /* DESIGN BRIEF §3.1 — AI + Achievement gradients */
   --gradient-ai:linear-gradient(135deg,#5514FF 0%,#9972FF 100%);
   --gradient-achievement:linear-gradient(135deg,#FFD700 0%,#F5A623 100%);
-  /* Category */
-  --cat-finance:#00C853; --cat-health:#FF6B6B; --cat-work:#0091FF;
-  --cat-family:#FF9800; --cat-shopping:#9C27B0; --cat-travel:#00BCD4;
-  --cat-food:#FF5722; --cat-email:#E91E63; --cat-investment:#4CAF50; --cat-bills:#FF5252;
+  /* DESIGN BRIEF — Category colors (using brief palette) */
+  --cat-finance:#00E87E; --cat-health:#FF7062; --cat-work:#0091FF;
+  --cat-family:#FF9800; --cat-shopping:#9972FF; --cat-travel:#00E5B0;
+  --cat-food:#FF5722; --cat-email:#E91E63; --cat-investment:#00E87E; --cat-bills:#FF5040;
   /* PRD §2.3 — Spacing (4px grid) */
   --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px;
   --sp-5:20px; --sp-6:24px; --sp-8:32px; --sp-10:40px; --sp-12:48px;
@@ -194,7 +194,7 @@ ul,ol{list-style:none}
 .input-float{position:relative}
 .input-float input{width:100%;height:56px;padding:20px 16px 6px;border:1.5px solid var(--border-color);border-radius:var(--r-sm);background:var(--bg-card);color:var(--text-primary);font-size:16px;outline:none;transition:border-color .2s,box-shadow .2s}
 .input-float label{position:absolute;left:16px;top:16px;font-size:16px;color:var(--text-tertiary);pointer-events:none;transition:all .2s var(--ease)}
-.input-float input:focus{border-color:var(--viya-primary-500);box-shadow:0 0 0 3px rgba(0,229,212,.15)}
+.input-float input:focus{border-color:var(--viya-primary-500);box-shadow:0 0 0 3px rgba(0,229,176,.15)}
 .input-float input:focus+label,.input-float input:not(:placeholder-shown)+label{top:6px;font-size:11px;font-weight:600;color:var(--viya-primary-500);letter-spacing:.5px}
 
 /* PRD §5.2 — FAB glow ring */
