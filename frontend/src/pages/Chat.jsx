@@ -177,7 +177,7 @@ export default function Chat() {
             <div key={i} style={{
               display: 'flex', flexDirection: m.role === 'user' ? 'row-reverse' : 'row',
               gap: 8, alignItems: 'flex-end',
-              animation: 'slideUp 0.25s var(--ease)',
+              animation: m.role === 'user' ? 'chatUserIn 0.15s var(--ease)' : 'chatViyaIn 0.2s cubic-bezier(.34,1.56,.64,1)',
               animationFillMode: 'backwards',
               animationDelay: i > messages.length - 3 ? '0.05s' : '0s',
             }}>
@@ -232,7 +232,7 @@ export default function Chat() {
 
         {/* Typing indicator */}
         {loading && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', animation: 'slideUp 0.2s ease' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', animation: 'chatViyaIn 0.2s cubic-bezier(.34,1.56,.64,1)' }}>
             <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, overflow: 'hidden' }}>
               <img src="/logo.png" alt="Viya" style={{ width: 28, height: 28, objectFit: 'contain' }} />
             </div>
@@ -243,11 +243,7 @@ export default function Chat() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ display: 'flex', gap: 5 }}>
                   {[0, 1, 2].map(i => (
-                    <div key={i} style={{
-                      width: 8, height: 8, borderRadius: '50%',
-                      background: 'var(--viya-primary-400)',
-                      animation: `bounce 1s ease-in-out ${i * 0.15}s infinite`,
-                    }} />
+                    <div key={i} className="typing-dot" />
                   ))}
                 </div>
                 <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 4 }}>Viya is thinking...</span>
@@ -398,7 +394,7 @@ export default function Chat() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: recording ? '0 0 60px rgba(0,229,212,0.4)' : 'none',
               transition: 'all 0.3s ease',
-              animation: recording ? 'fabBreathe 1.5s ease-in-out infinite' : 'none',
+              animation: recording ? 'orbBreathe 1.5s ease-in-out infinite' : 'none',
             }}>
               <Mic size={48} color="white" />
             </div>
