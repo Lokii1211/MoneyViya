@@ -143,7 +143,7 @@ export default function Bills() {
             <>
               {/* Overdue */}
               {overdue.length > 0 && (
-                <div style={{ marginBottom: 12 }}>
+                <div style={{ marginBottom: 12, padding: 12, borderRadius: 'var(--radius-lg)', background: 'var(--coral-50)' }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--viya-error)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>⚠️ Overdue</div>
                   {overdue.map(bill => {
                     const style = getBillStyle(bill)
@@ -173,7 +173,7 @@ export default function Bills() {
 
               {/* Urgent */}
               {urgent.length > 0 && (
-                <div style={{ marginBottom: 12 }}>
+                <div style={{ marginBottom: 12, padding: 12, borderRadius: 'var(--radius-lg)', background: 'var(--amber-50)' }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--viya-warning)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>⏰ Due This Week</div>
                   {urgent.map(bill => {
                     const style = getBillStyle(bill)
@@ -230,8 +230,8 @@ export default function Bills() {
           {tab === 'subscriptions' && (
             <div style={{ marginBottom: 16 }}>
               <div style={{
-                background: 'var(--viya-violet-50)', borderRadius: 'var(--radius-lg)', padding: 16,
-                border: '1px solid var(--viya-violet-200)', marginBottom: 16, textAlign: 'center',
+                background: 'var(--cosmos-50)', borderRadius: 'var(--radius-lg)', padding: 16,
+                border: '1px solid var(--cosmos-200)', marginBottom: 16, textAlign: 'center',
               }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--viya-violet-500)', marginBottom: 4 }}>Monthly Subscriptions</div>
                 <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 28, color: 'var(--viya-violet-600)' }}>
