@@ -12,7 +12,7 @@ const BILL_ICONS = {
   phone: { icon: <Phone size={18}/>, color: '#4CAF50', emoji: '📱' },
   rent: { icon: <Home size={18}/>, color: '#9C27B0', emoji: '🏠' },
   insurance: { icon: <ShieldCheck size={18}/>, color: '#00BCD4', emoji: '🛡️' },
-  emi: { icon: <TrendingUp size={18}/>, color: '#F44336', emoji: '🏦' },
+  emi: { icon: <TrendingUp size={18}/>, color: '#5514FF', emoji: '🏦' },
   subscription: { icon: <Calendar size={18}/>, color: '#6422CC', emoji: '📺' },
 }
 
@@ -103,7 +103,7 @@ export default function Bills() {
         </div>
         <div style={{ display: 'flex', gap: 16, fontSize: 12 }}>
           {overdue.length > 0 && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#FCA5A5' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--coral-200)' }}>
               <AlertTriangle size={12}/> {overdue.length} overdue
             </span>
           )}
@@ -266,7 +266,7 @@ export default function Bills() {
                   border: '1px solid var(--border-light)', marginBottom: 12,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 12, background: '#F4433615', color: '#F44336', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--cosmos-50)', color: 'var(--cosmos-500)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <TrendingUp size={18}/>
                     </div>
                     <div style={{ flex: 1 }}>

@@ -129,8 +129,8 @@ export default function Auth() {
                 </button>
                 
                 {/* WhatsApp First-Time Instruction */}
-                <div style={{marginTop:12, padding:'10px 14px', background:'#e8f5e9', borderRadius:10, border:'1px solid #c8e6c9'}}>
-                  <p style={{fontSize:12, color:'#2e7d32', margin:0, lineHeight:1.6, textAlign:'center'}}>
+                <div style={{marginTop:12, padding:'10px 14px', background:'var(--viya-success-light)', borderRadius:10, border:'1px solid rgba(0,232,126,0.2)'}}>
+                  <p style={{fontSize:12, color:'var(--viya-primary-700)', margin:0, lineHeight:1.6, textAlign:'center'}}>
                     <strong>⚠️ First time?</strong> You must message us on WhatsApp before requesting OTP.
                   </p>
                   <a 
@@ -162,8 +162,8 @@ export default function Auth() {
                   <button type="button" className="link-btn resend-btn" onClick={() => setStep('phone')}>Change number</button>
                 </div>
                 {/* Didn't receive hint */}
-                <div style={{marginTop:10, padding:'8px 12px', background:'#fff3e0', borderRadius:8, textAlign:'center'}}>
-                  <p style={{fontSize:11, color:'#e65100', margin:0, lineHeight:1.5}}>
+                <div style={{marginTop:10, padding:'8px 12px', background:'var(--viya-warning-light)', borderRadius:8, textAlign:'center'}}>
+                  <p style={{fontSize:11, color:'var(--amber-500)', margin:0, lineHeight:1.5}}>
                     Didn't receive OTP? <a href={WA_LINK} target="_blank" rel="noopener noreferrer" style={{color:'#25D366', fontWeight:600, textDecoration:'underline'}}>Message us on WhatsApp first</a>, then resend.
                   </p>
                 </div>
