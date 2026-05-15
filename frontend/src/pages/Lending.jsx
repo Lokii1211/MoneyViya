@@ -7,9 +7,16 @@ import { formatINR } from '../lib/utils'
 import { Plus, ArrowUpRight, ArrowDownLeft, Clock, Bell, Percent, User, Calendar, Check, X } from 'lucide-react'
 import PageTransition from '../components/PageTransition'
 
+/* §6.2 Brand-compliant colors:
+   Given (outflow) = cosmos-400 (#7743FF) — NOT red (triggers shame)
+   Taken (inflow)  = emerald-500 (#00E87E) — positive/money color
+   Interest        = amber-500 (#FF9800) — warning/attention
+   Settled         = teal-500 (#00E5B0) — brand primary success
+   Overdue         = coral-500 (#FF5040) — genuine warning state (allowed)
+*/
 const TABS = [
-  { key: 'given', label: 'Given', icon: <ArrowUpRight size={14} />, color: '#ef4444' },
-  { key: 'taken', label: 'Taken', icon: <ArrowDownLeft size={14} />, color: '#00B870' },
+  { key: 'given', label: 'Given', icon: <ArrowUpRight size={14} />, color: 'var(--cosmos-400)', hex: '#7743FF' },
+  { key: 'taken', label: 'Taken', icon: <ArrowDownLeft size={14} />, color: 'var(--emerald-500)', hex: '#00E87E' },
 ]
 
 export default function Lending() {
@@ -73,6 +80,10 @@ export default function Lending() {
     loadEntries()
   }
 
+  const tabColor = tab === 'given' ? 'var(--cosmos-400)' : 'var(--emerald-500)'
+  const tabHex = tab === 'given' ? '#7743FF' : '#00E87E'
+  const tabDim = tab === 'given' ? 'var(--cosmos-50)' : 'var(--emerald-50)'
+
   const filtered = entries.filter(e => e.type === tab)
   const pendingTotal = filtered.filter(e => e.status === 'pending').reduce((s, e) => s + Number(e.amount), 0)
   const interestTotal = filtered.filter(e => e.status === 'pending').reduce((s, e) => s + calcInterest(e), 0)
@@ -102,10 +113,10 @@ export default function Lending() {
               onClick={() => setTab(t.key)}
               style={{
                 flex: 1, padding: '12px 16px', borderRadius: 12, border: 'none',
-                background: tab === t.key ? (t.key === 'given' ? 'rgba(239,68,68,0.1)' : 'rgba(0,184,112,0.1)') : 'var(--bg-secondary)',
-                color: tab === t.key ? t.color : 'var(--text-secondary)',
+                background: tab === t.key ? (t.key === 'given' ? 'var(--cosmos-50)' : 'var(--emerald-50)') : 'var(--bg-secondary)',
+                color: tab === t.key ? t.hex : 'var(--text-secondary)',
                 fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer',
-                border: tab === t.key ? `1.5px solid ${t.color}30` : '1px solid transparent',
+                border: tab === t.key ? `1.5px solid ${t.hex}30` : '1px solid transparent',
               }}>
               {t.icon} Money {t.label}
             </motion.button>
@@ -116,33 +127,33 @@ export default function Lending() {
         <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             style={{ flex: 1, padding: '14px 12px', borderRadius: 14, textAlign: 'center',
-              background: tab === 'given' ? 'rgba(239,68,68,0.06)' : 'rgba(0,184,112,0.06)',
-              border: `1px solid ${tab === 'given' ? 'rgba(239,68,68,0.12)' : 'rgba(0,184,112,0.12)'}` }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: tab === 'given' ? '#ef4444' : '#00B870' }}>
+              background: tabDim,
+              border: `1px solid ${tabHex}18` }}>
+            <div style={{ fontFamily: 'var(--mono)', fontSize: 20, fontWeight: 800, color: tabColor }}>
               ₹{pendingTotal.toLocaleString()}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600 }}>PENDING</div>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5 }}>PENDING</div>
           </motion.div>
           {interestTotal > 0 && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-              style={{ flex: 1, padding: '14px 12px', borderRadius: 14, textAlign: 'center', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.12)' }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#f59e0b' }}>₹{interestTotal.toLocaleString()}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600 }}>INTEREST</div>
+              style={{ flex: 1, padding: '14px 12px', borderRadius: 14, textAlign: 'center', background: 'var(--amber-50)', border: '1px solid rgba(255,152,0,0.12)' }}>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 20, fontWeight: 800, color: 'var(--amber-500)' }}>₹{interestTotal.toLocaleString()}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5 }}>INTEREST</div>
             </motion.div>
           )}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            style={{ flex: 1, padding: '14px 12px', borderRadius: 14, textAlign: 'center', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.12)' }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#22c55e' }}>₹{settledTotal.toLocaleString()}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600 }}>SETTLED</div>
+            style={{ flex: 1, padding: '14px 12px', borderRadius: 14, textAlign: 'center', background: 'var(--viya-success-light)', border: '1px solid rgba(0,232,126,0.12)' }}>
+            <div style={{ fontFamily: 'var(--mono)', fontSize: 20, fontWeight: 800, color: 'var(--viya-success)' }}>₹{settledTotal.toLocaleString()}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5 }}>SETTLED</div>
           </motion.div>
         </div>
 
         {/* Entries List */}
         {filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-tertiary)' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>{tab === 'given' ? '💸' : '📥'}</div>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>No {tab === 'given' ? 'lendings' : 'borrowings'} yet</div>
-            <div style={{ fontSize: 13 }}>Tap + to add one</div>
+          <div className="empty-state-premium">
+            <div className="empty-emoji">{tab === 'given' ? '💸' : '📥'}</div>
+            <h3>No {tab === 'given' ? 'lendings' : 'borrowings'} yet</h3>
+            <p>Tap + to add one</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -155,15 +166,15 @@ export default function Lending() {
                   initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                   style={{
                     padding: 16, borderRadius: 14, background: 'var(--bg-card)',
-                    border: isOverdue ? '1.5px solid rgba(239,68,68,0.3)' : '1px solid var(--border-light)',
+                    border: isOverdue ? '1.5px solid var(--coral-400)' : '1px solid var(--border-light)',
                     opacity: entry.status === 'settled' ? 0.5 : 1,
                   }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{
                         width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700,
-                        background: tab === 'given' ? 'rgba(239,68,68,0.1)' : 'rgba(0,184,112,0.1)',
-                        color: tab === 'given' ? '#ef4444' : '#00B870',
+                        background: tabDim,
+                        color: tabColor,
                       }}>
                         {entry.person_name.charAt(0).toUpperCase()}
                       </div>
@@ -173,11 +184,11 @@ export default function Lending() {
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: tab === 'given' ? '#ef4444' : '#00B870' }}>
+                      <div style={{ fontFamily: 'var(--mono)', fontSize: 18, fontWeight: 800, color: tabColor }}>
                         ₹{totalOwed.toLocaleString()}
                       </div>
                       {interest > 0 && (
-                        <div style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>
+                        <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--amber-500)', fontWeight: 600 }}>
                           +₹{interest.toLocaleString()} interest
                         </div>
                       )}
@@ -186,22 +197,22 @@ export default function Lending() {
 
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
                     {entry.has_interest && (
-                      <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: 'rgba(245,158,11,0.1)', color: '#f59e0b', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: 'var(--amber-50)', color: 'var(--amber-500)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
                         <Percent size={10} /> {entry.interest_rate}% {entry.interest_type}
                       </span>
                     )}
                     {entry.due_date && (
-                      <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: isOverdue ? 'rgba(239,68,68,0.1)' : 'rgba(99,102,241,0.1)', color: isOverdue ? '#ef4444' : '#6366f1', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: isOverdue ? 'var(--coral-50)' : 'var(--cosmos-50)', color: isOverdue ? 'var(--coral-500)' : 'var(--cosmos-400)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
                         <Calendar size={10} /> {new Date(entry.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                         {isOverdue && ' ⚠️ OVERDUE'}
                       </span>
                     )}
                     {entry.reminder_enabled && entry.status === 'pending' && (
-                      <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: 'rgba(0,176,182,0.1)', color: '#00B0B6', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: 'var(--teal-50)', color: 'var(--viya-primary-700)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
                         <Bell size={10} /> {entry.reminder_frequency} reminder
                       </span>
                     )}
-                    <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: entry.status === 'settled' ? 'rgba(34,197,94,0.1)' : 'rgba(156,163,175,0.1)', color: entry.status === 'settled' ? '#22c55e' : '#9ca3af', fontWeight: 700 }}>
+                    <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: entry.status === 'settled' ? 'var(--viya-success-light)' : 'var(--bg-secondary)', color: entry.status === 'settled' ? 'var(--viya-success)' : 'var(--text-tertiary)', fontWeight: 700 }}>
                       {entry.status === 'settled' ? '✅ Settled' : '⏳ Pending'}
                     </span>
                   </div>
@@ -209,7 +220,7 @@ export default function Lending() {
                   {entry.status === 'pending' && (
                     <motion.button whileTap={{ scale: 0.95 }}
                       onClick={() => markSettled(entry.id)}
-                      style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: '1.5px solid rgba(34,197,94,0.2)', background: 'rgba(34,197,94,0.06)', color: '#22c55e', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: '1.5px solid rgba(0,232,126,0.2)', background: 'var(--viya-success-light)', color: 'var(--viya-success)', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                       <Check size={14} /> Mark as Settled
                     </motion.button>
                   )}
@@ -262,12 +273,12 @@ export default function Lending() {
                   {/* Interest Toggle */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 12, background: 'var(--bg-secondary)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Percent size={16} color="#f59e0b" />
+                      <Percent size={16} color="var(--amber-500)" />
                       <span style={{ fontSize: 13, fontWeight: 600 }}>With Interest?</span>
                     </div>
                     <button onClick={() => setForm(p => ({ ...p, hasInterest: !p.hasInterest }))}
                       style={{ width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', position: 'relative',
-                        background: form.hasInterest ? '#00B870' : 'var(--border-light)', transition: 'background 0.2s' }}>
+                        background: form.hasInterest ? 'var(--viya-primary-500)' : 'var(--border-light)', transition: 'background 0.2s' }}>
                       <div style={{ width: 18, height: 18, borderRadius: 9, background: '#fff', position: 'absolute', top: 3,
                         left: form.hasInterest ? 23 : 3, transition: 'left 0.2s' }} />
                     </button>
@@ -301,12 +312,12 @@ export default function Lending() {
                   {/* Reminder Toggle */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 12, background: 'var(--bg-secondary)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Bell size={16} color="#00B0B6" />
+                      <Bell size={16} color="var(--viya-primary-500)" />
                       <span style={{ fontSize: 13, fontWeight: 600 }}>Send Reminders</span>
                     </div>
                     <button onClick={() => setForm(p => ({ ...p, reminderEnabled: !p.reminderEnabled }))}
                       style={{ width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', position: 'relative',
-                        background: form.reminderEnabled ? '#00B870' : 'var(--border-light)', transition: 'background 0.2s' }}>
+                        background: form.reminderEnabled ? 'var(--viya-primary-500)' : 'var(--border-light)', transition: 'background 0.2s' }}>
                       <div style={{ width: 18, height: 18, borderRadius: 9, background: '#fff', position: 'absolute', top: 3,
                         left: form.reminderEnabled ? 23 : 3, transition: 'left 0.2s' }} />
                     </button>
@@ -320,8 +331,8 @@ export default function Lending() {
                           <button key={f} onClick={() => setForm(p => ({ ...p, reminderFrequency: f }))}
                             style={{
                               flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
-                              background: form.reminderFrequency === f ? 'rgba(0,176,182,0.12)' : 'var(--bg-secondary)',
-                              color: form.reminderFrequency === f ? '#00B0B6' : 'var(--text-tertiary)',
+                              background: form.reminderFrequency === f ? 'var(--teal-50)' : 'var(--bg-secondary)',
+                              color: form.reminderFrequency === f ? 'var(--viya-primary-700)' : 'var(--text-tertiary)',
                               fontSize: 12, fontWeight: 700, textTransform: 'capitalize',
                             }}>{f}</button>
                         ))}

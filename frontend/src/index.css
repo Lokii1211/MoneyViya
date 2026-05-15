@@ -680,6 +680,7 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
 .bm-label { font-size:13px; color:var(--text3); }
 .bm-val { font-family:var(--mono); font-size:14px; font-weight:700; }
 .bm-val.red { color:var(--red); }
+.bm-val.cosmos { color:var(--cosmos-400); }
 .bm-val.green { color:var(--primary); }
 .budget-alert {
   display:flex; align-items:center; gap:8px; padding:13px;

@@ -10,7 +10,7 @@ const CAT_META = {
   '🛒 Shopping': { name: 'Shopping', emoji: '🛍️', budget: 5000, color: '#F43F5E' },
   '💡 Bills': { name: 'Bills & Utilities', emoji: '💡', budget: 4000, color: '#8B5CF6' },
   '🎬 Entertainment': { name: 'Entertainment', emoji: '🎬', budget: 2000, color: '#10B981' },
-  '💊 Health': { name: 'Health', emoji: '🏥', budget: 2000, color: '#EF4444' },
+  '💊 Health': { name: 'Health', emoji: '🏥', budget: 2000, color: '#FF7062' },
   '📚 Education': { name: 'Education', emoji: '📚', budget: 3000, color: '#3B82F6' },
   '📱 Recharge': { name: 'Recharge', emoji: '📱', budget: 1000, color: '#EC4899' },
   '🏠 Rent': { name: 'Rent & Housing', emoji: '🏠', budget: 10000, color: '#F97316' },
@@ -69,7 +69,7 @@ export default function Budget() {
         </div>
         <div className="budget-meta">
           <div className="bm-row"><span className="bm-label">Total Budget</span><span className="bm-val">₹{totalBudget}</span></div>
-          <div className="bm-row"><span className="bm-label">Spent</span><span className="bm-val red">₹{totalSpent}</span></div>
+          <div className="bm-row"><span className="bm-label">Spent</span><span className="bm-val cosmos">₹{totalSpent}</span></div>
           <div className="bm-row"><span className="bm-label">Remaining</span><span className={'bm-val ' + (remaining >= 0 ? 'green' : 'red')}>₹{remaining}</span></div>
         </div>
       </div>
