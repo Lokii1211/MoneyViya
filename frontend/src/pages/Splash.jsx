@@ -157,6 +157,14 @@ export default function Splash({ onComplete }) {
         ))}
       </div>
 
+      {/* "Powered by Claude AI" — Design Brief §4.1: Inter 400, 11px, white/25% */}
+      <div style={{
+        position: 'absolute', bottom: 48,
+        fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 400,
+        color: 'rgba(255,255,255,0.25)',
+        opacity: phase >= 3 ? 1 : 0, transition: 'opacity 0.3s ease',
+      }}>Powered by Claude AI</div>
+
       <style>{`
         @keyframes orb-breathe {
           0%, 100% { transform: scale(1); }

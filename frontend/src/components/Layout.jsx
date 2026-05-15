@@ -84,8 +84,9 @@ export default function Layout() {
           whileTap={{ scale: 0.97 }}
         >
           <img src="/logo.png" alt="Viya" style={{
-            width: 34, height: 34, borderRadius: 10, objectFit: 'contain',
-            filter: 'drop-shadow(0 2px 8px rgba(0,176,182,0.3))',
+            width: 38, height: 38, borderRadius: 10, objectFit: 'contain',
+            filter: 'drop-shadow(0 2px 8px rgba(0,229,176,0.3))',
+            animation: 'orbBreathe 3.5s ease-in-out infinite',
           }} />
           <span style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 20, letterSpacing: -0.5 }}>Viya</span>
         </motion.div>
