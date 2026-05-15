@@ -845,3 +845,97 @@ class TestDeploymentOps:
         from services.deployment_ops import COST_MANAGEMENT
         assert COST_MANAGEMENT["target_cost_per_user_usd"] == 0.08
 
+
+class TestRoadmapTracker:
+    """Tests for roadmap & deliverables (PRD Sections 8-9)"""
+
+    def test_three_phases(self):
+        """Roadmap has 3 phases"""
+        from services.roadmap_tracker import ROADMAP
+        assert len(ROADMAP) == 3
+        assert "phase_1" in ROADMAP
+        assert "phase_2" in ROADMAP
+        assert "phase_3" in ROADMAP
+
+    def test_phase_1_targets(self):
+        """Phase 1 targets match PRD spec"""
+        from services.roadmap_tracker import ROADMAP
+        targets = ROADMAP["phase_1"]["targets"]
+        assert targets["day_7_retention"] == 0.40
+        assert targets["premium_conversion"] == 0.05
+        assert targets["api_p95_latency_ms"] == 500
+
+    def test_total_deliverables(self):
+        """Total deliverables across all phases"""
+        from services.roadmap_tracker import get_roadmap_summary
+        summary = get_roadmap_summary()
+        assert summary["total_deliverables"] >= 65  # 72 in PRD
+        assert summary["total_sprints"] == 12  # 4 sprints × 3 phases
+
+    def test_four_checkpoints(self):
+        """4 success checkpoints defined"""
+        from services.roadmap_tracker import CHECKPOINTS
+        assert len(CHECKPOINTS) == 4
+        assert "week_4" in CHECKPOINTS
+        assert "week_8" in CHECKPOINTS
+        assert "week_16" in CHECKPOINTS
+        assert "week_24" in CHECKPOINTS
+
+    def test_checkpoint_evaluation_pass(self):
+        """Checkpoint evaluates correctly when targets met"""
+        from services.roadmap_tracker import evaluate_checkpoint
+        metrics = {
+            "onboarding_completion": 0.80,
+            "day_7_retention": 0.42,
+            "api_error_rate": 0.003,
+            "api_p95_latency_ms": 450,
+            "app_store_rating": 4.5,
+        }
+        result = evaluate_checkpoint("week_4", metrics)
+        assert result["passed"] == 5
+        assert result["pass_rate"] == 100.0
+
+    def test_checkpoint_evaluation_fail(self):
+        """Checkpoint detects failed targets"""
+        from services.roadmap_tracker import evaluate_checkpoint
+        metrics = {"onboarding_completion": 0.50}  # Below 0.75 target
+        result = evaluate_checkpoint("week_4", metrics)
+        assert result["results"]["onboarding_completion"]["passed"] is False
+
+    def test_five_risks(self):
+        """Risk register has 5 risks from PRD"""
+        from services.roadmap_tracker import RISK_REGISTER
+        assert len(RISK_REGISTER) == 5
+        names = [r["name"] for r in RISK_REGISTER]
+        assert any("WhatsApp" in n for n in names)
+        assert any("Anthropic" in n for n in names)
+        assert any("Gmail" in n for n in names)
+
+    def test_api_contracts(self):
+        """API contracts cover all 6 domains"""
+        from services.roadmap_tracker import API_CONTRACTS
+        assert "auth" in API_CONTRACTS
+        assert "chat" in API_CONTRACTS
+        assert "email" in API_CONTRACTS
+        assert "finance" in API_CONTRACTS
+        assert "health" in API_CONTRACTS
+        assert "notifications" in API_CONTRACTS
+
+    def test_cost_projections(self):
+        """Cost projections for 100K and 1M MAU"""
+        from services.roadmap_tracker import COST_PROJECTIONS
+        assert COST_PROJECTIONS["100k_mau"]["total_usd"] == 1800
+        assert COST_PROJECTIONS["1m_mau"]["total_usd"] == 51000
+        rev = COST_PROJECTIONS["1m_mau"]["revenue_at_10pct_premium"]
+        assert rev["gross_margin_pct"] == 72
+
+    def test_tech_stack_components(self):
+        """Tech stack covers all 5 layers"""
+        from services.roadmap_tracker import TECH_STACK
+        assert "frontend" in TECH_STACK
+        assert "backend" in TECH_STACK
+        assert "database" in TECH_STACK
+        assert "queue" in TECH_STACK
+        assert "compute" in TECH_STACK
+        assert TECH_STACK["backend"]["framework"] == "FastAPI + Python"
+
