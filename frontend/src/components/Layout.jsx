@@ -88,7 +88,8 @@ export default function Layout() {
 
   return (
     <div className="app-shell">
-      <header className="app-header" style={{
+      <a href="#main-content" className="skip-link">Skip to content</a>
+      <header className="app-header" role="banner" style={{
         backdropFilter: scrolled ? 'blur(20px)' : 'none',
         WebkitBackdropFilter: scrolled ? 'blur(20px)' : 'none',
         background: scrolled ? 'rgba(255,255,255,0.95)' : 'var(--bg-primary)',
@@ -139,7 +140,7 @@ export default function Layout() {
         </div>
       </header>
 
-      <main className="app-main" ref={mainRef}>
+      <main className="app-main" ref={mainRef} id="main-content" role="main">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}

@@ -234,11 +234,30 @@ ul,ol{list-style:none}
 @media(min-width:431px){:root{--screen-margin:24px}.app-shell{border-left:1px solid var(--border-color);border-right:1px solid var(--border-color);box-shadow:0 0 60px rgba(0,0,0,.15)}}
 .currency{font-family:'JetBrains Mono',monospace}.currency-positive{color:var(--viya-success)}.currency-negative{color:var(--viya-error)}
 
-/* §3.4 — Reduce Motion (accessibility) */
+/* §10.1 — Reduce Motion (accessibility — nuanced per brief) */
 @media(prefers-reduced-motion:reduce){
-  *,*::before,*::after{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important}
-  .fab{animation:none!important}
+  /* Disable: entrance/exit animations, breathing, particles, parallax, confetti */
+  .animate-slideUp,.animate-fadeIn,.stagger>*,.slide-enter,.slide-exit,
+  .orb-breathe,.fab,.confetti,.parallax{animation:none!important;transition:none!important}
+  @keyframes orbBreathe{from,to{transform:scale(1);opacity:1}}
+  @keyframes orbThink{from,to{transform:scale(1)}}
+  /* Keep: opacity fades (functional), color transitions, scroll physics */
+  *{transition-property:opacity,color,background-color,border-color,box-shadow!important;transition-duration:0.15s!important}
 }
+
+/* §10 — Skip Link (screen reader + keyboard nav) */
+.skip-link{position:absolute;top:-100%;left:16px;padding:12px 20px;background:var(--viya-primary-500);color:#fff;border-radius:var(--radius-full);font-weight:700;font-size:14px;z-index:9999;text-decoration:none}
+.skip-link:focus{top:16px}
+
+/* §10 — Focus-visible ring (keyboard navigation) */
+:focus-visible{outline:2px solid var(--viya-primary-500);outline-offset:2px;border-radius:4px}
+button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
+
+/* §10 — Screen reader only */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* §10 — Live region for dynamic updates */
+.aria-live{clip:rect(0,0,0,0);position:absolute}
 
 /* §3.4 — Material Floating Label Input */
 .input-float{position:relative}
