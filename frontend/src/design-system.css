@@ -300,3 +300,29 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 /* §5.1 — OTP shake error */
 .otp-shake{animation:otpShake .4s ease}
 @keyframes otpShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-8px)}}
+
+/* APPENDIX — Skeleton Loading System */
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.skeleton{background:linear-gradient(90deg,var(--viya-neutral-100) 25%,var(--viya-neutral-50) 50%,var(--viya-neutral-100) 75%);background-size:200% 100%;animation:shimmer 1.5s ease infinite;border-radius:var(--radius-sm)}
+.skeleton-text{height:14px;margin-bottom:8px;border-radius:4px}
+.skeleton-text.sm{height:10px;width:60%}
+.skeleton-text.lg{height:20px;width:80%}
+.skeleton-text.xl{height:32px;width:50%}
+.skeleton-circle{border-radius:50%}
+.skeleton-card{border-radius:var(--radius-lg);height:120px;margin-bottom:12px}
+.skeleton-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.skeleton-row .skeleton-circle{width:40px;height:40px;flex-shrink:0}
+.skeleton-row .skeleton-lines{flex:1}
+
+/* APPENDIX — Error State Component */
+.error-state{text-align:center;padding:40px 20px}
+.error-state-icon{width:64px;height:64px;border-radius:50%;background:var(--coral-50);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:var(--coral-500)}
+.error-state-title{font-size:16px;font-weight:700;margin-bottom:6px;color:var(--text-primary)}
+.error-state-msg{font-size:13px;color:var(--text-tertiary);line-height:1.5;margin-bottom:20px;max-width:280px;margin-left:auto;margin-right:auto}
+.error-state-btn{padding:12px 24px;border-radius:var(--radius-full);background:var(--gradient-hero);color:#fff;border:none;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit}
+
+/* APPENDIX — Empty State Component */
+.empty-state-premium{text-align:center;padding:48px 24px}
+.empty-state-premium .empty-emoji{font-size:48px;margin-bottom:12px}
+.empty-state-premium h3{font-size:17px;font-weight:700;margin-bottom:6px}
+.empty-state-premium p{font-size:13px;color:var(--text-tertiary);line-height:1.5;max-width:260px;margin:0 auto 20px}
