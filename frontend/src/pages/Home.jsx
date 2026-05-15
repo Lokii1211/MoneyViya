@@ -172,9 +172,10 @@ export default function Home() {
 
       {/* ═══ SECTION A: Daily Brief Card ═══ */}
       <div onClick={() => nav('/chat?q=daily+briefing')} style={{
-        background: 'var(--gradient-night)', borderRadius: 'var(--radius-2xl)',
+        background: 'var(--gradient-morning)', borderRadius: '0 0 28px 28px',
         padding: 24, marginBottom: 16, cursor: 'pointer', color: 'white',
-        boxShadow: '0 8px 32px rgba(13,0,32,0.4)',
+        marginLeft: -20, marginRight: -20, marginTop: -8,
+        boxShadow: '0 8px 32px rgba(13,0,32,0.25)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <span style={{ fontSize: 12, fontWeight: 500, letterSpacing: 0.5, opacity: 0.6, textTransform: 'uppercase' }}>
@@ -182,8 +183,8 @@ export default function Home() {
           </span>
           <span style={{ fontSize: 11, opacity: 0.5, fontWeight: 500 }}>{formatTime()}</span>
         </div>
-        <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 20, lineHeight: 1.3, marginBottom: 16, letterSpacing: -0.3 }}>
-          You have {briefItems.length} things that need you today
+        <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 24, lineHeight: 1.3, marginBottom: 16, letterSpacing: -0.4 }}>
+          {briefItems.length} things need you today
         </div>
         <div className="stagger" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {briefItems.slice(0, 4).map((item, i) => (
@@ -199,13 +200,9 @@ export default function Home() {
         </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
           <div style={{
-            padding: '8px 16px', borderRadius: 'var(--radius-full)', fontSize: 13, fontWeight: 600,
-            background: 'var(--viya-violet-500)', color: 'white', cursor: 'pointer',
-          }}>Handle All →</div>
-          <div style={{
-            padding: '8px 16px', borderRadius: 'var(--radius-full)', fontSize: 13, fontWeight: 600,
-            border: '1px solid rgba(255,255,255,0.25)', color: 'white', cursor: 'pointer',
-          }}>Show details</div>
+            padding: '10px 20px', borderRadius: 'var(--radius-full)', fontSize: 14, fontWeight: 600,
+            background: 'white', color: 'var(--cosmos-600)', cursor: 'pointer',
+          }}>Handle All with Viya →</div>
         </div>
       </div>
 
