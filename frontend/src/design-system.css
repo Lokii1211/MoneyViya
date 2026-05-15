@@ -4,48 +4,48 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Tamil:wght@400;600&family=Noto+Sans+Telugu:wght@400;600&family=Noto+Sans+Kannada:wght@400;600&display=swap');
 
 :root {
-  /* PRD §2.1 — Aurora Teal (Intelligence + Life) */
-  --teal-500:#00E5D4; --teal-400:#1AFFED; --teal-300:#4DFFF1;
-  --teal-600:#00B8A9; --teal-700:#008B80; --teal-50:#E6FFFD; --teal-100:#B3FFF9;
+  /* DESIGN BRIEF §3.1 — Aurora Teal (Primary Brand) */
+  --teal-500:#00E5B0; --teal-400:#1AFFC0; --teal-300:#4DFFCE;
+  --teal-600:#00B88D; --teal-700:#008B6A; --teal-50:#E0FFF9; --teal-100:#B3FFE9;
   /* Aliases for backward compat */
-  --viya-primary-900:#003D40; --viya-primary-800:#005F63; --viya-primary-700:#008B80;
-  --viya-primary-600:#00B8A9; --viya-primary-500:#00E5D4; --viya-primary-400:#1AFFED;
-  --viya-primary-300:#4DFFF1; --viya-primary-200:#99F5EE; --viya-primary-100:#B3FFF9;
-  --viya-primary-50:#E6FFFD;
-  /* PRD §2.1 — Deep Cosmos (AI + Premium) */
-  --cosmos-500:#6B00FF; --cosmos-400:#8033FF; --cosmos-600:#5500CC;
-  --cosmos-50:#F3EEFF; --cosmos-100:#E0CCFF;
-  --viya-violet-900:#1A0633; --viya-violet-800:#2D0D59; --viya-violet-700:#3F1480;
-  --viya-violet-600:#5500CC; --viya-violet-500:#6B00FF; --viya-violet-400:#8033FF;
-  --viya-violet-300:#A278EA; --viya-violet-200:#C1A3F2; --viya-violet-100:#E0CCFF;
-  --viya-violet-50:#F3EEFF;
-  /* PRD §2.1 — Sunrise Gold (Achievement + India) */
-  --gold-300:#FFD93D; --gold-500:#F5A623; --gold-100:#FFFBEB;
-  --viya-gold-500:#F5A623; --viya-gold-400:#FFC933; --viya-gold-300:#FFD93D;
-  --viya-gold-200:#FFE999; --viya-gold-100:#FFFBEB;
-  /* PRD §2.1 — Semantic */
-  --emerald-500:#00C853; --coral-500:#FF5252; --amber-500:#FF9800; --info-500:#0091FF;
-  --viya-success:#00C853; --viya-success-light:#E6FBF4;
-  --viya-warning:#FF9800; --viya-warning-light:#FFF4E6;
-  --viya-error:#FF5252; --viya-error-light:#FFEBE9;
+  --viya-primary-900:#003126; --viya-primary-800:#005E48; --viya-primary-700:#008B6A;
+  --viya-primary-600:#00B88D; --viya-primary-500:#00E5B0; --viya-primary-400:#1AFFC0;
+  --viya-primary-300:#4DFFCE; --viya-primary-200:#80FFDB; --viya-primary-100:#B3FFE9;
+  --viya-primary-50:#E0FFF9;
+  /* DESIGN BRIEF §3.1 — Cosmos Violet (AI + Premium) */
+  --cosmos-500:#5514FF; --cosmos-400:#7743FF; --cosmos-600:#4410CC;
+  --cosmos-50:#F2EEFF; --cosmos-100:#DDD0FF;
+  --viya-violet-900:#110433; --viya-violet-800:#220866; --viya-violet-700:#330C99;
+  --viya-violet-600:#4410CC; --viya-violet-500:#5514FF; --viya-violet-400:#7743FF;
+  --viya-violet-300:#9972FF; --viya-violet-200:#BBA1FF; --viya-violet-100:#DDD0FF;
+  --viya-violet-50:#F2EEFF;
+  /* DESIGN BRIEF §3.1 — Solar Gold (Achievement) */
+  --gold-300:#FFE84D; --gold-500:#FFD700; --gold-100:#FFFCE6;
+  --viya-gold-500:#FFD700; --viya-gold-400:#FFE01A; --viya-gold-300:#FFE84D;
+  --viya-gold-200:#FFF080; --viya-gold-100:#FFFCE6;
+  /* DESIGN BRIEF §3.1 — Semantic */
+  --emerald-500:#00E87E; --coral-500:#FF5040; --amber-500:#FF9800; --info-500:#0091FF;
+  --viya-success:#00E87E; --viya-success-light:#E6FFF4;
+  --viya-warning:#FF9800; --viya-warning-light:#FFF3E0;
+  --viya-error:#FF5040; --viya-error-light:#FFF0EE;
   --viya-info:#0091FF; --viya-info-light:#E8F4FF;
-  /* Neutrals */
-  --viya-neutral-900:#0D0D0D; --viya-neutral-800:#1A1A1A; --viya-neutral-700:#333;
-  --viya-neutral-600:#4D4D4D; --viya-neutral-500:#666; --viya-neutral-400:#808080;
-  --viya-neutral-300:#B3B3B3; --viya-neutral-200:#CCC; --viya-neutral-100:#E6E6E6;
-  --viya-neutral-50:#F5F5F5; --viya-neutral-0:#FFF;
-  /* PRD §2.1 — Gradients (EXACT values) */
-  --gradient-primary:linear-gradient(135deg,#00E5D4 0%,#6B00FF 100%);
-  --gradient-hero:linear-gradient(135deg,#00E5D4 0%,#6B00FF 100%);
-  --gradient-gold:linear-gradient(135deg,#FFD93D 0%,#F5A623 100%);
-  --gradient-wealth:linear-gradient(135deg,#00C853 0%,#00E5D4 100%);
-  --gradient-health:linear-gradient(135deg,#FF6B6B 0%,#FF9800 50%,#FFD93D 100%);
-  --gradient-night:linear-gradient(180deg,#0A0019 0%,#001917 100%);
-  --gradient-morning:linear-gradient(135deg,#F5A623 0%,#FF6B6B 30%,#00E5D4 100%);
-  --gradient-card:linear-gradient(145deg,#FFFFFF 0%,#F0FFFD 100%);
-  --gradient-success:linear-gradient(135deg,#00C853 0%,#00E5D4 100%);
-  --gradient-glass:linear-gradient(145deg,rgba(255,255,255,.9) 0%,rgba(240,255,253,.8) 100%);
-  --gradient-dark:linear-gradient(180deg,#0A0019 0%,#001917 100%);
+  /* DESIGN BRIEF §3.1 — Neutrals (12-step with teal undertone) */
+  --viya-neutral-900:#0D1818; --viya-neutral-800:#1E3030; --viya-neutral-700:#304848;
+  --viya-neutral-600:#486060; --viya-neutral-500:#607878; --viya-neutral-400:#90A8A8;
+  --viya-neutral-300:#C0CECE; --viya-neutral-200:#E0E8E8; --viya-neutral-100:#F0F4F4;
+  --viya-neutral-50:#F8FAFA; --viya-neutral-0:#FFF;
+  /* DESIGN BRIEF §3.1 — Gradients (EXACT from VIYA_DESIGN_SYSTEM.json) */
+  --gradient-primary:linear-gradient(135deg,#00E5B0 0%,#5514FF 100%);
+  --gradient-hero:linear-gradient(135deg,#00E5B0 0%,#5514FF 100%);
+  --gradient-gold:linear-gradient(135deg,#FFD700 0%,#F5A623 100%);
+  --gradient-wealth:linear-gradient(135deg,#00E87E 0%,#00E5B0 100%);
+  --gradient-health:linear-gradient(135deg,#FF7062 0%,#FF9800 50%,#FFD700 100%);
+  --gradient-night:linear-gradient(180deg,#08021A 0%,#001814 100%);
+  --gradient-morning:linear-gradient(135deg,#F5A623 0%,#FF7062 35%,#00E5B0 100%);
+  --gradient-card:linear-gradient(145deg,#FFFFFF 0%,#F0FFFC 100%);
+  --gradient-success:linear-gradient(135deg,#00E87E 0%,#00E5B0 100%);
+  --gradient-glass:linear-gradient(145deg,rgba(255,255,255,.9) 0%,rgba(240,255,252,.8) 100%);
+  --gradient-dark:linear-gradient(180deg,#08021A 0%,#001814 100%);
   /* Category */
   --cat-finance:#00C853; --cat-health:#FF6B6B; --cat-work:#0091FF;
   --cat-family:#FF9800; --cat-shopping:#9C27B0; --cat-travel:#00BCD4;
@@ -68,22 +68,22 @@
   --sh-gold:0 8px 24px rgba(255,217,61,0.35);
   --shadow-1:var(--sh-1); --shadow-2:var(--sh-2); --shadow-3:var(--sh-3); --shadow-4:var(--sh-4);
   --shadow-teal:var(--sh-teal); --shadow-violet:var(--sh-cosmos); --shadow-gold:var(--sh-gold);
-  /* Semantic aliases */
-  --bg-primary:var(--viya-neutral-0); --bg-secondary:var(--viya-neutral-50);
-  --bg-card:var(--viya-neutral-0); --text-primary:var(--viya-neutral-900);
-  --text-secondary:var(--viya-neutral-500); --text-tertiary:var(--viya-neutral-300);
-  --border-color:var(--viya-neutral-200); --border-light:var(--viya-neutral-100);
+  /* DESIGN BRIEF — Semantic aliases (WHITE primary bg) */
+  --bg-primary:#FFFFFF; --bg-secondary:#F8FAFA;
+  --bg-card:#FFFFFF; --text-primary:#0D1818;
+  --text-secondary:#607878; --text-tertiary:#90A8A8;
+  --border-color:#E0E8E8; --border-light:#F0F4F4;
   --ease:cubic-bezier(.4,0,.2,1); --ease-spring:cubic-bezier(.34,1.56,.64,1);
   --screen-margin:20px; --header-height:64px; --nav-height:80px;
   --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
 }
-/* PRD §2.1 — Dark Mode (exact values) */
+/* DESIGN BRIEF §3.1 — Dark Mode (exact values from VIYA_DESIGN_SYSTEM.json) */
 [data-theme="dark"] {
-  --bg-primary:#080812; --bg-secondary:#0F0F1E; --bg-card:#161628;
-  --text-primary:#F0F0FF; --text-secondary:#9090BB; --text-tertiary:#4D4D6B;
-  --border-color:#2E2E50; --border-light:#1E1E35;
-  --gradient-card:linear-gradient(145deg,#161628 0%,#1E1E35 100%);
-  --viya-neutral-50:#1E1E35; --viya-neutral-100:#262645;
+  --bg-primary:#080812; --bg-secondary:#0E0E1C; --bg-card:#161626;
+  --text-primary:#EEEEFF; --text-secondary:#9090BB; --text-tertiary:#606088;
+  --border-color:#2E2E50; --border-light:#1E1E34;
+  --gradient-card:linear-gradient(145deg,#161626 0%,#1E1E34 100%);
+  --viya-neutral-50:#1E1E34; --viya-neutral-100:#262644;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16px;-webkit-text-size-adjust:100%}
