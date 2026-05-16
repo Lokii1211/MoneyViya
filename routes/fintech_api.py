@@ -188,3 +188,145 @@ async def portfolio_summary(user: dict = Depends(require_auth)):
         "sip_monthly": 0,
         "active_sips": 0,
     })
+
+
+# ═══════════════════════════════════════════════
+# 4. CSV IMPORT (Manual Fallback)
+# ═══════════════════════════════════════════════
+
+@router.post("/import/csv")
+async def import_csv(
+    request: Request,
+    user: dict = Depends(require_auth),
+):
+    """
+    POST /api/v1/fintech/import/csv
+    Body: {csv_content: string, bank_name: hdfc|icici|sbi|axis|kotak|generic}
+    """
+    from services.csv_import_service import csv_import_service
+
+    user_id = user.get("user_id", "")
+    data = await request.json()
+    csv_content = data.get("csv_content", "")
+    bank_name = data.get("bank_name", "generic")
+    account_id = data.get("account_id", "")
+
+    if not csv_content:
+        raise HTTPException(400, detail=api_error("MISSING_DATA", "csv_content is required"))
+
+    result = csv_import_service.parse(
+        csv_content=csv_content,
+        bank_name=bank_name,
+        user_phone=user_id,
+        account_id=account_id,
+    )
+
+    logger.info("csv_imported", user_id=user_id, bank=bank_name,
+                imported=result["summary"]["imported"],
+                errors=result["summary"]["errors"])
+
+    return api_response(data=result["summary"])
+
+
+# ═══════════════════════════════════════════════
+# 5. AUTO-CATEGORIZATION
+# ═══════════════════════════════════════════════
+
+class CategorizeRequest(BaseModel):
+    merchant: str = Field("", max_length=200)
+    description: str = Field("", max_length=500)
+    amount: float = Field(0, ge=0)
+    type: str = Field("debit", max_length=10)
+
+class CorrectionRequest(BaseModel):
+    merchant: str = Field(..., min_length=1, max_length=200)
+    new_category: str = Field(..., min_length=1, max_length=50)
+
+@router.post("/categorize")
+async def categorize_transaction(
+    req: CategorizeRequest,
+    user: dict = Depends(require_auth),
+):
+    """
+    POST /api/v1/fintech/categorize
+    Auto-categorize a merchant/description.
+    """
+    from services.categorization_engine import categorization_engine
+
+    user_id = user.get("user_id", "")
+    result = categorization_engine.categorize(
+        merchant=req.merchant,
+        amount=req.amount,
+        txn_type=req.type,
+        user_phone=user_id,
+        description=req.description,
+    )
+    return api_response(data=result)
+
+
+@router.post("/categorize/correct")
+async def correct_category(
+    req: CorrectionRequest,
+    user: dict = Depends(require_auth),
+):
+    """
+    POST /api/v1/fintech/categorize/correct
+    User corrects a category — engine learns for future.
+    """
+    from services.categorization_engine import categorization_engine
+
+    user_id = user.get("user_id", "")
+    categorization_engine.learn_correction(user_id, req.merchant, req.new_category)
+
+    logger.info("category_corrected", user_id=user_id,
+                merchant=req.merchant, category=req.new_category)
+
+    return api_response(data={"learned": True, "merchant": req.merchant,
+                              "new_category": req.new_category})
+
+
+@router.get("/categorize/stats")
+async def categorization_stats(user: dict = Depends(require_auth)):
+    """GET /api/v1/fintech/categorize/stats — Engine hit rates"""
+    from services.categorization_engine import categorization_engine
+    return api_response(data=categorization_engine.get_stats())
+
+
+# ═══════════════════════════════════════════════
+# 6. RECURRING TRANSACTION DETECTION
+# ═══════════════════════════════════════════════
+
+@router.get("/recurring")
+async def detect_recurring(user: dict = Depends(require_auth)):
+    """
+    GET /api/v1/fintech/recurring
+    Analyze transaction history for subscriptions, EMIs, SIPs.
+    """
+    from services.categorization_engine import recurring_detector
+
+    user_id = user.get("user_id", "")
+
+    # Get user transactions (from dashboard API or Supabase)
+    try:
+        from routes.dashboard_api import _get_user_transactions
+        transactions = _get_user_transactions(user_id)
+    except Exception:
+        transactions = []
+
+    patterns = recurring_detector.analyze(user_id, transactions)
+
+    total_monthly = sum(p['amount'] for p in patterns if p['frequency'] == 'monthly')
+    subscriptions = [p for p in patterns if p['is_subscription']]
+    emis = [p for p in patterns if p['is_emi']]
+
+    return api_response(data={
+        "patterns": patterns,
+        "summary": {
+            "total_recurring": len(patterns),
+            "subscriptions": len(subscriptions),
+            "emis": len(emis),
+            "total_monthly_outflow": round(total_monthly, 2),
+            "total_yearly_estimate": round(total_monthly * 12, 2),
+        },
+    })
+
