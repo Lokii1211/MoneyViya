@@ -461,3 +461,70 @@ async def tax_report(request: Request, user: dict = Depends(require_auth)):
     holdings = data.get("holdings", [])
     report = portfolio_analytics.tax_implications(holdings)
     return api_response(data=report)
+
+# -----------------------------------------------
+# 11. AI INSIGHTS ENGINE (Phase 2)
+# -----------------------------------------------
+
+@router.get("/insights")
+async def get_insights(user: dict = Depends(require_auth)):
+    from services.insight_engine import insight_engine
+    user_id = user.get("user_id", "")
+    try:
+        from routes.dashboard_api import _get_user_transactions
+        txns = _get_user_transactions(user_id)
+    except Exception:
+        txns = []
+    data = {"transactions": txns, "budgets": {}, "goals": [], "portfolio": {}, "subscriptions": []}
+    insights = insight_engine.generate_all(user_id, data)
+    return api_response(data={"insights": insights, "total": len(insights)})
+
+@router.post("/insights/generate")
+async def generate_insights(request: Request, user: dict = Depends(require_auth)):
+    from services.insight_engine import insight_engine
+    user_id = user.get("user_id", "")
+    data = await request.json()
+    insights = insight_engine.generate_all(user_id, data)
+    logger.info("insights_generated", user_id=user_id, count=len(insights))
+    return api_response(data={"insights": insights, "total": len(insights)})
+
+# -----------------------------------------------
+# 12. SIP TRACKER + PROJECTION (Phase 2)
+# -----------------------------------------------
+
+@router.post("/sip/project")
+async def sip_projection(request: Request, user: dict = Depends(require_auth)):
+    data = await request.json()
+    monthly = data.get("monthly_amount", 0)
+    years = data.get("years", 10)
+    expected_return = data.get("expected_return_pct", 12) / 100
+    step_up_pct = data.get("step_up_pct", 0) / 100
+    months = years * 12
+    monthly_rate = expected_return / 12
+    total_invested = 0
+    future_value = 0
+    current_sip = monthly
+    yearly_breakdown = []
+    for m in range(1, months + 1):
+        if step_up_pct > 0 and m > 1 and (m - 1) % 12 == 0:
+            current_sip = current_sip * (1 + step_up_pct)
+        total_invested += current_sip
+        future_value = (future_value + current_sip) * (1 + monthly_rate)
+        if m % 12 == 0:
+            yearly_breakdown.append({
+                "year": m // 12,
+                "invested": round(total_invested),
+                "value": round(future_value),
+                "wealth_gain": round(future_value - total_invested),
+            })
+    return api_response(data={
+        "monthly_sip": monthly,
+        "years": years,
+        "expected_return_pct": expected_return * 100,
+        "step_up_pct": step_up_pct * 100,
+        "total_invested": round(total_invested),
+        "future_value": round(future_value),
+        "wealth_gain": round(future_value - total_invested),
+        "wealth_multiplier": round(future_value / max(total_invested, 1), 2),
+        "yearly_breakdown": yearly_breakdown,
+    })
