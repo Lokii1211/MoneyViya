@@ -132,8 +132,9 @@ async def test_parse_sms(sms: SMSIngest):
 @router.get("/bank-accounts")
 async def list_bank_accounts(user: dict = Depends(require_auth)):
     """GET /api/v1/fintech/bank-accounts"""
-    # Placeholder — reads from Supabase
-    return api_response(data=[])
+    from database.fintech_repository import BankAccountRepository
+    accounts = BankAccountRepository.list_by_phone(user.get("user_id", ""))
+    return api_response(data=accounts)
 
 
 @router.post("/bank-accounts")
@@ -142,10 +143,19 @@ async def create_bank_account(
     user: dict = Depends(require_auth),
 ):
     """POST /api/v1/fintech/bank-accounts"""
+    from database.fintech_repository import BankAccountRepository, AuditRepository
     user_id = user.get("user_id", "")
+    result = BankAccountRepository.create(
+        phone=user_id, bank_name=account.bank_name,
+        account_type=account.account_type,
+        masked_number=account.account_number_last4,
+        ifsc=account.ifsc)
+    AuditRepository.log('bank_account_created', phone=user_id,
+                        resource_type='bank_account',
+                        new_value={'bank': account.bank_name})
     logger.info("bank_account_created", user_id=user_id,
                 bank=account.bank_name, type=account.account_type)
-    return api_response(data={"status": "created", "bank": account.bank_name})
+    return api_response(data=result)
 
 
 # ═══════════════════════════════════════════════
@@ -155,13 +165,24 @@ async def create_bank_account(
 @router.get("/portfolio")
 async def get_portfolio(user: dict = Depends(require_auth)):
     """GET /api/v1/fintech/portfolio — Portfolio overview"""
+    from database.fintech_repository import HoldingsRepository
+    user_id = user.get("user_id", "")
+    holdings = HoldingsRepository.list_by_phone(user_id)
+    total_invested = sum(h.get('total_invested', 0) or 0 for h in holdings)
+    current_value = sum(h.get('current_value', 0) or 0 for h in holdings)
+    pnl = current_value - total_invested
+    # Asset allocation
+    alloc = {}
+    for h in holdings:
+        cls = h.get('asset_class', 'other')
+        alloc[cls] = alloc.get(cls, 0) + (h.get('current_value', 0) or 0)
     return api_response(data={
-        "net_worth": 0,
-        "total_invested": 0,
-        "current_value": 0,
-        "unrealized_pnl": 0,
-        "holdings": [],
-        "asset_allocation": {},
+        "net_worth": round(current_value, 2),
+        "total_invested": round(total_invested, 2),
+        "current_value": round(current_value, 2),
+        "unrealized_pnl": round(pnl, 2),
+        "holdings": holdings,
+        "asset_allocation": alloc,
     })
 
 
@@ -171,10 +192,17 @@ async def add_holding(
     user: dict = Depends(require_auth),
 ):
     """POST /api/v1/fintech/holdings — Add manual holding"""
+    from database.fintech_repository import HoldingsRepository
     user_id = user.get("user_id", "")
+    result = HoldingsRepository.upsert(user_id, {
+        'name': holding.name, 'asset_class': holding.asset_class,
+        'ticker': holding.ticker, 'quantity': holding.quantity,
+        'average_cost': holding.average_cost,
+        'total_invested': holding.quantity * holding.average_cost,
+    })
     logger.info("holding_added", user_id=user_id,
                 name=holding.name, qty=holding.quantity)
-    return api_response(data={"status": "created", "name": holding.name})
+    return api_response(data=result)
 
 
 @router.get("/portfolio/summary")
@@ -469,7 +497,13 @@ async def tax_report(request: Request, user: dict = Depends(require_auth)):
 @router.get("/insights")
 async def get_insights(user: dict = Depends(require_auth)):
     from services.insight_engine import insight_engine
+    from database.fintech_repository import InsightsRepository
     user_id = user.get("user_id", "")
+    # First check DB for existing insights
+    db_insights = InsightsRepository.list_active(user_id)
+    if db_insights:
+        return api_response(data={"insights": db_insights, "total": len(db_insights), "source": "db"})
+    # Generate fresh insights
     try:
         from routes.dashboard_api import _get_user_transactions
         txns = _get_user_transactions(user_id)
@@ -477,7 +511,13 @@ async def get_insights(user: dict = Depends(require_auth)):
         txns = []
     data = {"transactions": txns, "budgets": {}, "goals": [], "portfolio": {}, "subscriptions": []}
     insights = insight_engine.generate_all(user_id, data)
-    return api_response(data={"insights": insights, "total": len(insights)})
+    # Persist to DB
+    for ins in insights[:10]:
+        InsightsRepository.create(user_id, ins.get('type','general'),
+            ins.get('title',''), ins.get('body',''),
+            priority=ins.get('priority','medium'),
+            data=ins.get('data'), action_url=ins.get('action_url'))
+    return api_response(data={"insights": insights, "total": len(insights), "source": "generated"})
 
 @router.post("/insights/generate")
 async def generate_insights(request: Request, user: dict = Depends(require_auth)):
@@ -687,14 +727,28 @@ async def financial_plan(request: Request, user: dict = Depends(require_auth)):
 @router.post("/insurance/add")
 async def add_insurance(request: Request, user: dict = Depends(require_auth)):
     from services.phase3_scale_services import insurance_tracker
+    from database.fintech_repository import InsuranceRepository, AuditRepository
+    user_id = user.get("user_id","")
     data = await request.json()
-    result = insurance_tracker.add_policy(user.get("user_id",""), data)
+    # Service-level validation
+    result = insurance_tracker.add_policy(user_id, data)
+    # Persist to DB
+    InsuranceRepository.add_policy(user_id, data)
+    AuditRepository.log('insurance_added', phone=user_id,
+                        resource_type='insurance',
+                        new_value={'type': data.get('type'), 'provider': data.get('provider')})
     return api_response(data=result)
 
 @router.get("/insurance")
 async def get_insurance(user: dict = Depends(require_auth)):
     from services.phase3_scale_services import insurance_tracker
-    return api_response(data=insurance_tracker.get_portfolio(user.get("user_id","")))
+    from database.fintech_repository import InsuranceRepository
+    user_id = user.get("user_id","")
+    # Try DB first, fallback to service
+    db_policies = InsuranceRepository.list_by_phone(user_id)
+    if db_policies:
+        return api_response(data={'policies': db_policies, 'total': len(db_policies), 'source': 'db'})
+    return api_response(data=insurance_tracker.get_portfolio(user_id))
 
 # -----------------------------------------------
 # 22. CREDIT SCORE (Phase 3 - US-707)
@@ -703,8 +757,14 @@ async def get_insurance(user: dict = Depends(require_auth)):
 @router.post("/credit-score")
 async def credit_score_report(request: Request, user: dict = Depends(require_auth)):
     from services.phase3_scale_services import credit_score_service
+    from database.fintech_repository import CreditRepository
+    user_id = user.get("user_id","")
     data = await request.json()
-    result = credit_score_service.get_score_report(data.get("score",0), data.get("history",[]))
+    score = data.get("score", 0)
+    result = credit_score_service.get_score_report(score, data.get("history",[]))
+    # Persist score to DB
+    if score > 0:
+        CreditRepository.store_score(user_id, score, factors=result.get('factors'))
     return api_response(data=result)
 
 # -----------------------------------------------
