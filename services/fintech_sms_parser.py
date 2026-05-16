@@ -73,39 +73,107 @@ def identify_bank(sender_id: str) -> Optional[str]:
 # ══════════════════════════════════════════════════
 
 MERCHANT_NORMALIZE = {
+    # Food & Dining
     'swiggy': 'Swiggy', 'swiggy*': 'Swiggy', 'swiggyorders': 'Swiggy',
     'zomato': 'Zomato', 'zomatomedia': 'Zomato', 'zmt*': 'Zomato',
+    'dominos': 'Dominos', 'mcdonalds': 'McDonalds', 'kfc': 'KFC',
+    'pizzahut': 'Pizza Hut', 'burgerking': 'Burger King', 'subway': 'Subway',
+    'starbucks': 'Starbucks', 'chaayos': 'Chaayos', 'haldirams': 'Haldirams',
+    'eatsure': 'EatSure', 'box8': 'Box8', 'faasos': 'Faasos',
+    # Shopping
     'amazon': 'Amazon', 'amzn': 'Amazon', 'amzn*mktp': 'Amazon',
     'flipkart': 'Flipkart', 'flipkart*': 'Flipkart',
-    'netflix': 'Netflix', 'netflix.com': 'Netflix',
-    'spotify': 'Spotify', 'hotstar': 'Hotstar', 'jiocinema': 'JioCinema',
-    'uber': 'Uber', 'ola': 'Ola', 'rapido': 'Rapido',
-    'bigbasket': 'BigBasket', 'blinkit': 'Blinkit', 'zepto': 'Zepto',
     'myntra': 'Myntra', 'ajio': 'AJIO', 'meesho': 'Meesho', 'nykaa': 'Nykaa',
-    'dmart': 'DMart', 'reliance': 'Reliance', 'jiomart': 'JioMart',
-    'pharmeasy': 'PharmEasy', '1mg': '1mg', 'netmeds': 'Netmeds', 'apollo': 'Apollo',
-    'bookmyshow': 'BookMyShow', 'bms': 'BookMyShow',
-    'makemytrip': 'MakeMyTrip', 'mmt': 'MakeMyTrip', 'goibibo': 'Goibibo',
-    'irctc': 'IRCTC', 'cleartrip': 'Cleartrip',
+    'tatacliq': 'Tata CLiQ', 'snapdeal': 'Snapdeal', 'shopsy': 'Shopsy',
+    'bewakoof': 'Bewakoof', 'pepperfry': 'Pepperfry', 'urbanladder': 'Urban Ladder',
+    'lenskart': 'Lenskart', 'croma': 'Croma', 'reliancedigital': 'Reliance Digital',
+    # Grocery
+    'bigbasket': 'BigBasket', 'blinkit': 'Blinkit', 'zepto': 'Zepto',
+    'dmart': 'DMart', 'jiomart': 'JioMart', 'reliance': 'Reliance',
+    'spencers': 'Spencers', 'nature': 'Nature Basket', 'grofers': 'Blinkit',
+    'dunzo': 'Dunzo', 'swiggyinstamart': 'Swiggy Instamart',
+    # Entertainment
+    'netflix': 'Netflix', 'netflix.com': 'Netflix', 'spotify': 'Spotify',
+    'hotstar': 'Hotstar', 'jiocinema': 'JioCinema', 'primevideo': 'Amazon Prime',
+    'youtube': 'YouTube', 'bookmyshow': 'BookMyShow', 'bms': 'BookMyShow',
+    'gaana': 'Gaana', 'sonyliv': 'SonyLIV', 'zee5': 'Zee5', 'voot': 'Voot',
+    'applemusic': 'Apple Music', 'disneyplus': 'Disney+',
+    # Transport
+    'uber': 'Uber', 'ola': 'Ola', 'rapido': 'Rapido',
     'hpcl': 'HPCL', 'bpcl': 'BPCL', 'iocl': 'IOCL',
-    'airtel': 'Airtel', 'jio': 'Jio', 'vi': 'Vi',
+    'fastag': 'FASTag', 'metro': 'Metro', 'irctc': 'IRCTC',
+    # Healthcare
+    'pharmeasy': 'PharmEasy', '1mg': '1mg', 'netmeds': 'Netmeds',
+    'apollo': 'Apollo', 'practo': 'Practo', 'medplus': 'MedPlus',
+    # Travel
+    'makemytrip': 'MakeMyTrip', 'mmt': 'MakeMyTrip', 'goibibo': 'Goibibo',
+    'cleartrip': 'Cleartrip', 'yatra': 'Yatra', 'oyo': 'OYO',
+    'ixigo': 'ixigo', 'easemytrip': 'EaseMyTrip', 'airbnb': 'Airbnb',
+    # Bills & Utilities
+    'airtel': 'Airtel', 'jio': 'Jio', 'vi': 'Vi', 'bsnl': 'BSNL',
+    'tatapower': 'Tata Power', 'adani': 'Adani', 'bescom': 'BESCOM',
+    'actfiber': 'ACT Fibernet', 'hathway': 'Hathway',
+    # Education
+    'udemy': 'Udemy', 'byjus': 'BYJU\'s', 'unacademy': 'Unacademy',
+    'coursera': 'Coursera', 'upgrad': 'upGrad', 'vedantu': 'Vedantu',
+    # Insurance
+    'lic': 'LIC', 'maxlife': 'Max Life', 'hdfclife': 'HDFC Life',
+    'icicipruli': 'ICICI Prudential', 'starhealth': 'Star Health',
+    # Payments
     'paytm': 'Paytm', 'gpay': 'Google Pay', 'phonepe': 'PhonePe',
+    'cred': 'CRED', 'bharatpe': 'BharatPe',
+    # Investments
+    'zerodha': 'Zerodha', 'groww': 'Groww', 'kuvera': 'Kuvera',
+    'upstox': 'Upstox', 'coin': 'Zerodha Coin',
 }
 
 MERCHANT_CATEGORIES = {
+    # food_dining
     'Swiggy': 'food_dining', 'Zomato': 'food_dining', 'Dominos': 'food_dining',
+    'McDonalds': 'food_dining', 'KFC': 'food_dining', 'Pizza Hut': 'food_dining',
+    'Burger King': 'food_dining', 'Subway': 'food_dining', 'Starbucks': 'food_dining',
+    'Chaayos': 'food_dining', 'Haldirams': 'food_dining',
+    'EatSure': 'food_dining', 'Box8': 'food_dining', 'Faasos': 'food_dining',
+    # grocery
+    'BigBasket': 'grocery', 'Blinkit': 'grocery', 'Zepto': 'grocery',
+    'DMart': 'grocery', 'JioMart': 'grocery', 'Spencers': 'grocery',
+    'Swiggy Instamart': 'grocery', 'Dunzo': 'grocery',
+    # shopping
     'Amazon': 'shopping', 'Flipkart': 'shopping', 'Myntra': 'shopping',
     'AJIO': 'shopping', 'Meesho': 'shopping', 'Nykaa': 'shopping',
+    'Tata CLiQ': 'shopping', 'Snapdeal': 'shopping', 'Shopsy': 'shopping',
+    'Lenskart': 'shopping', 'Croma': 'shopping', 'Reliance Digital': 'shopping',
+    'Pepperfry': 'shopping', 'Urban Ladder': 'shopping',
+    # transport
+    'Uber': 'transport', 'Ola': 'transport', 'Rapido': 'transport',
+    'HPCL': 'transport', 'BPCL': 'transport', 'IOCL': 'transport',
+    'FASTag': 'transport', 'Metro': 'transport',
+    # entertainment
     'Netflix': 'entertainment', 'Spotify': 'entertainment', 'Hotstar': 'entertainment',
     'JioCinema': 'entertainment', 'BookMyShow': 'entertainment',
-    'Uber': 'transport', 'Ola': 'transport', 'Rapido': 'transport',
-    'BigBasket': 'grocery', 'Blinkit': 'grocery', 'Zepto': 'grocery',
-    'DMart': 'grocery', 'JioMart': 'grocery',
+    'Amazon Prime': 'entertainment', 'YouTube': 'entertainment',
+    'Gaana': 'entertainment', 'SonyLIV': 'entertainment', 'Zee5': 'entertainment',
+    'Disney+': 'entertainment', 'Apple Music': 'entertainment',
+    # healthcare
     'PharmEasy': 'healthcare', '1mg': 'healthcare', 'Netmeds': 'healthcare',
-    'Apollo': 'healthcare',
-    'MakeMyTrip': 'travel', 'Goibibo': 'travel', 'IRCTC': 'travel',
-    'HPCL': 'transport', 'BPCL': 'transport', 'IOCL': 'transport',
+    'Apollo': 'healthcare', 'Practo': 'healthcare', 'MedPlus': 'healthcare',
+    # bills_utilities
     'Airtel': 'bills_utilities', 'Jio': 'bills_utilities', 'Vi': 'bills_utilities',
+    'BSNL': 'bills_utilities', 'Tata Power': 'bills_utilities',
+    'ACT Fibernet': 'bills_utilities', 'Hathway': 'bills_utilities',
+    # education
+    'Udemy': 'education', "BYJU's": 'education', 'Unacademy': 'education',
+    'Coursera': 'education', 'upGrad': 'education', 'Vedantu': 'education',
+    # travel
+    'MakeMyTrip': 'travel', 'Goibibo': 'travel', 'IRCTC': 'travel',
+    'Cleartrip': 'travel', 'Yatra': 'travel', 'OYO': 'travel',
+    'ixigo': 'travel', 'EaseMyTrip': 'travel', 'Airbnb': 'travel',
+    # insurance
+    'LIC': 'insurance', 'Max Life': 'insurance', 'HDFC Life': 'insurance',
+    'ICICI Prudential': 'insurance', 'Star Health': 'insurance',
+    # investment
+    'Zerodha': 'investment', 'Groww': 'investment', 'Kuvera': 'investment',
+    'Upstox': 'investment', 'Zerodha Coin': 'investment',
 }
 
 
@@ -325,7 +393,7 @@ class FintechSMSParser:
 # ══════════════════════════════════════════════════
 
 class SMSIngestService:
-    """Receives SMS from Capacitor plugin, parses, dedupes, stores."""
+    """Receives SMS from Capacitor plugin, parses, dedupes, stores via repository."""
 
     def __init__(self):
         self.parser = FintechSMSParser()
@@ -334,6 +402,7 @@ class SMSIngestService:
                      sender_id: str = None, received_at: str = None,
                      supabase_client=None) -> Dict:
         """Process a single SMS: parse → dedup → store → return result."""
+        from database.fintech_repository import SMSRepository, TransactionRepository
 
         parsed = self.parser.parse(sms_body, sender_id)
 
@@ -341,55 +410,61 @@ class SMSIngestService:
             return {'status': 'skipped', 'reason': 'not_financial'}
 
         dedup = self.parser.generate_dedup_hash(user_phone, parsed)
+        ts = received_at or datetime.utcnow().isoformat()
 
-        # Store raw SMS
-        sms_record = {
-            'user_phone': user_phone,
-            'sender_id': sender_id or '',
-            'message_body': sms_body,
-            'received_at': received_at or datetime.utcnow().isoformat(),
-            'is_financial': True,
-            'is_processed': True,
-            'parsed_data': json.dumps(parsed),
-        }
+        # 1. Store raw SMS to sms_messages table
+        sms_result = SMSRepository.store(
+            phone=user_phone, sender_id=sender_id or '',
+            body=sms_body, received_at=ts,
+            is_financial=True, raw_json={'parsed': parsed})
+        sms_id = sms_result.get('id')
 
-        # Create transaction
+        # 2. Create fintech_transaction with dedup
         txn_data = {
-            'phone': user_phone,
-            'type': 'expense' if parsed['type'] == 'debit' else 'income',
+            'type': parsed['type'],
             'amount': parsed['amount'],
-            'category': self._map_category(parsed.get('category', 'uncategorized')),
-            'description': parsed.get('merchant_normalized') or parsed.get('merchant_raw') or '',
+            'category': parsed.get('category') or 'other',
+            'category_source': 'sms_pattern',
             'source': 'sms',
+            'source_raw_id': sms_id,
+            'transaction_date': ts,
+            'merchant_raw': parsed.get('merchant_raw'),
+            'merchant_normalized': parsed.get('merchant_normalized'),
             'payment_method': parsed.get('payment_method'),
             'payment_app': parsed.get('payment_app'),
             'upi_ref_id': parsed.get('upi_ref_id'),
             'upi_id': parsed.get('upi_id'),
-            'merchant_raw': parsed.get('merchant_raw'),
-            'merchant_normalized': parsed.get('merchant_normalized'),
-            'dedup_hash': dedup,
             'ai_confidence': parsed.get('confidence', 0.85),
-            'category_source': 'sms_pattern',
-            'balance_after': parsed.get('balance_after'),
+            'ai_category_suggested': parsed.get('category'),
         }
 
-        # If supabase client provided, store
-        if supabase_client:
-            try:
-                # Check dedup
-                existing = await self._check_dedup(supabase_client, dedup)
-                if existing:
-                    return {'status': 'duplicate', 'transaction_id': existing}
+        result = TransactionRepository.create(user_phone, txn_data)
 
-                # Insert SMS record
-                await self._insert_sms(supabase_client, sms_record)
-                # Insert transaction
-                txn_id = await self._insert_transaction(supabase_client, txn_data)
-                return {'status': 'created', 'transaction_id': txn_id, 'parsed': parsed}
-            except Exception as e:
-                return {'status': 'error', 'error': str(e), 'parsed': parsed}
+        # Mark SMS as processed
+        if sms_id:
+            SMSRepository.mark_processed(sms_id)
 
-        return {'status': 'parsed', 'parsed': parsed, 'transaction': txn_data}
+        if result.get('deduplicated'):
+            return {'status': 'duplicate', 'hash': result['hash']}
+
+        # 3. Also insert into legacy transactions table for backward compat
+        try:
+            from database.db_service import get_supabase
+            sb = get_supabase()
+            if sb:
+                sb.table('transactions').insert({
+                    'phone': user_phone,
+                    'type': 'expense' if parsed['type'] == 'debit' else 'income',
+                    'amount': parsed['amount'],
+                    'category': self._map_category(parsed.get('category', 'other')),
+                    'description': parsed.get('merchant_normalized') or '',
+                    'source': 'sms',
+                    'merchant': parsed.get('merchant_normalized'),
+                }).execute()
+        except Exception:
+            pass  # Legacy insert is best-effort
+
+        return {'status': 'created', 'parsed': parsed, 'transaction_id': result.get('id')}
 
     def _map_category(self, cat: str) -> str:
         """Map fintech categories to existing Viya emoji categories."""
@@ -399,22 +474,13 @@ class SMSIngestService:
             'entertainment': '🎬 Entertainment', 'healthcare': '💊 Health',
             'bills_utilities': '💡 Bills', 'travel': '🚗 Transport',
             'emi_loan': '💡 Bills', 'income_salary': '💰 Income',
-            'education': '📚 Education',
+            'education': '📚 Education', 'insurance': '🛡️ Insurance',
+            'investment': '📈 Investment', 'personal_care': '💆 Personal',
+            'cash_withdrawal': '🏧 Cash', 'taxes': '📋 Tax',
+            'income_freelance': '💰 Income', 'income_interest': '💰 Income',
+            'income_refund': '💰 Income', 'income_dividend': '💰 Income',
         }
         return mapping.get(cat, '📦 General')
-
-    async def _check_dedup(self, client, dedup_hash: str):
-        """Check if transaction already exists."""
-        # Uses Supabase REST
-        return None  # Placeholder — actual impl uses client.query
-
-    async def _insert_sms(self, client, data: dict):
-        """Store raw SMS."""
-        pass  # Placeholder
-
-    async def _insert_transaction(self, client, data: dict) -> str:
-        """Insert transaction and return ID."""
-        return None  # Placeholder
 
 
 # Singleton
