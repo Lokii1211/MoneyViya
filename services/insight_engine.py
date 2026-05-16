@@ -43,11 +43,14 @@ class InsightEngine:
     def __init__(self):
         self.generated = {}  # user_phone -> [insight]
 
-    def generate_all(self, user_phone: str, data: Dict) -> List[Dict]:
+    def generate_all(self, user_phone: str, data: Dict = None) -> List[Dict]:
         """
         Run all insight generators against user data.
-        data keys: transactions, budgets, goals, portfolio, subscriptions.
+        If data not provided, fetches from DB automatically.
         """
+        if data is None:
+            data = self._fetch_user_data(user_phone)
+
         insights = []
         txns = data.get('transactions', [])
         budgets = data.get('budgets', {})
@@ -55,6 +58,7 @@ class InsightEngine:
         portfolio = data.get('portfolio', {})
 
         insights.extend(self._budget_alerts(txns, budgets))
+        insights.extend(self._recurring_detection(txns))
         insights.extend(self._unusual_transactions(txns))
         insights.extend(self._spending_trends(txns))
         insights.extend(self._savings_milestones(txns))
@@ -70,7 +74,44 @@ class InsightEngine:
         insights.sort(key=lambda x: priority_order.get(x['priority'], 3))
 
         self.generated[user_phone] = insights
+
+        # Persist top insights to DB
+        self._persist_insights(user_phone, insights[:10])
+
         return insights
+
+    def _fetch_user_data(self, phone: str) -> Dict:
+        """Pull transaction/portfolio data from DB for insight generation."""
+        data = {'transactions': [], 'budgets': {}, 'goals': [], 'portfolio': {}}
+        try:
+            from database.fintech_repository import TransactionRepository, HoldingsRepository
+            txns = TransactionRepository.list_by_phone(phone, limit=500)
+            data['transactions'] = txns
+            holdings = HoldingsRepository.list_by_phone(phone)
+            total_inv = sum(h.get('total_invested', 0) or 0 for h in holdings)
+            total_val = sum(h.get('current_value', 0) or 0 for h in holdings)
+            data['portfolio'] = {'holdings': holdings, 'total_invested': total_inv,
+                                 'current_value': total_val}
+        except Exception:
+            pass
+        return data
+
+    def _persist_insights(self, phone: str, insights: List[Dict]):
+        """Save generated insights to fintech_insights table."""
+        try:
+            from database.fintech_repository import InsightsRepository
+            for ins in insights:
+                InsightsRepository.create(
+                    phone=phone,
+                    insight_type=ins['type'],
+                    title=ins['title'],
+                    message=ins['message'],
+                    priority=ins['priority'],
+                    actions=ins.get('actions', []),
+                    metadata=ins.get('metadata', {}),
+                )
+        except Exception:
+            pass
 
     # ── Type 1: Budget Alerts ──
 
@@ -141,6 +182,59 @@ class InsightEngine:
                     f"That's {multiplier:.1f}× your average spend.",
                     actions=["Yes, it's planned", "Flag for review"],
                     metadata={'amount': t['amount'], 'merchant': t.get('merchant_normalized', '')},
+                ))
+
+        return insights
+
+    # ── Type 2: Recurring Transaction Detection ──
+
+    def _recurring_detection(self, txns: list) -> List[Dict]:
+        """Detect recurring payments: same merchant + similar amount + same day_of_month × 3 months."""
+        insights = []
+        from collections import defaultdict
+
+        merchant_history = defaultdict(list)  # merchant -> [{amount, day, month}]
+        for t in txns:
+            if t.get('type') not in ('debit', 'expense'):
+                continue
+            merch = t.get('merchant_normalized') or t.get('description', '')
+            date_str = t.get('date', t.get('created_at', ''))
+            if not merch or not date_str:
+                continue
+            try:
+                dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                merchant_history[merch].append({
+                    'amount': t.get('amount', 0), 'day': dt.day,
+                    'month': f"{dt.year}-{dt.month:02d}"})
+            except (ValueError, TypeError):
+                continue
+
+        for merch, entries in merchant_history.items():
+            if len(entries) < 3:
+                continue
+            # Check if amounts are similar (±20%) and dates are consistent
+            amounts = [e['amount'] for e in entries]
+            avg_amt = sum(amounts) / len(amounts)
+            if avg_amt <= 0:
+                continue
+            similar = all(abs(a - avg_amt) / avg_amt < 0.20 for a in amounts)
+            # Check if they fall on similar days (within ±3 days)
+            days = [e['day'] for e in entries]
+            avg_day = sum(days) // len(days)
+            consistent_day = all(abs(d - avg_day) <= 3 for d in days)
+            # Check distinct months
+            months = set(e['month'] for e in entries)
+
+            if similar and consistent_day and len(months) >= 3:
+                insights.append(self._make_insight(
+                    InsightType.RECURRING_DETECTED, InsightPriority.MEDIUM,
+                    f"🔄 Monthly payment detected: {merch}",
+                    f"I detected a recurring payment of ₹{avg_amt:,.0f} to {merch}. "
+                    f"It occurs around the ~{avg_day}th of each month ({len(months)} months). "
+                    f"Want me to track this as a subscription?",
+                    actions=["Yes, track it", "Ignore"],
+                    metadata={'merchant': merch, 'avg_amount': round(avg_amt, 2),
+                              'day_of_month': avg_day, 'months_detected': len(months)},
                 ))
 
         return insights
@@ -379,7 +473,24 @@ class InsightEngine:
         }
 
     def get_user_insights(self, user_phone: str) -> List[Dict]:
+        """Get insights — DB first, cache fallback."""
+        try:
+            from database.fintech_repository import InsightsRepository
+            db_insights = InsightsRepository.list_active(user_phone)
+            if db_insights:
+                return db_insights
+        except Exception:
+            pass
         return self.generated.get(user_phone, [])
+
+    def mark_read(self, insight_id: str) -> bool:
+        """Mark an insight as read in DB."""
+        try:
+            from database.fintech_repository import InsightsRepository
+            InsightsRepository.mark_read(insight_id)
+            return True
+        except Exception:
+            return False
 
 
 # Singleton
