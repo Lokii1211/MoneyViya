@@ -528,3 +528,36 @@ async def sip_projection(request: Request, user: dict = Depends(require_auth)):
         "wealth_multiplier": round(future_value / max(total_invested, 1), 2),
         "yearly_breakdown": yearly_breakdown,
     })
+
+# -----------------------------------------------
+# 13. TAX REPORTS (Phase 2 - US-601)
+# -----------------------------------------------
+
+@router.post("/tax-report")
+async def generate_tax_report(request: Request, user: dict = Depends(require_auth)):
+    from services.tax_report_service import tax_report_service
+    data = await request.json()
+    report = tax_report_service.generate_full_report(data)
+    logger.info("tax_report_generated", user_id=user.get("user_id",""))
+    return api_response(data=report)
+
+# -----------------------------------------------
+# 14. BUDGET REPORT (Phase 2 - US-609)
+# -----------------------------------------------
+
+@router.post("/budget-report")
+async def budget_report(request: Request, user: dict = Depends(require_auth)):
+    from services.tax_report_service import tax_report_service
+    user_id = user.get("user_id", "")
+    data = await request.json()
+    transactions = data.get("transactions", [])
+    budgets = data.get("budgets", {})
+    month = data.get("month")
+    if not transactions:
+        try:
+            from routes.dashboard_api import _get_user_transactions
+            transactions = _get_user_transactions(user_id)
+        except Exception:
+            pass
+    report = tax_report_service.generate_budget_report(transactions, budgets, month)
+    return api_response(data=report)
