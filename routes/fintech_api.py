@@ -706,3 +706,64 @@ async def credit_score_report(request: Request, user: dict = Depends(require_aut
     data = await request.json()
     result = credit_score_service.get_score_report(data.get("score",0), data.get("history",[]))
     return api_response(data=result)
+
+# -----------------------------------------------
+# 23. GST INTEGRATION (Phase 3 - US-705)
+# -----------------------------------------------
+
+@router.post("/gst/calculate")
+async def gst_calculate(request: Request, user: dict = Depends(require_auth)):
+    from services.enterprise_api_service import gst_service
+    data = await request.json()
+    result = gst_service.calculate_gst(data.get("amount",0), data.get("category","software"), data.get("inclusive",True))
+    return api_response(data=result)
+
+@router.get("/gst/summary")
+async def gst_summary(user: dict = Depends(require_auth)):
+    from services.enterprise_api_service import gst_service
+    return api_response(data=gst_service.quarterly_summary(user.get("user_id","")))
+
+# -----------------------------------------------
+# 24. OPEN API (Phase 3 - US-709)
+# -----------------------------------------------
+
+@router.post("/api-keys/create")
+async def create_api_key(request: Request, user: dict = Depends(require_auth)):
+    from services.enterprise_api_service import api_key_manager
+    data = await request.json()
+    result = api_key_manager.create_key(user.get("user_id",""), data.get("name",""), data.get("scopes"))
+    return api_response(data=result)
+
+@router.get("/api-keys")
+async def list_api_keys(user: dict = Depends(require_auth)):
+    from services.enterprise_api_service import api_key_manager
+    return api_response(data=api_key_manager.list_keys(user.get("user_id","")))
+
+@router.post("/api-keys/revoke")
+async def revoke_api_key(request: Request, user: dict = Depends(require_auth)):
+    from services.enterprise_api_service import api_key_manager
+    data = await request.json()
+    return api_response(data=api_key_manager.revoke_key(user.get("user_id",""), data.get("prefix","")))
+
+# -----------------------------------------------
+# 25. ENTERPRISE (Phase 3 - US-710)
+# -----------------------------------------------
+
+@router.post("/org/create")
+async def create_org(request: Request, user: dict = Depends(require_auth)):
+    from services.enterprise_api_service import enterprise_manager
+    data = await request.json()
+    result = enterprise_manager.create_org(user.get("user_id",""), data.get("name",""), data.get("gstin",""))
+    return api_response(data=result)
+
+@router.post("/org/add-member")
+async def org_add_member(request: Request, user: dict = Depends(require_auth)):
+    from services.enterprise_api_service import enterprise_manager
+    data = await request.json()
+    return api_response(data=enterprise_manager.add_member(
+        data.get("org_id",""), data.get("phone",""), data.get("name",""), data.get("role","viewer")))
+
+@router.get("/org/list")
+async def list_orgs(user: dict = Depends(require_auth)):
+    from services.enterprise_api_service import enterprise_manager
+    return api_response(data=enterprise_manager.list_user_orgs(user.get("user_id","")))
