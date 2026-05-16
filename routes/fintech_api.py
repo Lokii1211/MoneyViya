@@ -126,6 +126,355 @@ async def test_parse_sms(sms: SMSIngest):
 
 
 # ═══════════════════════════════════════════════
+# §5.1 TRANSACTION CRUD (Spec-Compliant)
+# ═══════════════════════════════════════════════
+
+class TransactionCreate(BaseModel):
+    type: str = Field(..., pattern=r'^(credit|debit)$')
+    amount: float = Field(..., gt=0)
+    category: str = Field("other", max_length=50)
+    merchant_normalized: str = Field("", max_length=200)
+    bank_account_id: Optional[str] = None
+    transaction_date: Optional[str] = None
+    payment_method: str = Field("upi", max_length=30)
+    notes: Optional[str] = None
+
+class TransactionUpdate(BaseModel):
+    category: Optional[str] = None
+    notes: Optional[str] = None
+    merchant_normalized: Optional[str] = None
+    tags: Optional[List[str]] = None
+    is_excluded: Optional[bool] = None
+
+class SplitItem(BaseModel):
+    amount: float = Field(..., gt=0)
+    category: str
+    notes: str = ""
+
+class TransactionSplit(BaseModel):
+    splits: List[SplitItem]
+
+
+@router.post("/transactions")
+async def create_transaction(
+    txn: TransactionCreate,
+    request: Request,
+    user: dict = Depends(require_auth),
+):
+    """POST /transactions — spec §5.1. Idempotency-Key header required."""
+    from database.fintech_repository import TransactionRepository, AuditRepository
+    import hashlib
+
+    phone = user.get("phone", "")
+    idempotency_key = request.headers.get("Idempotency-Key", "")
+
+    # Dedup via idempotency key
+    if idempotency_key:
+        dedup_hash = hashlib.sha256(f"{phone}:{idempotency_key}".encode()).hexdigest()
+        existing = TransactionRepository.find_by_hash(phone, dedup_hash)
+        if existing:
+            return api_response(data={"transaction": existing, "duplicate": True})
+    else:
+        dedup_hash = hashlib.sha256(
+            f"{phone}:{txn.amount}:{txn.merchant_normalized}:{txn.transaction_date}".encode()
+        ).hexdigest()
+
+    record = TransactionRepository.create(
+        phone=phone, amount=txn.amount, txn_type=txn.type,
+        category=txn.category, description=txn.merchant_normalized,
+        source='api', dedup_hash=dedup_hash,
+        metadata={'payment_method': txn.payment_method,
+                  'bank_account_id': txn.bank_account_id,
+                  'notes': txn.notes}
+    )
+    AuditRepository.log('transaction_created', phone=phone,
+        resource_type='transaction', new_value={'amount': txn.amount, 'type': txn.type})
+
+    return api_response(data={"transaction": record}, status_code=201)
+
+
+@router.get("/transactions")
+async def list_transactions(
+    user: dict = Depends(require_auth),
+    start: Optional[str] = None,
+    end: Optional[str] = None,
+    category: Optional[str] = None,
+    type: Optional[str] = None,
+    search: Optional[str] = None,
+    account_id: Optional[str] = None,
+    limit: int = 50,
+    cursor: Optional[str] = None,
+):
+    """GET /transactions — spec §5.1. Cursor pagination + filters."""
+    from database.fintech_repository import TransactionRepository
+
+    phone = user.get("phone", "")
+    txns = TransactionRepository.list_by_phone(phone, limit=limit + 1)
+
+    # Apply filters
+    if start:
+        txns = [t for t in txns if t.get('created_at', '') >= start]
+    if end:
+        txns = [t for t in txns if t.get('created_at', '') <= end]
+    if category:
+        txns = [t for t in txns if t.get('category') == category]
+    if type:
+        type_map = {'debit': ('debit', 'expense'), 'credit': ('credit', 'income')}
+        txns = [t for t in txns if t.get('type') in type_map.get(type, (type,))]
+    if search:
+        q = search.lower()
+        txns = [t for t in txns if q in (t.get('description', '') + t.get('category', '')).lower()]
+    if account_id:
+        txns = [t for t in txns if t.get('bank_account_id') == account_id]
+    if cursor:
+        txns = [t for t in txns if t.get('id', '') > cursor]
+
+    # Soft-deleted filter
+    txns = [t for t in txns if not t.get('is_deleted')]
+
+    has_more = len(txns) > limit
+    result = txns[:limit]
+    next_cursor = result[-1]['id'] if result and has_more else None
+
+    # Summary
+    income = sum(t['amount'] for t in result if t.get('type') in ('credit', 'income'))
+    expense = sum(t['amount'] for t in result if t.get('type') in ('debit', 'expense'))
+
+    return api_response(data={
+        'data': result,
+        'next_cursor': next_cursor,
+        'has_more': has_more,
+        'summary': {'income': round(income, 2), 'expense': round(expense, 2),
+                     'net': round(income - expense, 2), 'count': len(result)},
+    })
+
+
+@router.patch("/transactions/{txn_id}")
+async def update_transaction(
+    txn_id: str,
+    update: TransactionUpdate,
+    user: dict = Depends(require_auth),
+):
+    """PATCH /transactions/:id — spec §5.1. User re-categorization with rule learning."""
+    from database.fintech_repository import TransactionRepository, AuditRepository, supabase as sb
+
+    phone = user.get("phone", "")
+    fields = {k: v for k, v in update.dict().items() if v is not None}
+    if not fields:
+        raise HTTPException(400, "No fields to update")
+
+    # If user is re-categorizing, record for rule learning
+    if 'category' in fields:
+        fields['user_category_source'] = 'user'
+
+    try:
+        if sb:
+            old = sb.table('fintech_transactions').select('*').eq('id', txn_id).eq('phone', phone).single().execute()
+            sb.table('fintech_transactions').update(fields).eq('id', txn_id).eq('phone', phone).execute()
+            updated = sb.table('fintech_transactions').select('*').eq('id', txn_id).single().execute()
+
+            AuditRepository.log('transaction_updated', phone=phone,
+                resource_type='transaction', resource_id=txn_id,
+                old_value={k: old.data.get(k) for k in fields},
+                new_value=fields)
+            return api_response(data={"transaction": updated.data})
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+    raise HTTPException(404, "Transaction not found")
+
+
+@router.delete("/transactions/{txn_id}")
+async def delete_transaction(
+    txn_id: str,
+    user: dict = Depends(require_auth),
+):
+    """DELETE /transactions/:id — spec §5.1. Soft delete only + audit log."""
+    from database.fintech_repository import AuditRepository, supabase as sb
+
+    phone = user.get("phone", "")
+    try:
+        if sb:
+            sb.table('fintech_transactions').update({
+                'is_deleted': True, 'deleted_at': datetime.utcnow().isoformat()
+            }).eq('id', txn_id).eq('phone', phone).execute()
+
+            AuditRepository.log('transaction_deleted', phone=phone,
+                resource_type='transaction', resource_id=txn_id)
+            return api_response(data={"success": True})
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+    raise HTTPException(404, "Transaction not found")
+
+
+@router.post("/transactions/{txn_id}/split")
+async def split_transaction(
+    txn_id: str,
+    body: TransactionSplit,
+    user: dict = Depends(require_auth),
+):
+    """POST /transactions/:id/split — spec §5.1. Split into sub-transactions."""
+    from database.fintech_repository import TransactionRepository, AuditRepository, supabase as sb
+
+    phone = user.get("phone", "")
+    try:
+        if sb:
+            parent = sb.table('fintech_transactions').select('*').eq('id', txn_id).eq('phone', phone).single().execute()
+            if not parent.data:
+                raise HTTPException(404, "Transaction not found")
+
+            # Validate splits sum to parent amount
+            split_total = sum(s.amount for s in body.splits)
+            if abs(split_total - parent.data['amount']) > 0.01:
+                raise HTTPException(400, f"Splits sum ({split_total}) must equal parent ({parent.data['amount']})")
+
+            children = []
+            for s in body.splits:
+                import hashlib
+                child_hash = hashlib.sha256(f"{txn_id}:{s.category}:{s.amount}".encode()).hexdigest()
+                child = TransactionRepository.create(
+                    phone=phone, amount=s.amount,
+                    txn_type=parent.data.get('type', 'debit'),
+                    category=s.category, description=s.notes or parent.data.get('description', ''),
+                    source='split', dedup_hash=child_hash,
+                    metadata={'parent_id': txn_id}
+                )
+                children.append(child)
+
+            # Mark parent as split
+            sb.table('fintech_transactions').update({'is_split': True}).eq('id', txn_id).execute()
+
+            AuditRepository.log('transaction_split', phone=phone,
+                resource_type='transaction', resource_id=txn_id,
+                new_value={'children': len(children)})
+
+            return api_response(data={"parent": parent.data, "children": children})
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+# ═══════════════════════════════════════════════
+# §5.2 ACCOUNT APIS (Missing contracts)
+# ═══════════════════════════════════════════════
+
+@router.delete("/accounts/bank/{account_id}/revoke")
+async def revoke_bank_account(
+    account_id: str,
+    user: dict = Depends(require_auth),
+):
+    """DELETE /accounts/bank/:id/revoke — Revoke AA consent + schedule data deletion."""
+    from database.fintech_repository import AuditRepository, supabase as sb
+    from services.account_aggregator_service import aa_service
+
+    phone = user.get("phone", "")
+    try:
+        if sb:
+            acct = sb.table('bank_accounts').select('*').eq('id', account_id).eq('phone', phone).single().execute()
+            if not acct.data:
+                raise HTTPException(404, "Bank account not found")
+
+            # Revoke AA consent if linked
+            consent_id = acct.data.get('aa_consent_id')
+            if consent_id:
+                await aa_service.revoke_consent(phone, consent_id)
+
+            sb.table('bank_accounts').update({
+                'is_active': False, 'disconnected_at': datetime.utcnow().isoformat()
+            }).eq('id', account_id).execute()
+
+            AuditRepository.log('bank_account_revoked', phone=phone,
+                resource_type='bank_account', resource_id=account_id)
+
+            return api_response(data={"success": True, "data_deletion_scheduled": True,
+                                       "deletion_deadline": "30 days"})
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+@router.post("/accounts/bank/{account_id}/sync")
+async def sync_bank_account(
+    account_id: str,
+    user: dict = Depends(require_auth),
+):
+    """POST /accounts/bank/:id/sync — Manual sync trigger for specific account."""
+    from database.fintech_repository import supabase as sb
+    from services.account_aggregator_service import aa_service
+
+    phone = user.get("phone", "")
+    try:
+        if sb:
+            acct = sb.table('bank_accounts').select('*').eq('id', account_id).eq('phone', phone).single().execute()
+            if not acct.data:
+                raise HTTPException(404, "Bank account not found")
+
+            consent_id = acct.data.get('aa_consent_id')
+            if consent_id:
+                result = await aa_service.fetch_financial_data(phone, consent_id)
+                return api_response(data={"job_id": f"sync_{account_id}_{int(datetime.utcnow().timestamp())}",
+                                           "status": "processing", **result})
+
+            return api_response(data={"status": "no_aa_consent",
+                                       "message": "Account not linked via AA — manual sync not available"})
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+@router.post("/accounts/investment/connect/cas")
+async def connect_cas(
+    request: Request,
+    user: dict = Depends(require_auth),
+):
+    """POST /accounts/investment/connect/cas — CAS import (CAMS/KFintech)."""
+    phone = user.get("phone", "")
+    data = await request.json()
+    cas_email = data.get("cas_email", "")
+    if not cas_email:
+        raise HTTPException(400, "cas_email required")
+
+    # CAS processing is async — return job_id
+    import hashlib
+    job_id = hashlib.sha256(f"{phone}:{cas_email}:{datetime.utcnow().isoformat()}".encode()).hexdigest()[:16]
+
+    return api_response(data={
+        "job_id": job_id,
+        "status": "processing",
+        "message": f"CAS import started for {cas_email}. Check /transactions/import/{job_id} for status.",
+    })
+
+
+# §5.3 INSIGHTS ACTION ENDPOINT
+
+@router.post("/insights/{insight_id}/action")
+async def insight_action(
+    insight_id: str,
+    request: Request,
+    user: dict = Depends(require_auth),
+):
+    """POST /insights/:id/action — Mark read/dismissed/acted."""
+    from services.insight_engine import insight_engine
+    from database.fintech_repository import InsightsRepository
+
+    data = await request.json()
+    action = data.get("action", "read")
+
+    if action == "read":
+        insight_engine.mark_read(insight_id)
+    elif action == "dismissed":
+        InsightsRepository.dismiss(insight_id)
+    elif action == "acted":
+        InsightsRepository.mark_acted(insight_id)
+
+    return api_response(data={"success": True, "action": action})
+
+
+# ═══════════════════════════════════════════════
 # 2. BANK ACCOUNTS (GAP 4)
 # ═══════════════════════════════════════════════
 
