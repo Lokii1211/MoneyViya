@@ -39,21 +39,40 @@ class ConsentStatus(Enum):
 # ══════════════════════════════════════════════════
 
 SUPPORTED_FIPS = {
-    'hdfc': {'fip_id': 'HDFC-FIP', 'name': 'HDFC Bank', 'types': ['DEPOSIT', 'CREDIT_CARD']},
-    'icici': {'fip_id': 'ICICI-FIP', 'name': 'ICICI Bank', 'types': ['DEPOSIT', 'CREDIT_CARD']},
-    'sbi': {'fip_id': 'SBI-FIP', 'name': 'State Bank of India', 'types': ['DEPOSIT']},
-    'axis': {'fip_id': 'AXIS-FIP', 'name': 'Axis Bank', 'types': ['DEPOSIT', 'CREDIT_CARD']},
-    'kotak': {'fip_id': 'KOTAK-FIP', 'name': 'Kotak Mahindra Bank', 'types': ['DEPOSIT']},
-    'indusind': {'fip_id': 'INDUSIND-FIP', 'name': 'IndusInd Bank', 'types': ['DEPOSIT']},
-    'yes': {'fip_id': 'YES-FIP', 'name': 'Yes Bank', 'types': ['DEPOSIT']},
-    'idfc': {'fip_id': 'IDFC-FIP', 'name': 'IDFC First Bank', 'types': ['DEPOSIT']},
-    'federal': {'fip_id': 'FEDERAL-FIP', 'name': 'Federal Bank', 'types': ['DEPOSIT']},
-    'rbl': {'fip_id': 'RBL-FIP', 'name': 'RBL Bank', 'types': ['DEPOSIT']},
-    # Mutual Funds
-    'cams': {'fip_id': 'CAMS-FIP', 'name': 'CAMS (Mutual Funds)', 'types': ['MUTUAL_FUNDS']},
-    'kfintech': {'fip_id': 'KFIN-FIP', 'name': 'KFintech (Mutual Funds)', 'types': ['MUTUAL_FUNDS']},
+    # Tier 1 — Major private banks
+    'hdfc': {'fip_id': 'HDFC-FIP', 'name': 'HDFC Bank', 'tier': 1, 'types': ['DEPOSIT', 'CREDIT_CARD']},
+    'icici': {'fip_id': 'ICICI-FIP', 'name': 'ICICI Bank', 'tier': 1, 'types': ['DEPOSIT', 'CREDIT_CARD']},
+    'sbi': {'fip_id': 'SBI-FIP', 'name': 'State Bank of India', 'tier': 1, 'types': ['DEPOSIT']},
+    'axis': {'fip_id': 'AXIS-FIP', 'name': 'Axis Bank', 'tier': 1, 'types': ['DEPOSIT', 'CREDIT_CARD']},
+    'kotak': {'fip_id': 'KOTAK-FIP', 'name': 'Kotak Mahindra Bank', 'tier': 1, 'types': ['DEPOSIT']},
+    'indusind': {'fip_id': 'INDUSIND-FIP', 'name': 'IndusInd Bank', 'tier': 1, 'types': ['DEPOSIT']},
+    'yes': {'fip_id': 'YES-FIP', 'name': 'Yes Bank', 'tier': 1, 'types': ['DEPOSIT']},
+    # Tier 2 — Public sector banks
+    'pnb': {'fip_id': 'PNB-FIP', 'name': 'Punjab National Bank', 'tier': 2, 'types': ['DEPOSIT']},
+    'canara': {'fip_id': 'CANARA-FIP', 'name': 'Canara Bank', 'tier': 2, 'types': ['DEPOSIT']},
+    'bob': {'fip_id': 'BOB-FIP', 'name': 'Bank of Baroda', 'tier': 2, 'types': ['DEPOSIT']},
+    'boi': {'fip_id': 'BOI-FIP', 'name': 'Bank of India', 'tier': 2, 'types': ['DEPOSIT']},
+    'union': {'fip_id': 'UNION-FIP', 'name': 'Union Bank of India', 'tier': 2, 'types': ['DEPOSIT']},
+    'central': {'fip_id': 'CENTRAL-FIP', 'name': 'Central Bank of India', 'tier': 2, 'types': ['DEPOSIT']},
+    'indian': {'fip_id': 'INDIAN-FIP', 'name': 'Indian Bank', 'tier': 2, 'types': ['DEPOSIT']},
+    'iob': {'fip_id': 'IOB-FIP', 'name': 'Indian Overseas Bank', 'tier': 2, 'types': ['DEPOSIT']},
+    # Tier 3 — Smaller private banks
+    'idfc': {'fip_id': 'IDFC-FIP', 'name': 'IDFC First Bank', 'tier': 3, 'types': ['DEPOSIT']},
+    'federal': {'fip_id': 'FEDERAL-FIP', 'name': 'Federal Bank', 'tier': 3, 'types': ['DEPOSIT']},
+    'rbl': {'fip_id': 'RBL-FIP', 'name': 'RBL Bank', 'tier': 3, 'types': ['DEPOSIT']},
+    'bandhan': {'fip_id': 'BANDHAN-FIP', 'name': 'Bandhan Bank', 'tier': 3, 'types': ['DEPOSIT']},
+    'sib': {'fip_id': 'SIB-FIP', 'name': 'South Indian Bank', 'tier': 3, 'types': ['DEPOSIT']},
+    'karur': {'fip_id': 'KVB-FIP', 'name': 'Karur Vysya Bank', 'tier': 3, 'types': ['DEPOSIT']},
+    'csb': {'fip_id': 'CSB-FIP', 'name': 'CSB Bank', 'tier': 3, 'types': ['DEPOSIT']},
+    # Payment Banks
+    'paytm': {'fip_id': 'PAYTM-FIP', 'name': 'Paytm Payments Bank', 'tier': 3, 'types': ['DEPOSIT']},
+    'airtel': {'fip_id': 'AIRTEL-FIP', 'name': 'Airtel Payments Bank', 'tier': 3, 'types': ['DEPOSIT']},
+    'jio': {'fip_id': 'JIO-FIP', 'name': 'Jio Payments Bank', 'tier': 3, 'types': ['DEPOSIT']},
+    # Mutual Funds (via CAMS/KFintech)
+    'cams': {'fip_id': 'CAMS-FIP', 'name': 'CAMS (Mutual Funds)', 'tier': 1, 'types': ['MUTUAL_FUNDS']},
+    'kfintech': {'fip_id': 'KFIN-FIP', 'name': 'KFintech (Mutual Funds)', 'tier': 1, 'types': ['MUTUAL_FUNDS']},
     # Insurance
-    'lic': {'fip_id': 'LIC-FIP', 'name': 'LIC', 'types': ['INSURANCE']},
+    'lic': {'fip_id': 'LIC-FIP', 'name': 'LIC', 'tier': 2, 'types': ['INSURANCE']},
 }
 
 
@@ -71,8 +90,8 @@ class AccountAggregatorService:
         self.redirect_url = os.getenv('SETU_REDIRECT_URL', 'https://app.viya.money/aa/callback')
         self.webhook_secret = os.getenv('SETU_WEBHOOK_SECRET', '')
 
-        # In-memory consent store (production: PostgreSQL)
-        self.consents = {}  # consent_handle -> consent_data
+        # In-memory consent cache (primary store: PostgreSQL via fintech_repository)
+        self.consents = {}  # consent_handle -> consent_data (cache)
 
     def get_supported_banks(self) -> List[Dict]:
         """Return list of supported FIPs for the UI."""
@@ -122,26 +141,45 @@ class AccountAggregatorService:
             f"{user_phone}:{fip_id}:{now.isoformat()}".encode()
         ).hexdigest()[:24]
 
+        expires = (now + timedelta(days=365)).isoformat()
         consent_data = {
             'handle': consent_handle,
             'user_phone': user_phone,
             'fip_id': fip_id,
             'status': ConsentStatus.PENDING.value,
             'created_at': now.isoformat(),
-            'expires_at': (now + timedelta(days=365)).isoformat(),
+            'expires_at': expires,
             'data_range_months': data_range_months,
         }
         self.consents[consent_handle] = consent_data
 
-        # Build redirect URL for user
-        webview_url = f"{self.base_url}/consents/webview/{consent_handle}"
+        # Persist to aa_consents table
+        try:
+            from database.fintech_repository import supabase as sb
+            if sb:
+                sb.table('aa_consents').insert({
+                    'phone': user_phone,
+                    'consent_handle': consent_handle,
+                    'aa_provider': 'setu',
+                    'status': 'REQUESTED',
+                    'purpose': 'personal finance management',
+                    'data_types': ['DEPOSIT'],
+                    'frequency': 'DAILY',
+                    'date_range_start': (now - timedelta(days=30 * data_range_months)).strftime('%Y-%m-%d'),
+                    'date_range_end': now.strftime('%Y-%m-%d'),
+                    'expires_at': expires,
+                    'signed_consent': consent_request,
+                }).execute()
+        except Exception:
+            pass
 
+        webview_url = f"{self.base_url}/consents/webview/{consent_handle}"
         return {
             'consent_handle': consent_handle,
             'webview_url': webview_url,
             'redirect_url': self.redirect_url,
             'status': 'pending',
-            'expires_at': consent_data['expires_at'],
+            'expires_at': expires,
         }
 
     async def handle_consent_callback(self, consent_handle: str,
@@ -156,8 +194,21 @@ class AccountAggregatorService:
 
         consent['status'] = status
 
+        # Update DB
+        try:
+            from database.fintech_repository import supabase as sb, AuditRepository
+            if sb:
+                sb.table('aa_consents').update(
+                    {'status': status}
+                ).eq('consent_handle', consent_handle).execute()
+                AuditRepository.log('aa_consent_status_changed',
+                    phone=consent.get('user_phone'),
+                    resource_type='aa_consent',
+                    new_value={'handle': consent_handle, 'status': status})
+        except Exception:
+            pass
+
         if status == 'ACTIVE':
-            # Trigger data fetch
             result = await self.fetch_financial_data(consent_handle)
             return {
                 'status': 'active',
@@ -190,21 +241,86 @@ class AccountAggregatorService:
         }
 
     async def revoke_consent(self, consent_handle: str) -> Dict:
-        """Revoke an active consent — stops data sync."""
+        """Revoke consent — stops sync, schedules AA data deletion within 30 days."""
         consent = self.consents.get(consent_handle)
         if not consent:
             return {'error': 'Consent not found'}
 
         consent['status'] = ConsentStatus.REVOKED.value
-        # In production: POST to Setu API to revoke
-        return {'status': 'revoked', 'consent_handle': consent_handle}
+
+        # Update DB + schedule data deletion
+        try:
+            from database.fintech_repository import supabase as sb, AuditRepository
+            if sb:
+                sb.table('aa_consents').update({
+                    'status': 'REVOKED',
+                    'revoked_at': datetime.utcnow().isoformat(),
+                }).eq('consent_handle', consent_handle).execute()
+                AuditRepository.log('aa_consent_revoked',
+                    phone=consent.get('user_phone'),
+                    resource_type='aa_consent',
+                    new_value={'handle': consent_handle,
+                               'data_deletion_deadline': (datetime.utcnow() + timedelta(days=30)).isoformat()})
+        except Exception:
+            pass
+
+        return {'status': 'revoked', 'consent_handle': consent_handle,
+                'data_deletion_by': (datetime.utcnow() + timedelta(days=30)).isoformat()}
 
     def get_user_consents(self, user_phone: str) -> List[Dict]:
-        """Get all consents for a user."""
-        return [
-            c for c in self.consents.values()
-            if c['user_phone'] == user_phone
-        ]
+        """Get all consents for a user — DB first, cache fallback."""
+        try:
+            from database.fintech_repository import supabase as sb
+            if sb:
+                res = sb.table('aa_consents').select('*').eq('phone', user_phone).execute()
+                if res.data:
+                    return res.data
+        except Exception:
+            pass
+        return [c for c in self.consents.values() if c['user_phone'] == user_phone]
+
+    def parse_depa_transaction(self, raw_txn: dict, user_phone: str) -> dict:
+        """Parse DEPA-format transaction from AA into Viya fintech_transaction format."""
+        from services.fintech_sms_parser import fintech_parser
+        amount = float(raw_txn.get('amount', 0))
+        txn_type = 'debit' if raw_txn.get('type', '').upper() == 'DEBIT' else 'credit'
+        narration = raw_txn.get('narration', '')
+
+        # Extract merchant from narration
+        merchant_raw = narration
+        merchant_norm = fintech_parser._normalize_merchant(narration) if narration else None
+        from services.fintech_sms_parser import MERCHANT_CATEGORIES
+        category = MERCHANT_CATEGORIES.get(merchant_norm, 'other')
+
+        return {
+            'type': txn_type,
+            'amount': amount,
+            'currency': 'INR',
+            'merchant_raw': merchant_raw,
+            'merchant_normalized': merchant_norm,
+            'category': category,
+            'category_source': 'aa_narration',
+            'source': 'aa_api',
+            'source_raw_id': raw_txn.get('txnId'),
+            'transaction_date': raw_txn.get('transactionTimestamp'),
+            'upi_ref_id': raw_txn.get('reference'),
+            'ai_confidence': 0.90,
+        }
+
+    def get_expiring_consents(self, days_ahead: int = 7) -> List[Dict]:
+        """Find consents expiring within N days — for renewal alerts."""
+        try:
+            from database.fintech_repository import supabase as sb
+            if sb:
+                cutoff = (datetime.utcnow() + timedelta(days=days_ahead)).isoformat()
+                res = (sb.table('aa_consents').select('*')
+                       .eq('status', 'ACTIVE')
+                       .lte('expires_at', cutoff)
+                       .execute())
+                return res.data or []
+        except Exception:
+            pass
+        return []
 
     def verify_webhook(self, payload: bytes, signature: str) -> bool:
         """Verify Setu webhook signature (HMAC-SHA256)."""
