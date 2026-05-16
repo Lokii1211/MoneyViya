@@ -97,15 +97,22 @@ class BrokerageService:
         """Return supported brokers + connection methods."""
         return [
             {'broker': 'zerodha', 'name': 'Zerodha (Kite)', 'method': 'oauth',
-             'logo': '🟢', 'supported_types': ['equity', 'mutual_fund', 'etf']},
+             'logo': '🟢', 'supported_types': ['equity', 'mutual_fund', 'etf'],
+             'cost': '₹2,000/month API', 'rate_limit': '3 req/sec, 10K/day'},
             {'broker': 'groww', 'name': 'Groww', 'method': 'oauth',
              'logo': '🟡', 'supported_types': ['equity', 'mutual_fund']},
-            {'broker': 'kuvera', 'name': 'Kuvera', 'method': 'cas',
+            {'broker': 'kuvera', 'name': 'Kuvera', 'method': 'api_key',
              'logo': '🔵', 'supported_types': ['mutual_fund']},
             {'broker': 'upstox', 'name': 'Upstox', 'method': 'oauth',
              'logo': '🟠', 'supported_types': ['equity', 'etf']},
-            {'broker': 'manual', 'name': 'Manual (CAS Upload)', 'method': 'csv',
-             'logo': '📄', 'supported_types': ['mutual_fund', 'equity']},
+            {'broker': 'paytm_money', 'name': 'Paytm Money', 'method': 'partner_api',
+             'logo': '🔵', 'supported_types': ['mutual_fund', 'equity', 'nps']},
+            {'broker': 'cas', 'name': 'CAS Import (CAMS/KFintech)', 'method': 'upload',
+             'logo': '📄', 'supported_types': ['mutual_fund'],
+             'note': 'Universal — covers ALL MF folios across ALL AMCs'},
+            {'broker': 'cdsl', 'name': 'CDSL Demat', 'method': 'pan_otp',
+             'logo': '🏦', 'supported_types': ['equity', 'etf', 'bond'],
+             'note': 'All demat holdings via PAN + OTP'},
         ]
 
     async def initiate_connection(self, user_phone: str, broker: str) -> Dict:
@@ -125,11 +132,16 @@ class BrokerageService:
         elif broker == 'upstox':
             return {'auth_url': 'https://api.upstox.com/v2/login/authorization', 'broker': broker, 'method': 'oauth'}
 
-        elif broker in ('kuvera', 'manual'):
+        elif broker in ('kuvera', 'cas', 'cdsl', 'manual'):
             return {
-                'broker': broker, 'method': 'cas',
-                'instructions': 'Upload your CAS statement (PDF/CSV) from CAMS or KFintech',
+                'broker': broker, 'method': 'upload' if broker in ('cas','manual') else 'api_key',
+                'instructions': 'Upload your CAS statement (PDF/CSV) from CAMS or KFintech'
+                                if broker in ('cas','manual')
+                                else f'Enter your {broker.upper()} credentials',
             }
+        elif broker == 'paytm_money':
+            return {'auth_url': 'https://www.paytmmoney.com/oauth/authorize',
+                    'broker': broker, 'method': 'partner_api'}
 
         return {'error': f'Unsupported broker: {broker}'}
 
@@ -160,14 +172,26 @@ class BrokerageService:
             self.connections[user_phone] = []
         self.connections[user_phone].append(connection)
 
-        # Trigger sync
-        await self.sync_portfolio(user_phone, broker)
+        # Persist to investment_accounts table
+        try:
+            from database.fintech_repository import supabase as sb, AuditRepository
+            if sb:
+                sb.table('investment_accounts').insert({
+                    'phone': user_phone,
+                    'broker': broker,
+                    'display_name': f'{broker.title()} Account',
+                    'connection_type': 'api',
+                    'is_active': True,
+                }).execute()
+                AuditRepository.log('broker_connected', phone=user_phone,
+                    resource_type='investment_account',
+                    new_value={'broker': broker})
+        except Exception:
+            pass
 
-        return {
-            'status': 'connected',
-            'broker': broker,
-            'message': f'{broker.title()} connected successfully',
-        }
+        await self.sync_portfolio(user_phone, broker)
+        return {'status': 'connected', 'broker': broker,
+                'message': f'{broker.title()} connected successfully'}
 
     async def sync_portfolio(self, user_phone: str, broker: str = None) -> Dict:
         """
@@ -199,25 +223,67 @@ class BrokerageService:
         return {'status': 'synced', 'holdings': 0, 'broker': broker or 'all'}
 
     def get_portfolio(self, user_phone: str) -> Dict:
-        """Get cached portfolio for user."""
+        """Get portfolio — DB first, cache fallback."""
+        try:
+            from database.fintech_repository import HoldingsRepository
+            holdings = HoldingsRepository.list_by_phone(user_phone)
+            if holdings:
+                total_invested = sum(h.get('total_invested', 0) or 0 for h in holdings)
+                current_value = sum(h.get('current_value', 0) or 0 for h in holdings)
+                return {
+                    'holdings': holdings,
+                    'summary': {'total_invested': round(total_invested, 2),
+                                'current_value': round(current_value, 2),
+                                'total_pnl': round(current_value - total_invested, 2)},
+                    'source': 'db',
+                }
+        except Exception:
+            pass
         return self.portfolios.get(user_phone, {
-            'holdings': [],
-            'summary': {'total_invested': 0, 'current_value': 0, 'total_pnl': 0},
-            'asset_allocation': {},
+            'holdings': [], 'summary': {'total_invested': 0, 'current_value': 0, 'total_pnl': 0},
         })
 
     def get_connections(self, user_phone: str) -> List[Dict]:
-        """Get broker connections for user."""
+        """Get broker connections — DB first."""
+        try:
+            from database.fintech_repository import supabase as sb
+            if sb:
+                res = (sb.table('investment_accounts').select('*')
+                       .eq('phone', user_phone).eq('is_active', True).execute())
+                if res.data:
+                    return res.data
+        except Exception:
+            pass
         return self.connections.get(user_phone, [])
 
     async def disconnect_broker(self, user_phone: str, broker: str) -> Dict:
-        """Disconnect a broker — revokes tokens, stops sync."""
+        """Disconnect broker — revokes tokens, stops sync, updates DB."""
         if user_phone in self.connections:
             self.connections[user_phone] = [
-                c for c in self.connections[user_phone]
-                if c['broker'] != broker
+                c for c in self.connections[user_phone] if c['broker'] != broker
             ]
+        try:
+            from database.fintech_repository import supabase as sb, AuditRepository
+            if sb:
+                sb.table('investment_accounts').update({'is_active': False}).eq(
+                    'phone', user_phone).eq('broker', broker).execute()
+                AuditRepository.log('broker_disconnected', phone=user_phone,
+                    resource_type='investment_account', new_value={'broker': broker})
+        except Exception:
+            pass
         return {'status': 'disconnected', 'broker': broker}
+
+    @staticmethod
+    def is_market_open() -> bool:
+        """Check if Indian stock market is currently open (9:15 AM - 3:30 PM IST)."""
+        from datetime import timezone
+        ist = timezone(timedelta(hours=5, minutes=30))
+        now_ist = datetime.now(ist)
+        if now_ist.weekday() >= 5:  # Sat/Sun
+            return False
+        market_open = now_ist.replace(hour=9, minute=15, second=0)
+        market_close = now_ist.replace(hour=15, minute=30, second=0)
+        return market_open <= now_ist <= market_close
 
 
 # ══════════════════════════════════════════════════
@@ -335,6 +401,56 @@ class PortfolioAnalytics:
             'total_tax_liability': round(
                 stcg_equity * 0.20 + ltcg_equity_taxable * 0.125, 2
             ),
+        }
+
+    def fifo_cost_basis(self, lots: List[Dict], sell_qty: float, sell_price: float) -> Dict:
+        """FIFO cost basis calculation for tax reporting.
+        lots: [{qty, price, date}] sorted oldest first.
+        Returns realized PnL, tax type (STCG/LTCG), tax amount.
+        """
+        remaining = sell_qty
+        total_cost = 0.0
+        stcg_pnl = 0.0
+        ltcg_pnl = 0.0
+        now = datetime.utcnow()
+
+        for lot in sorted(lots, key=lambda x: x.get('date', '')):
+            if remaining <= 0:
+                break
+            lot_qty = min(lot['qty'], remaining)
+            cost = lot_qty * lot['price']
+            proceeds = lot_qty * sell_price
+            pnl = proceeds - cost
+            total_cost += cost
+
+            try:
+                buy_date = datetime.fromisoformat(lot['date'].replace('Z', '+00:00'))
+                days_held = (now - buy_date).days
+            except (ValueError, TypeError):
+                days_held = 0
+
+            if days_held > 365:
+                ltcg_pnl += pnl
+            else:
+                stcg_pnl += pnl
+            remaining -= lot_qty
+
+        # FY2024-25 tax rates
+        ltcg_exempt = min(max(ltcg_pnl, 0), 125000)
+        ltcg_taxable = max(0, ltcg_pnl - 125000)
+
+        return {
+            'sell_qty': sell_qty,
+            'sell_price': sell_price,
+            'total_cost_basis': round(total_cost, 2),
+            'total_proceeds': round(sell_qty * sell_price, 2),
+            'stcg_pnl': round(stcg_pnl, 2),
+            'stcg_tax': round(max(stcg_pnl, 0) * 0.20, 2),
+            'ltcg_pnl': round(ltcg_pnl, 2),
+            'ltcg_exempt': round(ltcg_exempt, 2),
+            'ltcg_taxable': round(ltcg_taxable, 2),
+            'ltcg_tax': round(ltcg_taxable * 0.125, 2),
+            'total_tax': round(max(stcg_pnl, 0) * 0.20 + ltcg_taxable * 0.125, 2),
         }
 
 
