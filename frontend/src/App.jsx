@@ -60,6 +60,9 @@ const SubscriptionAudit = lazy(() => import('./pages/SubscriptionAudit'))
 const WeeklyReport = lazy(() => import('./pages/WeeklyReport'))
 const MorningBrief = lazy(() => import('./pages/MorningBrief'))
 
+// Fintech Phase 1
+const CashFlow = lazy(() => import('./pages/CashFlow'))
+
 // Loading fallback with V3 skeleton
 function PageLoader() {
   return (
@@ -107,6 +110,7 @@ function AppContent() {
             <Route path="subscriptions" element={<Subscriptions />} />
             <Route path="splits" element={<Splits />} />
             <Route path="lending" element={<Lending />} />
+            <Route path="cashflow" element={<CashFlow />} />
             {/* Life */}
             <Route path="habits" element={<Habits />} />
             <Route path="health" element={<Health />} />

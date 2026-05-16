@@ -1451,3 +1451,89 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
   from { transform:translateX(-50%) translateY(-100%); }
   to { transform:translateX(-50%) translateY(0); }
 }
+
+/* ═══════════════════════════════════════════════════
+   CASH FLOW DASHBOARD (Fintech Phase 1)
+   ═══════════════════════════════════════════════════ */
+.page-title { font-size:24px; font-weight:900; letter-spacing:-0.5px; }
+.page-subtitle { font-size:13px; color:var(--text3); margin-top:2px; }
+
+/* Period Selector */
+.cf-period-bar { display:flex; gap:6px; margin-bottom:20px; background:var(--surface); border-radius:var(--radius-sm); padding:4px; border:1px solid var(--border); }
+.cf-period-btn {
+  flex:1; padding:9px 6px; border:none; background:none; border-radius:var(--radius-xs);
+  color:var(--text3); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;
+  transition:all 0.25s var(--ease);
+}
+.cf-period-btn.active { background:var(--primary); color:#fff; box-shadow:0 4px 16px var(--primary-glow); }
+
+/* Summary Cards */
+.cf-summary-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+.cf-card {
+  padding:16px; border-radius:var(--radius); border:1px solid var(--border);
+  background:var(--surface); position:relative; overflow:hidden;
+}
+.cf-card::before {
+  content:''; position:absolute; top:-40%; right:-40%; width:100%; height:100%;
+  border-radius:50%; opacity:0.06; pointer-events:none;
+}
+.cf-income::before { background:var(--primary); }
+.cf-expense::before { background:var(--red); }
+.cf-net { grid-column:1/-1; }
+.cf-net::before { background:var(--violet); }
+.cf-card-label { font-size:11px; color:var(--text3); font-weight:700; text-transform:uppercase; letter-spacing:1px; display:block; }
+.cf-card-value { font-family:var(--mono); font-size:22px; font-weight:800; margin-top:6px; display:block; letter-spacing:-0.5px; }
+.cf-net .cf-card-value { font-size:28px; }
+.cf-card-tag { font-size:11px; color:var(--text3); margin-top:4px; display:block; }
+
+/* Savings Rate Ring */
+.cf-ring-section { display:flex; justify-content:center; margin-bottom:24px; }
+.cf-ring-container { width:140px; height:140px; }
+.cf-ring-svg { width:100%; height:100%; }
+
+/* Section Card */
+.section-card {
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  padding:20px; margin-bottom:16px;
+}
+.section-title { font-size:16px; font-weight:800; margin-bottom:14px; letter-spacing:-0.3px; }
+
+/* Category Breakdown */
+.cf-cat-list { display:flex; flex-direction:column; gap:12px; }
+.cf-cat-row { display:flex; align-items:center; gap:12px; }
+.cf-cat-emoji { font-size:22px; flex-shrink:0; }
+.cf-cat-info { flex:1; min-width:0; }
+.cf-cat-name { font-size:13px; font-weight:700; display:block; margin-bottom:4px; }
+.cf-cat-bar-bg { height:6px; background:var(--bg2); border-radius:3px; overflow:hidden; }
+.cf-cat-bar-fill { height:100%; background:linear-gradient(90deg,var(--primary),#34D399); border-radius:3px; transition:width 0.6s var(--ease); min-width:4px; }
+.cf-cat-right { text-align:right; flex-shrink:0; }
+.cf-cat-amount { font-family:var(--mono); font-size:13px; font-weight:700; display:block; }
+.cf-cat-pct { font-size:11px; color:var(--text3); }
+
+/* Auto-Captured Feed */
+.cf-auto-list { display:flex; flex-direction:column; gap:8px; }
+.cf-auto-row { display:flex; align-items:center; gap:12px; padding:10px; background:var(--bg2); border-radius:var(--radius-xs); }
+.cf-auto-badge { font-size:20px; flex-shrink:0; }
+.cf-auto-info { flex:1; min-width:0; }
+.cf-auto-desc { font-size:13px; font-weight:700; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cf-auto-meta { font-size:11px; color:var(--text3); }
+.cf-auto-amt { font-family:var(--mono); font-size:14px; font-weight:700; flex-shrink:0; }
+.cf-auto-amt.income { color:var(--primary); }
+.cf-auto-amt.expense { color:var(--cosmos-400, var(--red)); }
+
+/* Quick Actions */
+.cf-actions { display:flex; gap:8px; margin-top:8px; margin-bottom:24px; }
+.cf-action-btn {
+  flex:1; padding:12px 8px; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius-sm); font-size:12px; font-weight:700; color:var(--text);
+  cursor:pointer; font-family:inherit; transition:all 0.25s var(--ease); text-align:center;
+}
+.cf-action-btn:hover { border-color:var(--primary); background:var(--primary-dim); transform:translateY(-2px); }
+
+/* Shimmer Loading */
+.shimmer-block {
+  background:linear-gradient(90deg, var(--surface2) 25%, var(--surface3) 50%, var(--surface2) 75%);
+  background-size:200% 100%;
+  animation:shimmer 1.5s infinite;
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
