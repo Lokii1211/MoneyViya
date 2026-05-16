@@ -612,3 +612,39 @@ async def household_summary(request: Request, user: dict = Depends(require_auth)
     result = household_manager.get_household_summary(
         data.get("household_id",""), data.get("all_transactions",{}))
     return api_response(data=result)
+
+# -----------------------------------------------
+# 17. EMAIL INTELLIGENCE (Phase 2 - US-602)
+# -----------------------------------------------
+
+@router.post("/email/parse")
+async def parse_email(request: Request, user: dict = Depends(require_auth)):
+    from services.email_whatsapp_service import email_intelligence
+    data = await request.json()
+    result = email_intelligence.parse_email(
+        sender=data.get("sender",""), subject=data.get("subject",""),
+        body=data.get("body",""), received_at=data.get("received_at"))
+    return api_response(data=result)
+
+@router.post("/email/batch")
+async def parse_email_batch(request: Request, user: dict = Depends(require_auth)):
+    from services.email_whatsapp_service import email_intelligence
+    user_id = user.get("user_id", "")
+    data = await request.json()
+    result = email_intelligence.parse_batch(data.get("emails",[]), user_id)
+    logger.info("email_batch_parsed", user_id=user_id, count=result["summary"]["total_emails"])
+    return api_response(data=result["summary"])
+
+# -----------------------------------------------
+# 18. WHATSAPP BOT (Phase 2 - US-610)
+# -----------------------------------------------
+
+@router.post("/whatsapp/webhook")
+async def whatsapp_webhook(request: Request):
+    from services.email_whatsapp_service import whatsapp_bot
+    data = await request.json()
+    phone = data.get("from","")
+    message = data.get("message","")
+    user_data = data.get("user_data",{})
+    result = whatsapp_bot.process_message(phone, message, user_data)
+    return api_response(data=result)
