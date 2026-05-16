@@ -7,7 +7,7 @@ SMS Ingest, Bank Accounts, Portfolio — Closes GAP 1-4
 from fastapi import APIRouter, Request, Header, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 
 from services.saas_middleware import api_response, api_error, logger
@@ -891,3 +891,288 @@ async def track_crypto(request: Request, user: dict = Depends(require_auth)):
 async def exchange_rates():
     from services.phase3_final_services import international_investments
     return api_response(data=international_investments.EXCHANGE_RATES)
+
+
+# ═══════════════════════════════════════════════
+# DASHBOARD 1: CASH FLOW OVERVIEW
+# ═══════════════════════════════════════════════
+
+@router.get("/dashboard/cashflow")
+async def dashboard_cashflow(
+    user: dict = Depends(require_auth),
+    period: str = "month",
+):
+    """Full cash flow dashboard — spec §4.4 Dashboard 1."""
+    from database.fintech_repository import TransactionRepository
+    from collections import defaultdict
+
+    phone = user.get("phone", "")
+    now = datetime.utcnow()
+
+    if period == "month":
+        start = now.replace(day=1, hour=0, minute=0, second=0)
+        prev_start = (start - timedelta(days=1)).replace(day=1)
+        prev_end = start - timedelta(seconds=1)
+    elif period == "week":
+        start = now - timedelta(days=7)
+        prev_start = start - timedelta(days=7)
+        prev_end = start - timedelta(seconds=1)
+    else:
+        start = now.replace(month=1, day=1, hour=0, minute=0, second=0)
+        prev_start = start.replace(year=start.year - 1)
+        prev_end = start - timedelta(seconds=1)
+    end = now
+
+    txns = TransactionRepository.list_by_phone(phone, limit=5000)
+    current_txns = [t for t in txns if t.get('created_at', '') >= start.isoformat()]
+    prev_txns = [t for t in txns
+                 if prev_start.isoformat() <= t.get('created_at', '') <= prev_end.isoformat()]
+
+    total_income = sum(t['amount'] for t in current_txns if t.get('type') in ('credit', 'income'))
+    total_expenses = sum(t['amount'] for t in current_txns if t.get('type') in ('debit', 'expense'))
+    net = total_income - total_expenses
+    savings_rate = round((net / total_income * 100) if total_income > 0 else 0, 1)
+
+    income_cats = defaultdict(lambda: {'amount': 0, 'count': 0})
+    expense_cats = defaultdict(lambda: {'amount': 0, 'count': 0})
+    prev_expense_cats = defaultdict(float)
+    merchant_agg = defaultdict(lambda: {'amount': 0, 'count': 0, 'category': ''})
+
+    for t in current_txns:
+        cat = t.get('category', 'other')
+        amt = t.get('amount', 0)
+        if t.get('type') in ('credit', 'income'):
+            income_cats[cat]['amount'] += amt
+            income_cats[cat]['count'] += 1
+        else:
+            expense_cats[cat]['amount'] += amt
+            expense_cats[cat]['count'] += 1
+            merch = t.get('merchant_normalized') or t.get('description', 'Unknown')
+            if merch:
+                merchant_agg[merch]['amount'] += amt
+                merchant_agg[merch]['count'] += 1
+                merchant_agg[merch]['category'] = cat
+
+    for t in prev_txns:
+        if t.get('type') in ('debit', 'expense'):
+            prev_expense_cats[t.get('category', 'other')] += t.get('amount', 0)
+
+    expense_breakdown = []
+    for cat, data in sorted(expense_cats.items(), key=lambda x: x[1]['amount'], reverse=True):
+        prev = prev_expense_cats.get(cat, 0)
+        vs = round(((data['amount'] - prev) / prev * 100) if prev > 0 else 0, 1)
+        expense_breakdown.append({
+            'category': cat, 'amount': round(data['amount'], 2),
+            'count': data['count'], 'vs_last_month': vs})
+
+    daily = defaultdict(lambda: {'income': 0, 'expense': 0})
+    for t in current_txns:
+        day = t.get('created_at', '')[:10]
+        if t.get('type') in ('credit', 'income'):
+            daily[day]['income'] += t.get('amount', 0)
+        else:
+            daily[day]['expense'] += t.get('amount', 0)
+    daily_cashflow = [{'date': d, **v} for d, v in sorted(daily.items())]
+
+    top_merchants = sorted(
+        [{'merchant': m, **d} for m, d in merchant_agg.items()],
+        key=lambda x: x['amount'], reverse=True)[:10]
+
+    avg_daily = total_expenses / max((end - start).days, 1)
+    unusual = [{'transaction_id': t.get('id', ''),
+                'amount': t.get('amount'),
+                'reason': f"{round(t['amount']/avg_daily, 1)}x higher than daily average"}
+               for t in current_txns
+               if t.get('type') in ('debit', 'expense') and avg_daily > 0
+               and t.get('amount', 0) > avg_daily * 3][:5]
+
+    budget_total = user.get('monthly_income', 0) * 0.7 or 40000
+    budget_pct = round((total_expenses / budget_total * 100) if budget_total > 0 else 0, 1)
+
+    return api_response(data={
+        'period': {'start': start.strftime('%Y-%m-%d'), 'end': end.strftime('%Y-%m-%d')},
+        'summary': {
+            'total_income': round(total_income, 2),
+            'total_expenses': round(total_expenses, 2),
+            'net_cashflow': round(net, 2),
+            'savings_rate': savings_rate,
+        },
+        'income_breakdown': [{'category': c, **d} for c, d in
+                             sorted(income_cats.items(), key=lambda x: x[1]['amount'], reverse=True)],
+        'expense_breakdown': expense_breakdown,
+        'daily_cashflow': daily_cashflow,
+        'top_merchants': top_merchants,
+        'unusual_transactions': unusual,
+        'budget_status': {
+            'total_budget': round(budget_total, 2),
+            'spent': round(total_expenses, 2),
+            'remaining': round(budget_total - total_expenses, 2),
+            'pct_used': budget_pct,
+        },
+    })
+
+
+# ═══════════════════════════════════════════════
+# DASHBOARD 2: PORTFOLIO OVERVIEW
+# ═══════════════════════════════════════════════
+
+@router.get("/dashboard/portfolio")
+async def dashboard_portfolio(user: dict = Depends(require_auth)):
+    """Full portfolio dashboard — spec §4.4 Dashboard 2."""
+    from database.fintech_repository import HoldingsRepository, supabase as sb
+    from services.brokerage_service import portfolio_analytics
+
+    phone = user.get("phone", "")
+    holdings = HoldingsRepository.list_by_phone(phone)
+
+    total_invested = sum(h.get('total_invested', 0) or 0 for h in holdings)
+    current_value = sum(h.get('current_value', 0) or 0 for h in holdings)
+    total_pnl = current_value - total_invested
+    pnl_pct = round((total_pnl / total_invested * 100) if total_invested > 0 else 0, 2)
+
+    cash_bank = 0
+    try:
+        if sb:
+            res = sb.table('bank_accounts').select('balance').eq('phone', phone).execute()
+            cash_bank = sum(r.get('balance', 0) or 0 for r in (res.data or []))
+    except Exception:
+        pass
+
+    net_worth = current_value + cash_bank
+    allocation = portfolio_analytics.calculate_allocation(holdings)
+    tax = portfolio_analytics.tax_implications(holdings)
+
+    holdings_detail = []
+    for h in holdings:
+        inv = h.get('total_invested', 0) or 0
+        val = h.get('current_value', 0) or 0
+        pnl = val - inv
+        holdings_detail.append({
+            'id': h.get('id', ''),
+            'name': h.get('instrument_name', ''),
+            'ticker': h.get('ticker_symbol', ''),
+            'quantity': h.get('quantity', 0),
+            'avg_cost': h.get('average_buy_price', 0),
+            'current_price': h.get('current_price', 0),
+            'current_value': round(val, 2),
+            'pnl': round(pnl, 2),
+            'pnl_pct': round((pnl / inv * 100) if inv > 0 else 0, 2),
+            'asset_class': h.get('asset_class', 'equity'),
+        })
+
+    return api_response(data={
+        'net_worth': {
+            'total': round(net_worth, 2),
+            'breakdown': {
+                'stocks': round(sum(h['current_value'] for h in holdings_detail
+                                    if h['asset_class'] == 'equity'), 2),
+                'mutual_funds': round(sum(h['current_value'] for h in holdings_detail
+                                          if h['asset_class'] == 'mutual_fund'), 2),
+                'cash_bank': round(cash_bank, 2),
+            },
+        },
+        'portfolio_returns': {
+            'total_invested': round(total_invested, 2),
+            'current_value': round(current_value, 2),
+            'absolute_return': round(total_pnl, 2),
+            'absolute_return_pct': pnl_pct,
+            'stcg_unrealized': tax.get('stcg_equity', 0),
+            'ltcg_unrealized': tax.get('ltcg_equity', 0),
+        },
+        'holdings': sorted(holdings_detail, key=lambda x: x['current_value'], reverse=True),
+        'asset_allocation': allocation,
+    })
+
+
+# ═══════════════════════════════════════════════
+# DASHBOARD 3: TAX SUMMARY
+# ═══════════════════════════════════════════════
+
+@router.get("/dashboard/tax")
+async def dashboard_tax(
+    user: dict = Depends(require_auth),
+    fy: str = "2024-25",
+):
+    """Tax dashboard — spec §4.4 Dashboard 3. FY2024-25 rates."""
+    from database.fintech_repository import TransactionRepository, HoldingsRepository
+    from services.brokerage_service import portfolio_analytics
+
+    phone = user.get("phone", "")
+    fy_parts = fy.split('-')
+    fy_start = f"{fy_parts[0]}-04-01"
+    fy_end = f"20{fy_parts[1]}-03-31" if len(fy_parts[1]) == 2 else f"{fy_parts[1]}-03-31"
+
+    txns = TransactionRepository.list_by_phone(phone, limit=10000)
+    fy_txns = [t for t in txns if fy_start <= t.get('created_at', '')[:10] <= fy_end]
+
+    salary = sum(t['amount'] for t in fy_txns
+                 if t.get('category') == 'income_salary' and t.get('type') in ('credit','income'))
+    freelance = sum(t['amount'] for t in fy_txns
+                    if t.get('category') == 'income_freelance' and t.get('type') in ('credit','income'))
+    interest = sum(t['amount'] for t in fy_txns
+                   if t.get('category') == 'income_interest' and t.get('type') in ('credit','income'))
+    dividend = sum(t['amount'] for t in fy_txns
+                   if t.get('category') == 'income_dividend' and t.get('type') in ('credit','income'))
+
+    holdings = HoldingsRepository.list_by_phone(phone)
+    tax = portfolio_analytics.tax_implications(holdings)
+
+    elss = sum(t['amount'] for t in fy_txns
+               if 'elss' in (t.get('description', '') + t.get('category', '')).lower()
+               and t.get('type') in ('debit', 'expense'))
+    ppf = sum(t['amount'] for t in fy_txns
+              if 'ppf' in (t.get('description', '') + t.get('category', '')).lower()
+              and t.get('type') in ('debit', 'expense'))
+    lic = sum(t['amount'] for t in fy_txns
+              if 'lic' in (t.get('description', '') + t.get('category', '')).lower()
+              and t.get('type') in ('debit', 'expense'))
+    sec_80c_used = min(elss + ppf + lic, 150000)
+    sec_80d = min(sum(t['amount'] for t in fy_txns
+                      if t.get('category') == 'insurance'
+                      and t.get('type') in ('debit', 'expense')), 25000)
+
+    gross = salary + freelance + interest + dividend
+    taxable = max(0, gross - sec_80c_used - sec_80d - 50000)
+    cap_gains_tax = tax.get('total_tax_liability', 0)
+
+    if taxable <= 250000:
+        income_tax = 0
+    elif taxable <= 500000:
+        income_tax = (taxable - 250000) * 0.05
+    elif taxable <= 1000000:
+        income_tax = 12500 + (taxable - 500000) * 0.20
+    else:
+        income_tax = 112500 + (taxable - 1000000) * 0.30
+
+    estimated_tax = round(income_tax + cap_gains_tax, 2)
+    remaining_80c = 150000 - sec_80c_used
+
+    insights = []
+    if remaining_80c > 0:
+        insights.append(f"Invest ₹{remaining_80c:,.0f} more in ELSS/PPF by March 31 to max 80C savings")
+    if tax.get('ltcg_equity', 0) <= 125000:
+        insights.append("Your LTCG this year is under ₹1.25L exemption limit — no tax")
+    if tax.get('stcg_equity', 0) > 0:
+        insights.append(f"STCG of ₹{tax['stcg_equity']:,.0f} will be taxed at 20%")
+
+    return api_response(data={
+        'financial_year': fy,
+        'income': {'salary': round(salary, 2), 'freelance': round(freelance, 2),
+                   'interest': round(interest, 2), 'dividend': round(dividend, 2)},
+        'capital_gains': {
+            'stcg_equity': tax.get('stcg_equity', 0),
+            'ltcg_equity': tax.get('ltcg_equity', 0),
+            'stcg_equity_tax': tax.get('stcg_equity_tax', 0),
+            'ltcg_equity_tax': tax.get('ltcg_equity_tax', 0),
+        },
+        'deductions': {
+            'section_80c': {'utilized': round(sec_80c_used, 2), 'available': 150000,
+                            'remaining': round(remaining_80c, 2),
+                            'components': {'elss_sip': round(elss, 2), 'ppf': round(ppf, 2),
+                                           'life_insurance': round(lic, 2)}},
+            'section_80d': round(sec_80d, 2),
+        },
+        'estimated_tax': estimated_tax,
+        'insights': insights,
+    })
+
