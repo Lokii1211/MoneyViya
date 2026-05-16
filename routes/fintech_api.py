@@ -648,3 +648,61 @@ async def whatsapp_webhook(request: Request):
     user_data = data.get("user_data",{})
     result = whatsapp_bot.process_message(phone, message, user_data)
     return api_response(data=result)
+
+# -----------------------------------------------
+# 19. TAX OPTIMIZER (Phase 3 - US-701)
+# -----------------------------------------------
+
+@router.post("/tax/optimize-80c")
+async def optimize_80c(request: Request, user: dict = Depends(require_auth)):
+    from services.phase3_scale_services import tax_optimizer
+    data = await request.json()
+    result = tax_optimizer.optimize_80c(data.get("current_investments",{}), data.get("salary",0))
+    return api_response(data=result)
+
+@router.post("/tax/advance-plan")
+async def advance_tax_plan(request: Request, user: dict = Depends(require_auth)):
+    from services.phase3_scale_services import tax_optimizer
+    data = await request.json()
+    result = tax_optimizer.plan_advance_tax(
+        data.get("estimated_income",0), data.get("tds_deducted",0), data.get("already_paid",[]))
+    return api_response(data=result)
+
+# -----------------------------------------------
+# 20. AI FINANCIAL ADVISOR (Phase 3 - US-702)
+# -----------------------------------------------
+
+@router.post("/advisor/plan")
+async def financial_plan(request: Request, user: dict = Depends(require_auth)):
+    from services.phase3_scale_services import financial_advisor
+    data = await request.json()
+    result = financial_advisor.generate_plan(data)
+    logger.info("advisor_plan_generated", user_id=user.get("user_id",""))
+    return api_response(data=result)
+
+# -----------------------------------------------
+# 21. INSURANCE TRACKER (Phase 3 - US-706)
+# -----------------------------------------------
+
+@router.post("/insurance/add")
+async def add_insurance(request: Request, user: dict = Depends(require_auth)):
+    from services.phase3_scale_services import insurance_tracker
+    data = await request.json()
+    result = insurance_tracker.add_policy(user.get("user_id",""), data)
+    return api_response(data=result)
+
+@router.get("/insurance")
+async def get_insurance(user: dict = Depends(require_auth)):
+    from services.phase3_scale_services import insurance_tracker
+    return api_response(data=insurance_tracker.get_portfolio(user.get("user_id","")))
+
+# -----------------------------------------------
+# 22. CREDIT SCORE (Phase 3 - US-707)
+# -----------------------------------------------
+
+@router.post("/credit-score")
+async def credit_score_report(request: Request, user: dict = Depends(require_auth)):
+    from services.phase3_scale_services import credit_score_service
+    data = await request.json()
+    result = credit_score_service.get_score_report(data.get("score",0), data.get("history",[]))
+    return api_response(data=result)
