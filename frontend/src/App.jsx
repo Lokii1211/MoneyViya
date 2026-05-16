@@ -65,6 +65,7 @@ const CashFlow = lazy(() => import('./pages/CashFlow'))
 
 // Fintech Phase 2+3
 const PortfolioDashboard = lazy(() => import('./pages/PortfolioDashboard'))
+const AdvisorDashboard = lazy(() => import('./pages/AdvisorDashboard'))
 
 // Loading fallback with V3 skeleton
 function PageLoader() {
@@ -115,6 +116,7 @@ function AppContent() {
             <Route path="lending" element={<Lending />} />
             <Route path="cashflow" element={<CashFlow />} />
             <Route path="portfolio-dashboard" element={<PortfolioDashboard />} />
+            <Route path="advisor" element={<AdvisorDashboard />} />
             {/* Life */}
             <Route path="habits" element={<Habits />} />
             <Route path="health" element={<Health />} />
