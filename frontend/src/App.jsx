@@ -63,6 +63,9 @@ const MorningBrief = lazy(() => import('./pages/MorningBrief'))
 // Fintech Phase 1
 const CashFlow = lazy(() => import('./pages/CashFlow'))
 
+// Fintech Phase 2+3
+const PortfolioDashboard = lazy(() => import('./pages/PortfolioDashboard'))
+
 // Loading fallback with V3 skeleton
 function PageLoader() {
   return (
@@ -111,6 +114,7 @@ function AppContent() {
             <Route path="splits" element={<Splits />} />
             <Route path="lending" element={<Lending />} />
             <Route path="cashflow" element={<CashFlow />} />
+            <Route path="portfolio-dashboard" element={<PortfolioDashboard />} />
             {/* Life */}
             <Route path="habits" element={<Habits />} />
             <Route path="health" element={<Health />} />
