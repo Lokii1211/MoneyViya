@@ -330,3 +330,63 @@ async def detect_recurring(user: dict = Depends(require_auth)):
         },
     })
 
+
+# -----------------------------------------------
+# 7. ACCOUNT AGGREGATOR (Setu/Finvu)
+# -----------------------------------------------
+
+@router.get("/aa/banks")
+async def list_supported_banks():
+    from services.account_aggregator_service import aa_service
+    return api_response(data=aa_service.get_supported_banks())
+
+@router.post("/aa/consent")
+async def create_aa_consent(request: Request, user: dict = Depends(require_auth)):
+    from services.account_aggregator_service import aa_service
+    user_id = user.get("user_id", "")
+    data = await request.json()
+    fip_id = data.get("fip_id", "")
+    months = data.get("data_range_months", 6)
+    if not fip_id:
+        raise HTTPException(400, detail=api_error("MISSING_DATA", "fip_id required"))
+    result = await aa_service.create_consent(user_id, fip_id, months)
+    logger.info("aa_consent_created", user_id=user_id, fip_id=fip_id)
+    return api_response(data=result)
+
+@router.post("/aa/callback")
+async def aa_consent_callback(request: Request):
+    from services.account_aggregator_service import aa_service
+    data = await request.json()
+    result = await aa_service.handle_consent_callback(data.get("consent_handle",""), data.get("status",""))
+    return api_response(data=result)
+
+@router.get("/aa/consents")
+async def list_user_consents(user: dict = Depends(require_auth)):
+    from services.account_aggregator_service import aa_service
+    return api_response(data=aa_service.get_user_consents(user.get("user_id","")))
+
+@router.post("/aa/revoke")
+async def revoke_consent(request: Request, user: dict = Depends(require_auth)):
+    from services.account_aggregator_service import aa_service
+    data = await request.json()
+    result = await aa_service.revoke_consent(data.get("consent_handle",""))
+    return api_response(data=result)
+
+# -----------------------------------------------
+# 8. TRANSACTION RECONCILIATION
+# -----------------------------------------------
+
+@router.post("/reconcile")
+async def reconcile_transactions(request: Request, user: dict = Depends(require_auth)):
+    from services.account_aggregator_service import reconciliation_service
+    user_id = user.get("user_id", "")
+    data = await request.json()
+    incoming = data.get("incoming", [])
+    try:
+        from routes.dashboard_api import _get_user_transactions
+        existing = _get_user_transactions(user_id)
+    except Exception:
+        existing = []
+    result = reconciliation_service.reconcile(existing, incoming)
+    logger.info("reconciliation_done", user_id=user_id, **result["stats"])
+    return api_response(data=result["stats"])
