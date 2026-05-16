@@ -648,8 +648,9 @@ DECLARE
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP
+    EXECUTE format('DROP POLICY IF EXISTS "anon_all_%s" ON %I', t, t);
     EXECUTE format(
-      'CREATE POLICY IF NOT EXISTS "anon_all_%s" ON %I FOR ALL USING (true) WITH CHECK (true)',
+      'CREATE POLICY "anon_all_%s" ON %I FOR ALL USING (true) WITH CHECK (true)',
       t, t
     );
   END LOOP;
