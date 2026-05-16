@@ -767,3 +767,67 @@ async def org_add_member(request: Request, user: dict = Depends(require_auth)):
 async def list_orgs(user: dict = Depends(require_auth)):
     from services.enterprise_api_service import enterprise_manager
     return api_response(data=enterprise_manager.list_user_orgs(user.get("user_id","")))
+
+# -----------------------------------------------
+# 26. FAMILY DASHBOARD (Phase 3 - US-703)
+# -----------------------------------------------
+
+@router.post("/family/dashboard")
+async def create_family_dashboard(request: Request, user: dict = Depends(require_auth)):
+    from services.phase3_final_services import family_dashboard
+    data = await request.json()
+    result = family_dashboard.create_dashboard(
+        data.get("family_id",""), data.get("name",""), data.get("members",[]), data.get("privacy"))
+    return api_response(data=result)
+
+@router.post("/family/dashboard/data")
+async def get_family_data(request: Request, user: dict = Depends(require_auth)):
+    from services.phase3_final_services import family_dashboard
+    data = await request.json()
+    result = family_dashboard.get_dashboard_data(data.get("dashboard_id",""), data.get("member_data",{}))
+    return api_response(data=result)
+
+# -----------------------------------------------
+# 27. EPF/NPS RETIREMENT (Phase 3 - US-704)
+# -----------------------------------------------
+
+@router.post("/retirement/epf")
+async def epf_projection(request: Request, user: dict = Depends(require_auth)):
+    from services.phase3_final_services import retirement_tracker
+    data = await request.json()
+    result = retirement_tracker.calculate_epf_corpus(
+        data.get("basic_salary",0), data.get("current_balance",0),
+        data.get("current_age",30), data.get("retirement_age",60))
+    return api_response(data=result)
+
+@router.post("/retirement/nps")
+async def nps_projection(request: Request, user: dict = Depends(require_auth)):
+    from services.phase3_final_services import retirement_tracker
+    data = await request.json()
+    result = retirement_tracker.calculate_nps_corpus(
+        data.get("monthly_sip",0), data.get("current_balance",0),
+        data.get("current_age",30), data.get("risk","moderate"), data.get("retirement_age",60))
+    return api_response(data=result)
+
+# -----------------------------------------------
+# 28. INTERNATIONAL INVESTMENTS (Phase 3 - US-708)
+# -----------------------------------------------
+
+@router.post("/international/us-stocks")
+async def track_us_stocks(request: Request, user: dict = Depends(require_auth)):
+    from services.phase3_final_services import international_investments
+    data = await request.json()
+    result = international_investments.track_us_holdings(data.get("holdings",[]))
+    return api_response(data=result)
+
+@router.post("/international/crypto")
+async def track_crypto(request: Request, user: dict = Depends(require_auth)):
+    from services.phase3_final_services import international_investments
+    data = await request.json()
+    result = international_investments.track_crypto(data.get("holdings",[]))
+    return api_response(data=result)
+
+@router.get("/international/rates")
+async def exchange_rates():
+    from services.phase3_final_services import international_investments
+    return api_response(data=international_investments.EXCHANGE_RATES)
