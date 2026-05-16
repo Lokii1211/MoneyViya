@@ -561,3 +561,54 @@ async def budget_report(request: Request, user: dict = Depends(require_auth)):
             pass
     report = tax_report_service.generate_budget_report(transactions, budgets, month)
     return api_response(data=report)
+
+# -----------------------------------------------
+# 15. INVESTMENT ANALYTICS (Phase 2 - US-607)
+# -----------------------------------------------
+
+@router.post("/portfolio/analysis")
+async def portfolio_analysis(request: Request, user: dict = Depends(require_auth)):
+    from services.investment_analytics import investment_analytics
+    data = await request.json()
+    holdings = data.get("holdings", [])
+    history = data.get("returns_history", [])
+    benchmark = data.get("benchmark", "nifty50")
+    result = investment_analytics.full_analysis(holdings, history, benchmark)
+    return api_response(data=result)
+
+@router.get("/benchmarks")
+async def list_benchmarks():
+    from services.investment_analytics import BENCHMARKS
+    return api_response(data=[
+        {"code": k, "name": v["name"], "return_5y": v["annualized_return_5y"],
+         "return_10y": v["annualized_return_10y"], "volatility": v["volatility_5y"]}
+        for k, v in BENCHMARKS.items()
+    ])
+
+# -----------------------------------------------
+# 16. HOUSEHOLD MANAGEMENT (Phase 2 - US-604)
+# -----------------------------------------------
+
+@router.post("/household/create")
+async def create_household(request: Request, user: dict = Depends(require_auth)):
+    from services.investment_analytics import household_manager
+    data = await request.json()
+    result = household_manager.create_household(user.get("user_id",""), data.get("name","My Family"))
+    return api_response(data=result)
+
+@router.post("/household/add-member")
+async def add_household_member(request: Request, user: dict = Depends(require_auth)):
+    from services.investment_analytics import household_manager
+    data = await request.json()
+    result = household_manager.add_member(
+        data.get("household_id",""), data.get("phone",""),
+        data.get("name",""), data.get("role","member"))
+    return api_response(data=result)
+
+@router.post("/household/summary")
+async def household_summary(request: Request, user: dict = Depends(require_auth)):
+    from services.investment_analytics import household_manager
+    data = await request.json()
+    result = household_manager.get_household_summary(
+        data.get("household_id",""), data.get("all_transactions",{}))
+    return api_response(data=result)
