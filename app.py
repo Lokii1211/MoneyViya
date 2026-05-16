@@ -154,6 +154,14 @@ try:
 except Exception as e:
     print(f"[STARTUP] API v1 not available: {e}")
 
+# Include Fintech API (SMS Ingest, Bank Accounts, Portfolio)
+try:
+    from routes.fintech_api import router as fintech_router
+    app.include_router(fintech_router)
+    print("[STARTUP] Fintech API router included (/api/v1/fintech/*)")
+except Exception as e:
+    print(f"[STARTUP] Fintech API not available: {e}")
+
 
 # Root redirect to new dashboard
 @app.get("/")
