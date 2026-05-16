@@ -578,7 +578,7 @@ class TestDataSecurity:
         from services.data_security import RETENTION_POLICIES
         assert RETENTION_POLICIES["conversations"]["retention_days"] == 90
         assert RETENTION_POLICIES["email_bodies"]["retention_days"] == 0
-        assert RETENTION_POLICIES["audit_logs"]["retention_days"] == 730
+        assert RETENTION_POLICIES["audit_logs"]["retention_days"] == 1825
         assert RETENTION_POLICIES["deleted_accounts"]["retention_days"] == 30
 
     def test_gdpr_data_export(self):

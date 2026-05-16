@@ -42,11 +42,19 @@ class FieldEncryption:
     TIER_1_FIELDS = frozenset([
         "phone_number", "email_address", "bank_account_number",
         "access_token", "refresh_token",
+        # Fintech §6.1 additions
+        "ifsc_code", "upi_id", "pan_number", "aadhaar_number",
+        "zerodha_access_token", "groww_access_token",
+        "upstox_access_token", "kuvera_api_key",
+        "aa_consent_id", "cas_password",
     ])
 
     TIER_2_FIELDS = frozenset([
         "financial_amount", "health_condition", "medication_name",
         "mood_score",
+        # Fintech §6.1 additions
+        "transaction_amount", "account_balance", "credit_limit",
+        "salary_amount", "investment_value", "loan_balance",
     ])
 
     def __init__(self, master_key: str = None):
@@ -176,24 +184,50 @@ RETENTION_POLICIES = {
         "description": "User can delete; default forever",
     },
     "audit_logs": {
-        "retention_days": 730,  # 2 years
-        "action": "auto_delete",
-        "description": "2 years (compliance requirement)",
+        "retention_days": 1825,  # 5 years (fintech §6.1 compliance)
+        "action": "auto_archive_s3",
+        "description": "5 years (fintech compliance), then S3 archive",
     },
     "deleted_accounts": {
         "retention_days": 30,
         "action": "permanent_delete",
-        "description": "30 days after request → permanent deletion",
+        "description": "30 days after request → permanent deletion (PDPB)",
     },
     "sessions": {
-        "retention_days": 30,
+        "retention_days": 7,
         "action": "auto_delete",
-        "description": "Inactive sessions cleaned after 30 days",
+        "description": "Session data cleaned after 7 days",
     },
     "notifications": {
         "retention_days": 90,
         "action": "auto_delete",
         "description": "Notification history kept 90 days",
+    },
+    # Fintech §6.1 Data Retention
+    "fintech_transactions": {
+        "retention_days": 2555,  # 7 years (IT Act compliance)
+        "action": "archive_then_delete",
+        "description": "7 years (Income Tax Act), then archive to cold storage",
+    },
+    "aa_consent_data": {
+        "retention_days": 180,  # 6 months post-revocation
+        "action": "auto_delete_post_revocation",
+        "description": "6 months after AA consent revocation",
+    },
+    "brokerage_tokens": {
+        "retention_days": 1,  # Daily rotation for Zerodha
+        "action": "auto_rotate",
+        "description": "Zerodha tokens expire daily; others on disconnect",
+    },
+    "fintech_holdings": {
+        "retention_days": 2555,  # 7 years (IT Act — capital gains)
+        "action": "archive_then_delete",
+        "description": "7 years for capital gains tax audit trail",
+    },
+    "fintech_insights": {
+        "retention_days": 365,
+        "action": "auto_delete",
+        "description": "AI insights archived after 1 year",
     },
 }
 
@@ -264,6 +298,11 @@ class GDPRCompliance:
                 "medicines", "conversations", "emails",
                 "oauth_tokens", "sessions", "notifications",
                 "viya_memory", "audit_logs",
+                # Fintech tables
+                "fintech_transactions", "fintech_holdings",
+                "bank_accounts", "fintech_insights",
+                "portfolio_transactions", "sip_records",
+                "aa_consents", "brokerage_connections",
             ],
             "requested_at": datetime.utcnow().isoformat() + "Z",
             "scheduled_deletion": (
