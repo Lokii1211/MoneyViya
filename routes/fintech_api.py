@@ -390,3 +390,74 @@ async def reconcile_transactions(request: Request, user: dict = Depends(require_
     result = reconciliation_service.reconcile(existing, incoming)
     logger.info("reconciliation_done", user_id=user_id, **result["stats"])
     return api_response(data=result["stats"])
+
+# -----------------------------------------------
+# 9. BROKERAGE SYNC (Zerodha/Groww/Kuvera)
+# -----------------------------------------------
+
+@router.get("/brokers")
+async def list_brokers():
+    from services.brokerage_service import brokerage_service
+    return api_response(data=brokerage_service.get_supported_brokers())
+
+@router.post("/brokers/connect")
+async def connect_broker(request: Request, user: dict = Depends(require_auth)):
+    from services.brokerage_service import brokerage_service
+    user_id = user.get("user_id", "")
+    data = await request.json()
+    broker = data.get("broker", "")
+    if not broker:
+        raise HTTPException(400, detail=api_error("MISSING_DATA", "broker required"))
+    result = await brokerage_service.initiate_connection(user_id, broker)
+    logger.info("broker_connect_init", user_id=user_id, broker=broker)
+    return api_response(data=result)
+
+@router.post("/brokers/callback")
+async def broker_oauth_callback(request: Request, user: dict = Depends(require_auth)):
+    from services.brokerage_service import brokerage_service
+    user_id = user.get("user_id", "")
+    data = await request.json()
+    result = await brokerage_service.handle_oauth_callback(
+        user_id, data.get("broker",""), data.get("request_token",""))
+    return api_response(data=result)
+
+@router.get("/brokers/connections")
+async def list_connections(user: dict = Depends(require_auth)):
+    from services.brokerage_service import brokerage_service
+    return api_response(data=brokerage_service.get_connections(user.get("user_id","")))
+
+@router.post("/brokers/sync")
+async def sync_portfolio_endpoint(request: Request, user: dict = Depends(require_auth)):
+    from services.brokerage_service import brokerage_service
+    user_id = user.get("user_id", "")
+    data = await request.json()
+    result = await brokerage_service.sync_portfolio(user_id, data.get("broker"))
+    return api_response(data=result)
+
+@router.post("/brokers/disconnect")
+async def disconnect_broker(request: Request, user: dict = Depends(require_auth)):
+    from services.brokerage_service import brokerage_service
+    user_id = user.get("user_id", "")
+    data = await request.json()
+    result = await brokerage_service.disconnect_broker(user_id, data.get("broker",""))
+    return api_response(data=result)
+
+# -----------------------------------------------
+# 10. PORTFOLIO ANALYTICS
+# -----------------------------------------------
+
+@router.post("/portfolio/xirr")
+async def calculate_xirr(request: Request, user: dict = Depends(require_auth)):
+    from services.brokerage_service import portfolio_analytics
+    data = await request.json()
+    cashflows = data.get("cashflows", [])
+    xirr = portfolio_analytics.calculate_xirr(cashflows)
+    return api_response(data={"xirr": xirr})
+
+@router.post("/portfolio/tax-report")
+async def tax_report(request: Request, user: dict = Depends(require_auth)):
+    from services.brokerage_service import portfolio_analytics
+    data = await request.json()
+    holdings = data.get("holdings", [])
+    report = portfolio_analytics.tax_implications(holdings)
+    return api_response(data=report)
