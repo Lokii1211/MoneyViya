@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
+import { getFinancialPlan } from '../lib/fintechApi'
 
 const RISK_PROFILES = [
   { key: 'conservative', label: '🛡️ Conservative', desc: 'Capital protection first' },
@@ -31,6 +32,22 @@ export default function AdvisorDashboard() {
   const [risk, setRisk] = useState('moderate')
   const [emergencyFund, setEmergencyFund] = useState(50000)
   const [step, setStep] = useState(1)
+  const [apiPlan, setApiPlan] = useState(null)
+  const [planLoading, setPlanLoading] = useState(false)
+
+  // Fetch plan from API when entering step 3
+  const goToStep3 = useCallback(async () => {
+    setStep(3)
+    setPlanLoading(true)
+    try {
+      const res = await getFinancialPlan({
+        age, monthly_income: income, monthly_expenses: expenses,
+        risk_tolerance: risk, existing_investments: { emergency_fund: emergencyFund },
+      })
+      if (res?.data) setApiPlan(res.data)
+    } catch { /* offline — use local calculations */ }
+    setPlanLoading(false)
+  }, [age, income, expenses, risk, emergencyFund])
 
   const fmt = (n) => '₹' + Math.abs(n).toLocaleString('en-IN', { maximumFractionDigits: 0 })
 
@@ -205,7 +222,7 @@ export default function AdvisorDashboard() {
 
           <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
             <button className="cf-action-btn" style={{ flex: 1, padding: '14px' }} onClick={() => setStep(1)}>← Back</button>
-            <button className="cf-action-btn" style={{ flex: 2, padding: '14px', fontSize: 15, fontWeight: 600 }} onClick={() => setStep(3)}>
+            <button className="cf-action-btn" style={{ flex: 2, padding: '14px', fontSize: 15, fontWeight: 600 }} onClick={goToStep3}>
               See Your Plan →
             </button>
           </div>

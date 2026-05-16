@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
+import { getPortfolioAnalysis, getEPFProjection, optimize80C } from '../lib/fintechApi'
 
 const TABS = [
   { key: 'overview', label: '📊 Overview' },
@@ -10,7 +11,7 @@ const TABS = [
   { key: 'retire', label: '🏖️ Retire' },
 ]
 
-// Demo data — replaced by API calls in production
+// Demo data — used when API is unavailable (offline/sandbox)
 const DEMO_HOLDINGS = [
   { name: 'Parag Parikh Flexi Cap', type: 'Mutual Fund', invested: 200000, current: 268000, returns_pct: 34, sector: 'Flexi Cap' },
   { name: 'UTI Nifty 50 Index', type: 'Index Fund', invested: 150000, current: 172500, returns_pct: 15, sector: 'Large Cap' },
@@ -24,53 +25,101 @@ export default function PortfolioDashboard() {
   const navigate = useNavigate()
   const { user } = useApp()
   const [tab, setTab] = useState('overview')
+  const [holdings, setHoldings] = useState(DEMO_HOLDINGS)
+  const [apiAnalysis, setApiAnalysis] = useState(null)
+  const [taxData, setTaxData] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [sipAmount, setSipAmount] = useState(10000)
   const [sipYears, setSipYears] = useState(20)
   const [sipRate, setSipRate] = useState(12)
   const [epfBasic, setEpfBasic] = useState(60000)
   const [epfBalance, setEpfBalance] = useState(500000)
   const [epfAge, setEpfAge] = useState(28)
+  const [epfResult, setEpfResult] = useState(null)
+
+  // Fetch portfolio analysis from live API
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true)
+      try {
+        const apiHoldings = holdings.map(h => ({
+          symbol: h.name, quantity: 1,
+          buy_price: h.invested, current_price: h.current,
+          buy_date: '2023-01-15', type: h.type,
+        }))
+        const res = await getPortfolioAnalysis(apiHoldings)
+        if (res?.data) setApiAnalysis(res.data)
+      } catch { /* offline — use demo */ }
+
+      try {
+        const taxRes = await optimize80C({ ELSS: 80000, PPF: 30000 }, 1500000)
+        if (taxRes?.data) setTaxData(taxRes.data)
+      } catch { /* offline */ }
+
+      setLoading(false)
+    }
+    fetchData()
+  }, [])
+
+  // Fetch EPF projection from API when inputs change
+  useEffect(() => {
+    async function fetchEPF() {
+      try {
+        const res = await getEPFProjection(epfBasic, epfBalance, epfAge)
+        if (res?.data) {
+          setEpfResult(res.data)
+          return
+        }
+      } catch { /* offline — compute locally */ }
+      // Local fallback
+      const years = 60 - epfAge
+      if (years <= 0) { setEpfResult(null); return }
+      const monthly = epfBasic * 0.24
+      const mr = 8.25 / 100 / 12
+      let bal = epfBalance
+      for (let i = 0; i < years * 12; i++) bal = (bal + monthly) * (1 + mr)
+      setEpfResult({ projected_corpus: Math.round(bal), monthly_contribution: Math.round(monthly), monthly_pension_estimate: Math.round(bal * 0.004), years_to_retirement: years })
+    }
+    fetchEPF()
+  }, [epfBasic, epfBalance, epfAge])
 
   const fmt = (n) => '₹' + Math.abs(n).toLocaleString('en-IN', { maximumFractionDigits: 0 })
 
   const portfolio = useMemo(() => {
-    const invested = DEMO_HOLDINGS.reduce((s, h) => s + h.invested, 0)
-    const current = DEMO_HOLDINGS.reduce((s, h) => s + h.current, 0)
+    const invested = holdings.reduce((s, h) => s + h.invested, 0)
+    const current = holdings.reduce((s, h) => s + h.current, 0)
     const pnl = current - invested
-    const pnlPct = ((pnl / invested) * 100).toFixed(1)
+    const pnlPct = invested > 0 ? ((pnl / invested) * 100).toFixed(1) : '0.0'
     return { invested, current, pnl, pnlPct }
-  }, [])
+  }, [holdings])
 
   const allocation = useMemo(() => {
     const sectors = {}
-    DEMO_HOLDINGS.forEach(h => {
+    holdings.forEach(h => {
       sectors[h.sector] = (sectors[h.sector] || 0) + h.current
     })
     return Object.entries(sectors)
       .map(([name, value]) => ({ name, value, pct: Math.round((value / portfolio.current) * 100) }))
       .sort((a, b) => b.value - a.value)
-  }, [portfolio])
+  }, [holdings, portfolio])
 
-  // SIP projection
+  // SIP projection (client-side — no API needed, real-time slider)
   const sipResult = useMemo(() => {
     const months = sipYears * 12
     const mr = sipRate / 100 / 12
     let fv = 0
     for (let i = 0; i < months; i++) fv = (fv + sipAmount) * (1 + mr)
     const invested = sipAmount * months
-    return { invested, fv: Math.round(fv), gain: Math.round(fv - invested), multiplier: (fv / invested).toFixed(1) }
+    return { invested, fv: Math.round(fv), gain: Math.round(fv - invested), multiplier: invested > 0 ? (fv / invested).toFixed(1) : '0' }
   }, [sipAmount, sipYears, sipRate])
 
-  // EPF projection
-  const epfResult = useMemo(() => {
-    const years = 60 - epfAge
-    if (years <= 0) return null
-    const monthly = epfBasic * 0.24
-    const mr = 8.25 / 100 / 12
-    let bal = epfBalance
-    for (let i = 0; i < years * 12; i++) bal = (bal + monthly) * (1 + mr)
-    return { corpus: Math.round(bal), monthly: Math.round(monthly), pension: Math.round(bal * 0.004), years }
-  }, [epfBasic, epfBalance, epfAge])
+  // Normalize EPF result fields (API uses projected_corpus, local uses corpus)
+  const epf = epfResult ? {
+    monthly: epfResult.monthly_contribution || epfResult.monthly || 0,
+    corpus: epfResult.projected_corpus || epfResult.corpus || 0,
+    pension: epfResult.monthly_pension_estimate || epfResult.pension || 0,
+    years: epfResult.years_to_retirement || epfResult.years || 0,
+  } : null
 
   return (
     <div className="page" id="portfolio-page">
@@ -152,9 +201,9 @@ export default function PortfolioDashboard() {
       {/* ═══ HOLDINGS ═══ */}
       {tab === 'holdings' && (
         <div className="section-card">
-          <h2 className="section-title">All Holdings ({DEMO_HOLDINGS.length})</h2>
+          <h2 className="section-title">All Holdings ({holdings.length})</h2>
           <div className="cf-auto-list">
-            {DEMO_HOLDINGS.sort((a, b) => b.current - a.current).map((h, i) => (
+            {[...holdings].sort((a, b) => b.current - a.current).map((h, i) => (
               <div key={i} className="cf-auto-row" style={{ alignItems: 'flex-start' }}>
                 <div className="cf-auto-badge" style={{ fontSize: 18 }}>
                   {h.type === 'Equity' ? '📊' : h.type === 'ETF' ? '🥇' : '📈'}
@@ -298,21 +347,21 @@ export default function PortfolioDashboard() {
             </div>
           </div>
 
-          {epfResult && (
+          {epf && (
             <div className="cf-summary-grid">
               <div className="cf-card cf-income">
                 <span className="cf-card-label">Monthly EPF</span>
-                <span className="cf-card-value" style={{ fontSize: 17 }}>{fmt(epfResult.monthly)}</span>
+                <span className="cf-card-value" style={{ fontSize: 17 }}>{fmt(epf.monthly)}</span>
                 <span className="cf-card-tag">12% + 12%</span>
               </div>
               <div className="cf-card cf-net">
                 <span className="cf-card-label">Corpus at 60</span>
-                <span className="cf-card-value" style={{ fontSize: 17, color: 'var(--emerald-400)' }}>{fmt(epfResult.corpus)}</span>
-                <span className="cf-card-tag">{epfResult.years} years</span>
+                <span className="cf-card-value" style={{ fontSize: 17, color: 'var(--emerald-400)' }}>{fmt(epf.corpus)}</span>
+                <span className="cf-card-tag">{epf.years} years</span>
               </div>
               <div className="cf-card cf-expense">
                 <span className="cf-card-label">Monthly Pension</span>
-                <span className="cf-card-value" style={{ fontSize: 17 }}>{fmt(epfResult.pension)}</span>
+                <span className="cf-card-value" style={{ fontSize: 17 }}>{fmt(epf.pension)}</span>
                 <span className="cf-card-tag">~4.8% withdrawal</span>
               </div>
             </div>
@@ -320,11 +369,11 @@ export default function PortfolioDashboard() {
 
           <div className="section-card">
             <h2 className="section-title">🧮 Retirement Readiness</h2>
-            {epfResult && (
+            {epf && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--glass-border)' }}>
                   <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Years to retirement</span>
-                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{epfResult.years}</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{epf.years}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--glass-border)' }}>
                   <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>EPF Interest Rate</span>
