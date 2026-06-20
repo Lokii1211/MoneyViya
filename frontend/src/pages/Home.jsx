@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useCountUp, getCurrentFestival, formatINR, getGreeting, getGreetingEmoji } from '../lib/utils'
@@ -45,6 +46,7 @@ export default function Home() {
   const [checkins, setCheckins] = useState([])
   const [goals, setGoals] = useState([])
   const [bills, setBills] = useState([])
+  const [loading, setLoading] = useState(true)
 
   const nav = useNavigate()
   const period = getPeriod()
@@ -52,11 +54,22 @@ export default function Home() {
 
   useEffect(() => {
     if (phone) {
-      api.getUser(phone).then(d => { if (d) { setData(d); setUser(p => ({ ...p, ...d })) } })
-      api.getHabits(phone).then(h => { if (h) setHabits(h) })
-      api.getCheckins(phone).then(c => { if (c) setCheckins(c) })
-      api.getGoals(phone).then(g => { if (g) setGoals(g) })
-      api.getBills(phone).then(b => { if (b) setBills(b) })
+      Promise.all([
+        api.getUser(phone),
+        api.getHabits(phone),
+        api.getCheckins(phone),
+        api.getGoals(phone),
+        api.getBills(phone),
+      ]).then(([d, h, c, g, b]) => {
+        if (d) { setData(d); setUser(p => ({ ...p, ...d })) }
+        if (h) setHabits(h)
+        if (c) setCheckins(c)
+        if (g) setGoals(g)
+        if (b) setBills(b)
+        setLoading(false)
+      }).catch(() => {
+        setLoading(false)
+      })
     }
   }, [phone])
 
@@ -108,385 +121,463 @@ export default function Home() {
   return (
     <>
     <div className="page" style={{ paddingTop: 8, paddingBottom: 80 }}>
-      {/* Greeting Row — NO bell (Layout header already has logo + search + bell) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <div className="avatar" style={{ width: 44, height: 44, fontSize: 18, flexShrink: 0 }}>
-          {localStorage.getItem('mv_avatar') || name.charAt(0).toUpperCase()}
-        </div>
+
+      {/* Loading Skeleton */}
+      {loading ? (
         <div>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>{getGreeting()}, {name.split(' ')[0]}! {getGreetingEmoji()}</div>
-          <div className="body-s text-secondary">Your AI Life & Wealth Partner</div>
-        </div>
-      </div>
-
-      {/* ═══ TOP: NEEDS ATTENTION — Most important, shown first ═══ */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <span className="title-m" style={{ fontSize: 15, color: 'var(--coral-500)' }}>🔔 Needs Attention</span>
-          <button onClick={() => nav('/email')} style={{ fontSize: 12, fontWeight: 600, color:'var(--viya-primary-700)', background: 'none', border: 'none', cursor: 'pointer' }}>View All →</button>
-        </div>
-        <div className="scroll-snap-x" style={{ gap: 12, paddingBottom: 4 }}>
-          {[
-            { icon: '🔴', title: 'Credit Card Due', sub: 'Check your bills section', border: 'var(--coral-500)', actions: ['Pay Now', 'Remind'], to: '/bills' },
-            { icon: '📅', title: 'Upcoming Meetings', sub: 'Check calendar for details', border: 'var(--info-500)', actions: ['View', 'Dismiss'], to: '/calendar' },
-            { icon: '📦', title: 'Package Updates', sub: 'Track your deliveries', border: 'var(--cosmos-400)', actions: ['Track', 'Alert'], to: '/email' },
-          ].map((c, i) => (
-            <div key={i} onClick={() => nav(c.to)} className="card-press" style={{
-              minWidth: 260, padding: 14, borderRadius: 'var(--radius)',
-              background: 'var(--surface)', border: '1px solid var(--border)',
-              borderLeft: `4px solid ${c.border}`, cursor: 'pointer',
-              boxShadow: 'var(--shadow-sm)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                <span>{c.icon}</span>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{c.title}</span>
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 10 }}>{c.sub}</div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {c.actions.map((a, j) => (
-                  <button key={j} className="ripple" style={{
-                    padding: '4px 12px', borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 600,
-                    background: j === 0 ? c.border : 'var(--surface)', color: j === 0 ? 'white' : 'var(--text2)',
-                    border: j === 0 ? 'none' : '1px solid var(--border)', cursor: 'pointer',
-                  }}>{a}</button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Festival Banner */}
-      {festival && (
-        <div onClick={() => nav('/chat?q=' + encodeURIComponent(festival.greeting))} className="card" style={{
-          background: festival.colors.bg, border: 'none', padding: '14px 16px',
-          marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', color: 'white',
-        }}>
-          <span style={{ fontSize: 28 }}>{festival.emoji}</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>{festival.greeting}</div>
-            <div style={{ fontSize: 11, opacity: 0.8 }}>Tap for festive money tips! 🎁</div>
-          </div>
-        </div>
-      )}
-
-      {/* ═══ SECTION A: Daily Brief Card ═══ */}
-      <div onClick={() => nav('/chat?q=daily+briefing')} style={{
-        background: 'var(--gradient-morning)', borderRadius: '0 0 28px 28px',
-        padding: 24, marginBottom: 16, cursor: 'pointer', color: 'white',
-        marginLeft: -20, marginRight: -20, marginTop: -8,
-        boxShadow: '0 8px 32px rgba(13,0,32,0.25)',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <span style={{ fontSize: 12, fontWeight: 500, letterSpacing: 0.5, opacity: 0.6, textTransform: 'uppercase' }}>
-            {period === 'morning' ? '☀️' : period === 'evening' ? '🌅' : period === 'night' ? '🌙' : '🌤️'} Daily Brief
-          </span>
-          <span style={{ fontSize: 11, opacity: 0.5, fontWeight: 500 }}>{formatTime()}</span>
-        </div>
-        <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 24, lineHeight: 1.3, marginBottom: 16, letterSpacing: -0.4 }}>
-          {briefItems.length} things need you today
-        </div>
-        <div className="stagger" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {briefItems.slice(0, 4).map((item, i) => (
-            <div key={i} className="animate-slideUp" style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              opacity: 0.85, fontSize: 14, lineHeight: 1.4,
-              animationDelay: `${i * 0.08}s`, animationFillMode: 'backwards',
-            }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }}>{item.icon}</span>
-              <span>{item.text}</span>
-            </div>
-          ))}
-        </div>
-        <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-          <div style={{
-            padding: '10px 20px', borderRadius: 'var(--radius-full)', fontSize: 14, fontWeight: 600,
-            background: 'white', color: 'var(--cosmos-600)', cursor: 'pointer',
-          }}>Handle All with Viya →</div>
-        </div>
-      </div>
-
-      {/* ═══ SECTION B: Today's Overview — Money + Tasks ═══ */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-        {/* Money Today */}
-        <div onClick={() => nav('/expenses')} style={{
-          background: 'var(--gradient-primary)', borderRadius: 'var(--radius-xl)',
-          padding: 16, cursor: 'pointer', color: 'white', position: 'relative', overflow: 'hidden',
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Money Left</div>
-          <div className="num-m" style={{ color: moneyLeft >= 0 ? '#fff' : '#FFB3B3', fontSize: 28, fontWeight: 700 }}>
-            {formatINR(moneyLeft < 0 ? -animatedMoney : animatedMoney)}
-          </div>
-          <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-            {moneyLeft >= 0 ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
-            ₹{budget} daily budget
-          </div>
-          <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
-        </div>
-        {/* Habits Today */}
-        <div onClick={() => nav('/habits')} style={{
-          background: 'var(--viya-violet-500)', borderRadius: 'var(--radius-xl)',
-          padding: 16, cursor: 'pointer', color: 'white', position: 'relative', overflow: 'hidden',
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Today's Habits</div>
-          <div className="num-m" style={{ fontSize: 28, fontWeight: 700 }}>{todayDone}/{totalHabits || 7}</div>
-          <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Flame size={12}/> {maxStreak}-day streak
-          </div>
-          <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
-        </div>
-      </div>
-
-      {/* ═══ SECTION C: Wealth Snapshot ═══ */}
-      <div onClick={() => nav('/expenses')} style={{
-        background: 'var(--gradient-wealth)', borderRadius: 'var(--radius-xl)',
-        padding: 20, marginBottom: 16, cursor: 'pointer', color: 'white',
-        boxShadow: '0 6px 20px rgba(76,175,80,0.25)',
-      }}>
-        <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Monthly Overview</div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 }}>
-          <div>
-            <div className="num-l" style={{ fontSize: 32, color: 'white', lineHeight: 1.1 }}>{formatINR(animatedIncome)}</div>
-            <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>Total Income</div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: budgetPct > 80 ? '#FFB3B3' : '#A7F3D0' }}>
-              {budgetPct}% used
-            </div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 1, marginBottom: 8, height: 6, borderRadius: 99, overflow: 'hidden', background: 'rgba(255,255,255,0.2)' }}>
-          <div style={{ width: `${Math.min(budgetPct, 100)}%`, background: budgetPct > 80 ? '#FFB3B3' : 'rgba(255,255,255,0.9)', borderRadius: 99, transition: 'width 0.6s ease' }} />
-        </div>
-        <div style={{ display: 'flex', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FCA5A5' }} />
-            <span style={{ fontSize: 12, opacity: 0.85 }}>Spent {formatINR(animatedExpense)}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FDE68A' }} />
-            <span style={{ fontSize: 12, opacity: 0.85 }}>Saved {formatINR(savings)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ═══ SECTION D: Active Goals (Horizontal scroll) ═══ */}
-      {goals.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <span className="title-m" style={{ fontSize: 15 }}>🎯 Your Goals</span>
-            <button className="btn-ghost body-s" onClick={() => nav('/goals')} style={{ fontWeight: 600, fontSize: 13 }}>All Goals →</button>
-          </div>
-          <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4, scrollSnapType: 'x mandatory' }}>
-            {goals.slice(0, 4).map((g, i) => {
-              const pct = g.target_amount > 0 ? Math.min(Math.round((g.current_amount / g.target_amount) * 100), 100) : 0
-              return (
-                <div key={i} onClick={() => nav('/goals')} className="card" style={{
-                  minWidth: 200, padding: 16, cursor: 'pointer', scrollSnapAlign: 'start', flexShrink: 0,
-                  background: 'var(--gradient-card)', border: '1px solid var(--border-light)',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <span style={{ fontSize: 24 }}>{g.icon || '🎯'}</span>
-                    <span style={{ fontWeight: 600, fontSize: 14 }}>{g.name}</span>
-                  </div>
-                  <div className="progress-bar" style={{ height: 6, marginBottom: 8 }}>
-                    <div className="progress-fill" style={{ width: pct + '%' }} />
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="body-s text-secondary">₹{Number(g.current_amount)} / ₹{Number(g.target_amount)}</span>
-                    <span className="num-s" style={{ color:'var(--viya-primary-700)', fontWeight: 700, fontSize: 13 }}>{pct}%</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ═══ SECTION E: Ask Viya (card with logo) ═══ */}
-      <div className="card-press" onClick={() => nav('/chat')} style={{
-        padding: '14px 16px', marginBottom: 16, cursor: 'pointer',
-        display: 'flex', alignItems: 'center', gap: 12,
-        background: 'var(--gradient-night)', color: 'white', border: 'none',
-        borderRadius: 'var(--radius)',
-      }}>
-        <img src="/logo.png" alt="Viya AI" style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'contain', flexShrink: 0 }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>Ask Viya anything</div>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>Create, update, delete, check-in — all in chat</div>
-        </div>
-        <Zap size={16} color="var(--viya-gold-500)" />
-      </div>
-
-      {/* ═══ Quick Actions Grid (2×4) — Below daily brief ═══ */}
-      <div className="stagger-children" style={{ marginBottom: 16 }}>
-        <div className="title-m" style={{ marginBottom: 8, fontSize: 14, color: 'var(--text2)' }}>⚡ Quick Actions</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-          {actions.map((a, i) => (
-            <button key={i} onClick={() => nav(a.to)} className="ripple" style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-              padding: '10px 4px', borderRadius: 'var(--radius-sm)',
-              background: i === 0 ? 'var(--gradient-primary)' : 'var(--surface)',
-              border: i === 0 ? 'none' : '1px solid var(--border)',
-              cursor: 'pointer', color: i === 0 ? 'white' : 'inherit',
-              boxShadow: i === 0 ? '0 4px 16px var(--primary-glow)' : 'var(--shadow-sm)',
-            }}>
-              <div style={{
-                width: 34, height: 34, borderRadius: 9,
-                background: i === 0 ? 'rgba(255,255,255,0.2)' : a.color + '15',
-                color: i === 0 ? 'white' : a.color,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>{a.icon}</div>
-              <span style={{ fontSize: 10, fontWeight: 600, color: i === 0 ? 'white' : 'var(--text2)' }}>{a.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ═══ SECTION F: SaaS Quick Links ═══ */}
-      <div style={{ marginBottom: 16 }}>
-        <div className="title-m" style={{ marginBottom: 10, fontSize: 15 }}>🚀 Explore More</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {[
-            { emoji: '📊', label: 'Weekly Report', to: '/weekly-report', bg: 'var(--violet-dim)', color: 'var(--violet)' },
-            { emoji: '☀️', label: 'Morning Brief', to: '/morning-brief', bg: 'var(--gold-dim)', color: 'var(--gold)' },
-            { emoji: '✂️', label: 'Sub Audit', to: '/subscription-audit', bg: 'var(--red-dim)', color: 'var(--red)' },
-            { emoji: '🎁', label: 'Refer & Earn', to: '/referral', bg: 'var(--primary-dim)', color: 'var(--primary)' },
-          ].map((l, i) => (
-            <button key={i} onClick={() => nav(l.to)} className="ripple" style={{
-              display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
-              borderRadius: 'var(--radius-sm)', background: 'var(--surface)', border: '1px solid var(--border)',
-              cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', color: 'var(--text)',
-            }}>
-              <span style={{ fontSize: 22 }}>{l.emoji}</span>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{l.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ═══ SECTION G: Recent Transactions ═══ */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <span className="title-m" style={{ fontSize: 15 }}>Recent Activity</span>
-          <button className="btn-ghost body-s" onClick={() => nav('/expenses')} style={{ fontWeight: 600, fontSize: 13 }}>See All</button>
-        </div>
-        {(data?.recent_transactions || []).slice(0, 5).map((t, i) => (
-          <div key={i} style={{
-            display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0',
-            borderBottom: i < 4 ? '1px solid var(--border-light)' : 'none',
-          }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: 12,
-              background: t.type === 'income' ? 'var(--viya-success-light)' : 'var(--viya-neutral-50)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
-            }}>
-              {t.type === 'income' ? '💰' : '🛒'}
-            </div>
+          {/* Greeting skeleton */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}
+          >
+            <div className="skeleton" style={{ width: 44, height: 44, borderRadius: '50%', flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>{t.description || t.category}</div>
-              <div className="body-s text-secondary">{t.category}</div>
+              <div className="skeleton" style={{ height: 18, width: '60%', borderRadius: 8, marginBottom: 6 }} />
+              <div className="skeleton" style={{ height: 12, width: '40%', borderRadius: 6 }} />
             </div>
-            <div className="num-s" style={{
-              color: t.type === 'income' ? 'var(--viya-success)' : 'var(--viya-error)',
-              fontWeight: 600,
-            }}>
-              {t.type === 'income' ? '+' : '-'}₹{Number(t.amount)}
+          </motion.div>
+
+          {/* Wealth card skeleton */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="skeleton"
+            style={{ height: 160, borderRadius: 20, marginBottom: 16 }}
+          />
+
+          {/* Two grid cards skeleton */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="skeleton"
+              style={{ height: 100, borderRadius: 16 }}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="skeleton"
+              style={{ height: 100, borderRadius: 16 }}
+            />
+          </div>
+
+          {/* Action grid skeleton */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
+            {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + i * 0.04 }}
+                className="skeleton"
+                style={{ height: 64, borderRadius: 12 }}
+              />
+            ))}
+          </div>
+
+          {/* More content skeletons */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="skeleton"
+            style={{ height: 80, borderRadius: 14, marginBottom: 12 }}
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
+            className="skeleton"
+            style={{ height: 80, borderRadius: 14 }}
+          />
+        </div>
+      ) : (
+        <>
+          {/* Greeting Row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+            <div className="avatar" style={{ width: 44, height: 44, fontSize: 18, flexShrink: 0 }}>
+              {localStorage.getItem('mv_avatar') || name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 16 }}>{getGreeting()}, {name.split(' ')[0]}! {getGreetingEmoji()}</div>
+              <div className="body-s text-secondary">Your AI Life & Wealth Partner</div>
             </div>
           </div>
-        ))}
-        {(!data?.recent_transactions?.length) && (
-          <div className="card" style={{ textAlign: 'center', padding: 24, color: 'var(--text-tertiary)' }}>
-            No transactions yet. Say "spent 500 on food" to start! 🚀
-          </div>
-        )}
-      </div>
 
-      {/* ═══ HEALTH TODAY (2-card row) ═══ */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-        <div onClick={() => nav('/health')} style={{
-          flex: 1, padding: 16, borderRadius: 'var(--radius-xl)', cursor: 'pointer',
-          background: 'linear-gradient(135deg, #FF7062 0%, #FF9800 50%, #FFD700 100%)', color: 'white',
-          boxShadow: '0 4px 16px rgba(255,112,98,0.25)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
-            <Droplets size={14} /> <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>STEPS</span>
-          </div>
-          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 22, lineHeight: 1 }}>0</div>
-          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>/ 10,000 steps</div>
-          <div style={{ fontSize: 11, fontWeight: 600, marginTop: 6, opacity: 0.85 }}>Open Health 💪</div>
-        </div>
-        <div onClick={() => nav('/health')} style={{
-          flex: 1, padding: 16, borderRadius: 'var(--radius-xl)', cursor: 'pointer',
-          background: 'linear-gradient(135deg, #00E87E 0%, #00E5B0 100%)', color: 'white',
-          boxShadow: '0 4px 16px rgba(0,232,126,0.25)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
-            <Heart size={14} /> <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>CALORIES</span>
-          </div>
-          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 22, lineHeight: 1 }}>0</div>
-          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>/ 2,200 kcal</div>
-          <div style={{ fontSize: 11, fontWeight: 600, marginTop: 6, opacity: 0.85 }}>Log Meal 🍽️</div>
-        </div>
-      </div>
-
-      {/* ═══ Quick Add Bar (inline) ═══ */}
-      <div style={{ marginBottom: 20 }}>
-        <div className="title-m" style={{ marginBottom: 8, fontSize: 14, color: 'var(--text2)' }}>✏️ Manual Quick Add</div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {[
-            { icon: <Plus size={18}/>, label: 'Expense', to: '/expenses', bg: 'var(--gradient-primary)', color: 'white' },
-            { icon: <ClipboardList size={18}/>, label: 'Task', to: '/reminders', bg: 'var(--surface)', color: 'var(--violet)' },
-            { icon: <Bell size={18}/>, label: 'Reminder', to: '/reminders', bg: 'var(--surface)', color: 'var(--gold)' },
-            { icon: <Activity size={18}/>, label: 'Health', to: '/health', bg: 'var(--surface)', color: 'var(--red)' },
-          ].map((a, i) => (
-            <button key={i} onClick={() => nav(a.to)} className="ripple" style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-              padding: '12px 6px', borderRadius: 'var(--radius-sm)',
-              background: a.bg, color: a.color,
-              border: i === 0 ? 'none' : '1px solid var(--border)',
-              boxShadow: i === 0 ? '0 4px 16px var(--primary-glow)' : 'var(--shadow-sm)',
-              cursor: 'pointer',
-            }}>
-              {a.icon}
-              <span style={{ fontSize: 10, fontWeight: 600 }}>{a.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* BILLS DUE STRIP (PRD lines 666-673) */}
-      {bills.filter(b => b.status !== 'paid').length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <span className="title-m" style={{ fontSize: 15 }}>🧾 Upcoming Bills</span>
-            <button onClick={() => nav('/bills')} style={{ fontSize: 12, fontWeight: 600, color:'var(--viya-primary-700)', background: 'none', border: 'none', cursor: 'pointer' }}>All Bills →</button>
-          </div>
-          {bills.filter(b => b.status !== 'paid').slice(0, 4).map((b, i) => {
-            const daysLeft = b.due_date ? Math.ceil((new Date(b.due_date) - Date.now()) / 86400000) : 99
-            const dotColor = daysLeft <= 1 ? 'var(--coral-500)' : daysLeft <= 3 ? 'var(--amber-500)' : 'var(--emerald-500)'
-            return (
-              <div key={b.id || i} onClick={() => nav('/bills')} style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0',
-                borderBottom: i < 3 ? '1px solid var(--border)' : 'none', cursor: 'pointer',
-              }}>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 500 }}>{b.name}</div>
-                  <div className="body-s text-secondary">{b.due_date ? new Date(b.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'No date'}</div>
+          {/* NEEDS ATTENTION */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span className="title-m" style={{ fontSize: 15, color: 'var(--coral-500)' }}>🔔 Needs Attention</span>
+              <button onClick={() => nav('/email')} style={{ fontSize: 12, fontWeight: 600, color:'var(--viya-primary-700)', background: 'none', border: 'none', cursor: 'pointer' }}>View All →</button>
+            </div>
+            <div className="scroll-snap-x" style={{ gap: 12, paddingBottom: 4 }}>
+              {[
+                { icon: '🔴', title: 'Credit Card Due', sub: 'Check your bills section', border: 'var(--coral-500)', actions: ['Pay Now', 'Remind'], to: '/bills' },
+                { icon: '📅', title: 'Upcoming Meetings', sub: 'Check calendar for details', border: 'var(--info-500)', actions: ['View', 'Dismiss'], to: '/calendar' },
+                { icon: '📦', title: 'Package Updates', sub: 'Track your deliveries', border: 'var(--cosmos-400)', actions: ['Track', 'Alert'], to: '/email' },
+              ].map((c, i) => (
+                <div key={i} onClick={() => nav(c.to)} className="card-press" style={{
+                  minWidth: 260, padding: 14, borderRadius: 'var(--radius)',
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderLeft: `4px solid ${c.border}`, cursor: 'pointer',
+                  boxShadow: 'var(--shadow-sm)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <span>{c.icon}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>{c.title}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 10 }}>{c.sub}</div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {c.actions.map((a, j) => (
+                      <button key={j} className="ripple" style={{
+                        padding: '4px 12px', borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 600,
+                        background: j === 0 ? c.border : 'var(--surface)', color: j === 0 ? 'white' : 'var(--text2)',
+                        border: j === 0 ? 'none' : '1px solid var(--border)', cursor: 'pointer',
+                      }}>{a}</button>
+                    ))}
+                  </div>
                 </div>
-                <div className="num-s" style={{ fontWeight: 600, color: dotColor }}>{formatINR(b.amount)}</div>
-                {daysLeft <= 1 && <button className="ripple" style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 600, background: 'var(--coral-500)', color: 'white', border: 'none', cursor: 'pointer' }}>Pay Now</button>}
-              </div>
-            )
-          })}
-        </div>
-      )}
+              ))}
+            </div>
+          </div>
 
-      <div style={{ height: 20 }} />
+          {/* Festival Banner */}
+          {festival && (
+            <div onClick={() => nav('/chat?q=' + encodeURIComponent(festival.greeting))} className="card" style={{
+              background: festival.colors.bg, border: 'none', padding: '14px 16px',
+              marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', color: 'white',
+            }}>
+              <span style={{ fontSize: 28 }}>{festival.emoji}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{festival.greeting}</div>
+                <div style={{ fontSize: 11, opacity: 0.8 }}>Tap for festive money tips! 🎁</div>
+              </div>
+            </div>
+          )}
+
+          {/* SECTION A: Daily Brief Card */}
+          <div onClick={() => nav('/chat?q=daily+briefing')} style={{
+            background: 'var(--gradient-morning)', borderRadius: '0 0 28px 28px',
+            padding: 24, marginBottom: 16, cursor: 'pointer', color: 'white',
+            marginLeft: -20, marginRight: -20, marginTop: -8,
+            boxShadow: '0 8px 32px rgba(13,0,32,0.25)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <span style={{ fontSize: 12, fontWeight: 500, letterSpacing: 0.5, opacity: 0.6, textTransform: 'uppercase' }}>
+                {period === 'morning' ? '☀️' : period === 'evening' ? '🌅' : period === 'night' ? '🌙' : '🌤️'} Daily Brief
+              </span>
+              <span style={{ fontSize: 11, opacity: 0.5, fontWeight: 500 }}>{formatTime()}</span>
+            </div>
+            <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 24, lineHeight: 1.3, marginBottom: 16, letterSpacing: -0.4 }}>
+              {briefItems.length} things need you today
+            </div>
+            <div className="stagger" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {briefItems.slice(0, 4).map((item, i) => (
+                <div key={i} className="animate-slideUp" style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  opacity: 0.85, fontSize: 14, lineHeight: 1.4,
+                  animationDelay: `${i * 0.08}s`, animationFillMode: 'backwards',
+                }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>{item.icon}</span>
+                  <span>{item.text}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+              <div style={{
+                padding: '10px 20px', borderRadius: 'var(--radius-full)', fontSize: 14, fontWeight: 600,
+                background: 'white', color: 'var(--cosmos-600)', cursor: 'pointer',
+              }}>Handle All with Viya →</div>
+            </div>
+          </div>
+
+          {/* SECTION B: Today's Overview */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            {/* Money Today */}
+            <div onClick={() => nav('/expenses')} style={{
+              background: 'var(--gradient-primary)', borderRadius: 'var(--radius-xl)',
+              padding: 16, cursor: 'pointer', color: 'white', position: 'relative', overflow: 'hidden',
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Money Left</div>
+              <div className="num-m" style={{ color: moneyLeft >= 0 ? '#fff' : '#FFB3B3', fontSize: 28, fontWeight: 700 }}>
+                {formatINR(moneyLeft < 0 ? -animatedMoney : animatedMoney)}
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                {moneyLeft >= 0 ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
+                ₹{budget} daily budget
+              </div>
+              <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+            </div>
+            {/* Habits Today */}
+            <div onClick={() => nav('/habits')} style={{
+              background: 'var(--viya-violet-500)', borderRadius: 'var(--radius-xl)',
+              padding: 16, cursor: 'pointer', color: 'white', position: 'relative', overflow: 'hidden',
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Today's Habits</div>
+              <div className="num-m" style={{ fontSize: 28, fontWeight: 700 }}>{todayDone}/{totalHabits || 7}</div>
+              <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Flame size={12}/> {maxStreak}-day streak
+              </div>
+              <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+            </div>
+          </div>
+
+          {/* SECTION C: Wealth Snapshot */}
+          <div onClick={() => nav('/expenses')} style={{
+            background: 'var(--gradient-wealth)', borderRadius: 'var(--radius-xl)',
+            padding: 20, marginBottom: 16, cursor: 'pointer', color: 'white',
+            boxShadow: '0 6px 20px rgba(76,175,80,0.25)',
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Monthly Overview</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 }}>
+              <div>
+                <div className="num-l" style={{ fontSize: 32, color: 'white', lineHeight: 1.1 }}>{formatINR(animatedIncome)}</div>
+                <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>Total Income</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: budgetPct > 80 ? '#FFB3B3' : '#A7F3D0' }}>
+                  {budgetPct}% used
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 1, marginBottom: 8, height: 6, borderRadius: 99, overflow: 'hidden', background: 'rgba(255,255,255,0.2)' }}>
+              <div style={{ width: `${Math.min(budgetPct, 100)}%`, background: budgetPct > 80 ? '#FFB3B3' : 'rgba(255,255,255,0.9)', borderRadius: 99, transition: 'width 0.6s ease' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FCA5A5' }} />
+                <span style={{ fontSize: 12, opacity: 0.85 }}>Spent {formatINR(animatedExpense)}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FDE68A' }} />
+                <span style={{ fontSize: 12, opacity: 0.85 }}>Saved {formatINR(savings)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION D: Active Goals */}
+          {goals.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span className="title-m" style={{ fontSize: 15 }}>🎯 Your Goals</span>
+                <button className="btn-ghost body-s" onClick={() => nav('/goals')} style={{ fontWeight: 600, fontSize: 13 }}>All Goals →</button>
+              </div>
+              <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4, scrollSnapType: 'x mandatory' }}>
+                {goals.slice(0, 4).map((g, i) => {
+                  const pct = g.target_amount > 0 ? Math.min(Math.round((g.current_amount / g.target_amount) * 100), 100) : 0
+                  return (
+                    <div key={i} onClick={() => nav('/goals')} className="card" style={{
+                      minWidth: 200, padding: 16, cursor: 'pointer', scrollSnapAlign: 'start', flexShrink: 0,
+                      background: 'var(--gradient-card)', border: '1px solid var(--border-light)',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <span style={{ fontSize: 24 }}>{g.icon || '🎯'}</span>
+                        <span style={{ fontWeight: 600, fontSize: 14 }}>{g.name}</span>
+                      </div>
+                      <div className="progress-bar" style={{ height: 6, marginBottom: 8 }}>
+                        <div className="progress-fill" style={{ width: pct + '%' }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span className="body-s text-secondary">₹{Number(g.current_amount)} / ₹{Number(g.target_amount)}</span>
+                        <span className="num-s" style={{ color:'var(--viya-primary-700)', fontWeight: 700, fontSize: 13 }}>{pct}%</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* SECTION E: Ask Viya */}
+          <div className="card-press" onClick={() => nav('/chat')} style={{
+            padding: '14px 16px', marginBottom: 16, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 12,
+            background: 'var(--gradient-night)', color: 'white', border: 'none',
+            borderRadius: 'var(--radius)',
+          }}>
+            <img src="/logo.png" alt="Viya AI" style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'contain', flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>Ask Viya anything</div>
+              <div style={{ fontSize: 12, opacity: 0.7 }}>Create, update, delete, check-in — all in chat</div>
+            </div>
+            <Zap size={16} color="var(--viya-gold-500)" />
+          </div>
+
+          {/* Quick Actions Grid */}
+          <div className="stagger-children" style={{ marginBottom: 16 }}>
+            <div className="title-m" style={{ marginBottom: 8, fontSize: 14, color: 'var(--text2)' }}>⚡ Quick Actions</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+              {actions.map((a, i) => (
+                <button key={i} onClick={() => nav(a.to)} className="ripple" style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                  padding: '10px 4px', borderRadius: 'var(--radius-sm)',
+                  background: i === 0 ? 'var(--gradient-primary)' : 'var(--surface)',
+                  border: i === 0 ? 'none' : '1px solid var(--border)',
+                  cursor: 'pointer', color: i === 0 ? 'white' : 'inherit',
+                  boxShadow: i === 0 ? '0 4px 16px var(--primary-glow)' : 'var(--shadow-sm)',
+                }}>
+                  <div style={{
+                    width: 34, height: 34, borderRadius: 9,
+                    background: i === 0 ? 'rgba(255,255,255,0.2)' : a.color + '15',
+                    color: i === 0 ? 'white' : a.color,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>{a.icon}</div>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: i === 0 ? 'white' : 'var(--text2)' }}>{a.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* SECTION F: SaaS Quick Links */}
+          <div style={{ marginBottom: 16 }}>
+            <div className="title-m" style={{ marginBottom: 10, fontSize: 15 }}>🚀 Explore More</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {[
+                { emoji: '📊', label: 'Weekly Report', to: '/weekly-report', bg: 'var(--violet-dim)', color: 'var(--violet)' },
+                { emoji: '☀️', label: 'Morning Brief', to: '/morning-brief', bg: 'var(--gold-dim)', color: 'var(--gold)' },
+                { emoji: '✂️', label: 'Sub Audit', to: '/subscription-audit', bg: 'var(--red-dim)', color: 'var(--red)' },
+                { emoji: '🎁', label: 'Refer & Earn', to: '/referral', bg: 'var(--primary-dim)', color: 'var(--primary)' },
+              ].map((l, i) => (
+                <button key={i} onClick={() => nav(l.to)} className="ripple" style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
+                  borderRadius: 'var(--radius-sm)', background: 'var(--surface)', border: '1px solid var(--border)',
+                  cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', color: 'var(--text)',
+                }}>
+                  <span style={{ fontSize: 22 }}>{l.emoji}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{l.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* SECTION G: Recent Transactions */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span className="title-m" style={{ fontSize: 15 }}>Recent Activity</span>
+              <button className="btn-ghost body-s" onClick={() => nav('/expenses')} style={{ fontWeight: 600, fontSize: 13 }}>See All</button>
+            </div>
+            {(data?.recent_transactions || []).slice(0, 5).map((t, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0',
+                borderBottom: i < 4 ? '1px solid var(--border-light)' : 'none',
+              }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 12,
+                  background: t.type === 'income' ? 'var(--viya-success-light)' : 'var(--viya-neutral-50)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+                }}>
+                  {t.type === 'income' ? '💰' : '🛒'}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>{t.description || t.category}</div>
+                  <div className="body-s text-secondary">{t.category}</div>
+                </div>
+                <div className="num-s" style={{
+                  color: t.type === 'income' ? 'var(--viya-success)' : 'var(--viya-error)',
+                  fontWeight: 600,
+                }}>
+                  {t.type === 'income' ? '+' : '-'}₹{Number(t.amount)}
+                </div>
+              </div>
+            ))}
+            {(!data?.recent_transactions?.length) && (
+              <div className="card" style={{ textAlign: 'center', padding: 24, color: 'var(--text-tertiary)' }}>
+                No transactions yet. Say "spent 500 on food" to start! 🚀
+              </div>
+            )}
+          </div>
+
+          {/* HEALTH TODAY */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+            <div onClick={() => nav('/health')} style={{
+              flex: 1, padding: 16, borderRadius: 'var(--radius-xl)', cursor: 'pointer',
+              background: 'linear-gradient(135deg, #FF7062 0%, #FF9800 50%, #FFD700 100%)', color: 'white',
+              boxShadow: '0 4px 16px rgba(255,112,98,0.25)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+                <Droplets size={14} /> <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>STEPS</span>
+              </div>
+              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 22, lineHeight: 1 }}>0</div>
+              <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>/ 10,000 steps</div>
+              <div style={{ fontSize: 11, fontWeight: 600, marginTop: 6, opacity: 0.85 }}>Open Health 💪</div>
+            </div>
+            <div onClick={() => nav('/health')} style={{
+              flex: 1, padding: 16, borderRadius: 'var(--radius-xl)', cursor: 'pointer',
+              background: 'linear-gradient(135deg, #00E87E 0%, #00E5B0 100%)', color: 'white',
+              boxShadow: '0 4px 16px rgba(0,232,126,0.25)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+                <Heart size={14} /> <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>CALORIES</span>
+              </div>
+              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 22, lineHeight: 1 }}>0</div>
+              <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>/ 2,200 kcal</div>
+              <div style={{ fontSize: 11, fontWeight: 600, marginTop: 6, opacity: 0.85 }}>Log Meal 🍽️</div>
+            </div>
+          </div>
+
+          {/* Quick Add Bar */}
+          <div style={{ marginBottom: 20 }}>
+            <div className="title-m" style={{ marginBottom: 8, fontSize: 14, color: 'var(--text2)' }}>✏️ Manual Quick Add</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[
+                { icon: <Plus size={18}/>, label: 'Expense', to: '/expenses', bg: 'var(--gradient-primary)', color: 'white' },
+                { icon: <ClipboardList size={18}/>, label: 'Task', to: '/reminders', bg: 'var(--surface)', color: 'var(--violet)' },
+                { icon: <Bell size={18}/>, label: 'Reminder', to: '/reminders', bg: 'var(--surface)', color: 'var(--gold)' },
+                { icon: <Activity size={18}/>, label: 'Health', to: '/health', bg: 'var(--surface)', color: 'var(--red)' },
+              ].map((a, i) => (
+                <button key={i} onClick={() => nav(a.to)} className="ripple" style={{
+                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                  padding: '12px 6px', borderRadius: 'var(--radius-sm)',
+                  background: a.bg, color: a.color,
+                  border: i === 0 ? 'none' : '1px solid var(--border)',
+                  boxShadow: i === 0 ? '0 4px 16px var(--primary-glow)' : 'var(--shadow-sm)',
+                  cursor: 'pointer',
+                }}>
+                  {a.icon}
+                  <span style={{ fontSize: 10, fontWeight: 600 }}>{a.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* BILLS DUE STRIP */}
+          {bills.filter(b => b.status !== 'paid').length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span className="title-m" style={{ fontSize: 15 }}>🧾 Upcoming Bills</span>
+                <button onClick={() => nav('/bills')} style={{ fontSize: 12, fontWeight: 600, color:'var(--viya-primary-700)', background: 'none', border: 'none', cursor: 'pointer' }}>All Bills →</button>
+              </div>
+              {bills.filter(b => b.status !== 'paid').slice(0, 4).map((b, i) => {
+                const daysLeft = b.due_date ? Math.ceil((new Date(b.due_date) - Date.now()) / 86400000) : 99
+                const dotColor = daysLeft <= 1 ? 'var(--coral-500)' : daysLeft <= 3 ? 'var(--amber-500)' : 'var(--emerald-500)'
+                return (
+                  <div key={b.id || i} onClick={() => nav('/bills')} style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0',
+                    borderBottom: i < 3 ? '1px solid var(--border)' : 'none', cursor: 'pointer',
+                  }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 500 }}>{b.name}</div>
+                      <div className="body-s text-secondary">{b.due_date ? new Date(b.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'No date'}</div>
+                    </div>
+                    <div className="num-s" style={{ fontWeight: 600, color: dotColor }}>{formatINR(b.amount)}</div>
+                    {daysLeft <= 1 && <button className="ripple" style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 600, background: 'var(--coral-500)', color: 'white', border: 'none', cursor: 'pointer' }}>Pay Now</button>}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          <div style={{ height: 20 }} />
+        </>
+      )}
     </div>
 
-    {/* ═══ FIXED FAB — OUTSIDE .page so it's truly fixed on screen ═══ */}
+    {/* FIXED FAB — always visible, even during loading */}
     <button
       className="viya-fab-fixed"
       onClick={() => nav('/chat')}
