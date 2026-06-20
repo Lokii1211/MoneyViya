@@ -1,85 +1,77 @@
-// Rewards — XP, levels, badges (40+), achievements, streak celebrations
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trophy, Star, Zap, Target, TrendingUp, Award, Shield, Heart, Gift } from 'lucide-react'
+import { Award, Target, Loader2 } from 'lucide-react'
 import PageTransition from '../components/PageTransition'
 import { cardPop } from '../animations/pageVariants'
+import { api } from '../lib/supabase'
+import { useApp } from '../lib/store'
 
 const LEVEL_NAMES = ['Beginner', 'Saver', 'Planner', 'Investor', 'Master', 'Legend', 'Mythic']
 const LEVEL_THRESHOLDS = [0, 500, 1000, 2000, 4000, 8000, 15000]
 
-const BADGES = [
-  // Onboarding (1-5)
-  { id: 1, name: 'First Steps', icon: '👋', desc: 'Signed up for Viya', earned: true, date: '2026-04-01' },
-  { id: 2, name: 'First Expense', icon: '💰', desc: 'Logged your first expense', earned: true, date: '2026-04-01' },
-  { id: 3, name: 'Profile Pro', icon: '📝', desc: 'Completed your profile', earned: true, date: '2026-04-01' },
-  { id: 4, name: 'Goal Setter', icon: '🎯', desc: 'Created your first savings goal', earned: true, date: '2026-04-02' },
-  { id: 5, name: 'WhatsApp Ready', icon: '💬', desc: 'Sent your first bot message', earned: true, date: '2026-04-02' },
-  // Streaks (6-12)
-  { id: 6, name: '3-Day Spark', icon: '✨', desc: '3 days of daily logging', earned: true, date: '2026-04-04' },
-  { id: 7, name: '7-Day Streak', icon: '🔥', desc: '7 days of daily logging', earned: true, date: '2026-04-08' },
-  { id: 8, name: '14-Day Fire', icon: '🌟', desc: '14 consecutive days', earned: true, date: '2026-04-15' },
-  { id: 9, name: '30-Day Legend', icon: '👑', desc: '30 consecutive days', earned: false },
-  { id: 10, name: '60-Day Titan', icon: '⚡', desc: '60 consecutive days', earned: false },
-  { id: 11, name: '90-Day Master', icon: '🏆', desc: '90 consecutive days', earned: false },
-  { id: 12, name: '365-Day Mythic', icon: '🌈', desc: 'A full year of consistency', earned: false },
-  // Budget (13-18)
-  { id: 13, name: 'Budget Rookie', icon: '📊', desc: 'Set your first budget', earned: true, date: '2026-04-03' },
-  { id: 14, name: 'Budget Master', icon: '🎖️', desc: 'Stayed under budget for a month', earned: true, date: '2026-04-30' },
-  { id: 15, name: 'Savings Star', icon: '💎', desc: 'Saved ₹5,000 in a month', earned: false },
-  { id: 16, name: 'Frugal Hero', icon: '🛡️', desc: 'Spent 20% below budget', earned: false },
-  { id: 17, name: 'No-Spend Champion', icon: '🚫', desc: 'Completed a no-spend weekend', earned: false },
-  { id: 18, name: 'Investment Guru', icon: '📈', desc: 'Started a SIP or investment', earned: false },
-  // Health (19-26)
-  { id: 19, name: 'Health Starter', icon: '💚', desc: 'First health log', earned: true, date: '2026-04-05' },
-  { id: 20, name: 'Health Warrior', icon: '💪', desc: 'Logged health for 14 days', earned: true, date: '2026-05-01' },
-  { id: 21, name: 'Hydration Hero', icon: '💧', desc: '8+ glasses for 7 days', earned: false },
-  { id: 22, name: 'Sleep Master', icon: '😴', desc: '7+ hours sleep for 14 days', earned: false },
-  { id: 23, name: 'Night Owl', icon: '🦉', desc: 'Logged sleep for 7 days', earned: false },
-  { id: 24, name: 'Step Counter', icon: '🚶', desc: '10K steps for 5 days', earned: false },
-  { id: 25, name: 'Mood Tracker', icon: '🌤️', desc: 'Logged mood for 14 days', earned: false },
-  { id: 26, name: 'Zen Master', icon: '🧘', desc: '30 days of mood tracking', earned: false },
-  // Habits (27-32)
-  { id: 27, name: 'Habit Starter', icon: '🌱', desc: 'Created your first habit', earned: true, date: '2026-04-03' },
-  { id: 28, name: 'Habit Machine', icon: '⚡', desc: '30-day habit streak', earned: false },
-  { id: 29, name: 'Multi-Habit Pro', icon: '🎪', desc: 'Track 5+ habits simultaneously', earned: false },
-  { id: 30, name: 'Early Bird', icon: '🐦', desc: 'Morning habit done before 7 AM', earned: false },
-  { id: 31, name: 'Consistency King', icon: '♛', desc: '100% habits done for a week', earned: false },
-  { id: 32, name: 'Freeze Saver', icon: '🧊', desc: 'Used a streak freeze wisely', earned: false },
-  // Food (33-36)
-  { id: 33, name: 'Chef Mode', icon: '👨‍🍳', desc: 'Logged all meals for a week', earned: false },
-  { id: 34, name: 'Calorie Counter', icon: '🔢', desc: 'Hit calorie target for 7 days', earned: false },
-  { id: 35, name: 'Breakfast Champion', icon: '🥞', desc: 'Never skipped breakfast for 14 days', earned: false },
-  { id: 36, name: 'Meal Planner', icon: '📋', desc: 'Pre-logged meals for a week', earned: false },
-  // Medicine (37-38)
-  { id: 37, name: 'Medicine Pro', icon: '💊', desc: 'Never missed a dose for 30 days', earned: false },
-  { id: 38, name: 'Vitamin Champ', icon: '🌞', desc: '14 days of vitamin tracking', earned: false },
-  // Social (39-42)
-  { id: 39, name: 'Social Butterfly', icon: '🦋', desc: 'Added 5 friends', earned: false },
-  { id: 40, name: 'Family First', icon: '👨‍👩‍👧', desc: 'Connected a family member', earned: false },
-  { id: 41, name: 'Split Master', icon: '🤝', desc: 'Settled 10 splits', earned: false },
-  { id: 42, name: 'Community Star', icon: '⭐', desc: 'Joined the Viya community', earned: false },
-  // Intelligence (43-46)
-  { id: 43, name: 'Email Ninja', icon: '📧', desc: 'Connected email intelligence', earned: false },
-  { id: 44, name: 'SMS Scanner', icon: '📱', desc: 'Auto-logged 50 SMS expenses', earned: false },
-  { id: 45, name: 'Receipt Scanner', icon: '📸', desc: 'Scanned 10 receipts', earned: false },
-  { id: 46, name: 'Prediction Pro', icon: '🔮', desc: 'Checked predictions 10 times', earned: false },
-  // Milestones (47-50)
-  { id: 47, name: 'Centurion', icon: '💯', desc: 'Logged 100 expenses', earned: false },
-  { id: 48, name: 'Viya Veteran', icon: '🎗️', desc: '6 months on Viya', earned: false },
-  { id: 49, name: 'Level 5 Master', icon: '🏅', desc: 'Reach Level 5', earned: false },
-  { id: 50, name: 'Viya Legend', icon: '👑', desc: 'Reach Level 6 — Legendary!', earned: false },
-]
+function getLevel(xp) {
+  let lvl = 1
+  for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
+    if (xp >= LEVEL_THRESHOLDS[i]) { lvl = i + 1; break }
+  }
+  return Math.min(lvl, LEVEL_NAMES.length)
+}
 
-const CHALLENGES = [
-  { id: 1, title: 'No-Spend Weekend', desc: 'Don\'t spend anything this weekend', xp: 100, progress: 0.5, icon: '🚫💸', deadline: '2d left' },
-  { id: 2, title: 'Log All Meals', desc: 'Log breakfast, lunch, dinner for 3 days', xp: 75, progress: 0.33, icon: '🍽️', deadline: '5d left' },
-  { id: 3, title: '10K Steps Daily', desc: 'Walk 10,000 steps for 5 days', xp: 150, progress: 0.6, icon: '🚶', deadline: '3d left' },
-  { id: 4, title: 'Hydration Hero', desc: 'Drink 8 glasses of water for 7 days', xp: 100, progress: 0.28, icon: '💧', deadline: '5d left' },
-  { id: 5, title: 'Budget Master', desc: 'Stay under budget for the month', xp: 500, progress: 0.4, icon: '🏆', deadline: '20d left' },
-]
+function buildBadges(data) {
+  const { user, txnCount, goalCount, streak, savingsRate, hasHealthLogs } = data
+  return [
+    {
+      id: 1, name: 'First Steps', icon: '👋', desc: 'Signed up for Viya',
+      earned: !!user, condition: 'Create an account',
+    },
+    {
+      id: 2, name: 'First Expense', icon: '💰', desc: 'Logged your first expense',
+      earned: txnCount > 0, condition: 'Log 1 expense',
+    },
+    {
+      id: 3, name: 'Goal Setter', icon: '🎯', desc: 'Created your first savings goal',
+      earned: goalCount > 0, condition: 'Create a goal',
+    },
+    {
+      id: 4, name: '3-Day Spark', icon: '✨', desc: '3 days of daily logging',
+      earned: streak >= 3, condition: `${Math.min(streak, 3)}/3 days`,
+    },
+    {
+      id: 5, name: '7-Day Streak', icon: '🔥', desc: '7 days of daily logging',
+      earned: streak >= 7, condition: `${Math.min(streak, 7)}/7 days`,
+    },
+    {
+      id: 6, name: 'Streak Master', icon: '👑', desc: '14 consecutive days of logging',
+      earned: streak >= 14, condition: `${Math.min(streak, 14)}/14 days`,
+    },
+    {
+      id: 7, name: '30-Day Legend', icon: '🏆', desc: '30 consecutive days',
+      earned: streak >= 30, condition: `${Math.min(streak, 30)}/30 days`,
+    },
+    {
+      id: 8, name: 'Budget Pro', icon: '📊', desc: 'Save more than 20% of income',
+      earned: savingsRate > 20, condition: `Currently ${Math.round(savingsRate)}%`,
+    },
+    {
+      id: 9, name: 'Health Conscious', icon: '💚', desc: 'Start tracking your health',
+      earned: hasHealthLogs, condition: 'Log health data',
+    },
+    {
+      id: 10, name: 'Centurion', icon: '💯', desc: 'Logged 100 expenses',
+      earned: txnCount >= 100, condition: `${Math.min(txnCount, 100)}/100 logged`,
+    },
+    {
+      id: 11, name: 'Multi-Goal Pro', icon: '🎪', desc: 'Track 3+ goals simultaneously',
+      earned: goalCount >= 3, condition: `${Math.min(goalCount, 3)}/3 goals`,
+    },
+    {
+      id: 12, name: 'Viya Legend', icon: '🌟', desc: 'Reach Level 5 - Master!',
+      earned: getLevel(user?.xp || 0) >= 5, condition: 'Reach Level 5',
+    },
+  ]
+}
 
-// Confetti particle component
+// Confetti particle
 function ConfettiParticle({ delay, x }) {
   const colors = ['#FFD700', '#FF7062', '#00B870', '#7C4DFF', '#00B0B6', '#FF9800']
   const color = colors[Math.floor(Math.random() * colors.length)]
@@ -98,25 +90,86 @@ function ConfettiParticle({ delay, x }) {
 }
 
 export default function Rewards() {
-  const [showCelebration, setShowCelebration] = useState(false)
+  const { phone } = useApp()
+  const [loading, setLoading] = useState(true)
+  const [userData, setUserData] = useState(null)
+  const [badges, setBadges] = useState([])
   const [selectedBadge, setSelectedBadge] = useState(null)
   const [activeTab, setActiveTab] = useState('badges')
-  
-  const xp = 1250
-  const level = 3
-  const nextLevelXp = LEVEL_THRESHOLDS[level] || 2000
-  const prevLevelXp = LEVEL_THRESHOLDS[level - 1] || 0
-  const pct = Math.round(((xp - prevLevelXp) / (nextLevelXp - prevLevelXp)) * 100)
-  const earnedBadges = BADGES.filter(b => b.earned).length
-  const streak = 14
+  const [showCelebration, setShowCelebration] = useState(false)
 
-  // Show celebration on mount if streak milestone
   useEffect(() => {
-    if (streak === 7 || streak === 14 || streak === 30 || streak === 60 || streak === 90) {
-      setShowCelebration(true)
-      setTimeout(() => setShowCelebration(false), 3000)
+    if (!phone) return
+    loadData()
+  }, [phone])
+
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      const [user, txns, goals, habits, healthLog] = await Promise.all([
+        api.getUser(phone),
+        api.getTransactions(phone, 200),
+        api.getGoals(phone),
+        api.getHabits(phone),
+        api.getHealthLog(phone),
+      ])
+
+      const xp = Number(user?.xp || user?.monthly_expenses || 0)
+      const income = Number(user?.monthly_income || 0)
+      const expenses = Number(user?.monthly_expenses || 0)
+      const savingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0
+      const streak = Number(user?.streak || habits?.[0]?.current_streak || 0)
+
+      const enrichedUser = { ...user, xp }
+      setUserData({
+        user: enrichedUser,
+        txnCount: (txns || []).length,
+        goalCount: (goals || []).length,
+        streak,
+        savingsRate,
+        hasHealthLogs: !!healthLog,
+        xp,
+      })
+
+      const builtBadges = buildBadges({
+        user: enrichedUser,
+        txnCount: (txns || []).length,
+        goalCount: (goals || []).length,
+        streak,
+        savingsRate,
+        hasHealthLogs: !!healthLog,
+      })
+      setBadges(builtBadges)
+
+      // Trigger celebration for streak milestones
+      if ([7, 14, 30, 60, 90].includes(streak)) {
+        setShowCelebration(true)
+        setTimeout(() => setShowCelebration(false), 3000)
+      }
+    } catch (err) {
+      console.error('Rewards load error:', err)
     }
-  }, [])
+    setLoading(false)
+  }
+
+  if (loading) {
+    return (
+      <PageTransition>
+        <div className="page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+          <Loader2 size={28} style={{ color: 'var(--text-tertiary)', animation: 'spin 1s linear infinite' }} />
+        </div>
+      </PageTransition>
+    )
+  }
+
+  const xp = userData?.xp || 0
+  const level = getLevel(xp)
+  const nextThreshold = LEVEL_THRESHOLDS[level] || LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1]
+  const prevThreshold = LEVEL_THRESHOLDS[level - 1] || 0
+  const range = nextThreshold - prevThreshold
+  const pct = range > 0 ? Math.min(Math.round(((xp - prevThreshold) / range) * 100), 100) : 100
+  const earnedBadges = badges.filter(b => b.earned)
+  const streak = userData?.streak || 0
 
   return (
     <PageTransition>
@@ -172,35 +225,47 @@ export default function Rewards() {
             style={{ fontSize: 48, marginBottom: 8 }}
           >⚡</motion.div>
           <div style={{ fontSize: 14, opacity: 0.6, marginBottom: 2 }}>Level {level}</div>
-          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: "'Sora',sans-serif", marginBottom: 4 }}>{LEVEL_NAMES[level - 1]}</div>
-          <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 12 }}>{xp.toLocaleString()} / {nextLevelXp.toLocaleString()} XP</div>
+          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: "'Sora',sans-serif", marginBottom: 4 }}>
+            {LEVEL_NAMES[level - 1] || 'Mythic'}
+          </div>
+          <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 12 }}>
+            {xp.toLocaleString()} / {nextThreshold.toLocaleString()} XP
+          </div>
           <div style={{ width: '100%', height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.15)', overflow: 'hidden' }}>
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${pct}%` }}
               transition={{ duration: 1.2, ease: 'easeOut' }}
-              style={{ height: '100%', borderRadius: 4, background: 'linear-gradient(90deg, #00B0B6, #7C4DFF)' }}
+              style={{ height: '100%', borderRadius: 4, background: 'linear-gradient(90deg, #FFD700, #7C4DFF)' }}
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 16 }}>
-            <div><div style={{ fontSize: 20, fontWeight: 700 }}>{earnedBadges}</div><div style={{ fontSize: 11, opacity: 0.5 }}>Badges</div></div>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{earnedBadges.length}</div>
+              <div style={{ fontSize: 11, opacity: 0.5 }}>Badges</div>
+            </div>
             <div>
               <motion.div
-                animate={{ scale: [1, 1.1, 1] }}
+                animate={streak > 0 ? { scale: [1, 1.15, 1] } : {}}
                 transition={{ duration: 1, repeat: Infinity, repeatDelay: 2 }}
                 style={{ fontSize: 20, fontWeight: 700 }}
-              >{streak} 🔥</motion.div>
+              >
+                {streak} 🔥
+              </motion.div>
               <div style={{ fontSize: 11, opacity: 0.5 }}>Streak</div>
             </div>
-            <div><div style={{ fontSize: 20, fontWeight: 700 }}>{CHALLENGES.length}</div><div style={{ fontSize: 11, opacity: 0.5 }}>Challenges</div></div>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{badges.length}</div>
+              <div style={{ fontSize: 11, opacity: 0.5 }}>Total</div>
+            </div>
           </div>
         </motion.div>
 
         {/* Tab Switcher */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           {[
-            { key: 'badges', label: `Badges (${earnedBadges}/${BADGES.length})`, icon: <Award size={14} /> },
-            { key: 'challenges', label: 'Challenges', icon: <Target size={14} /> },
+            { key: 'badges', label: `Badges (${earnedBadges.length}/${badges.length})`, icon: <Award size={14} /> },
+            { key: 'locked', label: 'Locked', icon: <Target size={14} /> },
           ].map(tab => (
             <motion.button key={tab.key} whileTap={{ scale: 0.96 }}
               onClick={() => setActiveTab(tab.key)}
@@ -217,61 +282,78 @@ export default function Rewards() {
           ))}
         </div>
 
-        {/* Active Challenges */}
+        {/* Badge Content */}
         <AnimatePresence mode="wait">
-          {activeTab === 'challenges' && (
-            <motion.div key="challenges" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-                {CHALLENGES.map(ch => (
-                  <motion.div key={ch.id} variants={cardPop} initial="initial" animate="animate"
-                    className="card" style={{ padding: 14 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                      <span style={{ fontSize: 24 }}>{ch.icon}</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700 }}>{ch.title}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{ch.desc}</div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--viya-warning)' }}>+{ch.xp} XP</span>
-                        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2 }}>{ch.deadline}</div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--bg-secondary)', overflow: 'hidden' }}>
-                        <motion.div initial={{ width: 0 }} animate={{ width: `${ch.progress * 100}%` }}
-                          transition={{ duration: 0.8 }}
-                          style={{ height: '100%', borderRadius: 3, background: 'var(--gradient-primary)' }} />
-                      </div>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>{Math.round(ch.progress * 100)}%</span>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+          {activeTab === 'badges' && (
+            <motion.div key="badges" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+              {earnedBadges.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 20px' }}>
+                  <div style={{ fontSize: 40, marginBottom: 12 }}>🏅</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>No badges yet!</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
+                    Start logging expenses, setting goals, and building streaks to earn badges
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+                  {badges.map(badge => (
+                    <motion.div key={badge.id} whileTap={{ scale: 0.92 }}
+                      onClick={() => setSelectedBadge(badge)}
+                      style={{
+                        padding: '12px 4px', borderRadius: 14, textAlign: 'center', cursor: 'pointer',
+                        background: badge.earned ? 'var(--bg-card)' : 'var(--bg-secondary)',
+                        opacity: badge.earned ? 1 : 0.35,
+                        border: badge.earned
+                          ? '1.5px solid rgba(255,215,0,0.3)'
+                          : '1px solid var(--border-light)',
+                        boxShadow: badge.earned ? '0 2px 8px rgba(255,215,0,0.1)' : 'none',
+                      }}>
+                      <motion.div
+                        animate={badge.earned ? { scale: [1, 1.1, 1] } : {}}
+                        transition={{ duration: 2, repeat: Infinity, repeatDelay: 5, delay: badge.id * 0.3 }}
+                        style={{ fontSize: 28, marginBottom: 4 }}
+                      >
+                        {badge.earned ? badge.icon : '🔒'}
+                      </motion.div>
+                      <div style={{ fontSize: 9, fontWeight: 600, lineHeight: 1.2 }}>{badge.name}</div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
 
-          {/* Badges Grid */}
-          {activeTab === 'badges' && (
-            <motion.div key="badges" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-                {BADGES.map(badge => (
-                  <motion.div key={badge.id} whileTap={{ scale: 0.92 }}
-                    onClick={() => setSelectedBadge(badge)}
-                    style={{
-                      padding: '12px 4px', borderRadius: 14, textAlign: 'center', cursor: 'pointer',
-                      background: badge.earned ? 'var(--bg-card)' : 'var(--bg-secondary)',
-                      opacity: badge.earned ? 1 : 0.4,
-                      border: badge.earned ? '1.5px solid rgba(0,176,182,0.15)' : '1px solid var(--border-light)',
-                    }}>
-                    <motion.div
-                      animate={badge.earned ? { scale: [1, 1.1, 1] } : {}}
-                      transition={{ duration: 2, repeat: Infinity, repeatDelay: 5, delay: badge.id * 0.2 }}
-                      style={{ fontSize: 28, marginBottom: 4 }}
-                    >{badge.icon}</motion.div>
-                    <div style={{ fontSize: 9, fontWeight: 600, lineHeight: 1.2 }}>{badge.name}</div>
-                  </motion.div>
-                ))}
-              </div>
+          {activeTab === 'locked' && (
+            <motion.div key="locked" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+              {badges.filter(b => !b.earned).length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 20px' }}>
+                  <div style={{ fontSize: 40, marginBottom: 12 }}>🎉</div>
+                  <div style={{ fontSize: 15, fontWeight: 700 }}>All badges unlocked!</div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {badges.filter(b => !b.earned).map(badge => (
+                    <motion.div key={badge.id} variants={cardPop} initial="initial" animate="animate"
+                      className="card" style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}
+                    >
+                      <div style={{
+                        width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'var(--bg-secondary)', fontSize: 22, opacity: 0.5,
+                      }}>
+                        🔒
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>{badge.name}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{badge.desc}</div>
+                        <div style={{ fontSize: 11, color: 'var(--viya-primary-500)', fontWeight: 600, marginTop: 2 }}>
+                          {badge.condition}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 20, opacity: 0.4 }}>{badge.icon}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -296,16 +378,41 @@ export default function Rewards() {
                 }}
               >
                 <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border-light)', margin: '0 auto 20px' }} />
-                <div style={{ fontSize: 56, marginBottom: 12 }}>{selectedBadge.icon}</div>
-                <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Sora',sans-serif", marginBottom: 4 }}>{selectedBadge.name}</div>
-                <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>{selectedBadge.desc}</div>
+                <motion.div
+                  animate={selectedBadge.earned ? { scale: [1, 1.2, 1], rotate: [0, 5, -5, 0] } : {}}
+                  transition={{ duration: 0.6 }}
+                  style={{ fontSize: 56, marginBottom: 12 }}
+                >
+                  {selectedBadge.icon}
+                </motion.div>
+                <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Sora',sans-serif", marginBottom: 4 }}>
+                  {selectedBadge.name}
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
+                  {selectedBadge.desc}
+                </div>
                 {selectedBadge.earned ? (
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 20, background: 'rgba(0,184,112,0.1)', color: '#00B870', fontSize: 13, fontWeight: 700 }}>
-                    ✅ Earned on {selectedBadge.date}
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '8px 16px', borderRadius: 20,
+                    background: 'rgba(0,184,112,0.1)', color: '#00B870',
+                    fontSize: 13, fontWeight: 700,
+                  }}>
+                    ✅ Unlocked!
                   </div>
                 ) : (
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 20, background: 'var(--bg-secondary)', color: 'var(--text-tertiary)', fontSize: 13, fontWeight: 600 }}>
-                    🔒 Not yet earned
+                  <div>
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '8px 16px', borderRadius: 20,
+                      background: 'var(--bg-secondary)', color: 'var(--text-tertiary)',
+                      fontSize: 13, fontWeight: 600, marginBottom: 8,
+                    }}>
+                      🔒 Not yet earned
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--viya-primary-500)', fontWeight: 600, marginTop: 8 }}>
+                      {selectedBadge.condition}
+                    </div>
                   </div>
                 )}
               </motion.div>

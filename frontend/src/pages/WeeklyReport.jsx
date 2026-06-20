@@ -1,284 +1,259 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Download, Share2, TrendingUp, TrendingDown, Target, Heart, Mail, Calendar, ChevronRight, Star } from 'lucide-react'
+import { useApp } from '../lib/store'
+import { api } from '../lib/supabase'
+import { useToast } from '../components/Toast'
+import { formatINR, getCategoryIcon, getCategoryColor } from '../lib/utils'
+import { ArrowLeft, Share2, TrendingUp, TrendingDown, BarChart3, Calendar } from 'lucide-react'
 
-const WEEK_DATA = {
-  period: 'May 5 – May 11, 2026',
-  healthScore: 72,
-  financeScore: 84,
-  productivityScore: 68,
-  overallScore: 75,
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function getWeekRange(offset = 0) {
+  const now = new Date()
+  const dayOfWeek = now.getDay()
+  const start = new Date(now)
+  start.setDate(now.getDate() - dayOfWeek + (offset * 7))
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(start)
+  end.setDate(start.getDate() + 6)
+  end.setHours(23, 59, 59, 999)
+  return { start, end }
 }
-
-const FINANCE_SUMMARY = {
-  income: 85000,
-  spent: 32400,
-  saved: 52600,
-  savingsRate: 62,
-  topCategories: [
-    { name: 'Food & Dining', amount: 8200, pct: 25, emoji: '🍕' },
-    { name: 'Transport', amount: 5600, pct: 17, emoji: '🚗' },
-    { name: 'Shopping', amount: 4800, pct: 15, emoji: '🛍️' },
-    { name: 'Bills & Utilities', amount: 3200, pct: 10, emoji: '💡' },
-    { name: 'Entertainment', amount: 2800, pct: 9, emoji: '🎬' },
-  ],
-  goalProgress: [
-    { name: 'Emergency Fund', target: 300000, current: 185000, added: 15000 },
-    { name: 'Goa Trip', target: 50000, current: 38000, added: 5000 },
-  ],
-  billsPaid: 3,
-  billsUpcoming: 2,
-}
-
-const HEALTH_SUMMARY = {
-  avgSteps: 7234,
-  avgSleep: '6h 45m',
-  mealsLogged: 18,
-  waterAvg: '2.1L',
-  medicineTaken: '85%',
-  bestDay: 'Wednesday (10,234 steps)',
-  worstDay: 'Sunday (2,100 steps)',
-}
-
-const EMAIL_SUMMARY = {
-  processed: 142,
-  actionTaken: 28,
-  billsDetected: 5,
-  meetingsScheduled: 3,
-  deliveriesTracked: 7,
-}
-
-const AI_INSIGHTS = [
-  { emoji: '💰', text: 'Your food spending is 18% higher than last week. You ordered Swiggy 5 times — try cooking twice to save ₹1,500.' },
-  { emoji: '🏃', text: 'Steps dropped 22% on weekends. A 20-min evening walk on Sat/Sun would boost your health score to 80+.' },
-  { emoji: '🎯', text: 'Emergency Fund goal is 62% done! At this rate, you\'ll hit it by August 12.' },
-  { emoji: '📧', text: 'You have 2 subscription renewal emails this week — Headspace (₹499) and Adobe (₹1,675). Consider cancelling Headspace.' },
-]
 
 export default function WeeklyReport() {
+  const { phone, user } = useApp()
   const nav = useNavigate()
-  const [expandedSection, setExpandedSection] = useState(null)
+  const toast = useToast()
+  const [transactions, setTransactions] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const ScoreRing = ({ score, size = 80, label, color }) => {
-    const circumference = 2 * Math.PI * (size / 2 - 6)
-    const offset = circumference - (score / 100) * circumference
-    return (
-      <div style={{ textAlign: 'center' }}>
-        <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-          <circle cx={size/2} cy={size/2} r={size/2 - 6} fill="none"
-            stroke="var(--bg-secondary)" strokeWidth="5" />
-          <circle cx={size/2} cy={size/2} r={size/2 - 6} fill="none"
-            stroke={color} strokeWidth="5" strokeLinecap="round"
-            strokeDasharray={circumference} strokeDashoffset={offset}
-            style={{ transition: 'stroke-dashoffset 1s ease' }} />
-        </svg>
-        <div style={{ marginTop: -size/2 - 8, fontSize: size > 60 ? 20 : 16, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace" }}>
-          {score}
-        </div>
-        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: size > 60 ? 16 : 10 }}>{label}</div>
-      </div>
-    )
+  useEffect(() => {
+    if (!phone) return
+    setLoading(true)
+    api.getTransactions(phone, 100).then(txns => {
+      setTransactions(txns || [])
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [phone])
+
+  const thisWeek = getWeekRange(0)
+  const lastWeek = getWeekRange(-1)
+
+  const thisWeekTxns = useMemo(() =>
+    transactions.filter(t => { const d = new Date(t.created_at); return d >= thisWeek.start && d <= thisWeek.end }),
+    [transactions, thisWeek.start, thisWeek.end]
+  )
+  const lastWeekTxns = useMemo(() =>
+    transactions.filter(t => { const d = new Date(t.created_at); return d >= lastWeek.start && d <= lastWeek.end }),
+    [transactions, lastWeek.start, lastWeek.end]
+  )
+
+  const thisExpenses = thisWeekTxns.filter(t => t.type === 'expense')
+  const lastExpenses = lastWeekTxns.filter(t => t.type === 'expense')
+  const thisTotal = thisExpenses.reduce((s, t) => s + Number(t.amount), 0)
+  const lastTotal = lastExpenses.reduce((s, t) => s + Number(t.amount), 0)
+  const thisIncome = thisWeekTxns.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
+  const change = lastTotal > 0 ? Math.round(((thisTotal - lastTotal) / lastTotal) * 100) : 0
+
+  // Daily bars for this week
+  const dailyBars = useMemo(() => {
+    const bars = DAY_NAMES.map((name, i) => {
+      const date = new Date(thisWeek.start)
+      date.setDate(date.getDate() + i)
+      const dayStr = date.toISOString().split('T')[0]
+      const amount = thisExpenses.filter(t => t.created_at?.startsWith(dayStr)).reduce((s, t) => s + Number(t.amount), 0)
+      return { name, amount, isToday: dayStr === new Date().toISOString().split('T')[0] }
+    })
+    return bars
+  }, [thisWeek.start, thisExpenses])
+
+  const maxDailyBar = Math.max(...dailyBars.map(d => d.amount), 1)
+
+  // Top categories this week
+  const topCategories = useMemo(() => {
+    const map = {}
+    thisExpenses.forEach(t => {
+      const cat = t.category || 'Other'
+      map[cat] = (map[cat] || 0) + Number(t.amount)
+    })
+    return Object.entries(map).map(([name, amount]) => ({ name, amount })).sort((a, b) => b.amount - a.amount).slice(0, 5)
+  }, [thisExpenses])
+
+  // Compare categories with last week
+  const lastCatMap = useMemo(() => {
+    const map = {}
+    lastExpenses.forEach(t => { const cat = t.category || 'Other'; map[cat] = (map[cat] || 0) + Number(t.amount) })
+    return map
+  }, [lastExpenses])
+
+  // Generate insights
+  const insights = useMemo(() => {
+    const result = []
+    if (change > 10) result.push({ icon: '📈', text: `Spending is up ${change}% compared to last week. Review non-essential purchases.`, type: 'warning' })
+    else if (change < -10) result.push({ icon: '📉', text: `Great! Spending is down ${Math.abs(change)}% from last week.`, type: 'positive' })
+    else if (lastTotal > 0) result.push({ icon: '📊', text: `Spending is steady compared to last week (${change >= 0 ? '+' : ''}${change}%).`, type: 'neutral' })
+
+    topCategories.slice(0, 2).forEach(cat => {
+      const lastAmt = lastCatMap[cat.name] || 0
+      if (lastAmt > 0) {
+        const catChange = Math.round(((cat.amount - lastAmt) / lastAmt) * 100)
+        if (catChange > 20) result.push({ icon: '⚠️', text: `${cat.name} spending jumped ${catChange}% this week (${formatINR(cat.amount)} vs ${formatINR(lastAmt)}).`, type: 'warning' })
+        else if (catChange < -20) result.push({ icon: '✅', text: `${cat.name} spending dropped ${Math.abs(catChange)}% this week. Keep it up!`, type: 'positive' })
+      }
+    })
+
+    if (thisIncome > 0 && thisTotal > 0) {
+      const rate = Math.round(((thisIncome - thisTotal) / thisIncome) * 100)
+      if (rate > 0) result.push({ icon: '💰', text: `You saved ${rate}% of your income this week.`, type: 'positive' })
+    }
+
+    if (result.length === 0) result.push({ icon: '📊', text: 'Track more expenses to get personalized insights.', type: 'neutral' })
+    return result
+  }, [change, topCategories, lastCatMap, thisIncome, thisTotal, lastTotal])
+
+  const periodLabel = `${thisWeek.start.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - ${thisWeek.end.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
+
+  const shareReport = () => {
+    const name = user?.name || 'User'
+    const text = `${name}'s Weekly Report (${periodLabel})\n\nSpent: ${formatINR(thisTotal)}\nIncome: ${formatINR(thisIncome)}\nVs last week: ${change >= 0 ? '+' : ''}${change}%\n\nPowered by Viya`
+    if (navigator.share) navigator.share({ title: 'Weekly Report', text })
+    else { navigator.clipboard.writeText(text); toast.show('Report copied!', 'success') }
   }
 
+  if (loading) return (
+    <div className="page" style={{ paddingBottom: 100 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-secondary)' }} />
+        <div style={{ height: 20, width: 160, background: 'var(--bg-secondary)', borderRadius: 8 }} />
+      </div>
+      {[1,2,3,4].map(i => (
+        <div key={i} style={{ height: 70, background: 'var(--bg-secondary)', borderRadius: 14, marginBottom: 10, animation: 'pulse 1.5s infinite' }} />
+      ))}
+    </div>
+  )
+
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', paddingBottom: 100 }}>
+    <div className="page" style={{ paddingBottom: 100 }}>
       {/* Header */}
-      <div style={{
-        background: 'var(--gradient-night)', padding: '50px 20px 24px',
-        position: 'relative', overflow: 'hidden',
-      }}>
-        <div style={{
-          position: 'absolute', width: 200, height: 200, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(0,229,212,0.12) 0%, transparent 70%)',
-          top: -50, right: -40,
-        }} />
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <button onClick={() => nav(-1)} style={{
-            width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.1)',
-            border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}><ArrowLeft size={16} color="white" /></button>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button style={{
-              padding: '6px 12px', borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 600,
-              background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-            }}><Download size={12} /> PDF</button>
-            <button style={{
-              padding: '6px 12px', borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 600,
-              background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-            }}><Share2 size={12} /> Share</button>
-          </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button onClick={() => nav(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text)' }}><ArrowLeft size={20} /></button>
+          <h2 style={{ fontSize: 20, fontWeight: 800 }}>Weekly Report</h2>
         </div>
-
-        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 22, color: 'white', marginBottom: 2 }}>
-          📊 Weekly Report
-        </div>
-        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>{WEEK_DATA.period}</div>
-
-        {/* Score Overview */}
-        <div style={{
-          display: 'flex', justifyContent: 'space-around', marginTop: 20,
-          background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--r-xl)', padding: '16px 8px',
-        }}>
-          <ScoreRing score={WEEK_DATA.overallScore} size={72} label="Overall" color="var(--teal-500)" />
-          <ScoreRing score={WEEK_DATA.financeScore} size={56} label="Finance" color="var(--emerald-500)" />
-          <ScoreRing score={WEEK_DATA.healthScore} size={56} label="Health" color="var(--coral-500)" />
-          <ScoreRing score={WEEK_DATA.productivityScore} size={56} label="Productivity" color="var(--info-500)" />
-        </div>
+        <button onClick={shareReport} style={{ padding: '6px 12px', background: 'var(--primary-dim)', border: '1px solid rgba(0,208,132,0.2)', borderRadius: 10, color: 'var(--primary)', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Share2 size={14} /> Share
+        </button>
       </div>
 
-      <div style={{ padding: 20 }}>
-        {/* AI Insights */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "'Sora',sans-serif" }}>
-            🧠 Viya's Insights
-          </div>
-          {AI_INSIGHTS.map((insight, i) => (
-            <div key={i} style={{
-              background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 12,
-              border: '1px solid var(--border-light)', marginBottom: 6,
-              display: 'flex', gap: 10, alignItems: 'flex-start',
-            }}>
-              <span style={{ fontSize: 20, flexShrink: 0 }}>{insight.emoji}</span>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{insight.text}</div>
-            </div>
-          ))}
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center', marginBottom: 20 }}>
+        <Calendar size={14} color="var(--text3)" />
+        <span style={{ fontSize: 13, color: 'var(--text3, var(--text-tertiary))', fontWeight: 600 }}>{periodLabel}</span>
+      </div>
 
-        {/* Finance Section */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "'Sora',sans-serif" }}>
-            💰 Finance Summary
+      {thisWeekTxns.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <BarChart3 size={48} style={{ color: 'var(--text3)', marginBottom: 12 }} />
+          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>No data this week</h3>
+          <p style={{ fontSize: 13, color: 'var(--text3)' }}>Start tracking expenses to see your weekly report.</p>
+        </div>
+      ) : (
+        <>
+          {/* Week-over-Week Comparison */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+            <div style={{ flex: 1, background: 'var(--bg-card, var(--surface))', border: '1px solid var(--border-light, var(--border))', borderRadius: 14, padding: 14, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: 'var(--text3, var(--text-tertiary))', fontWeight: 700, marginBottom: 4 }}>THIS WEEK</div>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 22, fontWeight: 800, color: 'var(--cosmos-400)' }}>{formatINR(thisTotal)}</div>
+            </div>
+            <div style={{ flex: 1, background: 'var(--bg-card, var(--surface))', border: '1px solid var(--border-light, var(--border))', borderRadius: 14, padding: 14, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: 'var(--text3, var(--text-tertiary))', fontWeight: 700, marginBottom: 4 }}>LAST WEEK</div>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 22, fontWeight: 800, color: 'var(--text2, var(--text-secondary))' }}>{formatINR(lastTotal)}</div>
+            </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
-            {[
-              { label: 'Income', value: `₹${(FINANCE_SUMMARY.income/1000).toFixed(0)}K`, color: 'var(--emerald-500)' },
-              { label: 'Spent', value: `₹${(FINANCE_SUMMARY.spent/1000).toFixed(1)}K`, color: 'var(--coral-500)' },
-              { label: 'Saved', value: `₹${(FINANCE_SUMMARY.saved/1000).toFixed(1)}K`, color:'var(--viya-primary-700)' },
-            ].map((s, i) => (
-              <div key={i} style={{
-                background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 12,
-                border: '1px solid var(--border-light)', textAlign: 'center',
-              }}>
-                <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 2 }}>{s.label}</div>
-                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: s.color }}>{s.value}</div>
-              </div>
-            ))}
+
+          {/* Change Indicator */}
+          {lastTotal > 0 && (
+            <div style={{ background: change > 0 ? 'rgba(255,82,82,0.08)' : 'rgba(0,208,132,0.08)', border: `1px solid ${change > 0 ? 'rgba(255,82,82,0.2)' : 'rgba(0,208,132,0.2)'}`, borderRadius: 12, padding: '10px 14px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+              {change > 0 ? <TrendingUp size={16} color="#FF5252" /> : <TrendingDown size={16} color="var(--primary)" />}
+              <span style={{ fontSize: 13, fontWeight: 700, color: change > 0 ? '#FF5252' : 'var(--primary)' }}>
+                {change > 0 ? '+' : ''}{change}% vs last week
+              </span>
+            </div>
+          )}
+
+          {/* Daily Spending Bars */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Daily Spending</div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 100 }}>
+              {dailyBars.map((d, i) => {
+                const h = d.amount > 0 ? Math.max((d.amount / maxDailyBar) * 100, 6) : 4
+                return (
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3, var(--text-tertiary))', minHeight: 14 }}>
+                      {d.amount > 0 ? formatINR(d.amount).replace('₹', '') : ''}
+                    </div>
+                    <div style={{
+                      width: '100%', height: h, borderRadius: 6,
+                      background: d.isToday ? 'var(--primary)' : d.amount > 0 ? 'var(--cosmos-400)' : 'var(--bg-secondary)',
+                      opacity: d.amount > 0 ? 1 : 0.3, transition: 'height 0.4s ease',
+                    }} />
+                    <div style={{ fontSize: 11, fontWeight: d.isToday ? 700 : 500, color: d.isToday ? 'var(--primary)' : 'var(--text3, var(--text-tertiary))' }}>{d.name}</div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
           {/* Top Categories */}
-          <div style={{
-            background: 'var(--bg-card)', borderRadius: 'var(--r-xl)', padding: 14,
-            border: '1px solid var(--border-light)',
-          }}>
-            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: 'var(--text-secondary)' }}>Top Spending</div>
-            {FINANCE_SUMMARY.topCategories.map((cat, i) => (
-              <div key={i} style={{ marginBottom: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
-                  <span>{cat.emoji} {cat.name}</span>
-                  <span style={{ fontWeight: 600, fontFamily: "'JetBrains Mono',monospace" }}>₹{cat.amount.toLocaleString('en-IN')}</span>
-                </div>
-                <div style={{ height: 4, background: 'var(--bg-secondary)', borderRadius: 99, overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%', width: `${cat.pct}%`, borderRadius: 99,
-                    background: i === 0 ? 'var(--coral-500)' : i === 1 ? 'var(--amber-500)' : 'var(--teal-500)',
-                  }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Goal Progress */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "'Sora',sans-serif" }}>
-            🎯 Goal Progress
-          </div>
-          {FINANCE_SUMMARY.goalProgress.map((g, i) => {
-            const pct = Math.round((g.current / g.target) * 100)
-            return (
-              <div key={i} style={{
-                background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 14,
-                border: '1px solid var(--border-light)', marginBottom: 8,
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>{g.name}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--emerald-500)' }}>+₹{g.added.toLocaleString('en-IN')}</span>
-                </div>
-                <div style={{ height: 6, background: 'var(--bg-secondary)', borderRadius: 99, overflow: 'hidden', marginBottom: 4 }}>
-                  <div style={{ height: '100%', width: `${pct}%`, borderRadius: 99, background: 'var(--teal-500)' }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-tertiary)' }}>
-                  <span>₹{g.current.toLocaleString('en-IN')} / ₹{g.target.toLocaleString('en-IN')}</span>
-                  <span>{pct}%</span>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Health Section */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "'Sora',sans-serif" }}>
-            🏥 Health Summary
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {[
-              { label: 'Avg Steps', value: HEALTH_SUMMARY.avgSteps.toLocaleString(), emoji: '👟' },
-              { label: 'Avg Sleep', value: HEALTH_SUMMARY.avgSleep, emoji: '😴' },
-              { label: 'Meals Logged', value: HEALTH_SUMMARY.mealsLogged, emoji: '🍎' },
-              { label: 'Water Avg', value: HEALTH_SUMMARY.waterAvg, emoji: '💧' },
-              { label: 'Medicine', value: HEALTH_SUMMARY.medicineTaken, emoji: '💊' },
-              { label: 'Best Day', value: 'Wed', emoji: '🏆' },
-            ].map((s, i) => (
-              <div key={i} style={{
-                background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 12,
-                border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', gap: 8,
-              }}>
-                <span style={{ fontSize: 20 }}>{s.emoji}</span>
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace" }}>{s.value}</div>
-                  <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{s.label}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Email Section */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "'Sora',sans-serif" }}>
-            📧 Email Intelligence
-          </div>
-          <div style={{
-            background: 'var(--bg-card)', borderRadius: 'var(--r-xl)', padding: 14,
-            border: '1px solid var(--border-light)',
-          }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, textAlign: 'center' }}>
-              {[
-                { label: 'Processed', value: EMAIL_SUMMARY.processed, color: 'var(--info-500)' },
-                { label: 'Actions', value: EMAIL_SUMMARY.actionTaken, color:'var(--viya-primary-700)' },
-                { label: 'Bills Found', value: EMAIL_SUMMARY.billsDetected, color: 'var(--coral-500)' },
-              ].map((s, i) => (
-                <div key={i}>
-                  <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: s.color }}>{s.value}</div>
-                  <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{s.label}</div>
-                </div>
-              ))}
+          {topCategories.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Top Categories</div>
+              {topCategories.map((cat, i) => {
+                const pct = thisTotal > 0 ? Math.round((cat.amount / thisTotal) * 100) : 0
+                const lastAmt = lastCatMap[cat.name] || 0
+                return (
+                  <div key={cat.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--bg-card, var(--surface))', border: '1px solid var(--border-light, var(--border))', borderRadius: 10, marginBottom: 6 }}>
+                    <span style={{ fontSize: 20 }}>{getCategoryIcon(cat.name)}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>{cat.name}</span>
+                        <span style={{ fontFamily: 'var(--mono)', fontSize: 13, fontWeight: 700 }}>{formatINR(cat.amount)}</span>
+                      </div>
+                      <div className="progress-bar" style={{ height: 5, background: 'var(--bg-secondary)', borderRadius: 99, overflow: 'hidden' }}>
+                        <div className="progress-fill" style={{ height: '100%', width: `${pct}%`, borderRadius: 99, background: getCategoryColor(cat.name), transition: 'width 0.5s ease' }} />
+                      </div>
+                      {lastAmt > 0 && (
+                        <div style={{ fontSize: 11, color: 'var(--text3, var(--text-tertiary))', marginTop: 2 }}>
+                          Last week: {formatINR(lastAmt)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* CTA */}
-        <button onClick={() => nav('/chat?q=give+me+a+detailed+weekly+review')} style={{
-          width: '100%', padding: 14, borderRadius: 'var(--r-full)',
-          background: 'var(--gradient-hero)', color: 'white', border: 'none',
-          fontSize: 15, fontWeight: 700, cursor: 'pointer',
-          boxShadow: '0 8px 24px rgba(0,229,212,0.3)',
-        }}>💬 Ask Viya for Detailed Review</button>
-      </div>
+          {/* Insights */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Insights</div>
+            {insights.map((ins, i) => (
+              <div key={i} style={{
+                padding: '12px 14px', borderRadius: 12, marginBottom: 6,
+                background: ins.type === 'warning' ? 'rgba(255,152,0,0.06)' : ins.type === 'positive' ? 'rgba(0,208,132,0.06)' : 'var(--bg-card, var(--surface))',
+                borderLeft: `3px solid ${ins.type === 'warning' ? '#FF9800' : ins.type === 'positive' ? 'var(--primary)' : 'var(--text3, var(--text-tertiary))'}`,
+                display: 'flex', gap: 8, alignItems: 'flex-start',
+              }}>
+                <span style={{ fontSize: 18, flexShrink: 0 }}>{ins.icon}</span>
+                <span style={{ fontSize: 13, color: 'var(--text2, var(--text-secondary))', lineHeight: 1.5 }}>{ins.text}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ textAlign: 'center', padding: 12, fontSize: 12, color: 'var(--text3, var(--text-tertiary))' }}>
+            {thisWeekTxns.length} transactions this week
+          </div>
+        </>
+      )}
     </div>
   )
 }

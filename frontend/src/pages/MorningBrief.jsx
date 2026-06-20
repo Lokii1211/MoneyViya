@@ -1,212 +1,261 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Sun, Cloud, Zap, ChevronRight, Bell, Calendar, CreditCard, Heart, Mail, TrendingUp } from 'lucide-react'
+import { useApp } from '../lib/store'
+import { api } from '../lib/supabase'
+import { formatINR, getGreeting, getGreetingEmoji } from '../lib/utils'
+import { ArrowLeft, ChevronRight, Sun, Cloud, Target, CreditCard, CheckCircle, Flame } from 'lucide-react'
 
-const BRIEF_DATA = {
-  greeting: 'Good Morning, Rahul! ☀️',
-  date: 'Wednesday, May 14, 2026',
-  weather: '28°C, Partly Cloudy',
-  quote: '"The secret of getting ahead is getting started." — Mark Twain',
-}
-
-const TODAY_ITEMS = [
-  {
-    type: 'bill', priority: 'high', emoji: '🧾', color: 'var(--coral-500)',
-    title: 'Electricity bill due today',
-    detail: '₹2,340 · BESCOM · Auto-pay OFF',
-    action: 'Pay Now',
-    actionRoute: '/bills',
-  },
-  {
-    type: 'meeting', priority: 'medium', emoji: '📅', color: 'var(--info-500)',
-    title: '2 meetings today',
-    detail: '10:00 AM Team Standup · 3:00 PM Client Demo',
-    action: 'View Calendar',
-    actionRoute: '/calendar',
-  },
-  {
-    type: 'medicine', priority: 'high', emoji: '💊', color: 'var(--emerald-500)',
-    title: 'Morning medicines',
-    detail: 'Vitamin D3, Omega-3 — Take after breakfast',
-    action: 'Mark Taken',
-    actionRoute: '/medicine',
-  },
-  {
-    type: 'goal', priority: 'low', emoji: '🎯', color:'var(--viya-primary-700)',
-    title: 'Emergency Fund milestone!',
-    detail: 'You crossed 60%! ₹1,85,000 of ₹3,00,000',
-    action: 'View Goal',
-    actionRoute: '/goals',
-  },
-  {
-    type: 'email', priority: 'medium', emoji: '📧', color: 'var(--amber-500)',
-    title: '3 action emails overnight',
-    detail: 'Amazon delivery · Flipkart refund · SBI statement',
-    action: 'Review',
-    actionRoute: '/email',
-  },
-  {
-    type: 'health', priority: 'low', emoji: '🏃', color: 'var(--cosmos-500)',
-    title: 'Yesterday: 8,420 steps',
-    detail: 'Above your 7,500 goal! Streak: 4 days 🔥',
-    action: 'View Health',
-    actionRoute: '/health',
-  },
+const TIPS = [
+  'Track every expense, no matter how small. Small leaks sink big ships.',
+  'Review your subscriptions monthly. Cancel what you don\'t use.',
+  'The 50/30/20 rule: 50% needs, 30% wants, 20% savings.',
+  'Automate your savings. What you don\'t see, you won\'t spend.',
+  'Cook at home 3 times this week to save on food delivery.',
+  'Set a 24-hour rule: wait a day before non-essential purchases.',
+  'Round up your savings. Every small amount adds up over time.',
 ]
-
-const PROACTIVE_TIPS = [
-  { emoji: '💡', text: 'Your Swiggy spend is ₹2,400 this week. Last week was ₹1,800. Cook one meal today to stay on track.' },
-  { emoji: '📈', text: 'Nifty 50 is up 1.2% today. Your portfolio gained ₹4,200 since Monday.' },
-  { emoji: '⏰', text: 'FD maturity in 5 days: ₹50,000 from SBI. Reinvest or transfer to goals?' },
-]
-
-const SPENDING_SNAPSHOT = {
-  todayBudget: 1500,
-  spentSoFar: 320,
-  weekTotal: 18400,
-  weekBudget: 25000,
-}
 
 export default function MorningBrief() {
+  const { phone, user } = useApp()
   const nav = useNavigate()
+  const [loading, setLoading] = useState(true)
+  const [userData, setUserData] = useState(null)
+  const [bills, setBills] = useState([])
+  const [habits, setHabits] = useState([])
+  const [checkins, setCheckins] = useState([])
+  const [goals, setGoals] = useState([])
 
-  const priorityOrder = { high: 0, medium: 1, low: 2 }
-  const sorted = [...TODAY_ITEMS].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
+  useEffect(() => {
+    if (!phone) return
+    setLoading(true)
+    Promise.all([
+      api.getUser(phone),
+      api.getBills(phone),
+      api.getHabits(phone),
+      api.getCheckins(phone),
+      api.getGoals(phone),
+    ]).then(([u, b, h, c, g]) => {
+      setUserData(u)
+      setBills(b || [])
+      setHabits(h || [])
+      setCheckins(c || [])
+      setGoals(g || [])
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [phone])
+
+  const greeting = getGreeting()
+  const emoji = getGreetingEmoji()
+  const name = userData?.name || user?.name || 'there'
+  const today = new Date()
+  const dateLabel = today.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
+  // Budget status: calculate from recent transactions
+  const todayStr = today.toISOString().split('T')[0]
+  const monthPrefix = today.toISOString().slice(0, 7)
+  const recentTxns = userData?.recent_transactions || []
+  const monthExpenses = recentTxns.filter(t => t.type === 'expense' && t.created_at?.startsWith(monthPrefix)).reduce((s, t) => s + Number(t.amount), 0)
+  const monthIncome = Number(userData?.monthly_income) || recentTxns.filter(t => t.type === 'income' && t.created_at?.startsWith(monthPrefix)).reduce((s, t) => s + Number(t.amount), 0)
+  const todaySpent = recentTxns.filter(t => t.type === 'expense' && t.created_at?.startsWith(todayStr)).reduce((s, t) => s + Number(t.amount), 0)
+  const daysLeft = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate() - today.getDate() + 1
+  const dailyBudget = monthIncome > 0 ? Math.round((monthIncome - monthExpenses) / Math.max(daysLeft, 1)) : 0
+  const moneyLeft = Math.max(dailyBudget - todaySpent, 0)
+
+  // Pending bills (due within 3 days)
+  const pendingBills = useMemo(() => {
+    const in3Days = new Date(today)
+    in3Days.setDate(in3Days.getDate() + 3)
+    return bills.filter(b => {
+      if (b.status === 'paid') return false
+      if (!b.due_date) return false
+      const due = new Date(b.due_date)
+      return due <= in3Days && due >= new Date(today.toISOString().split('T')[0])
+    })
+  }, [bills, today])
+
+  // Habits not checked in today
+  const checkedHabitIds = new Set(checkins.map(c => c.habit_id))
+  const pendingHabits = habits.filter(h => !checkedHabitIds.has(h.id))
+
+  // Random tip
+  const tip = TIPS[today.getDate() % TIPS.length]
+
+  if (loading) return (
+    <div className="page" style={{ paddingBottom: 100 }}>
+      <div style={{ height: 140, background: 'linear-gradient(135deg, var(--bg-secondary), var(--border))', borderRadius: 18, marginBottom: 16, animation: 'pulse 1.5s infinite' }} />
+      {[1,2,3,4].map(i => (
+        <div key={i} style={{ height: 60, background: 'var(--bg-secondary)', borderRadius: 12, marginBottom: 10, animation: 'pulse 1.5s infinite' }} />
+      ))}
+    </div>
+  )
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', paddingBottom: 100 }}>
-      {/* Hero */}
+    <div className="page" style={{ paddingBottom: 100 }}>
+      {/* Hero Greeting */}
       <div style={{
-        background: 'linear-gradient(135deg, #FF9800 0%, #FFB74D 30%, #FFD54F 60%, #FFF176 100%)',
-        padding: '50px 20px 24px', position: 'relative', overflow: 'hidden',
+        background: greeting.includes('morning') ? 'linear-gradient(135deg, #FF9800, #FFB74D, #FFD54F)' :
+          greeting.includes('afternoon') ? 'linear-gradient(135deg, #42A5F5, #66BB6A)' :
+          greeting.includes('evening') ? 'linear-gradient(135deg, #5C6BC0, #7E57C2)' :
+          'linear-gradient(135deg, #37474F, #546E7A)',
+        borderRadius: 20, padding: '28px 20px', marginBottom: 16, position: 'relative', overflow: 'hidden',
       }}>
-        <div style={{
-          position: 'absolute', width: 120, height: 120, borderRadius: '50%',
-          background: 'rgba(255,255,255,0.2)', top: 20, right: -20,
-        }} />
-        <div style={{
-          position: 'absolute', width: 80, height: 80, borderRadius: '50%',
-          background: 'rgba(255,255,255,0.15)', top: 60, right: 50,
-        }} />
-
-        <button onClick={() => nav(-1)} style={{
-          width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.3)',
-          border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          marginBottom: 12,
-        }}><ArrowLeft size={16} color="white" /></button>
-
-        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 24, color: 'white', marginBottom: 2 }}>
-          {BRIEF_DATA.greeting}
+        <div style={{ position: 'absolute', width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', top: -20, right: -10 }} />
+        <button onClick={() => nav(-1)} style={{ background: 'rgba(255,255,255,0.25)', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+          <ArrowLeft size={16} color="white" />
+        </button>
+        <div style={{ fontSize: 22, fontWeight: 800, color: 'white', marginBottom: 2 }}>
+          {greeting}, {name}! {emoji}
         </div>
-        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', marginBottom: 4 }}>
-          {BRIEF_DATA.date}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
-          <Cloud size={14} /> {BRIEF_DATA.weather}
-        </div>
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>{dateLabel}</div>
+      </div>
 
-        {/* Quote */}
-        <div style={{
-          marginTop: 16, background: 'rgba(255,255,255,0.2)', borderRadius: 'var(--r-lg)',
-          padding: '10px 14px', fontSize: 12, fontStyle: 'italic', color: 'rgba(255,255,255,0.9)',
-          lineHeight: 1.5,
-        }}>
-          {BRIEF_DATA.quote}
+      {/* Today's Budget */}
+      <div style={{ background: 'var(--bg-card, var(--surface))', border: '1px solid var(--border-light, var(--border))', borderRadius: 16, padding: 16, marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3, var(--text-tertiary))', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <CreditCard size={14} /> Today's Budget
+        </div>
+        {dailyBudget > 0 ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 8 }}>
+              <span style={{ fontSize: 28, fontWeight: 800, fontFamily: 'var(--mono)', color: moneyLeft > 0 ? 'var(--primary, var(--emerald-500))' : 'var(--cosmos-400, #FF5252)' }}>
+                {formatINR(moneyLeft)}
+              </span>
+              <span style={{ fontSize: 12, color: 'var(--text3, var(--text-tertiary))' }}>left today</span>
+            </div>
+            <div className="progress-bar" style={{ height: 6, background: 'var(--bg-secondary)', borderRadius: 99, overflow: 'hidden', marginBottom: 6 }}>
+              <div className="progress-fill" style={{
+                height: '100%', borderRadius: 99, transition: 'width 0.5s ease',
+                width: `${Math.min((todaySpent / Math.max(dailyBudget, 1)) * 100, 100)}%`,
+                background: todaySpent > dailyBudget ? 'var(--cosmos-400, #FF5252)' : 'var(--primary, var(--emerald-500))',
+              }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text3, var(--text-tertiary))' }}>
+              <span>{formatINR(todaySpent)} spent</span>
+              <span>Budget: {formatINR(dailyBudget)}</span>
+            </div>
+          </>
+        ) : (
+          <div style={{ fontSize: 13, color: 'var(--text2, var(--text-secondary))' }}>
+            Add your income to see daily budget.
+          </div>
+        )}
+      </div>
+
+      {/* Pending Bills */}
+      {pendingBills.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ color: '#FF5252' }}>!</span> Bills Due Soon
+          </div>
+          {pendingBills.map((bill, i) => {
+            const due = new Date(bill.due_date)
+            const daysUntil = Math.ceil((due - new Date(todayStr)) / 86400000)
+            const urgentLabel = daysUntil <= 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : `In ${daysUntil} days`
+            return (
+              <div key={bill.id || i} onClick={() => nav('/bills')} style={{
+                background: 'var(--bg-card, var(--surface))', borderRadius: 12, padding: 14,
+                border: '1px solid var(--border-light, var(--border))', marginBottom: 6,
+                borderLeft: `4px solid ${daysUntil <= 1 ? '#FF5252' : '#FF9800'}`,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
+              }}>
+                <span style={{ fontSize: 22 }}>{bill.icon || '🧾'}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{bill.name || bill.title || 'Bill'}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text3, var(--text-tertiary))' }}>
+                    {formatINR(bill.amount)} -- {urgentLabel}
+                  </div>
+                </div>
+                <ChevronRight size={16} color="var(--text3)" />
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Pending Habits */}
+      {pendingHabits.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Flame size={16} color="#FF9800" /> Habits to Complete
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {pendingHabits.map((h, i) => (
+              <div key={h.id || i} onClick={() => nav('/habits')} style={{
+                padding: '8px 14px', borderRadius: 10, cursor: 'pointer',
+                background: 'var(--bg-card, var(--surface))', border: '1px solid var(--border-light, var(--border))',
+                display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600,
+              }}>
+                <span>{h.icon || '✅'}</span> {h.name}
+              </div>
+            ))}
+          </div>
+          {habits.length > 0 && checkins.length > 0 && (
+            <div style={{ fontSize: 12, color: 'var(--primary, var(--emerald-500))', marginTop: 6, fontWeight: 600 }}>
+              <CheckCircle size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+              {checkins.length}/{habits.length} completed today
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Goal Progress */}
+      {goals.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Target size={16} color="var(--primary)" /> Goals Progress
+          </div>
+          {goals.slice(0, 3).map((g, i) => {
+            const pct = Number(g.target_amount) > 0 ? Math.min(Math.round((Number(g.current_amount) / Number(g.target_amount)) * 100), 100) : 0
+            return (
+              <div key={g.id || i} onClick={() => nav('/goals')} style={{
+                background: 'var(--bg-card, var(--surface))', border: '1px solid var(--border-light, var(--border))',
+                borderRadius: 12, padding: 14, marginBottom: 6, cursor: 'pointer',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>{g.icon || '🎯'} {g.name}</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary, var(--emerald-500))' }}>{pct}%</span>
+                </div>
+                <div className="progress-bar" style={{ height: 6, background: 'var(--bg-secondary)', borderRadius: 99, overflow: 'hidden', marginBottom: 4 }}>
+                  <div className="progress-fill" style={{ height: '100%', width: `${pct}%`, borderRadius: 99, background: 'var(--primary, var(--teal-500))', transition: 'width 0.5s ease' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text3, var(--text-tertiary))' }}>
+                  <span>{formatINR(g.current_amount)}</span>
+                  <span>{formatINR(g.target_amount)}</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Motivational Tip */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(0,208,132,0.06), rgba(0,150,255,0.06))',
+        border: '1px solid rgba(0,208,132,0.15)', borderRadius: 14, padding: 16, marginBottom: 16,
+      }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary, var(--emerald-500))', marginBottom: 6 }}>Tip of the Day</div>
+        <div style={{ fontSize: 13, color: 'var(--text2, var(--text-secondary))', lineHeight: 1.5, fontStyle: 'italic' }}>
+          "{tip}"
         </div>
       </div>
 
-      <div style={{ padding: 20 }}>
-        {/* Budget Snapshot */}
-        <div style={{
-          background: 'var(--bg-card)', borderRadius: 'var(--r-xl)', padding: 16,
-          border: '1px solid var(--border-light)', marginBottom: 16,
-        }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
-            💳 Today's Budget
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 8 }}>
-            <span style={{ fontSize: 28, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: 'var(--emerald-500)' }}>
-              ₹{(SPENDING_SNAPSHOT.todayBudget - SPENDING_SNAPSHOT.spentSoFar).toLocaleString('en-IN')}
-            </span>
-            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>remaining today</span>
-          </div>
-          <div style={{ height: 6, background: 'var(--bg-secondary)', borderRadius: 99, overflow: 'hidden', marginBottom: 6 }}>
-            <div style={{
-              height: '100%', borderRadius: 99,
-              width: `${(SPENDING_SNAPSHOT.spentSoFar / SPENDING_SNAPSHOT.todayBudget) * 100}%`,
-              background: 'var(--emerald-500)',
-            }} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-tertiary)' }}>
-            <span>₹{SPENDING_SNAPSHOT.spentSoFar} spent</span>
-            <span>Week: ₹{SPENDING_SNAPSHOT.weekTotal.toLocaleString('en-IN')} / ₹{SPENDING_SNAPSHOT.weekBudget.toLocaleString('en-IN')}</span>
-          </div>
-        </div>
-
-        {/* Today's Items */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "'Sora',sans-serif" }}>
-            📋 Your Day at a Glance
-          </div>
-          {sorted.map((item, i) => (
-            <div key={i} onClick={() => nav(item.actionRoute)} style={{
-              background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 14,
-              border: '1px solid var(--border-light)', marginBottom: 8,
-              borderLeft: `4px solid ${item.color}`, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 10,
-            }}>
-              <span style={{ fontSize: 24, flexShrink: 0 }}>{item.emoji}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{item.title}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {item.detail}
-                </div>
-              </div>
-              {item.priority === 'high' && (
-                <span style={{
-                  fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 99,
-                  background: 'rgba(255,82,82,0.1)', color: 'var(--coral-500)',
-                }}>URGENT</span>
-              )}
-              <ChevronRight size={16} color="var(--text-tertiary)" />
-            </div>
-          ))}
-        </div>
-
-        {/* Proactive Tips */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "'Sora',sans-serif" }}>
-            🧠 Viya Proactive Tips
-          </div>
-          {PROACTIVE_TIPS.map((tip, i) => (
-            <div key={i} style={{
-              background: 'var(--cosmos-50)', borderRadius: 'var(--r-lg)', padding: 12,
-              border: '1px solid var(--cosmos-100)', marginBottom: 6,
-              display: 'flex', gap: 8, alignItems: 'flex-start',
-            }}>
-              <span style={{ fontSize: 18, flexShrink: 0 }}>{tip.emoji}</span>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{tip.text}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Quick Actions */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {[
-            { label: 'Log Expense', emoji: '💸', route: '/expenses' },
-            { label: 'Ask Viya', emoji: '💬', route: '/chat' },
-            { label: 'View Report', emoji: '📊', route: '/weekly-report' },
-            { label: 'Scan Food', emoji: '📷', route: '/health' },
-          ].map((a, i) => (
-            <button key={i} onClick={() => nav(a.route)} style={{
-              background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 14,
-              border: '1px solid var(--border-light)', cursor: 'pointer',
-              fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8,
-            }}>
-              <span style={{ fontSize: 20 }}>{a.emoji}</span> {a.label}
-            </button>
-          ))}
-        </div>
+      {/* Quick Actions */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        {[
+          { label: 'Add Expense', emoji: '💸', route: '/expenses' },
+          { label: 'Ask Viya', emoji: '💬', route: '/chat' },
+          { label: 'View Report', emoji: '📊', route: '/report' },
+          { label: 'My Goals', emoji: '🎯', route: '/goals' },
+        ].map((a, i) => (
+          <button key={i} onClick={() => nav(a.route)} style={{
+            background: 'var(--bg-card, var(--surface))', borderRadius: 12, padding: 14,
+            border: '1px solid var(--border-light, var(--border))', cursor: 'pointer',
+            fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8,
+            fontFamily: 'inherit', color: 'var(--text)',
+          }}>
+            <span style={{ fontSize: 18 }}>{a.emoji}</span> {a.label}
+          </button>
+        ))}
       </div>
     </div>
   )

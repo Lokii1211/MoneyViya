@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { formatINR } from '../lib/utils'
@@ -19,13 +20,18 @@ const MILESTONES = [
 export default function Goals() {
   const { phone } = useApp()
   const [goals, setGoals] = useState([])
+  const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [addAmt, setAddAmt] = useState({})
   const [form, setForm] = useState({ name: '', icon: '🎯', target: '', deadline: '' })
   const [toast, setToast] = useState('')
   const [celebration, setCelebration] = useState(null)
 
-  const load = async () => { const g = await api.getGoals(phone); setGoals(g || []) }
+  const load = async () => {
+    const g = await api.getGoals(phone)
+    setGoals(g || [])
+    setLoading(false)
+  }
   useEffect(() => { if (phone) load() }, [phone])
 
   const createGoal = async () => {
@@ -40,15 +46,15 @@ export default function Goals() {
     if (!amt || amt <= 0) return
     const goal = goals.find(g => g.id === id)
     const oldPct = goal.target_amount > 0 ? (goal.current_amount / goal.target_amount) * 100 : 0
-    
+
     await api.addToGoal(id, amt)
     setAddAmt(p => ({ ...p, [id]: '' }))
-    
+
     // Check milestone
     const newAmt = Number(goal.current_amount) + amt
     const newPct = goal.target_amount > 0 ? (newAmt / goal.target_amount) * 100 : 0
     const milestone = MILESTONES.find(m => oldPct < m.pct && newPct >= m.pct)
-    
+
     if (milestone) {
       setCelebration({ ...milestone, goalName: goal.name, goalIcon: goal.icon })
       setTimeout(() => setCelebration(null), 4000)
@@ -80,7 +86,7 @@ export default function Goals() {
   return (
     <div className="page">
       {toast && <div className="toast">{toast}</div>}
-      
+
       {/* Milestone Celebration Overlay */}
       {celebration && (
         <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.7)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', animation:'fadeIn 0.3s'}}>
@@ -100,107 +106,125 @@ export default function Goals() {
         </button>
       </div>
 
-      {goals.length > 0 && (
-        <div style={{background:'linear-gradient(135deg, var(--primary-dim), var(--cyan-dim))', border:'1px solid var(--border2)', borderRadius:18, padding:24, marginBottom:20, textAlign:'center'}}>
-          <div style={{fontSize:11, color:'var(--text3)', letterSpacing:2, fontWeight:700}}>TOTAL SAVED</div>
-          <div style={{fontFamily:'var(--mono)', fontSize:36, fontWeight:900, color:'var(--primary)', margin:'4px 0'}}>₹{totalSaved}</div>
-          <div style={{fontSize:13, color:'var(--text2)'}}>of ₹{totalTarget} target</div>
-          <div className="progress-bar" style={{marginTop:12}}>
-            <div className="progress-fill" style={{width: totalTarget > 0 ? Math.min((totalSaved/totalTarget)*100, 100) + '%' : '0%'}} />
-          </div>
-        </div>
-      )}
-
-      {showAdd && (
-        <div className="entry-form" style={{marginBottom:20}}>
-          <h3 style={{fontSize:15, fontWeight:700, marginBottom:14}}>Create Goal</h3>
-          <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:12}}>
-            {ICONS.map(e => (
-              <button key={e} className={`cat-chip icon-chip${form.icon === e ? ' active' : ''}`} onClick={() => setForm(p => ({...p, icon: e}))}>{e}</button>
-            ))}
-          </div>
-          <div className="form-group"><label>Goal Name</label>
-            <input className="form-input" placeholder="e.g. Buy iPhone, Trip to Goa" value={form.name} onChange={e => setForm(p => ({...p, name: e.target.value}))} />
-          </div>
-          <div className="form-group"><label>Target Amount (₹)</label>
-            <input className="form-input big-input" type="number" placeholder="50,000" value={form.target} onChange={e => setForm(p => ({...p, target: e.target.value}))} />
-          </div>
-          <div className="form-group"><label>Deadline (optional)</label>
-            <input className="form-input" type="date" value={form.deadline} onChange={e => setForm(p => ({...p, deadline: e.target.value}))} />
-          </div>
-          <div className="form-actions">
-            <button className="btn-secondary" onClick={() => setShowAdd(false)}>Cancel</button>
-            <button className="btn-primary" onClick={createGoal}>Create Goal</button>
-          </div>
-        </div>
-      )}
-
-      {goals.length === 0 ? (
-        <div className="empty-state">
-          <Target size={48} className="empty-icon" />
-          <h3>Set Your First Goal</h3>
-          <p>What are you saving for? A bike, laptop, trip? Start today! 🎯</p>
-          <button className="btn-primary" onClick={() => setShowAdd(true)}>Create Goal</button>
+      {/* Loading Skeleton */}
+      {loading ? (
+        <div>
+          {[0, 1, 2].map(i => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className="skeleton"
+              style={{ height: 120, borderRadius: 16, marginBottom: 12 }}
+            />
+          ))}
         </div>
       ) : (
-        goals.map(g => {
-          const pct = g.target_amount > 0 ? Math.min((g.current_amount / g.target_amount) * 100, 100) : 0
-          const nextMs = getNextMilestone(pct)
-          const remaining = Math.max(0, Number(g.target_amount) - Number(g.current_amount))
-          const toNext = Math.max(0, Math.ceil(g.target_amount * (nextMs.pct / 100)) - Number(g.current_amount))
-          
-          return (
-            <div key={g.id} className="goal-card">
-              <div className="goal-header">
-                <div className="goal-icon">{g.icon || '🎯'}</div>
-                <div className="goal-info">
-                  <div className="goal-name">{g.name}</div>
-                  <div className="goal-deadline">{g.deadline ? `By ${g.deadline}` : 'No deadline'}</div>
-                </div>
-                <div style={{display:'flex', alignItems:'center', gap:6}}>
-                  <button style={{background:'none', border:'none', cursor:'pointer', padding:4, color:'var(--text3)'}} onClick={() => shareGoal(g)}><Share2 size={14}/></button>
-                  <div className="goal-pct">{Math.round(pct)}%</div>
-                </div>
+        <>
+          {showAdd && (
+            <div className="entry-form" style={{marginBottom:20}}>
+              <h3 style={{fontSize:15, fontWeight:700, marginBottom:14}}>Create Goal</h3>
+              <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:12}}>
+                {ICONS.map(e => (
+                  <button key={e} className={`cat-chip icon-chip${form.icon === e ? ' active' : ''}`} onClick={() => setForm(p => ({...p, icon: e}))}>{e}</button>
+                ))}
               </div>
-              
-              {/* Progress with milestone markers */}
-              <div style={{position:'relative', marginBottom:4}}>
-                <div className="progress-bar"><div className="progress-fill" style={{width: pct + '%'}} /></div>
-                <div style={{display:'flex', justifyContent:'space-between', marginTop:4}}>
-                  {MILESTONES.filter(m => m.pct <= 100).map(m => (
-                    <div key={m.pct} style={{fontSize:9, color: pct >= m.pct ? 'var(--primary)' : 'var(--text3)', fontWeight: pct >= m.pct ? 700 : 400}}>
-                      {pct >= m.pct ? '✓' : m.pct + '%'}
-                    </div>
-                  ))}
-                </div>
+              <div className="form-group"><label>Goal Name</label>
+                <input className="form-input" placeholder="e.g. Buy iPhone, Trip to Goa" value={form.name} onChange={e => setForm(p => ({...p, name: e.target.value}))} />
               </div>
-              
-              <div className="goal-amounts">
-                <span>₹{Number(g.current_amount)}</span>
-                <span>₹{Number(g.target_amount)}</span>
+              <div className="form-group"><label>Target Amount (₹)</label>
+                <input className="form-input big-input" type="number" placeholder="50,000" value={form.target} onChange={e => setForm(p => ({...p, target: e.target.value}))} />
               </div>
-              
-              {/* Next milestone prompt */}
-              {pct < 100 && (
-                <div style={{background:'var(--primary-dim)', borderRadius:10, padding:'8px 12px', marginTop:8, display:'flex', alignItems:'center', gap:8, fontSize:12}}>
-                  <span>{nextMs.emoji}</span>
-                  <span style={{color:'var(--text2)'}}>₹{toNext} to <strong style={{color:'var(--primary)'}}>{nextMs.label}</strong></span>
-                </div>
-              )}
-              {pct >= 100 && (
-                <div style={{background:'linear-gradient(135deg, #FFD700, #FFA500)', borderRadius:10, padding:'10px 12px', marginTop:8, display:'flex', alignItems:'center', gap:8, fontSize:13, color:'#1a1a1a', fontWeight:700}}>
-                  <Trophy size={16}/> Goal Achieved! You're amazing! 🎉
-                </div>
-              )}
-              
-              <div style={{display:'flex', gap:8, marginTop:12}}>
-                <input className="form-input" type="number" placeholder="Add ₹..." style={{flex:1, padding:'8px 12px', fontSize:14}} value={addAmt[g.id] || ''} onChange={e => setAddAmt(p => ({...p, [g.id]: e.target.value}))} />
-                <button className="btn-primary" style={{padding:'8px 16px', fontSize:13}} onClick={() => contribute(g.id)}><TrendingUp size={14} /> Add</button>
-                <button style={{padding:'8px', background:'var(--red-dim)', border:'1px solid rgba(255,71,87,0.2)', borderRadius:8, color:'var(--red)', cursor:'pointer'}} onClick={() => removeGoal(g.id)}><Trash2 size={14} /></button>
+              <div className="form-group"><label>Deadline (optional)</label>
+                <input className="form-input" type="date" value={form.deadline} onChange={e => setForm(p => ({...p, deadline: e.target.value}))} />
+              </div>
+              <div className="form-actions">
+                <button className="btn-secondary" onClick={() => setShowAdd(false)}>Cancel</button>
+                <button className="btn-primary" onClick={createGoal}>Create Goal</button>
               </div>
             </div>
-          )
-        })
+          )}
+
+          {goals.length > 0 && (
+            <div style={{background:'linear-gradient(135deg, var(--primary-dim), var(--cyan-dim))', border:'1px solid var(--border2)', borderRadius:18, padding:24, marginBottom:20, textAlign:'center'}}>
+              <div style={{fontSize:11, color:'var(--text3)', letterSpacing:2, fontWeight:700}}>TOTAL SAVED</div>
+              <div style={{fontFamily:'var(--mono)', fontSize:36, fontWeight:900, color:'var(--primary)', margin:'4px 0'}}>₹{totalSaved}</div>
+              <div style={{fontSize:13, color:'var(--text2)'}}>of ₹{totalTarget} target</div>
+              <div className="progress-bar" style={{marginTop:12}}>
+                <div className="progress-fill" style={{width: totalTarget > 0 ? Math.min((totalSaved/totalTarget)*100, 100) + '%' : '0%'}} />
+              </div>
+            </div>
+          )}
+
+          {goals.length === 0 ? (
+            <div className="empty-state">
+              <Target size={48} className="empty-icon" />
+              <h3>No goals yet</h3>
+              <p>Create your first savings goal</p>
+              <button className="btn-primary" onClick={() => setShowAdd(true)}>Create Goal</button>
+            </div>
+          ) : (
+            goals.map(g => {
+              const pct = g.target_amount > 0 ? Math.min((g.current_amount / g.target_amount) * 100, 100) : 0
+              const nextMs = getNextMilestone(pct)
+              const remaining = Math.max(0, Number(g.target_amount) - Number(g.current_amount))
+              const toNext = Math.max(0, Math.ceil(g.target_amount * (nextMs.pct / 100)) - Number(g.current_amount))
+
+              return (
+                <div key={g.id} className="goal-card">
+                  <div className="goal-header">
+                    <div className="goal-icon">{g.icon || '🎯'}</div>
+                    <div className="goal-info">
+                      <div className="goal-name">{g.name}</div>
+                      <div className="goal-deadline">{g.deadline ? `By ${g.deadline}` : 'No deadline'}</div>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', gap:6}}>
+                      <button style={{background:'none', border:'none', cursor:'pointer', padding:4, color:'var(--text3)'}} onClick={() => shareGoal(g)}><Share2 size={14}/></button>
+                      <div className="goal-pct">{Math.round(pct)}%</div>
+                    </div>
+                  </div>
+
+                  {/* Progress with milestone markers */}
+                  <div style={{position:'relative', marginBottom:4}}>
+                    <div className="progress-bar"><div className="progress-fill" style={{width: pct + '%'}} /></div>
+                    <div style={{display:'flex', justifyContent:'space-between', marginTop:4}}>
+                      {MILESTONES.filter(m => m.pct <= 100).map(m => (
+                        <div key={m.pct} style={{fontSize:9, color: pct >= m.pct ? 'var(--primary)' : 'var(--text3)', fontWeight: pct >= m.pct ? 700 : 400}}>
+                          {pct >= m.pct ? '✓' : m.pct + '%'}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="goal-amounts">
+                    <span>₹{Number(g.current_amount)}</span>
+                    <span>₹{Number(g.target_amount)}</span>
+                  </div>
+
+                  {/* Next milestone prompt */}
+                  {pct < 100 && (
+                    <div style={{background:'var(--primary-dim)', borderRadius:10, padding:'8px 12px', marginTop:8, display:'flex', alignItems:'center', gap:8, fontSize:12}}>
+                      <span>{nextMs.emoji}</span>
+                      <span style={{color:'var(--text2)'}}>₹{toNext} to <strong style={{color:'var(--primary)'}}>{nextMs.label}</strong></span>
+                    </div>
+                  )}
+                  {pct >= 100 && (
+                    <div style={{background:'linear-gradient(135deg, #FFD700, #FFA500)', borderRadius:10, padding:'10px 12px', marginTop:8, display:'flex', alignItems:'center', gap:8, fontSize:13, color:'#1a1a1a', fontWeight:700}}>
+                      <Trophy size={16}/> Goal Achieved! You're amazing! 🎉
+                    </div>
+                  )}
+
+                  <div style={{display:'flex', gap:8, marginTop:12}}>
+                    <input className="form-input" type="number" placeholder="Add ₹..." style={{flex:1, padding:'8px 12px', fontSize:14}} value={addAmt[g.id] || ''} onChange={e => setAddAmt(p => ({...p, [g.id]: e.target.value}))} />
+                    <button className="btn-primary" style={{padding:'8px 16px', fontSize:13}} onClick={() => contribute(g.id)}><TrendingUp size={14} /> Add</button>
+                    <button style={{padding:'8px', background:'var(--red-dim)', border:'1px solid rgba(255,71,87,0.2)', borderRadius:8, color:'var(--red)', cursor:'pointer'}} onClick={() => removeGoal(g.id)}><Trash2 size={14} /></button>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </>
       )}
     </div>
   )
