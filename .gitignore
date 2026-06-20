@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.env
+data/
+*.db
+
+# Node
+node_modules/
+dist/
+
+# WhatsApp Bot
+whatsapp-bot/auth_info_baileys/
+whatsapp-bot/node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Vercel
+.vercel/
+
+# Test
+test_db.py
+
+# Security - NEVER commit these
+signing-key-info.txt
+signing.keystore
+*.keystore
+upload_certificate.pem
+*.pem
+
+# Build artifacts
+builds/
+*.apk
+*.aab
+
+# Android build output
+frontend/android/
+frontend/lighthouse-report.json
+
+# Logs
+logs/
+*.log
+
+# Internal tooling
+.claude/
+.agent/
+
+# WhatsApp Bot (deprecated - using Meta Cloud API)
+whatsapp-bot/
+
+# Package lock (let each dev generate their own)
+package-lock.json

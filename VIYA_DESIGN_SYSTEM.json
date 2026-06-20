@@ -1,0 +1,981 @@
+{
+  "meta": {
+    "product": "Viya AI",
+    "version": "2.0.0",
+    "document_type": "Complete Design System + Screen Prompts",
+    "platform": ["iOS 16+", "Android 7.0+"],
+    "design_tool": "Figma",
+    "last_updated": "2026-05-15",
+    "author": "Viya Design System",
+    "standard": "Million-Dollar App Experience"
+  },
+
+  "brand_identity": {
+    "product_name": "Viya AI",
+    "tagline": "Your AI Second Brain",
+    "app_store_subtitle": "Money, Health & Life — All in One",
+    "category_primary": "Finance",
+    "category_secondary": "Health & Fitness",
+    "value_proposition": "The brilliant friend who never forgets, always acts, and keeps your life running perfectly",
+    "design_quality_target": ["Linear speed", "Stripe trust", "Duolingo delight"],
+    "app_store_rating_target": 4.8,
+    "nps_target": 60
+  },
+
+  "design_tokens": {
+    "colors": {
+      "brand": {
+        "teal_50":  "#E0FFF9",
+        "teal_100": "#B3FFE9",
+        "teal_200": "#80FFDB",
+        "teal_300": "#4DFFCE",
+        "teal_400": "#1AFFC0",
+        "teal_500": "#00E5B0",
+        "teal_600": "#00B88D",
+        "teal_700": "#008B6A",
+        "teal_800": "#005E48",
+        "teal_900": "#003126",
+        "teal_950": "#001814",
+        "usage": "Primary brand — borders, fills, icons, progress. NEVER for body text on white."
+      },
+      "cosmos": {
+        "cosmos_50":  "#F2EEFF",
+        "cosmos_100": "#DDD0FF",
+        "cosmos_200": "#BBA1FF",
+        "cosmos_300": "#9972FF",
+        "cosmos_400": "#7743FF",
+        "cosmos_500": "#5514FF",
+        "cosmos_600": "#4410CC",
+        "cosmos_700": "#330C99",
+        "cosmos_800": "#220866",
+        "cosmos_900": "#110433",
+        "cosmos_950": "#08021A",
+        "usage": "AI intelligence, premium features, depth. Deep, smart, premium."
+      },
+      "gold": {
+        "gold_50":  "#FFFCE6",
+        "gold_100": "#FFF7B3",
+        "gold_200": "#FFF080",
+        "gold_300": "#FFE84D",
+        "gold_400": "#FFE01A",
+        "gold_500": "#FFD700",
+        "gold_600": "#CCAC00",
+        "gold_700": "#998100",
+        "gold_800": "#665600",
+        "gold_900": "#332B00",
+        "usage": "Achievement moments ONLY. Never for UI elements. Celebration color."
+      },
+      "emerald": {
+        "emerald_50":  "#E6FFF4",
+        "emerald_100": "#B3FFDF",
+        "emerald_200": "#80FFCA",
+        "emerald_300": "#4DFFB4",
+        "emerald_400": "#1AFF9F",
+        "emerald_500": "#00E87E",
+        "emerald_600": "#00BA65",
+        "emerald_700": "#008C4C",
+        "emerald_800": "#005D33",
+        "emerald_900": "#002F1A",
+        "usage": "Money, income, positive financial changes, success states."
+      },
+      "coral": {
+        "coral_50":  "#FFF0EE",
+        "coral_100": "#FFD0CB",
+        "coral_200": "#FFB0A8",
+        "coral_300": "#FF9085",
+        "coral_400": "#FF7062",
+        "coral_500": "#FF5040",
+        "coral_600": "#CC3F33",
+        "coral_700": "#992F26",
+        "coral_800": "#66201A",
+        "coral_900": "#33100D",
+        "usage": "Urgent bills, errors, overdue states ONLY. Not for regular expenses — use cosmos instead."
+      },
+      "amber": {
+        "amber_300": "#FFD93D",
+        "amber_400": "#FFB300",
+        "amber_500": "#FF9800",
+        "amber_light": "#FFF3E0",
+        "usage": "Warning states, due-soon bills, caution indicators."
+      },
+      "neutral": {
+        "white":       "#FFFFFF",
+        "neutral_50":  "#F8FAFA",
+        "neutral_100": "#F0F4F4",
+        "neutral_200": "#E0E8E8",
+        "neutral_300": "#C0CECE",
+        "neutral_400": "#90A8A8",
+        "neutral_500": "#607878",
+        "neutral_600": "#486060",
+        "neutral_700": "#304848",
+        "neutral_800": "#1E3030",
+        "neutral_900": "#0D1818"
+      },
+      "dark_mode": {
+        "dark_bg":      "#080812",
+        "dark_s1":      "#0E0E1C",
+        "dark_s2":      "#161626",
+        "dark_s3":      "#1E1E34",
+        "dark_s4":      "#262644",
+        "dark_border":  "#2E2E50",
+        "dark_border_hi": "#3E3E68",
+        "dark_text_p":  "#EEEEFF",
+        "dark_text_s":  "#9090BB",
+        "dark_text_t":  "#606088"
+      },
+      "semantic": {
+        "money_positive": "#00E87E",
+        "money_negative": "#7743FF",
+        "money_neutral":  "#304848",
+        "urgent":         "#FF5040",
+        "warning":        "#FF9800",
+        "success":        "#00E87E",
+        "ai_color":       "#5514FF",
+        "rule_expense_color": "Use cosmos-400 (#7743FF) for expenses. NEVER red. Red triggers shame/avoidance."
+      }
+    },
+
+    "gradients": {
+      "hero": {
+        "id": "gradient-hero",
+        "type": "linear",
+        "direction": "135deg",
+        "stops": [
+          { "color": "#00E5B0", "position": "0%" },
+          { "color": "#5514FF", "position": "100%" }
+        ],
+        "usage": "FAB, primary CTAs, achievement highlights, brand moments"
+      },
+      "wealth": {
+        "id": "gradient-wealth",
+        "type": "linear",
+        "direction": "135deg",
+        "stops": [
+          { "color": "#00E87E", "position": "0%" },
+          { "color": "#00E5B0", "position": "100%" }
+        ],
+        "usage": "Net worth card, financial hero cards, wealth dashboard"
+      },
+      "health": {
+        "id": "gradient-health",
+        "type": "linear",
+        "direction": "135deg",
+        "stops": [
+          { "color": "#FF7062", "position": "0%" },
+          { "color": "#FF9800", "position": "50%" },
+          { "color": "#FFD700", "position": "100%" }
+        ],
+        "usage": "Health score, steps card, energy and wellness moments"
+      },
+      "ai": {
+        "id": "gradient-ai",
+        "type": "linear",
+        "direction": "135deg",
+        "stops": [
+          { "color": "#5514FF", "position": "0%" },
+          { "color": "#9972FF", "position": "100%" }
+        ],
+        "usage": "Viya thinking state, AI feature highlights, cosmos moments"
+      },
+      "achievement": {
+        "id": "gradient-achievement",
+        "type": "linear",
+        "direction": "135deg",
+        "stops": [
+          { "color": "#FFD700", "position": "0%" },
+          { "color": "#F5A623", "position": "100%" }
+        ],
+        "usage": "Goal completion, achievement badges, celebration screens"
+      },
+      "morning": {
+        "id": "gradient-morning",
+        "type": "linear",
+        "direction": "135deg",
+        "stops": [
+          { "color": "#F5A623", "position": "0%" },
+          { "color": "#FF7062", "position": "35%" },
+          { "color": "#00E5B0", "position": "100%" }
+        ],
+        "usage": "Daily brief card, morning hero moments"
+      },
+      "night": {
+        "id": "gradient-night",
+        "type": "linear",
+        "direction": "180deg",
+        "stops": [
+          { "color": "#08021A", "position": "0%" },
+          { "color": "#001814", "position": "100%" }
+        ],
+        "usage": "Splash screen, dark hero cards, night-time UI"
+      },
+      "card_depth": {
+        "id": "gradient-card",
+        "type": "linear",
+        "direction": "145deg",
+        "stops": [
+          { "color": "#FFFFFF", "position": "0%" },
+          { "color": "#F0FFFC", "position": "100%" }
+        ],
+        "usage": "White cards with subtle brand tint — premium depth feel"
+      }
+    },
+
+    "typography": {
+      "fonts": {
+        "display": {
+          "family": "Sora",
+          "fallback": ["-apple-system", "BlinkMacSystemFont", "sans-serif"],
+          "weights_used": [600, 700, 800],
+          "usage": "All headlines and display text. Never below 18px."
+        },
+        "body": {
+          "family": "Inter",
+          "fallback": ["-apple-system", "BlinkMacSystemFont", "sans-serif"],
+          "weights_used": [400, 500, 600],
+          "usage": "All body copy, labels, UI text."
+        },
+        "numbers": {
+          "family": "JetBrains Mono",
+          "fallback": ["SF Mono", "Fira Code", "monospace"],
+          "weights_used": [400, 500, 600],
+          "usage": "EVERY financial number, statistics, amounts. Monospace for alignment."
+        },
+        "regional": {
+          "hindi": "Noto Sans Devanagari",
+          "tamil": "Noto Sans Tamil",
+          "telugu": "Noto Sans Telugu",
+          "kannada": "Noto Sans Kannada",
+          "bengali": "Noto Sans Bengali",
+          "weights_used": [400, 600],
+          "usage": "Regional language content. Same x-height as Inter for visual consistency."
+        }
+      },
+      "scale": {
+        "hero":   { "font": "Sora", "weight": 800, "size": 48, "line_height": 56, "letter_spacing": -1.5, "usage": "Splash, celebration screens" },
+        "h1":     { "font": "Sora", "weight": 700, "size": 34, "line_height": 42, "letter_spacing": -0.8, "usage": "Primary screen titles" },
+        "h2":     { "font": "Sora", "weight": 700, "size": 26, "line_height": 34, "letter_spacing": -0.4, "usage": "Section headers, card titles" },
+        "h3":     { "font": "Sora", "weight": 600, "size": 22, "line_height": 30, "letter_spacing": -0.2, "usage": "Sub-section headers, modal titles" },
+        "h4":     { "font": "Inter", "weight": 600, "size": 18, "line_height": 26, "letter_spacing": 0,    "usage": "Card headings, emphasized labels" },
+        "body_l": { "font": "Inter", "weight": 400, "size": 18, "line_height": 28, "letter_spacing": 0.1,  "usage": "Chat messages, important body copy" },
+        "body_m": { "font": "Inter", "weight": 400, "size": 16, "line_height": 24, "letter_spacing": 0.1,  "usage": "Standard body text" },
+        "body_s": { "font": "Inter", "weight": 400, "size": 14, "line_height": 20, "letter_spacing": 0.2,  "usage": "Secondary information, timestamps" },
+        "label":  { "font": "Inter", "weight": 600, "size": 11, "line_height": 16, "letter_spacing": 1.2,  "transform": "uppercase", "usage": "Category labels, metadata" },
+        "num_xl": { "font": "JetBrains Mono", "weight": 700, "size": 48, "line_height": 56, "letter_spacing": -1,   "usage": "Net worth, primary balance, hero numbers" },
+        "num_l":  { "font": "JetBrains Mono", "weight": 600, "size": 32, "line_height": 40, "letter_spacing": -0.5, "usage": "Secondary amounts, large stats" },
+        "num_m":  { "font": "JetBrains Mono", "weight": 500, "size": 22, "line_height": 30, "letter_spacing": 0,    "usage": "Inline amounts, card numbers" },
+        "num_s":  { "font": "JetBrains Mono", "weight": 400, "size": 16, "line_height": 24, "letter_spacing": 0,    "usage": "Small amounts, list amounts" }
+      },
+      "rules": {
+        "indian_number_format": "MANDATORY: ₹1,50,000 not ₹150,000. Always prefix ₹.",
+        "negative_amounts": "coral-500 color with − prefix",
+        "positive_amounts": "emerald-500 color with + prefix",
+        "neutral_amounts": "neutral-900 (light mode) or white (dark mode)",
+        "sora_minimum_size": "18px — never use Sora below this size",
+        "all_numbers": "ALWAYS JetBrains Mono — never Inter or Sora for numeric data",
+        "max_line_length": "72 characters for readability",
+        "minimum_body": "14px minimum for any interactive text"
+      }
+    },
+
+    "spacing": {
+      "base_unit": 4,
+      "scale": {
+        "sp_1":  4,
+        "sp_2":  8,
+        "sp_3":  12,
+        "sp_4":  16,
+        "sp_5":  20,
+        "sp_6":  24,
+        "sp_8":  32,
+        "sp_10": 40,
+        "sp_12": 48,
+        "sp_16": 64,
+        "sp_20": 80
+      },
+      "screen_margin": {
+        "standard": 20,
+        "large_android": 24
+      },
+      "safe_areas": "Always respected — iOS notch/home indicator, Android navigation bar"
+    },
+
+    "border_radius": {
+      "r_xs":   6,
+      "r_sm":   10,
+      "r_md":   14,
+      "r_lg":   18,
+      "r_xl":   22,
+      "r_2xl":  28,
+      "r_full": 9999
+    },
+
+    "shadows": {
+      "sh_1": "0 1px 3px rgba(0,0,0,0.04)",
+      "sh_2": "0 4px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)",
+      "sh_3": "0 8px 20px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04)",
+      "sh_4": "0 16px 32px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06)",
+      "sh_5": "0 24px 48px rgba(0,0,0,0.16)",
+      "sh_brand":   "0 8px 28px rgba(0,229,176,0.30)",
+      "sh_cosmos":  "0 8px 28px rgba(85,20,255,0.25)",
+      "sh_gold":    "0 8px 28px rgba(255,224,26,0.35)",
+      "sh_emerald": "0 8px 28px rgba(0,232,126,0.30)",
+      "sh_coral":   "0 8px 28px rgba(255,80,64,0.25)"
+    }
+  },
+
+  "motion_system": {
+    "philosophy": "Motion communicates state, rewards behavior, builds trust. Never decorative. Never delayed.",
+    "performance_rule": "All animations run on UI thread (Reanimated 3 worklets). 60fps non-negotiable.",
+    "forbidden": ["animate width", "animate height", "animate padding", "animate margin", "animate top/left"],
+    "allowed": ["transform.scale", "transform.translateX", "transform.translateY", "transform.rotate", "opacity"],
+
+    "spring_configs": {
+      "default":  { "damping": 18, "stiffness": 200, "mass": 1.0 },
+      "bouncy":   { "damping": 10, "stiffness": 180, "mass": 1.0 },
+      "tight":    { "damping": 25, "stiffness": 300, "mass": 1.0 },
+      "slow":     { "damping": 20, "stiffness": 120, "mass": 1.2 },
+      "overshoot":{ "damping": 8,  "stiffness": 150, "mass": 1.0 }
+    },
+
+    "easing": {
+      "ease_out": "cubic-bezier(0.0, 0.0, 0.2, 1.0)",
+      "ease_in":  "cubic-bezier(0.4, 0.0, 1.0, 1.0)",
+      "standard": "cubic-bezier(0.4, 0.0, 0.2, 1.0)",
+      "never_use": "linear — mechanical and inhuman"
+    },
+
+    "durations": {
+      "micro":       { "range": "80-100ms",   "use": "Icon swaps, state indicator changes" },
+      "quick":       { "range": "150-180ms",  "use": "Button press feedback" },
+      "standard":    { "range": "250-280ms",  "use": "Screen transitions, card expand" },
+      "deliberate":  { "range": "320-380ms",  "use": "Modal sheets, onboarding transitions" },
+      "celebration": { "range": "500-2000ms", "use": "Achievement unlocks, goal completion" }
+    },
+
+    "animations": {
+      "viya_orb_idle": {
+        "name": "Breathing",
+        "property": "scale",
+        "keyframes": [1.0, 1.04, 1.0],
+        "duration": 3500,
+        "easing": "ease-in-out",
+        "repeat": "infinite",
+        "description": "Subtle breathing shows Viya is alive and present"
+      },
+      "viya_orb_thinking": {
+        "name": "AI Processing",
+        "property": ["scale", "color"],
+        "keyframes_scale": [1.0, 1.1, 1.0],
+        "duration": 800,
+        "easing": "tight_spring",
+        "repeat": "while_processing",
+        "color_shift": "teal_500 → cosmos_500",
+        "description": "Faster pulse + color shift signals AI is working"
+      },
+      "viya_orb_success": {
+        "name": "Completion Flash",
+        "property": "scale",
+        "keyframes": [1.0, 1.2, 1.0],
+        "duration": 400,
+        "easing": "tight_spring",
+        "color_flash": "emerald_500",
+        "flash_duration": 200,
+        "haptic": "notificationSuccess",
+        "description": "Brief celebration when action completes"
+      },
+      "button_press": {
+        "name": "Physical Press",
+        "touch_down": { "scale": 0.96, "duration": 80, "easing": "ease-in" },
+        "touch_up":   { "scale": 1.01, "duration": 120, "easing": "spring_default" },
+        "settle":     { "scale": 1.0,  "duration": 60,  "easing": "tight_spring" },
+        "haptic": "impact_light",
+        "description": "Makes digital buttons feel physical"
+      },
+      "number_count_up": {
+        "name": "Financial Count",
+        "method": "frame-by-frame interpolation",
+        "duration": 700,
+        "easing": "ease-out",
+        "overshoot_pct": 3,
+        "color_flash_positive": { "color": "emerald_500", "opacity_keyframes": [0, 1, 0], "duration": 150 },
+        "color_flash_negative": { "color": "coral_500",   "opacity_keyframes": [0, 1, 0], "duration": 150 },
+        "description": "Numbers animate to new value — satisfaction in watching money change"
+      },
+      "progress_bar_fill": {
+        "name": "Goal Progress",
+        "mount_animation": "0% → current_value",
+        "duration": 800,
+        "easing": "ease-out",
+        "milestone_pulse": {
+          "triggers": ["25%", "50%", "75%", "100%"],
+          "scale_y": [1.0, 1.02, 1.0],
+          "duration": 400
+        },
+        "milestone_dot_entrance": {
+          "scale": [0, 1.3, 1.0],
+          "spring": "bouncy",
+          "duration": 400
+        }
+      },
+      "streak_milestone": {
+        "name": "Streak Fire",
+        "day_added": {
+          "translateY": [0, -12, 0],
+          "scale": [1.0, 1.4, 1.0],
+          "duration": 400,
+          "spring": "bouncy"
+        },
+        "milestone_7_14_21_30": {
+          "background_sweep": "gold gradient left to right, 1s",
+          "fire_scale": [1.0, 2.5],
+          "particles": 8,
+          "particle_type": "fire emojis",
+          "haptic": "impact_heavy"
+        }
+      },
+      "goal_completion_celebration": {
+        "name": "Achievement Explosion",
+        "trigger": "goal.current_amount >= goal.target_amount",
+        "phases": {
+          "phase_1_ms_0_400": "Gold overlay fades in (opacity 0→0.9), achievement card scales from center (spring 0→1.05→1)",
+          "phase_2_ms_400_1200": "Confetti burst: 60 particles, brand colors (#FFD700 #00E5B0 #5514FF #FF5040), physics simulation",
+          "phase_3_ms_1200_plus": "Text reveals line by line (100ms stagger), CTA button pulses for attention"
+        },
+        "haptic_sequence": ["notificationSuccess", "300ms pause", "notificationSuccess"],
+        "auto_dismiss_after": 5000,
+        "confetti": {
+          "count": 60,
+          "colors": ["#FFD700", "#00E5B0", "#5514FF", "#FF5040"],
+          "shapes": ["circle", "square", "teardrop"],
+          "physics": "gravity + random velocity + rotation"
+        }
+      },
+      "chat_message_viya": {
+        "name": "Message Arrive",
+        "translateX": -12,
+        "opacity": [0, 1],
+        "duration": 200,
+        "spring": "default"
+      },
+      "chat_message_user": {
+        "name": "Message Send",
+        "translateX": 12,
+        "opacity": [0, 1],
+        "duration": 150,
+        "spring": "tight"
+      },
+      "typing_indicator": {
+        "name": "Viya Thinking",
+        "delay_before_show": 600,
+        "dots_count": 3,
+        "each_dot_translateY": [0, -6, 0],
+        "stagger_ms": 120,
+        "repeat": "infinite"
+      },
+      "screen_transition_push": {
+        "new_screen": { "translateX": "100%→0", "duration": 280, "easing": "ease-out" },
+        "old_screen": { "translateX": "0→-30%", "duration": 280, "easing": "ease-out", "note": "Parallax effect" }
+      },
+      "modal_open": {
+        "sheet": { "translateY": "100%→0", "duration": 350, "spring": "spring(damping=0.85, stiffness=200)" },
+        "backdrop": { "opacity": "0→0.5", "duration": 250 }
+      },
+      "pull_to_refresh": {
+        "viya_orb_appears": "scales from 0→1 as user pulls (scale = pull_distance / 72)",
+        "at_threshold_72dp": "orb begins rotation animation",
+        "on_release": "orb spins 1 rotation, Syncing text appears",
+        "on_complete": "checkmark morphs inside orb, content fades in fresh"
+      }
+    }
+  },
+
+  "screens": {
+    "splash": {
+      "id": "SL-001",
+      "priority": "P1-CRITICAL",
+      "duration_max_ms": 1500,
+      "background": "gradient-night",
+      "elements": {
+        "orb": { "size": 96, "animation": "viya_orb_idle", "shadow": "sh_brand" },
+        "title": { "text": "VIYA", "style": "hero", "color": "white", "letter_spacing": 6 },
+        "subtitle": { "text": "AI Life & Wealth Partner", "style": "body_m", "color": "white/55%" },
+        "progress_bar": { "width": 120, "height": 3, "fill": "gradient-hero", "radius": "r_full" },
+        "background_dots": { "count": 8, "size_range": "2-3px", "opacity": 0.12, "animation": "slow float" }
+      },
+      "auth_check": "Happens during animation. Navigate at exactly 1500ms regardless.",
+      "prompt_for_designer": "First impression of Viya. Must feel like something unprecedented. Dark, alive, intelligent. The orb is the brand's heartbeat — it must breathe."
+    },
+
+    "onboarding_language": {
+      "id": "OB-001",
+      "title": "Language Selection",
+      "priority": "P1-CRITICAL",
+      "elements": {
+        "illustration": "India map with language speech bubbles rising from each state, animated float",
+        "headline": "Viya aapki bhasha mein baat karta hai",
+        "subtitle": "Pick your language",
+        "grid": {
+          "columns": 2,
+          "gap": 12,
+          "tiles": ["🇮🇳 English", "🇮🇳 हिंदी", "தமிழ்", "తెలుగు", "ಕನ್ನಡ", "मराठी"],
+          "tile_height": 64,
+          "tile_radius": "r_md",
+          "selected_bg": "teal_50",
+          "selected_border": "2px teal_500",
+          "selected_check": "20px circle gradient-hero with white check icon"
+        },
+        "cta": { "text": "Continue →", "style": "primary", "disabled_until": "language_selected" }
+      },
+      "prompt_for_designer": "This screen sets the emotional tone. India-first. Warm. The illustration should feel like a celebration of India's linguistic diversity. Every language treated with equal respect."
+    },
+
+    "onboarding_phone": {
+      "id": "OB-002",
+      "title": "Phone Number Input",
+      "priority": "P1-CRITICAL",
+      "elements": {
+        "progress": "4 step dots, step 1 active",
+        "headline": "What's your number?",
+        "subtitle": "One-time verification. No spam.",
+        "input_compound": {
+          "height": 68,
+          "radius": "r_sm",
+          "country_code_width": 100,
+          "country_code_content": "flag + code + chevron",
+          "phone_input": {
+            "font": "JetBrains Mono Medium 20px",
+            "auto_focus": true,
+            "keyboard_type": "numeric",
+            "format": "98765 43210 (space at 5)"
+          },
+          "states": {
+            "focus": "teal_500 border + teal_100 shadow",
+            "valid": "emerald_500 border + right checkmark"
+          }
+        },
+        "trust_row": ["🔒 Encrypted", "📵 No spam", "🗑️ Delete anytime"],
+        "cta": { "text": "Send Code →", "disabled_until": "valid_10_digits" }
+      }
+    },
+
+    "onboarding_otp": {
+      "id": "OB-003",
+      "title": "OTP Verification",
+      "priority": "P1-CRITICAL",
+      "elements": {
+        "header_animation": "Envelope opens → checkmark emerges (Lottie 56px)",
+        "otp_boxes": {
+          "count": 6,
+          "size": { "width": 52, "height": 62 },
+          "font": "JetBrains Mono Bold 30px",
+          "gap": 8,
+          "middle_gap": 12,
+          "states": {
+            "empty":   { "bg": "neutral_100", "border": "1.5px neutral_200" },
+            "active":  { "bg": "white", "border": "2px teal_500", "shadow": "0 0 0 4px teal_100" },
+            "filled":  { "bg": "cosmos_50", "border": "1.5px cosmos_200", "text_color": "cosmos_700" },
+            "success": { "bg": "emerald_50", "border": "2px emerald_500", "inner": "checkmark path-draws" },
+            "error":   { "bg": "coral_50", "border": "2px coral_500", "animation": "shake ±8px 4 cycles" }
+          },
+          "behaviors": ["auto-advance", "backspace-back", "paste-all-6", "android-sms-autofill", "auto-submit-on-6th"]
+        },
+        "resend": "Countdown → Resend Code link at 0:00"
+      }
+    },
+
+    "home_dashboard": {
+      "id": "HM-001",
+      "title": "Home Command Center",
+      "priority": "P1-CRITICAL-MAX_POLISH",
+      "sections_order": [
+        "sticky_header",
+        "daily_brief_card",
+        "quick_action_grid",
+        "email_alert_strip",
+        "wealth_snapshot",
+        "goals_row",
+        "health_pair",
+        "upcoming_bills"
+      ],
+      "sticky_header": {
+        "height": 60,
+        "left": "Viya orb 38px (breathing) + greeting text",
+        "right": "[search] [bell with badge] [avatar]",
+        "scroll_behavior": "gains white/95% bg + blur(20px) + shadow as content scrolls under"
+      },
+      "daily_brief_card": {
+        "background": "gradient-morning",
+        "full_bleed": true,
+        "bottom_radius": 28,
+        "items_animation": "stagger left to right, 70ms between each",
+        "items_tappable": "each navigates to relevant screen"
+      },
+      "quick_action_grid": {
+        "layout": "2 rows × 4 columns",
+        "tile_height": 76,
+        "personalization": "most-used tile gets gradient-hero background"
+      },
+      "fab": {
+        "size": 60,
+        "radius": "r_full",
+        "background": "gradient-hero",
+        "icon": "microphone 26px white",
+        "shadow": "sh_brand",
+        "idle_animation": "breathing scale 1.0→1.04→1.0, 4s loop",
+        "short_press": "voice recorder overlay",
+        "long_press_ms": 400,
+        "long_press_action": "radial menu 6 items",
+        "scroll_hide": "scrolling down > 50px hides FAB, scroll up reveals"
+      }
+    },
+
+    "viya_chat": {
+      "id": "CH-001",
+      "title": "Viya Chat Interface",
+      "priority": "P1-CRITICAL",
+      "chat_background": "neutral_50",
+      "message_types": {
+        "viya_text": {
+          "bg": "white",
+          "shadow": "sh_1",
+          "radius": "r_lg with tl:4px (speech tail)",
+          "alignment": "left",
+          "max_width": "82% screen"
+        },
+        "viya_action_card": {
+          "bg": "emerald_50",
+          "left_border": "4px emerald_500",
+          "sections": ["header with checkmark", "divider", "content", "action buttons"]
+        },
+        "viya_insight_card": {
+          "bg": "teal_50",
+          "left_border": "4px teal_500"
+        },
+        "viya_warning_card": {
+          "bg": "coral_50",
+          "left_border": "4px coral_500"
+        },
+        "viya_rich_data_card": {
+          "bg": "white",
+          "shadow": "sh_2",
+          "contains": "mini bar charts, data tables, metrics"
+        },
+        "viya_celebration_card": {
+          "bg": "gradient-achievement",
+          "text_color": "white",
+          "trigger": "goal completion overlay"
+        },
+        "user_text": {
+          "bg": "gradient-hero",
+          "text": "white",
+          "radius": "r_lg with tr:4px",
+          "alignment": "right",
+          "max_width": "75% screen"
+        }
+      },
+      "input_bar": {
+        "height_base": 60,
+        "height_max": 120,
+        "elements": ["attach icon", "text input", "voice OR send icon"],
+        "voice_shows_when": "text input empty",
+        "send_shows_when": "text input has content",
+        "transition": "voice ↔ send: 300ms opacity fade"
+      },
+      "voice_recorder_overlay": {
+        "type": "full screen",
+        "background": "gradient-night",
+        "orb_size": 110,
+        "orb_scale_formula": "1.0 + (audioLevel × 0.4)",
+        "waveform": "real-time bars from microphone input, teal color",
+        "dismiss": "swipe left or release",
+        "cancel_threshold": "swipe left > 30% screen width"
+      }
+    },
+
+    "email_intelligence": {
+      "id": "EM-001",
+      "title": "Email Intelligence Feed",
+      "priority": "P1-HIGH",
+      "tabs": ["Action (n)", "Meetings (n)", "Finance (n)", "Orders (n)", "All"],
+      "card_types": {
+        "bill": {
+          "left_border_color": "coral_500",
+          "sections": ["bank + time + BILL badge", "divider", "extracted data (amount/min/due/last)", "top spends grid", "action buttons"]
+        },
+        "meeting": {
+          "left_border_color": "teal_500",
+          "sections": ["person + time + MEETING badge", "divider", "extracted (title/when/where/with/agenda)", "conflict check", "action buttons"]
+        },
+        "delivery": {
+          "left_border_color": "cosmos_400",
+          "sections": ["courier + DELIVERY badge", "item name + ETA", "track/alert buttons"]
+        },
+        "investment": {
+          "left_border_color": "emerald_500",
+          "bg": "emerald_light at 30%",
+          "sections": ["source + time", "fund + amounts + returns", "action buttons"]
+        }
+      }
+    },
+
+    "wealth_dashboard": {
+      "id": "WL-001",
+      "title": "Wealth Management",
+      "priority": "P1-HIGH",
+      "tabs": ["Overview", "Transactions", "Goals", "Investments", "Bills & EMIs"],
+      "net_worth_card": {
+        "bg": "gradient-wealth",
+        "radius": "r_2xl",
+        "contains": ["NET WORTH label", "amount num_xl", "monthly change gold", "account pills horizontal", "time filter row", "sparkline chart"]
+      }
+    },
+
+    "health_dashboard": {
+      "id": "HL-001",
+      "title": "Health Command Center",
+      "priority": "P1-HIGH",
+      "health_score_ring": {
+        "diameter": 160,
+        "stroke_width": 10,
+        "stroke": "gradient health (coral → amber → gold)",
+        "center": "score number + label",
+        "animation": "draws from 0 to score on mount"
+      },
+      "four_pillars": {
+        "layout": "2×2 grid, 8px gap",
+        "steps": { "bg": "gradient-health", "progress": "half-arc SVG white stroke" },
+        "sleep": { "bg": "cosmos gradient" },
+        "water": { "bg": "teal gradient", "animation": "wave SVG" },
+        "calories": { "bg": "emerald gradient" }
+      }
+    }
+  },
+
+  "components": {
+    "primary_button": {
+      "variants": ["solid", "outline", "ghost"],
+      "sizes": {
+        "sm": { "height": 40, "font": "body_s" },
+        "md": { "height": 52, "font": "body_m" },
+        "lg": { "height": 60, "font": "body_l" }
+      },
+      "solid": { "bg": "gradient-hero", "text": "white", "shadow": "sh_brand" },
+      "outline": { "bg": "transparent", "border": "2px teal_500", "text": "teal_600" },
+      "ghost": { "bg": "transparent", "text": "teal_600" },
+      "states": {
+        "default": "above",
+        "pressed": "scale 0.96, 80ms ease-in",
+        "loading": "spinner replaces label",
+        "success": "checkmark replaces spinner, 1s then reverts",
+        "disabled": "opacity 0.4, no interaction"
+      },
+      "radius": "r_full (pill shape always)",
+      "haptic": "impact_light on press"
+    },
+
+    "card": {
+      "standard": { "bg": "white", "radius": "r_md", "shadow": "sh_2", "padding": 20 },
+      "hero":     { "bg": "gradient contextual", "radius": "r_xl", "shadow": "sh_4", "padding": 24 },
+      "glass":    { "bg": "rgba(255,255,255,0.7)", "backdrop_filter": "blur(20px)", "border": "1px rgba(255,255,255,0.3)", "radius": "r_xl" },
+      "pressed": "scale 0.98, shadow reduces, 80ms"
+    },
+
+    "input_field": {
+      "height": 56,
+      "radius": "r_sm",
+      "border_default": "1.5px neutral_200",
+      "label_style": "floating Material-style",
+      "states": {
+        "default": "neutral_200 border",
+        "focused": "teal_500 border + 0 0 0 4px teal_100 shadow",
+        "filled": "teal_300 border",
+        "error": "coral_500 border + error text below",
+        "disabled": "neutral_50 bg, neutral_300 text"
+      }
+    },
+
+    "progress_bar": {
+      "track_height": 8,
+      "track_color": "neutral_100",
+      "fill": "gradient-hero (default), or contextual gradient",
+      "radius": "r_full",
+      "animation": "spring fill on mount from 0 to value",
+      "milestone_dots": "10px circles at 25/50/75/100%"
+    },
+
+    "bottom_sheet": {
+      "handle": { "width": 36, "height": 4, "color": "neutral_200", "radius": "r_full", "centered": true },
+      "bg": "white (light) / dark_s2 (dark)",
+      "top_radius": 24,
+      "backdrop": "black/50% + blur(6px)",
+      "snap_points": ["30%", "60%", "90%"],
+      "dismiss": "swipe down or backdrop tap"
+    },
+
+    "toast": {
+      "position": "top",
+      "offset": "safe_area + 16px",
+      "height": 52,
+      "width": "screen - 40px",
+      "radius": "r_md",
+      "shadow": "sh_4",
+      "types": {
+        "success": { "bg": "emerald_500", "icon": "check" },
+        "warning": { "bg": "amber_500", "icon": "warning" },
+        "error":   { "bg": "coral_500", "icon": "x" },
+        "info":    { "bg": "teal_500", "icon": "info" }
+      },
+      "animation": "slide down from top, 300ms spring",
+      "auto_dismiss": 3000,
+      "dismiss_gesture": "swipe up"
+    },
+
+    "skeleton_loader": {
+      "rule": "EVERY screen that loads async data must show skeleton FIRST. Never blank.",
+      "base_color": "neutral_100",
+      "shimmer": "white highlight sweeps left to right",
+      "animation_duration": 1500,
+      "animation_type": "infinite loop"
+    }
+  },
+
+  "gestures": {
+    "swipe_left_list_item": {
+      "reveals": ["Delete (coral bg)", "Edit (teal bg)"],
+      "physics": "elastic, continues beyond 60px then springs back",
+      "haptic_at_threshold": "tick",
+      "haptic_at_full": "impact_medium",
+      "full_swipe_threshold": "80% of width → action fires",
+      "undo": "toast appears for 5 seconds"
+    },
+    "swipe_right_task": {
+      "action": "mark done",
+      "physics": "elastic",
+      "on_complete": "item collapses with height animation"
+    },
+    "long_press_fab": {
+      "trigger_ms": 400,
+      "haptic": "impact_medium",
+      "action": "radial menu 6 items at 80dp radius"
+    },
+    "double_tap_amount": {
+      "action": "copy to clipboard",
+      "feedback": "highlight flash + clipboard toast",
+      "haptic": "selection_changed"
+    },
+    "pinch_chart": {
+      "action": "expand time range",
+      "haptic": "selection_changed at each range change"
+    },
+    "pull_to_refresh": {
+      "custom_animation": "Viya orb descends, scales with pull distance",
+      "threshold": 72,
+      "complete_animation": "checkmark morphs inside orb"
+    }
+  },
+
+  "haptic_map": {
+    "impact_light": ["standard button press", "list item selection", "toggle switch", "tab bar tap"],
+    "impact_medium": ["FAB primary press", "swipe action threshold", "long press trigger", "chip selection"],
+    "impact_heavy": ["destructive delete confirm", "streak milestone", "major navigation"],
+    "selection_changed": ["segmented control", "date picker scroll", "double-tap copy"],
+    "notification_success": ["goal milestone", "task complete", "payment confirmed", "achievement"],
+    "notification_warning": ["budget 80% reached", "bill due tomorrow"],
+    "notification_error": ["payment failed", "OTP invalid", "network failure"]
+  },
+
+  "accessibility": {
+    "wcag_target": "2.1 AA",
+    "contrast_minimum": {
+      "normal_text": "4.5:1",
+      "large_text": "3:1",
+      "ui_components": "3:1"
+    },
+    "verified_combinations": {
+      "neutral_900_on_white": { "ratio": "16.8:1", "status": "PASS AAA" },
+      "neutral_600_on_white": { "ratio": "5.2:1",  "status": "PASS AA" },
+      "viya_700_on_white":    { "ratio": "4.6:1",  "status": "PASS AA", "note": "Use for teal text on white" },
+      "white_on_gradient_hero": { "ratio": "5.1:1", "status": "PASS AA" },
+      "viya_500_on_white":    { "ratio": "1.8:1", "status": "FAIL", "rule": "NEVER use viya_500 as text color on white" },
+      "gold_on_white":        { "ratio": "1.9:1", "status": "FAIL", "rule": "NEVER use gold as text color on white" }
+    },
+    "touch_targets": {
+      "minimum_ios":     "44×44pt",
+      "minimum_android": "48×48dp",
+      "recommended":     "56px for primary actions",
+      "minimum_spacing": "8px between adjacent targets"
+    },
+    "screen_reader": {
+      "accessibilityLabel": "Required on all icons, images, decorative elements",
+      "accessibilityHint": "Required on buttons with non-obvious actions",
+      "accessibilityRole": "Correct semantic role on all interactive elements",
+      "accessibilityValue": "Progress bars, charts must have text equivalent",
+      "accessibilityLiveRegion": "All dynamic content updates"
+    },
+    "reduce_motion": {
+      "check": "AccessibilityInfo.isReduceMotionEnabled()",
+      "when_true_disable": ["entrance/exit animations", "confetti particles", "parallax", "pulsing", "FAB radial expansion"],
+      "when_true_keep": ["opacity fades", "haptics", "color state changes", "scroll physics"]
+    },
+    "font_scaling": {
+      "ios": "Support all Dynamic Type sizes",
+      "android": "Support font scale up to 1.3x",
+      "test_at": "Largest accessibility size — verify no clipping or overlap"
+    },
+    "color_independence": {
+      "rule": "Never use color as the ONLY indicator of meaning",
+      "always_pair_with": "icon + text label + position",
+      "examples": {
+        "overdue": "coral color + 🔴 emoji + 'Overdue' text",
+        "success": "emerald color + ✓ icon + 'Done' text",
+        "warning": "amber color + ⚠️ icon + 'Due soon' text"
+      }
+    }
+  },
+
+  "deliverables": {
+    "figma_file_structure": {
+      "library": "VIYA AI — DESIGN SYSTEM (published, shared with dev)",
+      "screens": "VIYA AI — SCREENS (all screens, all states)",
+      "prototypes": "VIYA AI — PROTOTYPES (5 interactive flows)",
+      "annotations": "VIYA AI — ANNOTATIONS (dev handoff notes)"
+    },
+    "exports": {
+      "app_icon_ios": "1024×1024 PNG (no transparency) + all required sizes",
+      "app_icon_android": "Adaptive: 432×432 foreground + background",
+      "screenshots_ios": "1320×2868 × 10 screens (primary device)",
+      "screenshots_android": "1080×1920 × 8 screens",
+      "feature_graphic": "1024×500 PNG (Play Store)",
+      "lottie_files": ["viya_orb_idle.json", "viya_orb_thinking.json", "viya_celebration.json", "viya_success.json"],
+      "design_tokens": "design-tokens.json (for automated dev consumption)"
+    },
+    "timeline": {
+      "week_1_2": "Design system + atomic components",
+      "week_2_3": "Tier 1 screens (9 screens × 2 states)",
+      "week_3_4": "Tier 2 screens (finance + health)",
+      "week_4_5": "Tier 3 + dark mode all screens",
+      "week_5_6": "Animation specs + accessibility audit + dev handoff"
+    }
+  },
+
+  "reference_apps": {
+    "linear": { "take": "Speed, information density, confident typography", "dont_copy": "Cold/minimal aesthetic" },
+    "stripe": { "take": "Every element earns its place, trust through consistency", "dont_copy": "Enterprise/developer focus" },
+    "duolingo": { "take": "Celebration mechanics, streak design, habit formation", "dont_copy": "Childlike illustrations" },
+    "cred": { "take": "Premium feel for Indian consumers, bold number displays", "dont_copy": "Exclusivity signaling" },
+    "notion": { "take": "Information architecture, elegant empty states", "dont_copy": "Complexity without guidance" },
+    "loom": { "take": "Elegant media handling, contextual UI", "dont_copy": "Desktop-first patterns" }
+  },
+
+  "quality_targets": {
+    "app_store_rating": 4.8,
+    "onboarding_completion_rate": "85%",
+    "day_7_retention": "55%",
+    "nps_score": 60,
+    "animation_framerate": "60fps non-negotiable",
+    "cold_start_max": "2.5 seconds",
+    "screen_transition_max": "280ms",
+    "accessibility_standard": "WCAG 2.1 AA",
+    "design_awards_target": ["Apple Design Award consideration", "Material Design Award consideration"]
+  }
+}
