@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { formatINR } from '../lib/utils'
-import { Plus, ArrowUpRight, ArrowDownLeft, Clock, Bell, Percent, User, Calendar, Check, X } from 'lucide-react'
+import { Plus, ArrowUpRight, ArrowDownLeft, Clock, Bell, Percent, User, Calendar, Check, X, Users } from 'lucide-react'
 import PageTransition from '../components/PageTransition'
 
 /* §6.2 Brand-compliant colors:
@@ -23,6 +23,7 @@ export default function Lending() {
   const { phone } = useApp()
   const [tab, setTab] = useState('given')
   const [entries, setEntries] = useState([])
+  const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [toast, setToast] = useState('')
   const [form, setForm] = useState({
@@ -35,6 +36,7 @@ export default function Lending() {
     if (!phone) return
     const data = await api.getLendings(phone)
     setEntries(data || [])
+    setLoading(false)
   }
 
   useEffect(() => { loadEntries() }, [phone])
@@ -123,111 +125,143 @@ export default function Lending() {
           ))}
         </div>
 
-        {/* Stats */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            style={{ flex: 1, padding: '14px 12px', borderRadius: 14, textAlign: 'center',
-              background: tabDim,
-              border: `1px solid ${tabHex}18` }}>
-            <div style={{ fontFamily: 'var(--mono)', fontSize: 20, fontWeight: 800, color: tabColor }}>
-              ₹{pendingTotal.toLocaleString()}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5 }}>PENDING</div>
-          </motion.div>
-          {interestTotal > 0 && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-              style={{ flex: 1, padding: '14px 12px', borderRadius: 14, textAlign: 'center', background: 'var(--amber-50)', border: '1px solid rgba(255,152,0,0.12)' }}>
-              <div style={{ fontFamily: 'var(--mono)', fontSize: 20, fontWeight: 800, color: 'var(--amber-500)' }}>₹{interestTotal.toLocaleString()}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5 }}>INTEREST</div>
+        {/* Loading Skeleton */}
+        {loading ? (
+          <div>
+            {/* Summary card skeleton */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{ display: 'flex', gap: 10, marginBottom: 16 }}
+            >
+              <div className="skeleton" style={{ flex: 1, height: 100, borderRadius: 14 }} />
+              <div className="skeleton" style={{ flex: 1, height: 100, borderRadius: 14 }} />
             </motion.div>
-          )}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            style={{ flex: 1, padding: '14px 12px', borderRadius: 14, textAlign: 'center', background: 'var(--viya-success-light)', border: '1px solid rgba(0,232,126,0.12)' }}>
-            <div style={{ fontFamily: 'var(--mono)', fontSize: 20, fontWeight: 800, color: 'var(--viya-success)' }}>₹{settledTotal.toLocaleString()}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5 }}>SETTLED</div>
-          </motion.div>
-        </div>
 
-        {/* Entries List */}
-        {filtered.length === 0 ? (
-          <div className="empty-state-premium">
-            <div className="empty-emoji">{tab === 'given' ? '💸' : '📥'}</div>
-            <h3>No {tab === 'given' ? 'lendings' : 'borrowings'} yet</h3>
-            <p>Tap + to add one</p>
+            {/* Lending item skeletons */}
+            {[0, 1, 2].map(i => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + i * 0.08 }}
+                className="skeleton"
+                style={{ height: 72, borderRadius: 14, marginBottom: 10 }}
+              />
+            ))}
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {filtered.map((entry, i) => {
-              const interest = calcInterest(entry)
-              const totalOwed = Number(entry.amount) + interest
-              const isOverdue = entry.due_date && new Date(entry.due_date) < new Date() && entry.status === 'pending'
-              return (
-                <motion.div key={entry.id}
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                  style={{
-                    padding: 16, borderRadius: 14, background: 'var(--bg-card)',
-                    border: isOverdue ? '1.5px solid var(--coral-400)' : '1px solid var(--border-light)',
-                    opacity: entry.status === 'settled' ? 0.5 : 1,
-                  }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{
-                        width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700,
-                        background: tabDim,
-                        color: tabColor,
-                      }}>
-                        {entry.person_name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 15, fontWeight: 700 }}>{entry.person_name}</div>
-                        {entry.reason && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{entry.reason}</div>}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontFamily: 'var(--mono)', fontSize: 18, fontWeight: 800, color: tabColor }}>
-                        ₹{totalOwed.toLocaleString()}
-                      </div>
-                      {interest > 0 && (
-                        <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--amber-500)', fontWeight: 600 }}>
-                          +₹{interest.toLocaleString()} interest
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                    {entry.has_interest && (
-                      <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: 'var(--amber-50)', color: 'var(--amber-500)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
-                        <Percent size={10} /> {entry.interest_rate}% {entry.interest_type}
-                      </span>
-                    )}
-                    {entry.due_date && (
-                      <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: isOverdue ? 'var(--coral-50)' : 'var(--cosmos-50)', color: isOverdue ? 'var(--coral-500)' : 'var(--cosmos-400)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
-                        <Calendar size={10} /> {new Date(entry.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                        {isOverdue && ' ⚠️ OVERDUE'}
-                      </span>
-                    )}
-                    {entry.reminder_enabled && entry.status === 'pending' && (
-                      <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: 'var(--teal-50)', color: 'var(--viya-primary-700)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
-                        <Bell size={10} /> {entry.reminder_frequency} reminder
-                      </span>
-                    )}
-                    <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: entry.status === 'settled' ? 'var(--viya-success-light)' : 'var(--bg-secondary)', color: entry.status === 'settled' ? 'var(--viya-success)' : 'var(--text-tertiary)', fontWeight: 700 }}>
-                      {entry.status === 'settled' ? '✅ Settled' : '⏳ Pending'}
-                    </span>
-                  </div>
-
-                  {entry.status === 'pending' && (
-                    <motion.button whileTap={{ scale: 0.95 }}
-                      onClick={() => markSettled(entry.id)}
-                      style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: '1.5px solid rgba(0,232,126,0.2)', background: 'var(--viya-success-light)', color: 'var(--viya-success)', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                      <Check size={14} /> Mark as Settled
-                    </motion.button>
-                  )}
+          <>
+            {/* Stats */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                style={{ flex: 1, padding: '14px 12px', borderRadius: 14, textAlign: 'center',
+                  background: tabDim,
+                  border: `1px solid ${tabHex}18` }}>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: 20, fontWeight: 800, color: tabColor }}>
+                  ₹{pendingTotal.toLocaleString()}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5 }}>PENDING</div>
+              </motion.div>
+              {interestTotal > 0 && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                  style={{ flex: 1, padding: '14px 12px', borderRadius: 14, textAlign: 'center', background: 'var(--amber-50)', border: '1px solid rgba(255,152,0,0.12)' }}>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 20, fontWeight: 800, color: 'var(--amber-500)' }}>₹{interestTotal.toLocaleString()}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5 }}>INTEREST</div>
                 </motion.div>
-              )
-            })}
-          </div>
+              )}
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                style={{ flex: 1, padding: '14px 12px', borderRadius: 14, textAlign: 'center', background: 'var(--viya-success-light)', border: '1px solid rgba(0,232,126,0.12)' }}>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: 20, fontWeight: 800, color: 'var(--viya-success)' }}>₹{settledTotal.toLocaleString()}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5 }}>SETTLED</div>
+              </motion.div>
+            </div>
+
+            {/* Entries List */}
+            {filtered.length === 0 ? (
+              <div className="empty-state">
+                <Users size={48} className="empty-icon" />
+                <h3>No {tab === 'given' ? 'lendings' : 'borrowings'} yet</h3>
+                <p>{tab === 'given' ? 'Record money you\'ve lent to others' : 'Track money you\'ve borrowed'}</p>
+                <button className="btn-primary" onClick={() => setShowAdd(true)}>
+                  <Plus size={16} style={{ marginRight: 4 }} /> Add {tab === 'given' ? 'Lending' : 'Borrowing'}
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {filtered.map((entry, i) => {
+                  const interest = calcInterest(entry)
+                  const totalOwed = Number(entry.amount) + interest
+                  const isOverdue = entry.due_date && new Date(entry.due_date) < new Date() && entry.status === 'pending'
+                  return (
+                    <motion.div key={entry.id}
+                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                      style={{
+                        padding: 16, borderRadius: 14, background: 'var(--bg-card)',
+                        border: isOverdue ? '1.5px solid var(--coral-400)' : '1px solid var(--border-light)',
+                        opacity: entry.status === 'settled' ? 0.5 : 1,
+                      }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{
+                            width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700,
+                            background: tabDim,
+                            color: tabColor,
+                          }}>
+                            {entry.person_name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 15, fontWeight: 700 }}>{entry.person_name}</div>
+                            {entry.reason && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{entry.reason}</div>}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontFamily: 'var(--mono)', fontSize: 18, fontWeight: 800, color: tabColor }}>
+                            ₹{totalOwed.toLocaleString()}
+                          </div>
+                          {interest > 0 && (
+                            <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--amber-500)', fontWeight: 600 }}>
+                              +₹{interest.toLocaleString()} interest
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                        {entry.has_interest && (
+                          <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: 'var(--amber-50)', color: 'var(--amber-500)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <Percent size={10} /> {entry.interest_rate}% {entry.interest_type}
+                          </span>
+                        )}
+                        {entry.due_date && (
+                          <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: isOverdue ? 'var(--coral-50)' : 'var(--cosmos-50)', color: isOverdue ? 'var(--coral-500)' : 'var(--cosmos-400)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <Calendar size={10} /> {new Date(entry.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                            {isOverdue && ' ⚠️ OVERDUE'}
+                          </span>
+                        )}
+                        {entry.reminder_enabled && entry.status === 'pending' && (
+                          <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: 'var(--teal-50)', color: 'var(--viya-primary-700)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <Bell size={10} /> {entry.reminder_frequency} reminder
+                          </span>
+                        )}
+                        <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: entry.status === 'settled' ? 'var(--viya-success-light)' : 'var(--bg-secondary)', color: entry.status === 'settled' ? 'var(--viya-success)' : 'var(--text-tertiary)', fontWeight: 700 }}>
+                          {entry.status === 'settled' ? '✅ Settled' : '⏳ Pending'}
+                        </span>
+                      </div>
+
+                      {entry.status === 'pending' && (
+                        <motion.button whileTap={{ scale: 0.95 }}
+                          onClick={() => markSettled(entry.id)}
+                          style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: '1.5px solid rgba(0,232,126,0.2)', background: 'var(--viya-success-light)', color: 'var(--viya-success)', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                          <Check size={14} /> Mark as Settled
+                        </motion.button>
+                      )}
+                    </motion.div>
+                  )
+                })}
+              </div>
+            )}
+          </>
         )}
 
         {/* Add Entry Bottom Sheet */}
