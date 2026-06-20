@@ -47,7 +47,7 @@ function SettingsLink({ label, desc, icon: Icon, onClick, danger }) {
 }
 
 export default function Settings() {
-  const { theme, setTheme } = useApp()
+  const { theme, setTheme, logout } = useApp()
   const nav = useNavigate()
   const toast = useToast()
   const [pushNotifs, setPushNotifs] = useState(true)
@@ -110,7 +110,7 @@ export default function Settings() {
         {/* Danger Zone */}
         <div className="card" style={{ padding: '4px 16px' }}>
           <SettingsLink label="Delete Account" desc="Permanently delete all data" icon={Trash2} onClick={() => nav('/delete-account')} danger />
-          <SettingsLink label="Log Out" icon={LogOut} onClick={() => { /* logout */ }} danger />
+          <SettingsLink label="Log Out" icon={LogOut} onClick={() => { logout(); nav('/auth') }} danger />
         </div>
 
         <div style={{ textAlign: 'center', padding: '24px 0', fontSize: 12, color: 'var(--text-tertiary)' }}>

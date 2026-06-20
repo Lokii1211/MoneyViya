@@ -1,100 +1,399 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
+import { useToast } from '../components/Toast'
 import { formatINR } from '../lib/utils'
-import { AlertTriangle } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { AlertTriangle, TrendingDown, TrendingUp, Wallet, PieChart, Edit3, Check, X, RefreshCw } from 'lucide-react'
 
-const CAT_META = {
-  '🍕 Food': { name: 'Food & Dining', emoji: '🍕', budget: 8000, color: '#F59E0B' },
-  '🚗 Transport': { name: 'Transport', emoji: '🚗', budget: 3000, color: '#06B6D4' },
-  '🛒 Shopping': { name: 'Shopping', emoji: '🛍️', budget: 5000, color: '#F43F5E' },
-  '💡 Bills': { name: 'Bills & Utilities', emoji: '💡', budget: 4000, color: '#8B5CF6' },
-  '🎬 Entertainment': { name: 'Entertainment', emoji: '🎬', budget: 2000, color: '#10B981' },
-  '💊 Health': { name: 'Health', emoji: '🏥', budget: 2000, color: '#FF7062' },
-  '📚 Education': { name: 'Education', emoji: '📚', budget: 3000, color: '#3B82F6' },
-  '📱 Recharge': { name: 'Recharge', emoji: '📱', budget: 1000, color: '#EC4899' },
-  '🏠 Rent': { name: 'Rent & Housing', emoji: '🏠', budget: 10000, color: '#F97316' },
-  '📦 General': { name: 'Other', emoji: '📦', budget: 3000, color: '#9CA3AF' },
+// ── Category definitions with emojis, default budget allocations & colors ──
+const CATEGORIES = [
+  { key: 'Food',          emoji: '🍔', label: 'Food & Dining',    defaultPct: 0.25, color: '#F59E0B' },
+  { key: 'Transport',     emoji: '🚗', label: 'Transport',        defaultPct: 0.10, color: '#06B6D4' },
+  { key: 'Shopping',      emoji: '🛍️', label: 'Shopping',         defaultPct: 0.15, color: '#F43F5E' },
+  { key: 'Bills',         emoji: '📱', label: 'Bills & Utilities', defaultPct: 0.15, color: '#8B5CF6' },
+  { key: 'Health',        emoji: '💊', label: 'Health',            defaultPct: 0.08, color: '#FF7062' },
+  { key: 'Entertainment', emoji: '🎬', label: 'Entertainment',    defaultPct: 0.07, color: '#10B981' },
+  { key: 'Education',     emoji: '📚', label: 'Education',        defaultPct: 0.10, color: '#3B82F6' },
+  { key: 'Other',         emoji: '💳', label: 'Other',            defaultPct: 0.10, color: '#9CA3AF' },
+]
+
+const STORAGE_KEY = 'mv_budget_overrides'
+
+function loadBudgetOverrides() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch { return {} }
 }
+
+function saveBudgetOverrides(overrides) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides))
+}
+
+// Map transaction categories to our canonical keys
+function normalizeCategory(cat) {
+  if (!cat) return 'Other'
+  const lower = cat.toLowerCase()
+  // Direct matches
+  for (const c of CATEGORIES) {
+    if (lower === c.key.toLowerCase()) return c.key
+    if (lower === c.label.toLowerCase()) return c.key
+  }
+  // Partial / alias matches
+  if (lower.includes('food') || lower.includes('dining') || lower.includes('restaurant') || lower.includes('grocery') || lower.includes('groceries')) return 'Food'
+  if (lower.includes('transport') || lower.includes('uber') || lower.includes('cab') || lower.includes('fuel') || lower.includes('petrol') || lower.includes('auto')) return 'Transport'
+  if (lower.includes('shop') || lower.includes('amazon') || lower.includes('flipkart') || lower.includes('cloth')) return 'Shopping'
+  if (lower.includes('bill') || lower.includes('electric') || lower.includes('water') || lower.includes('gas') || lower.includes('recharge') || lower.includes('rent') || lower.includes('wifi') || lower.includes('internet')) return 'Bills'
+  if (lower.includes('health') || lower.includes('medical') || lower.includes('medicine') || lower.includes('hospital') || lower.includes('doctor') || lower.includes('pharmacy')) return 'Health'
+  if (lower.includes('entertain') || lower.includes('movie') || lower.includes('netflix') || lower.includes('game') || lower.includes('spotify') || lower.includes('subscription')) return 'Entertainment'
+  if (lower.includes('education') || lower.includes('course') || lower.includes('book') || lower.includes('school') || lower.includes('college') || lower.includes('tuition')) return 'Education'
+  // Emoji-prefixed categories from existing data (e.g. "🍕 Food")
+  const stripped = cat.replace(/[^\w\s]/g, '').trim().toLowerCase()
+  for (const c of CATEGORIES) {
+    if (stripped === c.key.toLowerCase() || stripped.includes(c.key.toLowerCase())) return c.key
+  }
+  return 'Other'
+}
+
+// Animation variants
+const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -8 } }
+const stagger = { animate: { transition: { staggerChildren: 0.06 } } }
 
 export default function Budget() {
   const { phone } = useApp()
-  const [cats, setCats] = useState([])
+  const toast = useToast()
+
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [monthlyIncome, setMonthlyIncome] = useState(30000)
+  const [categorySpending, setCategorySpending] = useState({})
+  const [budgetOverrides, setBudgetOverrides] = useState(loadBudgetOverrides)
+  const [editingCat, setEditingCat] = useState(null)
+  const [editValue, setEditValue] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
+
+  // ── Fetch data from Supabase ──
+  const fetchData = useCallback(async () => {
+    if (!phone) return
+    setError(null)
+
+    try {
+      // Fetch user data and transactions in parallel
+      const [user, transactions] = await Promise.all([
+        api.getUser(phone),
+        api.getTransactions(phone, 500),
+      ])
+
+      // Set monthly income from user profile
+      if (user?.monthly_income && Number(user.monthly_income) > 0) {
+        setMonthlyIncome(Number(user.monthly_income))
+      }
+
+      // Filter expenses only and aggregate by category
+      const expenses = (transactions || []).filter(t => t.type === 'expense')
+
+      // Filter to current month only
+      const now = new Date()
+      const currentMonth = now.getMonth()
+      const currentYear = now.getFullYear()
+      const thisMonthExpenses = expenses.filter(t => {
+        const d = new Date(t.created_at)
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear
+      })
+
+      const grouped = {}
+      thisMonthExpenses.forEach(t => {
+        const cat = normalizeCategory(t.category)
+        grouped[cat] = (grouped[cat] || 0) + Number(t.amount || 0)
+      })
+
+      setCategorySpending(grouped)
+    } catch (err) {
+      console.error('Budget fetch error:', err)
+      setError('Failed to load budget data. Pull down to retry.')
+      toast.show('Failed to load budget data', 'error')
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [phone, toast])
 
   useEffect(() => {
-    if (!phone) return
-    api.getTransactions(phone, 200).then(txns => {
-      const expenses = (txns || []).filter(t => t.type === 'expense')
-      // Group by category
-      const grouped = {}
-      expenses.forEach(t => {
-        const cat = t.category || '📦 General'
-        if (!grouped[cat]) grouped[cat] = 0
-        grouped[cat] += Number(t.amount)
-      })
-      // Build category list
-      const result = Object.entries(CAT_META).map(([key, meta]) => ({
-        ...meta, spent: grouped[key] || 0
-      })).filter(c => c.spent > 0 || c.budget > 3000)
-      // Add any unknown categories
-      Object.entries(grouped).forEach(([cat, amt]) => {
-        if (!CAT_META[cat]) result.push({ name: cat, emoji: '📦', budget: 3000, color: '#9CA3AF', spent: amt })
-      })
-      setCats(result.sort((a, b) => b.spent - a.spent))
-      setLoading(false)
-    })
-  }, [phone])
+    fetchData()
+  }, [fetchData])
 
-  const totalBudget = cats.reduce((s, c) => s + c.budget, 0) || 30000
-  const totalSpent = cats.reduce((s, c) => s + c.spent, 0)
-  const remaining = totalBudget - totalSpent
-  const pct = totalBudget > 0 ? Math.min(100, Math.round((totalSpent / totalBudget) * 100)) : 0
-  const isOver = pct > 90
+  // ── Refresh handler ──
+  const handleRefresh = () => {
+    setRefreshing(true)
+    fetchData()
+  }
+
+  // ── Budget calculations ──
+  function getCategoryBudget(cat) {
+    if (budgetOverrides[cat.key] != null) return Number(budgetOverrides[cat.key])
+    return Math.round(monthlyIncome * cat.defaultPct)
+  }
+
+  const categoryData = CATEGORIES.map(cat => {
+    const budget = getCategoryBudget(cat)
+    const spent = categorySpending[cat.key] || 0
+    const pct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0
+    const remaining = budget - spent
+    return { ...cat, budget, spent, pct, remaining }
+  })
+
+  const totalBudget = categoryData.reduce((sum, c) => sum + c.budget, 0)
+  const totalSpent = categoryData.reduce((sum, c) => sum + c.spent, 0)
+  const totalRemaining = totalBudget - totalSpent
+  const overallPct = totalBudget > 0 ? Math.min(100, Math.round((totalSpent / totalBudget) * 100)) : 0
+  const isOverBudget = overallPct > 90
+
+  // SVG ring parameters
+  const radius = 42
+  const circumference = 2 * Math.PI * radius
+  const strokeDash = (overallPct / 100) * circumference
+  const strokeGap = circumference - strokeDash
+
+  // ── Category budget editing ──
+  function startEdit(catKey, currentBudget) {
+    setEditingCat(catKey)
+    setEditValue(String(currentBudget))
+  }
+
+  function saveEdit(catKey) {
+    const val = parseInt(editValue, 10)
+    if (isNaN(val) || val < 0) {
+      toast.show('Enter a valid amount', 'error')
+      return
+    }
+    const updated = { ...budgetOverrides, [catKey]: val }
+    setBudgetOverrides(updated)
+    saveBudgetOverrides(updated)
+    setEditingCat(null)
+    setEditValue('')
+    toast.show('Budget updated', 'success')
+  }
+
+  function cancelEdit() {
+    setEditingCat(null)
+    setEditValue('')
+  }
+
+  // ── Loading skeleton ──
+  if (loading) {
+    return (
+      <div className="page">
+        <header className="page-header">
+          <div className="header-left"><h2>Budget</h2></div>
+        </header>
+        <div className="budget-overview">
+          <div className="budget-ring-wrap">
+            <div className="skeleton" style={{ width: 100, height: 100, borderRadius: '50%' }} />
+          </div>
+          <div className="budget-meta">
+            <div className="bm-row"><div className="skeleton" style={{ width: '100%', height: 18, borderRadius: 6 }} /></div>
+            <div className="bm-row"><div className="skeleton" style={{ width: '100%', height: 18, borderRadius: 6 }} /></div>
+            <div className="bm-row"><div className="skeleton" style={{ width: '100%', height: 18, borderRadius: 6 }} /></div>
+          </div>
+        </div>
+        <section className="section">
+          <div className="section-head"><h3>Spending by Category</h3></div>
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="budget-cat-card">
+              <div className="bc-header">
+                <div className="skeleton" style={{ width: 32, height: 32, borderRadius: 8 }} />
+                <div className="bc-info">
+                  <div className="skeleton" style={{ width: '60%', height: 14, borderRadius: 4, marginBottom: 6 }} />
+                  <div className="skeleton" style={{ width: '40%', height: 12, borderRadius: 4 }} />
+                </div>
+                <div className="skeleton" style={{ width: 36, height: 20, borderRadius: 4 }} />
+              </div>
+              <div className="progress-bar"><div className="skeleton" style={{ width: '100%', height: '100%' }} /></div>
+            </div>
+          ))}
+        </section>
+      </div>
+    )
+  }
+
+  // ── Error state ──
+  if (error && Object.keys(categorySpending).length === 0) {
+    return (
+      <div className="page">
+        <header className="page-header">
+          <div className="header-left"><h2>Budget</h2></div>
+        </header>
+        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <AlertTriangle size={48} color="var(--red)" style={{ marginBottom: 16 }} />
+          <p style={{ color: 'var(--text2)', fontSize: 15, marginBottom: 20 }}>{error}</p>
+          <button className="btn btn-primary" onClick={handleRefresh} style={{ margin: '0 auto' }}>
+            <RefreshCw size={16} /> Try Again
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Active categories = those with spending or budget > 0
+  const activeCategories = categoryData.filter(c => c.spent > 0 || c.budget > 0)
+  const overBudgetCount = activeCategories.filter(c => c.pct > 100).length
 
   return (
     <div className="page">
-      <header className="page-header"><div className="header-left"><h2>Budget</h2></div></header>
-      <div className="budget-overview">
+      {/* ── Header ── */}
+      <header className="page-header">
+        <div className="header-left"><h2>Budget</h2></div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, color: 'var(--text3)' }}
+          aria-label="Refresh budget data"
+        >
+          <RefreshCw size={18} className={refreshing ? 'spin' : ''} />
+        </button>
+      </header>
+
+      {/* ── Overview ring + summary ── */}
+      <motion.div className="budget-overview" {...fadeUp} transition={{ duration: 0.4 }}>
         <div className="budget-ring-wrap">
           <svg viewBox="0 0 100 100" className="budget-ring">
-            <circle cx="50" cy="50" r="42" fill="none" stroke="var(--surface2)" strokeWidth="8" />
-            <circle cx="50" cy="50" r="42" fill="none" stroke={isOver ? 'var(--red)' : 'var(--violet)'} strokeWidth="8"
-              strokeDasharray={`${pct * 2.64} ${264 - pct * 2.64}`} strokeDashoffset="66" strokeLinecap="round" />
+            <circle cx="50" cy="50" r={radius} fill="none" stroke="var(--surface2)" strokeWidth="8" />
+            <motion.circle
+              cx="50" cy="50" r={radius} fill="none"
+              stroke={isOverBudget ? 'var(--red)' : 'var(--violet)'}
+              strokeWidth="8"
+              strokeDasharray={`${circumference}`}
+              strokeDashoffset={circumference - strokeDash}
+              strokeLinecap="round"
+              initial={{ strokeDashoffset: circumference }}
+              animate={{ strokeDashoffset: circumference - strokeDash }}
+              transition={{ duration: 1, ease: 'easeOut' }}
+              style={{ transformOrigin: 'center' }}
+            />
           </svg>
           <div className="budget-ring-text">
-            <div className="budget-ring-pct">{pct}%</div>
+            <div className="budget-ring-pct">{overallPct}%</div>
             <div className="budget-ring-label">used</div>
           </div>
         </div>
         <div className="budget-meta">
-          <div className="bm-row"><span className="bm-label">Total Budget</span><span className="bm-val">₹{totalBudget}</span></div>
-          <div className="bm-row"><span className="bm-label">Spent</span><span className="bm-val cosmos">₹{totalSpent}</span></div>
-          <div className="bm-row"><span className="bm-label">Remaining</span><span className={'bm-val ' + (remaining >= 0 ? 'green' : 'red')}>₹{remaining}</span></div>
+          <div className="bm-row">
+            <span className="bm-label"><Wallet size={13} style={{ marginRight: 4, verticalAlign: -2 }} />Total Budget</span>
+            <span className="bm-val">{formatINR(totalBudget)}</span>
+          </div>
+          <div className="bm-row">
+            <span className="bm-label"><TrendingDown size={13} style={{ marginRight: 4, verticalAlign: -2 }} />Spent</span>
+            <span className="bm-val cosmos">{formatINR(totalSpent)}</span>
+          </div>
+          <div className="bm-row">
+            <span className="bm-label">{totalRemaining >= 0 ? <TrendingUp size={13} style={{ marginRight: 4, verticalAlign: -2 }} /> : <AlertTriangle size={13} style={{ marginRight: 4, verticalAlign: -2 }} />}Remaining</span>
+            <span className={'bm-val ' + (totalRemaining >= 0 ? 'green' : 'red')}>{formatINR(totalRemaining)}</span>
+          </div>
         </div>
-      </div>
-      {isOver && <div className="budget-alert"><AlertTriangle size={16} /> <span>You've used {pct}% of your budget!</span></div>}
+      </motion.div>
+
+      {/* ── Over-budget alert ── */}
+      <AnimatePresence>
+        {isOverBudget && (
+          <motion.div
+            className="budget-alert"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <AlertTriangle size={16} />
+            <span>You've used {overallPct}% of your budget!{overBudgetCount > 0 ? ` ${overBudgetCount} categor${overBudgetCount === 1 ? 'y is' : 'ies are'} over limit.` : ''}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Category breakdown ── */}
       <section className="section">
-        <div className="section-head"><h3>Spending by Category</h3></div>
-        {loading ? <p className="empty-text">Loading...</p> : cats.length === 0 ? (
-          <p className="empty-text">No expenses tracked yet. Start with "spent 500 on food" 🚀</p>
-        ) : cats.map((c, i) => {
-          const catPct = c.budget > 0 ? Math.min(100, Math.round((c.spent / c.budget) * 100)) : 0
-          return (
-            <div key={i} className="budget-cat-card">
-              <div className="bc-header">
-                <span className="bc-emoji">{c.emoji}</span>
-                <div className="bc-info">
-                  <div className="bc-name">{c.name}</div>
-                  <div className="bc-amounts">₹{c.spent} / ₹{c.budget}</div>
+        <div className="section-head">
+          <h3><PieChart size={16} style={{ marginRight: 6, verticalAlign: -2 }} />Spending by Category</h3>
+        </div>
+
+        {activeCategories.length === 0 ? (
+          <motion.p className="empty-text" {...fadeUp}>
+            No expenses tracked this month yet. Start with "spent 500 on food"
+          </motion.p>
+        ) : (
+          <motion.div variants={stagger} initial="initial" animate="animate">
+            {activeCategories.sort((a, b) => b.spent - a.spent).map((c, i) => (
+              <motion.div
+                key={c.key}
+                className="budget-cat-card"
+                variants={fadeUp}
+                transition={{ duration: 0.3, delay: i * 0.05 }}
+              >
+                <div className="bc-header">
+                  <span className="bc-emoji">{c.emoji}</span>
+                  <div className="bc-info">
+                    <div className="bc-name">{c.label}</div>
+                    {editingCat === c.key ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text3)' }}>Budget:</span>
+                        <input
+                          type="number"
+                          value={editValue}
+                          onChange={e => setEditValue(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') saveEdit(c.key); if (e.key === 'Escape') cancelEdit() }}
+                          autoFocus
+                          style={{
+                            width: 80, padding: '2px 6px', fontSize: 13,
+                            border: '1px solid var(--border)', borderRadius: 6,
+                            background: 'var(--surface)', color: 'var(--text)',
+                            fontFamily: 'var(--mono)',
+                          }}
+                        />
+                        <button onClick={() => saveEdit(c.key)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--primary)' }}><Check size={16} /></button>
+                        <button onClick={cancelEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--text3)' }}><X size={14} /></button>
+                      </div>
+                    ) : (
+                      <div className="bc-amounts">
+                        {formatINR(c.spent)} / {formatINR(c.budget)}
+                        <button
+                          onClick={() => startEdit(c.key, c.budget)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', color: 'var(--text3)', verticalAlign: -1 }}
+                          aria-label={`Edit ${c.label} budget`}
+                        >
+                          <Edit3 size={11} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className={'bc-pct' + (c.pct > 90 ? ' over' : '')}>{c.pct}%</div>
                 </div>
-                <div className={'bc-pct' + (catPct > 90 ? ' over' : '')}>{catPct}%</div>
-              </div>
-              <div className="progress-bar"><div className="progress-fill" style={{ width: catPct + '%', background: c.color }} /></div>
-            </div>
-          )
-        })}
+                <div className="progress-bar">
+                  <motion.div
+                    className="progress-fill"
+                    style={{ background: c.pct > 100 ? 'var(--red)' : c.color }}
+                    initial={{ width: 0 }}
+                    animate={{ width: c.pct + '%' }}
+                    transition={{ duration: 0.6, ease: 'easeOut', delay: i * 0.05 }}
+                  />
+                </div>
+                {c.pct > 100 && (
+                  <div style={{ fontSize: 11, color: 'var(--red)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <AlertTriangle size={11} /> Over budget by {formatINR(c.spent - c.budget)}
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
       </section>
+
+      {/* ── Monthly income note ── */}
+      <motion.div
+        style={{ textAlign: 'center', padding: '12px 16px', fontSize: 12, color: 'var(--text3)' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.6 }}
+      >
+        Budget calculated from monthly income of {formatINR(monthlyIncome)}
+      </motion.div>
     </div>
   )
 }

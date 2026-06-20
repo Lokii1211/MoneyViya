@@ -77,7 +77,6 @@ except Exception as e:
 MONEYVIEW_ERROR = None
 try:
     from agents.moneyview_agent import moneyview_agent, process_message as moneyview_process
-    from moneyview_api import moneyview_router
     MONEYVIEW_AVAILABLE = True
     print("[STARTUP] MoneyViya loaded successfully!")
 except Exception as e:
@@ -119,24 +118,24 @@ app = FastAPI(
     version=AGENT_VERSION
 )
 
+ALLOWED_ORIGINS = os.environ.get("CORS_ORIGINS", "https://heyviya.vercel.app,http://localhost:5173").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # Mount static files
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+import pathlib
+_static_dir = pathlib.Path("static")
+if _static_dir.is_dir():
+    app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Include MoneyViya API Router
-if MONEYVIEW_AVAILABLE:
-    app.include_router(moneyview_router)
-    print("[STARTUP] MoneyViya API router included")
 
 # Include Dashboard Sync API
 try:
@@ -191,55 +190,8 @@ async def health_live():
     """Liveness: Returns 200 if process is alive (for ECS health checks)"""
     return {"status": "alive"}
 
-# Debug reset endpoint (for testing)
-@app.get("/debug/reset-user/{phone}")
-async def debug_reset_user(phone: str):
-    """Reset a user to start fresh onboarding"""
-    clean_phone = phone.replace("+", "").replace(" ", "")
-    if not clean_phone.startswith("91"):
-        clean_phone = "91" + clean_phone
-    
-    # Try to reset in MoneyViya agent
-    if MONEYVIEW_AVAILABLE and moneyview_agent:
-        # Try different phone formats
-        for p in [clean_phone, "+" + clean_phone, phone]:
-            if p in moneyview_agent.user_store:
-                user = moneyview_agent.user_store[p]
-                user["language"] = "en"
-                user["onboarding_step"] = 0
-                user["onboarding_complete"] = False
-                user["name"] = None
-                user["occupation"] = None
-                user["monthly_income"] = 0
-                user["monthly_expenses"] = 0
-                user["current_savings"] = 0
-                user["goals"] = []
-                moneyview_agent._save_data()
-                return {
-                    "status": "reset", 
-                    "phone": p, 
-                    "message": "User completely reset! Next message will start fresh onboarding."
-                }
-    
-    # Also try old user_repo
-    full_phone = "+" + clean_phone
-    user = user_repo.get_user(full_phone)
-    if user:
-        user["language"] = None
-        user["onboarding_complete"] = False
-        user["onboarding_step"] = 0
-        user_repo.update_user(full_phone, user)
-        return {"status": "reset", "phone": full_phone, "message": "User reset. Next message will show language selection."}
-    
-    return {"status": "not_found", "phone": clean_phone, "message": "User not found in database"}
 
 
-# Include extended API routes
-try:
-    from extended_api import extended_router
-    app.include_router(extended_router)
-except ImportError as e:
-    print(f"Warning: Extended API not loaded: {e}")
 
 
 # Health check and status endpoints (PRD Section 4.5)

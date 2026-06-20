@@ -1,6 +1,6 @@
 // Leaderboard — Weekly rankings among friends
 import { motion } from 'framer-motion'
-import { Trophy, Medal, TrendingUp, Crown } from 'lucide-react'
+import { Trophy, Medal, TrendingUp, Crown, Clock } from 'lucide-react'
 import PageTransition from '../components/PageTransition'
 import { listItem } from '../animations/pageVariants'
 
@@ -24,8 +24,28 @@ export default function Leaderboard() {
       <div className="page" style={{ paddingTop: 8, paddingBottom: 100 }}>
         <div style={{ marginBottom: 20 }}>
           <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24 }}>Leaderboard</h1>
-          <p className="body-s text-secondary">This week's rankings 🏆</p>
+          <p className="body-s text-secondary">This week's rankings</p>
         </div>
+
+        {/* Coming Soon Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card"
+          style={{
+            padding: '12px 16px', marginBottom: 20,
+            background: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)',
+            borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10,
+          }}
+        >
+          <Clock size={18} color="white" />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'white' }}>Coming Soon</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>
+              Live rankings with friends will be available in a future update
+            </div>
+          </div>
+        </motion.div>
 
         {/* Podium */}
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 8, marginBottom: 28, padding: '0 10px' }}>
@@ -68,7 +88,7 @@ export default function Leaderboard() {
               <div style={{ fontSize: 28 }}>{user.avatar}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 700 }}>{user.name} {user.isYou && '(You)'}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>🔥 {user.streak} day streak</div>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{user.streak} day streak</div>
               </div>
               <div style={{ fontSize: 14, fontWeight: 700, color:'var(--viya-primary-700)' }}>{user.xp} XP</div>
             </motion.div>

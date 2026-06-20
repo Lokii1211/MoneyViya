@@ -572,6 +572,38 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
 }
 .wealth-card:hover, .streak-card:hover, .habit-progress-card:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(0,0,0,0.3); }
 
+/* ===== SPLASH SCREEN ===== */
+.splash-screen {
+  position:fixed; inset:0; z-index:9999;
+  background:var(--bg);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  overflow:hidden;
+}
+.splash-logo-wrap {
+  display:flex; align-items:center; justify-content:center;
+  filter:drop-shadow(0 0 24px var(--primary-glow)) drop-shadow(0 0 48px rgba(85,20,255,0.15));
+}
+.splash-logo {
+  width:96px; height:96px; object-fit:contain;
+}
+.splash-title {
+  margin-top:20px;
+  font-family:'Sora',sans-serif; font-weight:800; font-size:40px;
+  letter-spacing:4px; text-align:center;
+  background:var(--gradient-primary); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.splash-subtitle {
+  margin-top:8px;
+  font-size:16px; font-weight:400; color:var(--text3);
+  text-align:center; letter-spacing:0.5px;
+}
+.splash-fade-overlay {
+  position:absolute; inset:0;
+  background:var(--bg);
+  pointer-events:none;
+}
+
 /* ===== ONBOARDING ===== */
 .onboarding { min-height:100dvh; padding:20px 16px; max-width:430px; margin:0 auto; display:flex; flex-direction:column; }
 .ob-progress { height:4px; background:var(--surface2); border-radius:2px; margin-bottom:8px; overflow:hidden; }
@@ -636,6 +668,7 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
 .ob-nav { display:flex; gap:10px; margin-top:20px; padding-bottom:20px; }
 .ob-back { flex:0 0 auto; display:flex; align-items:center; gap:4px; }
 .ob-next { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; }
+.ob-error { font-size:12px; color:var(--red, #EF4444); margin-top:4px; text-align:center; font-weight:600; }
 
 /* ===== REVIEW ===== */
 .review-scores { display:flex; flex-direction:column; gap:8px; margin-bottom:24px; }
