@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { formatINR } from '../lib/utils'
@@ -12,6 +13,7 @@ export default function Profile() {
   const { user, phone, logout, setUser, theme, toggleTheme } = useApp()
   const nav = useNavigate()
   const [stats, setStats] = useState({ income: 0, expenses: 0, habits: 0, goals: 0, streak: 0, chatCount: 0 })
+  const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
@@ -32,6 +34,9 @@ export default function Profile() {
       const expenses = (txns || []).filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
       const maxStreak = (habits || []).reduce((m, h) => Math.max(m, h.longest_streak || h.current_streak || 0), 0)
       setStats({ income, expenses, habits: (habits || []).length, goals: (goals || []).length, streak: maxStreak, chatCount: (chats || []).length })
+      setLoading(false)
+    }).catch(() => {
+      setLoading(false)
     })
   }, [phone])
 
@@ -84,298 +89,374 @@ export default function Profile() {
     <div className="page profile-page">
       <header className="page-header"><div className="header-left"><h2>Profile</h2></div></header>
 
-      {/* Profile Hero */}
-      <div className="profile-hero">
-        <div className="profile-avatar-lg" onClick={() => setShowAvatarPicker(!showAvatarPicker)} style={{cursor:'pointer', position:'relative'}}>
-          {selectedAvatar ? (
-            <span style={{fontSize:36}}>{selectedAvatar}</span>
-          ) : (
-            <span>{name.charAt(0).toUpperCase()}</span>
-          )}
-          <div style={{position:'absolute', bottom:-2, right:-2, width:22, height:22, borderRadius:'50%', background:'var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--bg)'}}>
-            <Edit3 size={10} color="#fff"/>
+      {/* Loading Skeleton */}
+      {loading ? (
+        <div>
+          {/* Avatar skeleton */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="skeleton"
+              style={{ width: 80, height: 80, borderRadius: '50%', marginBottom: 12 }}
+            />
+            {/* Name skeleton */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="skeleton"
+              style={{ height: 20, width: 140, borderRadius: 8, marginBottom: 8 }}
+            />
+            {/* Phone skeleton */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="skeleton"
+              style={{ height: 14, width: 120, borderRadius: 6, marginBottom: 6 }}
+            />
+            {/* Member since skeleton */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="skeleton"
+              style={{ height: 12, width: 160, borderRadius: 6 }}
+            />
           </div>
-        </div>
-        <div className="profile-name-lg">{name}</div>
-        <div className="profile-phone-lg">+91 {phone}</div>
-        <div className="profile-member">Member since {memberSince} · {level.label}</div>
-        <button className="edit-profile-btn" onClick={() => setEditing(!editing)}>
-          {editing ? <><X size={14}/> Cancel</> : <><Edit3 size={14}/> Edit Profile</>}
-        </button>
-      </div>
 
-      {/* Avatar Picker */}
-      {showAvatarPicker && (
-        <div style={{background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:16, padding:16, marginBottom:16, animation:'slideUp 0.3s var(--ease)'}}>
-          <div style={{fontSize:13, fontWeight:700, marginBottom:10}}>Choose Your Avatar</div>
-          <div style={{display:'grid', gridTemplateColumns:'repeat(10, 1fr)', gap:6}}>
-            {AVATARS.map((a, i) => (
-              <button key={i} onClick={() => pickAvatar(a)} style={{
-                width:36, height:36, borderRadius:10, border:`2px solid ${selectedAvatar === a ? 'var(--primary)' : 'var(--border)'}`,
-                background:selectedAvatar === a ? 'var(--primary-dim)' : 'var(--bg2)',
-                fontSize:20, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
-                transition:'all 0.2s'
-              }}>{a}</button>
+          {/* Stats grid skeleton (2x2) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+            {[0, 1, 2, 3].map(i => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 + i * 0.08 }}
+                className="skeleton"
+                style={{ height: 80, borderRadius: 14 }}
+              />
             ))}
           </div>
-          <button onClick={() => { setSelectedAvatar(''); localStorage.removeItem('mv_avatar'); setShowAvatarPicker(false) }} style={{marginTop:8, padding:'6px 12px', background:'none', border:'1px solid var(--border)', borderRadius:8, fontSize:12, color:'var(--text3)', cursor:'pointer', fontFamily:'inherit'}}>
-            Use Letter Initial
-          </button>
-        </div>
-      )}
 
-      {/* Edit Form */}
-      {editing && (
-        <div className="profile-edit-card animate-slideUp">
-          <div className="edit-field">
-            <label><User size={14}/> Full Name</label>
-            <input type="text" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} placeholder="Your name" />
-          </div>
-          <div className="edit-row">
-            <div className="edit-field">
-              <label><Calendar size={14}/> Age</label>
-              <input type="number" value={editForm.age} onChange={e => setEditForm({...editForm, age: e.target.value})} placeholder="25" />
-            </div>
-            <div className="edit-field">
-              <label><MapPin size={14}/> City</label>
-              <input type="text" value={editForm.city} onChange={e => setEditForm({...editForm, city: e.target.value})} placeholder="Chennai" />
-            </div>
-          </div>
-          <div className="edit-field">
-            <label><Briefcase size={14}/> Occupation</label>
-            <input type="text" value={editForm.occupation} onChange={e => setEditForm({...editForm, occupation: e.target.value})} placeholder="Software Engineer" />
-          </div>
-          <div className="edit-row">
-            <div className="edit-field">
-              <label><TrendingUp size={14}/> Monthly Income</label>
-              <input type="number" value={editForm.monthly_income} onChange={e => setEditForm({...editForm, monthly_income: e.target.value})} placeholder="35000" />
-            </div>
-            <div className="edit-field">
-              <label><Wallet size={14}/> Daily Budget</label>
-              <input type="number" value={editForm.daily_budget} onChange={e => setEditForm({...editForm, daily_budget: e.target.value})} placeholder="1000" />
-            </div>
-          </div>
-          <button className="save-profile-btn" onClick={saveProfile} disabled={saving}>
-            {saving ? 'Saving...' : <><Check size={16}/> Save Changes</>}
-          </button>
-        </div>
-      )}
+          {/* Life score skeleton */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="skeleton"
+            style={{ height: 160, borderRadius: 20, marginBottom: 16 }}
+          />
 
-      {/* Stats Grid */}
-      <div className="profile-stats-grid">
-        <div className="psg-card" onClick={() => nav('/expenses')}>
-          <TrendingUp size={18} className="psg-icon green"/>
-          <div className="psg-val">₹{stats.income}</div>
-          <div className="psg-label">Income</div>
-        </div>
-        <div className="psg-card" onClick={() => nav('/expenses')}>
-          <Wallet size={18} className="psg-icon red"/>
-          <div className="psg-val">₹{stats.expenses}</div>
-          <div className="psg-label">Expenses</div>
-        </div>
-        <div className="psg-card" onClick={() => nav('/habits')}>
-          <Flame size={18} className="psg-icon orange"/>
-          <div className="psg-val">{stats.streak}🔥</div>
-          <div className="psg-label">Best Streak</div>
-        </div>
-        <div className="psg-card" onClick={() => nav('/goals')}>
-          <Target size={18} className="psg-icon violet"/>
-          <div className="psg-val">{stats.goals}</div>
-          <div className="psg-label">Goals</div>
-        </div>
-      </div>
-
-      {/* Life Score Ring — PR-001 §4.3 */}
-      {(() => {
-        const financial = Math.min(100, Math.round((stats.income > 0 ? (1 - stats.expenses / stats.income) : 0) * 100))
-        const health = Math.min(100, Math.max(0, score || 50))
-        const productivity = Math.min(100, stats.streak * 10 + stats.habits * 5)
-        const relationships = Math.min(100, stats.chatCount > 0 ? 60 + Math.min(stats.chatCount, 40) : 40)
-        const lifeScore = Math.round((financial + health + productivity + relationships) / 4)
-        const r = 58, circ = 2 * Math.PI * r, pct = lifeScore / 100
-
-        return (
-          <div style={{
-            background: 'var(--bg-card)', borderRadius: 'var(--radius-2xl)', padding: 20,
-            border: '1px solid var(--border-light)', marginBottom: 16, boxShadow: 'var(--shadow-2)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-              {/* Animated Ring */}
-              <div style={{ position: 'relative', width: 130, height: 130, flexShrink: 0 }}>
-                <svg width={130} height={130} style={{ transform: 'rotate(-90deg)' }}>
-                  <defs>
-                    <linearGradient id="lifeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#00E5B0" />
-                      <stop offset="100%" stopColor="#5514FF" />
-                    </linearGradient>
-                  </defs>
-                  <circle cx={65} cy={65} r={r} fill="none" stroke="var(--viya-neutral-100)" strokeWidth={10} />
-                  <circle cx={65} cy={65} r={r} fill="none" stroke="url(#lifeGrad)" strokeWidth={10}
-                    strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)}
-                    strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1.2s ease' }} />
-                </svg>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 32, color: 'var(--text-primary)' }}>{lifeScore}</div>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: 1, textTransform: 'uppercase' }}>Life Score</div>
-                </div>
-              </div>
-
-              {/* 4 Dimension Breakdown */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {[
-                  { label: 'Financial', score: financial, color: 'var(--viya-success)' },
-                  { label: 'Health', score: health, color: '#FF7062' },
-                  { label: 'Productivity', score: productivity, color: 'var(--viya-gold-500)' },
-                  { label: 'Relationships', score: relationships, color: 'var(--viya-violet-500)' },
-                ].map((d, i) => (
-                  <div key={i}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, marginBottom: 3 }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>{d.label}</span>
-                      <span style={{ color: d.color }}>{d.score}%</span>
-                    </div>
-                    <div style={{ height: 4, borderRadius: 99, background: 'var(--viya-neutral-100)', overflow: 'hidden' }}>
-                      <div style={{ width: `${d.score}%`, height: '100%', borderRadius: 99, background: d.color, transition: 'width 0.8s ease' }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* User Info Cards */}
-      {(user?.city || user?.age || user?.occupation) && (
-        <div className="user-info-card">
-          {user?.occupation && <div className="uic-item"><Briefcase size={14}/> {user.occupation}</div>}
-          {user?.city && <div className="uic-item"><MapPin size={14}/> {user.city}</div>}
-          {user?.age && <div className="uic-item"><Calendar size={14}/> {user.age} years</div>}
-        </div>
-      )}
-
-      {/* V2 Life Modules */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10, paddingLeft: 2 }}>Life Modules</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-          {[
-            { path: '/health', emoji: '❤️', label: 'Health', gradient: 'linear-gradient(135deg, #FF7062, #FF3D71)' },
-            { path: '/bills', emoji: '📋', label: 'Bills', gradient: 'linear-gradient(135deg, #0D0020, #1a0040)' },
-            { path: '/wealth', emoji: '📈', label: 'Wealth', gradient: 'linear-gradient(135deg, #4CAF50, #2E7D32)' },
-            { path: '/email', emoji: '📧', label: 'Email AI', gradient: 'linear-gradient(135deg, #0091FF, #0052CC)' },
-            { path: '/calendar', emoji: '📅', label: 'Calendar', gradient: 'linear-gradient(135deg, #7C3AED, #5B21B6)' },
-            { path: '/chat', emoji: '🧠', label: 'Viya AI', gradient: 'var(--gradient-primary)' },
-          ].map((mod, i) => (
-            <button key={i} onClick={() => nav(mod.path)} style={{
-              padding: '14px 8px', borderRadius: 'var(--radius-lg)', background: mod.gradient,
-              color: 'white', border: 'none', cursor: 'pointer', textAlign: 'center',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)', transition: 'transform 0.15s',
-            }}>
-              <div style={{ fontSize: 22, marginBottom: 4 }}>{mod.emoji}</div>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.3 }}>{mod.label}</div>
-            </button>
+          {/* Settings skeleton */}
+          {[0, 1, 2].map(i => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 + i * 0.06 }}
+              className="skeleton"
+              style={{ height: 52, borderRadius: 12, marginBottom: 8 }}
+            />
           ))}
         </div>
-      </div>
-
-      {/* Settings */}
-      <div className="settings-list">
-        <button className="settings-item" onClick={toggleTheme}>
-          <div className="si-icon">{theme === 'dark' ? <Sun size={18}/> : <Moon size={18}/>}</div>
-          <div className="si-info"><div className="si-label">Appearance</div><div className="si-sub">{theme === 'dark' ? 'Dark mode' : 'Light mode'}</div></div>
-          <div className={`theme-toggle-pill ${theme}`}><div className="theme-toggle-dot"/></div>
-        </button>
-        <button className="settings-item" onClick={() => nav('/notifications')}>
-          <div className="si-icon"><Bell size={18}/></div>
-          <div className="si-info"><div className="si-label">Notifications</div><div className="si-sub">Push alerts & updates</div></div>
-          <ChevronRight size={16} className="si-arrow"/>
-        </button>
-        <button className="settings-item" onClick={() => nav('/reminders')}>
-          <div className="si-icon"><Clock size={18}/></div>
-          <div className="si-info"><div className="si-label">Reminders</div><div className="si-sub">Daily, weekly & monthly</div></div>
-          <ChevronRight size={16} className="si-arrow"/>
-        </button>
-        <button className="settings-item" onClick={() => nav('/onboarding')}>
-          <div className="si-icon"><Sparkles size={18}/></div>
-          <div className="si-info"><div className="si-label">Redo Setup</div><div className="si-sub">Change preferences</div></div>
-          <ChevronRight size={16} className="si-arrow"/>
-        </button>
-        <button className="settings-item" onClick={() => nav('/privacy')}>
-          <div className="si-icon"><Shield size={18}/></div>
-          <div className="si-info"><div className="si-label">Privacy & Security</div><div className="si-sub">Your data is encrypted</div></div>
-          <ChevronRight size={16} className="si-arrow"/>
-        </button>
-        <button className="settings-item" onClick={() => nav('/help')}>
-          <div className="si-icon"><HelpCircle size={18}/></div>
-          <div className="si-info"><div className="si-label">Help & Support</div><div className="si-sub">FAQs, contact us</div></div>
-          <ChevronRight size={16} className="si-arrow"/>
-        </button>
-      </div>
-
-      {/* 🎁 Referral Card */}
-      <div style={{background:'linear-gradient(135deg, var(--primary-dim), var(--cyan-dim))', border:'1px solid rgba(0,208,132,0.2)', borderRadius:16, padding:'16px 18px', margin:'16px 0'}}>
-        <div style={{fontSize:13, fontWeight:800, marginBottom:6}}>🎁 Invite Friends, Earn Rewards</div>
-        <div style={{fontSize:11, color:'var(--text2)', marginBottom:10}}>Share your code — when friends join, you both level up!</div>
-        <div style={{display:'flex', gap:8, alignItems:'center'}}>
-          <div style={{flex:1, background:'var(--bg)', borderRadius:10, padding:'10px 14px', fontFamily:'var(--mono)', fontSize:14, fontWeight:800, letterSpacing:2, textAlign:'center', border:'1px dashed var(--border2)'}}>
-            VIYA{phone?.slice(-4) || '0000'}
+      ) : (
+        <>
+          {/* Profile Hero */}
+          <div className="profile-hero">
+            <div className="profile-avatar-lg" onClick={() => setShowAvatarPicker(!showAvatarPicker)} style={{cursor:'pointer', position:'relative'}}>
+              {selectedAvatar ? (
+                <span style={{fontSize:36}}>{selectedAvatar}</span>
+              ) : (
+                <span>{name.charAt(0).toUpperCase()}</span>
+              )}
+              <div style={{position:'absolute', bottom:-2, right:-2, width:22, height:22, borderRadius:'50%', background:'var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--bg)'}}>
+                <Edit3 size={10} color="#fff"/>
+              </div>
+            </div>
+            <div className="profile-name-lg">{name}</div>
+            <div className="profile-phone-lg">+91 {phone}</div>
+            <div className="profile-member">Member since {memberSince} · {level.label}</div>
+            <button className="edit-profile-btn" onClick={() => setEditing(!editing)}>
+              {editing ? <><X size={14}/> Cancel</> : <><Edit3 size={14}/> Edit Profile</>}
+            </button>
           </div>
-          <button style={{padding:'10px 16px', background:'var(--primary)', color:'#fff', borderRadius:10, border:'none', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap'}} onClick={() => {
-            const code = `VIYA${phone?.slice(-4) || '0000'}`
-            const text = `Hey! I use Viya — an AI friend that helps me save money & build habits. 🔥\n\nUse my code ${code} when you sign up!\n\nhttps://heyviya.vercel.app/auth?ref=${code}`
-            if (navigator.share) navigator.share({ title: 'Join Viya!', text })
-            else { navigator.clipboard.writeText(text); alert('Referral link copied! 📋') }
-          }}>
-            Share 🔗
-          </button>
-        </div>
-      </div>
 
-      {/* 🌐 Language & Family */}
-      <div className="section-head" style={{marginTop:16}}><h3>More Settings</h3></div>
-      <div className="settings-group">
-        <button className="settings-item" onClick={() => {
-          const current = localStorage.getItem('mv_lang') || 'en'
-          const idx = LANGUAGES.findIndex(l => l.code === current)
-          const next = LANGUAGES[(idx + 1) % LANGUAGES.length].code
-          localStorage.setItem('mv_lang', next)
-          window.location.reload()
-        }}>
-          <div className="si-icon">🌐</div>
-          <div className="si-info"><div className="si-label">Language</div><div className="si-sub">{LANGUAGES.find(l => l.code === (localStorage.getItem('mv_lang') || 'en'))?.native || 'English'} — tap to switch</div></div>
-          <ChevronRight size={16} className="si-arrow"/>
-        </button>
-        <button className="settings-item" onClick={() => nav('/family')}>
-          <div className="si-icon">👨‍👩‍👧‍👦</div>
-          <div className="si-info"><div className="si-label">Family Mode</div><div className="si-sub">Track expenses for family members</div></div>
-          <ChevronRight size={16} className="si-arrow"/>
-        </button>
-        <button className="settings-item" onClick={() => nav('/friends')}>
-          <div className="si-icon">🤝</div>
-          <div className="si-info"><div className="si-label">Friends</div><div className="si-sub">Connect & motivate each other</div></div>
-          <ChevronRight size={16} className="si-arrow"/>
-        </button>
-        <button className="settings-item" onClick={() => nav('/terms')}>
-          <div className="si-icon"><FileText size={18}/></div>
-          <div className="si-info"><div className="si-label">Terms of Service</div><div className="si-sub">Usage policies & guidelines</div></div>
-          <ChevronRight size={16} className="si-arrow"/>
-        </button>
-        <button className="settings-item" onClick={() => {
-          const newPass = prompt('Enter new password (min 6 chars):')
-          if (newPass && newPass.length >= 6) {
-            api.updateUser(phone, { password_hash: newPass }).then(() => alert('Password updated!')).catch(() => alert('Failed to update'))
-          } else if (newPass) { alert('Password must be at least 6 characters') }
-        }}>
-          <div className="si-icon"><Lock size={18}/></div>
-          <div className="si-info"><div className="si-label">Change Password</div><div className="si-sub">Update your login password</div></div>
-          <ChevronRight size={16} className="si-arrow"/>
-        </button>
-      </div>
+          {/* Avatar Picker */}
+          {showAvatarPicker && (
+            <div style={{background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:16, padding:16, marginBottom:16, animation:'slideUp 0.3s var(--ease)'}}>
+              <div style={{fontSize:13, fontWeight:700, marginBottom:10}}>Choose Your Avatar</div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(10, 1fr)', gap:6}}>
+                {AVATARS.map((a, i) => (
+                  <button key={i} onClick={() => pickAvatar(a)} style={{
+                    width:36, height:36, borderRadius:10, border:`2px solid ${selectedAvatar === a ? 'var(--primary)' : 'var(--border)'}`,
+                    background:selectedAvatar === a ? 'var(--primary-dim)' : 'var(--bg2)',
+                    fontSize:20, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                    transition:'all 0.2s'
+                  }}>{a}</button>
+                ))}
+              </div>
+              <button onClick={() => { setSelectedAvatar(''); localStorage.removeItem('mv_avatar'); setShowAvatarPicker(false) }} style={{marginTop:8, padding:'6px 12px', background:'none', border:'1px solid var(--border)', borderRadius:8, fontSize:12, color:'var(--text3)', cursor:'pointer', fontFamily:'inherit'}}>
+                Use Letter Initial
+              </button>
+            </div>
+          )}
 
-      <button className="logout-btn" onClick={handleLogout}><LogOut size={18}/> Sign Out</button>
+          {/* Edit Form */}
+          {editing && (
+            <div className="profile-edit-card animate-slideUp">
+              <div className="edit-field">
+                <label><User size={14}/> Full Name</label>
+                <input type="text" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} placeholder="Your name" />
+              </div>
+              <div className="edit-row">
+                <div className="edit-field">
+                  <label><Calendar size={14}/> Age</label>
+                  <input type="number" value={editForm.age} onChange={e => setEditForm({...editForm, age: e.target.value})} placeholder="25" />
+                </div>
+                <div className="edit-field">
+                  <label><MapPin size={14}/> City</label>
+                  <input type="text" value={editForm.city} onChange={e => setEditForm({...editForm, city: e.target.value})} placeholder="Chennai" />
+                </div>
+              </div>
+              <div className="edit-field">
+                <label><Briefcase size={14}/> Occupation</label>
+                <input type="text" value={editForm.occupation} onChange={e => setEditForm({...editForm, occupation: e.target.value})} placeholder="Software Engineer" />
+              </div>
+              <div className="edit-row">
+                <div className="edit-field">
+                  <label><TrendingUp size={14}/> Monthly Income</label>
+                  <input type="number" value={editForm.monthly_income} onChange={e => setEditForm({...editForm, monthly_income: e.target.value})} placeholder="35000" />
+                </div>
+                <div className="edit-field">
+                  <label><Wallet size={14}/> Daily Budget</label>
+                  <input type="number" value={editForm.daily_budget} onChange={e => setEditForm({...editForm, daily_budget: e.target.value})} placeholder="1000" />
+                </div>
+              </div>
+              <button className="save-profile-btn" onClick={saveProfile} disabled={saving}>
+                {saving ? 'Saving...' : <><Check size={16}/> Save Changes</>}
+              </button>
+            </div>
+          )}
 
-      <div className="profile-footer">
-        <p>Viya — Your AI Life & Wealth Partner</p>
-      </div>
+          {/* Stats Grid */}
+          <div className="profile-stats-grid">
+            <div className="psg-card" onClick={() => nav('/expenses')}>
+              <TrendingUp size={18} className="psg-icon green"/>
+              <div className="psg-val">₹{stats.income}</div>
+              <div className="psg-label">Income</div>
+            </div>
+            <div className="psg-card" onClick={() => nav('/expenses')}>
+              <Wallet size={18} className="psg-icon red"/>
+              <div className="psg-val">₹{stats.expenses}</div>
+              <div className="psg-label">Expenses</div>
+            </div>
+            <div className="psg-card" onClick={() => nav('/habits')}>
+              <Flame size={18} className="psg-icon orange"/>
+              <div className="psg-val">{stats.streak}🔥</div>
+              <div className="psg-label">Best Streak</div>
+            </div>
+            <div className="psg-card" onClick={() => nav('/goals')}>
+              <Target size={18} className="psg-icon violet"/>
+              <div className="psg-val">{stats.goals}</div>
+              <div className="psg-label">Goals</div>
+            </div>
+          </div>
+
+          {/* Life Score Ring */}
+          {(() => {
+            const financial = Math.min(100, Math.round((stats.income > 0 ? (1 - stats.expenses / stats.income) : 0) * 100))
+            const health = Math.min(100, Math.max(0, score || 50))
+            const productivity = Math.min(100, stats.streak * 10 + stats.habits * 5)
+            const relationships = Math.min(100, stats.chatCount > 0 ? 60 + Math.min(stats.chatCount, 40) : 40)
+            const lifeScore = Math.round((financial + health + productivity + relationships) / 4)
+            const r = 58, circ = 2 * Math.PI * r, pct = lifeScore / 100
+
+            return (
+              <div style={{
+                background: 'var(--bg-card)', borderRadius: 'var(--radius-2xl)', padding: 20,
+                border: '1px solid var(--border-light)', marginBottom: 16, boxShadow: 'var(--shadow-2)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                  {/* Animated Ring */}
+                  <div style={{ position: 'relative', width: 130, height: 130, flexShrink: 0 }}>
+                    <svg width={130} height={130} style={{ transform: 'rotate(-90deg)' }}>
+                      <defs>
+                        <linearGradient id="lifeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#00E5B0" />
+                          <stop offset="100%" stopColor="#5514FF" />
+                        </linearGradient>
+                      </defs>
+                      <circle cx={65} cy={65} r={r} fill="none" stroke="var(--viya-neutral-100)" strokeWidth={10} />
+                      <circle cx={65} cy={65} r={r} fill="none" stroke="url(#lifeGrad)" strokeWidth={10}
+                        strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)}
+                        strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1.2s ease' }} />
+                    </svg>
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 32, color: 'var(--text-primary)' }}>{lifeScore}</div>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: 1, textTransform: 'uppercase' }}>Life Score</div>
+                    </div>
+                  </div>
+
+                  {/* 4 Dimension Breakdown */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {[
+                      { label: 'Financial', score: financial, color: 'var(--viya-success)' },
+                      { label: 'Health', score: health, color: '#FF7062' },
+                      { label: 'Productivity', score: productivity, color: 'var(--viya-gold-500)' },
+                      { label: 'Relationships', score: relationships, color: 'var(--viya-violet-500)' },
+                    ].map((d, i) => (
+                      <div key={i}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, marginBottom: 3 }}>
+                          <span style={{ color: 'var(--text-secondary)' }}>{d.label}</span>
+                          <span style={{ color: d.color }}>{d.score}%</span>
+                        </div>
+                        <div style={{ height: 4, borderRadius: 99, background: 'var(--viya-neutral-100)', overflow: 'hidden' }}>
+                          <div style={{ width: `${d.score}%`, height: '100%', borderRadius: 99, background: d.color, transition: 'width 0.8s ease' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* User Info Cards */}
+          {(user?.city || user?.age || user?.occupation) && (
+            <div className="user-info-card">
+              {user?.occupation && <div className="uic-item"><Briefcase size={14}/> {user.occupation}</div>}
+              {user?.city && <div className="uic-item"><MapPin size={14}/> {user.city}</div>}
+              {user?.age && <div className="uic-item"><Calendar size={14}/> {user.age} years</div>}
+            </div>
+          )}
+
+          {/* V2 Life Modules */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10, paddingLeft: 2 }}>Life Modules</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+              {[
+                { path: '/health', emoji: '❤️', label: 'Health', gradient: 'linear-gradient(135deg, #FF7062, #FF3D71)' },
+                { path: '/bills', emoji: '📋', label: 'Bills', gradient: 'linear-gradient(135deg, #0D0020, #1a0040)' },
+                { path: '/wealth', emoji: '📈', label: 'Wealth', gradient: 'linear-gradient(135deg, #4CAF50, #2E7D32)' },
+                { path: '/email', emoji: '📧', label: 'Email AI', gradient: 'linear-gradient(135deg, #0091FF, #0052CC)' },
+                { path: '/calendar', emoji: '📅', label: 'Calendar', gradient: 'linear-gradient(135deg, #7C3AED, #5B21B6)' },
+                { path: '/chat', emoji: '🧠', label: 'Viya AI', gradient: 'var(--gradient-primary)' },
+              ].map((mod, i) => (
+                <button key={i} onClick={() => nav(mod.path)} style={{
+                  padding: '14px 8px', borderRadius: 'var(--radius-lg)', background: mod.gradient,
+                  color: 'white', border: 'none', cursor: 'pointer', textAlign: 'center',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)', transition: 'transform 0.15s',
+                }}>
+                  <div style={{ fontSize: 22, marginBottom: 4 }}>{mod.emoji}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.3 }}>{mod.label}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Settings */}
+          <div className="settings-list">
+            <button className="settings-item" onClick={toggleTheme}>
+              <div className="si-icon">{theme === 'dark' ? <Sun size={18}/> : <Moon size={18}/>}</div>
+              <div className="si-info"><div className="si-label">Appearance</div><div className="si-sub">{theme === 'dark' ? 'Dark mode' : 'Light mode'}</div></div>
+              <div className={`theme-toggle-pill ${theme}`}><div className="theme-toggle-dot"/></div>
+            </button>
+            <button className="settings-item" onClick={() => nav('/notifications')}>
+              <div className="si-icon"><Bell size={18}/></div>
+              <div className="si-info"><div className="si-label">Notifications</div><div className="si-sub">Push alerts & updates</div></div>
+              <ChevronRight size={16} className="si-arrow"/>
+            </button>
+            <button className="settings-item" onClick={() => nav('/reminders')}>
+              <div className="si-icon"><Clock size={18}/></div>
+              <div className="si-info"><div className="si-label">Reminders</div><div className="si-sub">Daily, weekly & monthly</div></div>
+              <ChevronRight size={16} className="si-arrow"/>
+            </button>
+            <button className="settings-item" onClick={() => nav('/onboarding')}>
+              <div className="si-icon"><Sparkles size={18}/></div>
+              <div className="si-info"><div className="si-label">Redo Setup</div><div className="si-sub">Change preferences</div></div>
+              <ChevronRight size={16} className="si-arrow"/>
+            </button>
+            <button className="settings-item" onClick={() => nav('/privacy')}>
+              <div className="si-icon"><Shield size={18}/></div>
+              <div className="si-info"><div className="si-label">Privacy & Security</div><div className="si-sub">Your data is encrypted</div></div>
+              <ChevronRight size={16} className="si-arrow"/>
+            </button>
+            <button className="settings-item" onClick={() => nav('/help')}>
+              <div className="si-icon"><HelpCircle size={18}/></div>
+              <div className="si-info"><div className="si-label">Help & Support</div><div className="si-sub">FAQs, contact us</div></div>
+              <ChevronRight size={16} className="si-arrow"/>
+            </button>
+          </div>
+
+          {/* Referral Card */}
+          <div style={{background:'linear-gradient(135deg, var(--primary-dim), var(--cyan-dim))', border:'1px solid rgba(0,208,132,0.2)', borderRadius:16, padding:'16px 18px', margin:'16px 0'}}>
+            <div style={{fontSize:13, fontWeight:800, marginBottom:6}}>🎁 Invite Friends, Earn Rewards</div>
+            <div style={{fontSize:11, color:'var(--text2)', marginBottom:10}}>Share your code — when friends join, you both level up!</div>
+            <div style={{display:'flex', gap:8, alignItems:'center'}}>
+              <div style={{flex:1, background:'var(--bg)', borderRadius:10, padding:'10px 14px', fontFamily:'var(--mono)', fontSize:14, fontWeight:800, letterSpacing:2, textAlign:'center', border:'1px dashed var(--border2)'}}>
+                VIYA{phone?.slice(-4) || '0000'}
+              </div>
+              <button style={{padding:'10px 16px', background:'var(--primary)', color:'#fff', borderRadius:10, border:'none', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap'}} onClick={() => {
+                const code = `VIYA${phone?.slice(-4) || '0000'}`
+                const text = `Hey! I use Viya — an AI friend that helps me save money & build habits. 🔥\n\nUse my code ${code} when you sign up!\n\nhttps://heyviya.vercel.app/auth?ref=${code}`
+                if (navigator.share) navigator.share({ title: 'Join Viya!', text })
+                else { navigator.clipboard.writeText(text); alert('Referral link copied! 📋') }
+              }}>
+                Share 🔗
+              </button>
+            </div>
+          </div>
+
+          {/* Language & Family */}
+          <div className="section-head" style={{marginTop:16}}><h3>More Settings</h3></div>
+          <div className="settings-group">
+            <button className="settings-item" onClick={() => {
+              const current = localStorage.getItem('mv_lang') || 'en'
+              const idx = LANGUAGES.findIndex(l => l.code === current)
+              const next = LANGUAGES[(idx + 1) % LANGUAGES.length].code
+              localStorage.setItem('mv_lang', next)
+              window.location.reload()
+            }}>
+              <div className="si-icon">🌐</div>
+              <div className="si-info"><div className="si-label">Language</div><div className="si-sub">{LANGUAGES.find(l => l.code === (localStorage.getItem('mv_lang') || 'en'))?.native || 'English'} — tap to switch</div></div>
+              <ChevronRight size={16} className="si-arrow"/>
+            </button>
+            <button className="settings-item" onClick={() => nav('/family')}>
+              <div className="si-icon">👨‍👩‍👧‍👦</div>
+              <div className="si-info"><div className="si-label">Family Mode</div><div className="si-sub">Track expenses for family members</div></div>
+              <ChevronRight size={16} className="si-arrow"/>
+            </button>
+            <button className="settings-item" onClick={() => nav('/friends')}>
+              <div className="si-icon">🤝</div>
+              <div className="si-info"><div className="si-label">Friends</div><div className="si-sub">Connect & motivate each other</div></div>
+              <ChevronRight size={16} className="si-arrow"/>
+            </button>
+            <button className="settings-item" onClick={() => nav('/terms')}>
+              <div className="si-icon"><FileText size={18}/></div>
+              <div className="si-info"><div className="si-label">Terms of Service</div><div className="si-sub">Usage policies & guidelines</div></div>
+              <ChevronRight size={16} className="si-arrow"/>
+            </button>
+            <button className="settings-item" onClick={() => {
+              const newPass = prompt('Enter new password (min 6 chars):')
+              if (newPass && newPass.length >= 6) {
+                api.updateUser(phone, { password_hash: newPass }).then(() => alert('Password updated!')).catch(() => alert('Failed to update'))
+              } else if (newPass) { alert('Password must be at least 6 characters') }
+            }}>
+              <div className="si-icon"><Lock size={18}/></div>
+              <div className="si-info"><div className="si-label">Change Password</div><div className="si-sub">Update your login password</div></div>
+              <ChevronRight size={16} className="si-arrow"/>
+            </button>
+          </div>
+
+          <button className="logout-btn" onClick={handleLogout}><LogOut size={18}/> Sign Out</button>
+
+          <div className="profile-footer">
+            <p>Viya — Your AI Life & Wealth Partner</p>
+          </div>
+        </>
+      )}
     </div>
   )
 }
