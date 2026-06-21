@@ -104,6 +104,12 @@ export default function BankConnect() {
   const toast = useToast()
   const fileRef = useRef(null)
 
+  // Setu AA status
+  const [aaStatus, setAaStatus] = useState(null)
+  useState(() => {
+    fetch('/api/bank-connect?action=status').then(r => r.json()).then(setAaStatus).catch(() => setAaStatus({ configured: false }))
+  })
+
   // SMS Auto-Track
   const [smsEnabled, setSmsEnabled] = useState(() => localStorage.getItem('mv_sms_enabled') === 'true')
 

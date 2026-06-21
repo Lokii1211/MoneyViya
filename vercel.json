@@ -16,6 +16,10 @@
     "api/whatsapp.py": {
       "runtime": "@vercel/python@4.5.0",
       "maxDuration": 60
+    },
+    "api/bank-connect.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 30
     }
   },
   "headers": [
