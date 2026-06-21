@@ -8,68 +8,66 @@ import { HomeSkeleton } from './components/SkeletonLoader'
 import OfflineBanner from './components/OfflineBanner'
 import './index.css'
 
-// Lazy load pages for code splitting
+// Core pages
 const Auth = lazy(() => import('./pages/Auth'))
 const Home = lazy(() => import('./pages/Home'))
+const Onboarding = lazy(() => import('./pages/Onboarding'))
+
+// Money
 const Expenses = lazy(() => import('./pages/Expenses'))
 const Budget = lazy(() => import('./pages/Budget'))
 const Goals = lazy(() => import('./pages/Goals'))
-const Habits = lazy(() => import('./pages/Habits'))
-const Chat = lazy(() => import('./pages/Chat'))
-const Review = lazy(() => import('./pages/Review'))
-const Search = lazy(() => import('./pages/Search'))
-const Notifications = lazy(() => import('./pages/Notifications'))
-const Reminders = lazy(() => import('./pages/Reminders'))
-const Privacy = lazy(() => import('./pages/Privacy'))
-const Help = lazy(() => import('./pages/Help'))
-const Profile = lazy(() => import('./pages/Profile'))
-const Report = lazy(() => import('./pages/Report'))
-const Family = lazy(() => import('./pages/Family'))
-const Terms = lazy(() => import('./pages/Terms'))
-const Friends = lazy(() => import('./pages/Friends'))
-const Onboarding = lazy(() => import('./pages/Onboarding'))
-const DeleteAccount = lazy(() => import('./pages/DeleteAccount'))
-const Community = lazy(() => import('./pages/Community'))
-const Health = lazy(() => import('./pages/Health'))
 const Bills = lazy(() => import('./pages/Bills'))
 const Wealth = lazy(() => import('./pages/Wealth'))
-const EmailIntelligence = lazy(() => import('./pages/EmailIntelligence'))
-const CalendarScreen = lazy(() => import('./pages/CalendarScreen'))
-
-// V3 New Screens
+const Report = lazy(() => import('./pages/Report'))
 const Subscriptions = lazy(() => import('./pages/Subscriptions'))
 const Splits = lazy(() => import('./pages/Splits'))
+const Lending = lazy(() => import('./pages/Lending'))
+const BankConnect = lazy(() => import('./pages/BankConnect'))
+const PortfolioDashboard = lazy(() => import('./pages/PortfolioDashboard'))
+
+// Life
+const Habits = lazy(() => import('./pages/Habits'))
+const Health = lazy(() => import('./pages/Health'))
+const CalendarScreen = lazy(() => import('./pages/CalendarScreen'))
+const Reminders = lazy(() => import('./pages/Reminders'))
 const Journal = lazy(() => import('./pages/Journal'))
 const Medicine = lazy(() => import('./pages/Medicine'))
 const SleepTracker = lazy(() => import('./pages/SleepTracker'))
 const Meals = lazy(() => import('./pages/Meals'))
-const Rewards = lazy(() => import('./pages/Rewards'))
+
+// Intelligence
+const Chat = lazy(() => import('./pages/Chat'))
+const EmailIntelligence = lazy(() => import('./pages/EmailIntelligence'))
 const Insights = lazy(() => import('./pages/Insights'))
 const Predictions = lazy(() => import('./pages/Predictions'))
-const Settings = lazy(() => import('./pages/Settings'))
-const Lending = lazy(() => import('./pages/Lending'))
 
-// SaaS Upgrade Pages
+// Social
+const Friends = lazy(() => import('./pages/Friends'))
+const Family = lazy(() => import('./pages/Family'))
+const Community = lazy(() => import('./pages/Community'))
+
+// Profile & Settings
+const Profile = lazy(() => import('./pages/Profile'))
+const Settings = lazy(() => import('./pages/Settings'))
+const Rewards = lazy(() => import('./pages/Rewards'))
 const PremiumUpgrade = lazy(() => import('./pages/PremiumUpgrade'))
 const NotificationSettings = lazy(() => import('./pages/NotificationSettings'))
 const ReferralProgram = lazy(() => import('./pages/ReferralProgram'))
-const SubscriptionAudit = lazy(() => import('./pages/SubscriptionAudit'))
 const WeeklyReport = lazy(() => import('./pages/WeeklyReport'))
 const MorningBrief = lazy(() => import('./pages/MorningBrief'))
+const DeleteAccount = lazy(() => import('./pages/DeleteAccount'))
 
-// Fintech Phase 1
-const CashFlow = lazy(() => import('./pages/CashFlow'))
-const BankConnect = lazy(() => import('./pages/BankConnect'))
+// Utility
+const Search = lazy(() => import('./pages/Search'))
+const Notifications = lazy(() => import('./pages/Notifications'))
+const Review = lazy(() => import('./pages/Review'))
+const Privacy = lazy(() => import('./pages/Privacy'))
+const Help = lazy(() => import('./pages/Help'))
+const Terms = lazy(() => import('./pages/Terms'))
 
-// Fintech Phase 2+3
-
-// Loading fallback with V3 skeleton
 function PageLoader() {
-  return (
-    <div className="page">
-      <HomeSkeleton />
-    </div>
-  )
+  return <div className="page"><HomeSkeleton /></div>
 }
 
 function Protected({ children }) {
@@ -81,7 +79,6 @@ function AppContent() {
   const [showSplash, setShowSplash] = useState(true)
   const { theme } = useApp()
 
-  // Apply theme on mount
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme || 'light')
   }, [theme])
@@ -110,8 +107,8 @@ function AppContent() {
             <Route path="subscriptions" element={<Subscriptions />} />
             <Route path="splits" element={<Splits />} />
             <Route path="lending" element={<Lending />} />
-            <Route path="cashflow" element={<CashFlow />} />
             <Route path="bank-connect" element={<BankConnect />} />
+            <Route path="portfolio" element={<PortfolioDashboard />} />
             {/* Life */}
             <Route path="habits" element={<Habits />} />
             <Route path="health" element={<Health />} />
@@ -137,17 +134,16 @@ function AppContent() {
             <Route path="premium" element={<PremiumUpgrade />} />
             <Route path="notification-settings" element={<NotificationSettings />} />
             <Route path="referral" element={<ReferralProgram />} />
-            <Route path="subscription-audit" element={<SubscriptionAudit />} />
             <Route path="weekly-report" element={<WeeklyReport />} />
             <Route path="morning-brief" element={<MorningBrief />} />
             <Route path="review" element={<Review />} />
             <Route path="search" element={<Search />} />
             <Route path="notifications" element={<Notifications />} />
+            <Route path="delete-account" element={<DeleteAccount />} />
             {/* Static */}
             <Route path="privacy" element={<Privacy />} />
             <Route path="help" element={<Help />} />
             <Route path="terms" element={<Terms />} />
-            <Route path="delete-account" element={<DeleteAccount />} />
           </Route>
         </Routes>
       </Suspense>
