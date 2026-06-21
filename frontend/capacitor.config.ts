@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.viya.app',
+  appId: 'com.viyanexus.viya',
   appName: 'Viya',
   webDir: 'dist',
   server: {
