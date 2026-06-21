@@ -185,19 +185,15 @@ export default function Profile() {
 
           {/* Avatar Picker */}
           {showAvatarPicker && (
-            <div style={{background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:16, padding:16, marginBottom:16, animation:'slideUp 0.3s var(--ease)'}}>
-              <div style={{fontSize:13, fontWeight:700, marginBottom:10}}>Choose Your Avatar</div>
-              <div style={{display:'grid', gridTemplateColumns:'repeat(10, 1fr)', gap:6}}>
+            <div className="avatar-picker-card animate-slideUp">
+              <div className="avatar-picker-title">Choose Your Avatar</div>
+              <div className="avatar-picker-grid">
                 {AVATARS.map((a, i) => (
-                  <button key={i} onClick={() => pickAvatar(a)} style={{
-                    width:36, height:36, borderRadius:10, border:`2px solid ${selectedAvatar === a ? 'var(--primary)' : 'var(--border)'}`,
-                    background:selectedAvatar === a ? 'var(--primary-dim)' : 'var(--bg2)',
-                    fontSize:20, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
-                    transition:'all 0.2s'
-                  }}>{a}</button>
+                  <button key={i} onClick={() => pickAvatar(a)}
+                    className={`avatar-option${selectedAvatar === a ? ' selected' : ''}`}>{a}</button>
                 ))}
               </div>
-              <button onClick={() => { setSelectedAvatar(''); localStorage.removeItem('mv_avatar'); setShowAvatarPicker(false) }} style={{marginTop:8, padding:'6px 12px', background:'none', border:'1px solid var(--border)', borderRadius:8, fontSize:12, color:'var(--text3)', cursor:'pointer', fontFamily:'inherit'}}>
+              <button className="avatar-reset-btn" onClick={() => { setSelectedAvatar(''); localStorage.removeItem('mv_avatar'); setShowAvatarPicker(false) }}>
                 Use Letter Initial
               </button>
             </div>

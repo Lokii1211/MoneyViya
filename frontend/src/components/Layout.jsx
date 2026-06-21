@@ -89,24 +89,14 @@ export default function Layout() {
   return (
     <div className="app-shell">
       <a href="#main-content" className="skip-link">Skip to content</a>
-      <header className="app-header" role="banner" style={{
-        backdropFilter: scrolled ? 'blur(20px)' : 'none',
-        WebkitBackdropFilter: scrolled ? 'blur(20px)' : 'none',
-        background: scrolled ? 'var(--header-bg)' : 'var(--bg-primary)',
-        boxShadow: scrolled ? 'var(--shadow-sm)' : 'none',
-        transition: 'background 0.2s, box-shadow 0.2s, backdrop-filter 0.2s',
-      }}>
+      <header className={`app-header${scrolled ? ' scrolled' : ''}`} role="banner">
         <motion.div
           style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
           onClick={() => nav('/')}
           whileTap={{ scale: 0.97 }}
         >
-          <img src="/logo.png" alt="Viya" style={{
-            width: 38, height: 38, borderRadius: 10, objectFit: 'contain',
-            filter: 'drop-shadow(0 2px 8px rgba(0,229,176,0.3))',
-            animation: 'orbBreathe 3.5s ease-in-out infinite',
-          }} />
-          <span style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 20, letterSpacing: -0.5 }}>Viya</span>
+          <img src="/logo.png" alt="Viya" className="app-header-logo" />
+          <span className="app-header-title">Viya</span>
         </motion.div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <motion.button
