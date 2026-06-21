@@ -44,7 +44,6 @@ const Medicine = lazy(() => import('./pages/Medicine'))
 const SleepTracker = lazy(() => import('./pages/SleepTracker'))
 const Meals = lazy(() => import('./pages/Meals'))
 const Rewards = lazy(() => import('./pages/Rewards'))
-const Leaderboard = lazy(() => import('./pages/Leaderboard'))
 const Insights = lazy(() => import('./pages/Insights'))
 const Predictions = lazy(() => import('./pages/Predictions'))
 const Settings = lazy(() => import('./pages/Settings'))
@@ -54,7 +53,6 @@ const Lending = lazy(() => import('./pages/Lending'))
 const PremiumUpgrade = lazy(() => import('./pages/PremiumUpgrade'))
 const NotificationSettings = lazy(() => import('./pages/NotificationSettings'))
 const ReferralProgram = lazy(() => import('./pages/ReferralProgram'))
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 const SubscriptionAudit = lazy(() => import('./pages/SubscriptionAudit'))
 const WeeklyReport = lazy(() => import('./pages/WeeklyReport'))
 const MorningBrief = lazy(() => import('./pages/MorningBrief'))
@@ -63,8 +61,6 @@ const MorningBrief = lazy(() => import('./pages/MorningBrief'))
 const CashFlow = lazy(() => import('./pages/CashFlow'))
 
 // Fintech Phase 2+3
-const PortfolioDashboard = lazy(() => import('./pages/PortfolioDashboard'))
-const AdvisorDashboard = lazy(() => import('./pages/AdvisorDashboard'))
 
 // Loading fallback with V3 skeleton
 function PageLoader() {
@@ -114,8 +110,6 @@ function AppContent() {
             <Route path="splits" element={<Splits />} />
             <Route path="lending" element={<Lending />} />
             <Route path="cashflow" element={<CashFlow />} />
-            <Route path="portfolio-dashboard" element={<PortfolioDashboard />} />
-            <Route path="advisor" element={<AdvisorDashboard />} />
             {/* Life */}
             <Route path="habits" element={<Habits />} />
             <Route path="health" element={<Health />} />
@@ -134,7 +128,6 @@ function AppContent() {
             <Route path="friends" element={<Friends />} />
             <Route path="family" element={<Family />} />
             <Route path="community" element={<Community />} />
-            <Route path="leaderboard" element={<Leaderboard />} />
             {/* Profile & Settings */}
             <Route path="profile" element={<Profile />} />
             <Route path="settings" element={<Settings />} />
@@ -142,7 +135,6 @@ function AppContent() {
             <Route path="premium" element={<PremiumUpgrade />} />
             <Route path="notification-settings" element={<NotificationSettings />} />
             <Route path="referral" element={<ReferralProgram />} />
-            <Route path="admin" element={<AdminDashboard />} />
             <Route path="subscription-audit" element={<SubscriptionAudit />} />
             <Route path="weekly-report" element={<WeeklyReport />} />
             <Route path="morning-brief" element={<MorningBrief />} />

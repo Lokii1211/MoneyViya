@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useCountUp, getCurrentFestival, formatINR, getGreeting, getGreetingEmoji } from '../lib/utils'
-import { TrendingUp, TrendingDown, Plus, Flame, Target, BarChart3, Zap, Users, Heart, Sparkles, Bell, MessageCircle, ClipboardList, Activity, Droplets, CreditCard } from 'lucide-react'
+import { TrendingUp, TrendingDown, Plus, Flame, Target, BarChart3, Zap, Activity, CreditCard, MessageCircle } from 'lucide-react'
 
 const BRIEF_ITEMS_POOL = {
   morning: [
@@ -34,9 +34,8 @@ function getPeriod() {
   if (h < 5) return 'night'; if (h < 12) return 'morning'; if (h < 17) return 'afternoon'; if (h < 21) return 'evening'; return 'night'
 }
 
-function formatTime() {
-  return new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true }) +
-    ', ' + new Date().toLocaleDateString('en-IN', { weekday: 'long' })
+function formatDateLine() {
+  return new Date().toLocaleDateString('en-IN', { weekday: 'long', month: 'short', day: 'numeric' })
 }
 
 export default function Home() {
@@ -98,9 +97,7 @@ export default function Home() {
     { icon: <Target size={18}/>, label: 'Goals', to: '/goals', color: 'var(--viya-error)' },
     { icon: <Activity size={18}/>, label: 'Health', to: '/health', color: '#FF7062' },
     { icon: <CreditCard size={18}/>, label: 'Bills', to: '/bills', color: 'var(--viya-warning)' },
-    { icon: <Users size={18}/>, label: 'Lending', to: '/lending', color: '#f59e0b' },
     { icon: <BarChart3 size={18}/>, label: 'Report', to: '/report', color: 'var(--viya-primary-400)' },
-    { icon: <Sparkles size={18}/>, label: 'Premium', to: '/premium', color:'var(--viya-primary-700)' },
   ]
   const unpaidBills = bills.filter(b => b.status !== 'paid')
   const anim = (d) => ({ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { delay: d } })
@@ -132,39 +129,16 @@ export default function Home() {
         </div>
       ) : (
         <>
+          {/* Greeting */}
           <div className="home-greeting">
             <div className="avatar">{localStorage.getItem('mv_avatar') || name.charAt(0).toUpperCase()}</div>
             <div>
               <div className="home-greeting-name">{getGreeting()}, {name.split(' ')[0]}! {getGreetingEmoji()}</div>
-              <div className="body-s text-secondary">Your AI Life & Wealth Partner</div>
+              <div className="body-s text-secondary">{formatDateLine()}</div>
             </div>
           </div>
 
-          <div className="home-section">
-            <div className="section-head">
-              <span className="title-m title-m-15" style={{ color: 'var(--coral-500)' }}>{'\u{1F514}'} Needs Attention</span>
-              <button className="link-right" onClick={() => nav('/email')}>View All {'→'}</button>
-            </div>
-            <div className="scroll-snap-x gap-3">
-              {[
-                { icon: '\u{1F534}', title: 'Credit Card Due', sub: 'Check your bills section', border: 'var(--coral-500)', actions: ['Pay Now', 'Remind'], to: '/bills' },
-                { icon: '\u{1F4C5}', title: 'Upcoming Meetings', sub: 'Check calendar for details', border: 'var(--info-500)', actions: ['View', 'Dismiss'], to: '/calendar' },
-                { icon: '\u{1F4E6}', title: 'Package Updates', sub: 'Track your deliveries', border: 'var(--cosmos-400)', actions: ['Track', 'Alert'], to: '/email' },
-              ].map((c, i) => (
-                <div key={i} onClick={() => nav(c.to)} className="attention-card card-press" style={{ borderLeft: `4px solid ${c.border}` }}>
-                  <div className="attention-header"><span>{c.icon}</span><span className="attention-title">{c.title}</span></div>
-                  <div className="attention-sub">{c.sub}</div>
-                  <div className="attention-actions">
-                    {c.actions.map((a, j) => (
-                      <button key={j} className={`attention-btn ripple ${j === 0 ? 'primary' : 'secondary'}`}
-                        style={j === 0 ? { background: c.border } : undefined}>{a}</button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
+          {/* Festival banner */}
           {festival && (
             <div onClick={() => nav('/chat?q=' + encodeURIComponent(festival.greeting))}
               className="card festival-banner" style={{ background: festival.colors.bg }}>
@@ -176,24 +150,24 @@ export default function Home() {
             </div>
           )}
 
-          <div onClick={() => nav('/chat?q=daily+briefing')} className="daily-brief">
+          {/* Daily Brief */}
+          <div onClick={() => nav('/chat?q=daily+briefing')} className="daily-brief" style={{ borderRadius: 20 }}>
             <div className="brief-top">
               <span className="brief-label">
                 {period === 'morning' ? '☀️' : period === 'evening' ? '\u{1F305}' : period === 'night' ? '\u{1F319}' : '\u{1F324}️'} Daily Brief
               </span>
-              <span className="brief-time">{formatTime()}</span>
             </div>
             <div className="brief-headline">{briefItems.length} things need you today</div>
             <div className="brief-list stagger">
-              {briefItems.slice(0, 4).map((item, i) => (
+              {briefItems.slice(0, 3).map((item, i) => (
                 <div key={i} className="brief-item animate-slideUp" style={{ animationDelay: `${i * 0.08}s`, animationFillMode: 'backwards' }}>
                   <span className="brief-item-icon">{item.icon}</span><span>{item.text}</span>
                 </div>
               ))}
             </div>
-            <button className="brief-cta">Handle All with Viya {'→'}</button>
           </div>
 
+          {/* Hero stat cards */}
           <div className="stat-grid">
             <div onClick={() => nav('/expenses')} className="hero-card green clickable">
               <div className="stat-card-label">Money Left</div>
@@ -213,6 +187,7 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Monthly Overview */}
           <div onClick={() => nav('/expenses')} className="hero-card green wealth-overview clickable"
             style={{ padding: 20, boxShadow: '0 6px 20px rgba(76,175,80,0.25)' }}>
             <div className="stat-card-label">Monthly Overview</div>
@@ -240,6 +215,7 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Goals */}
           {goals.length > 0 && (
             <div className="home-section">
               <div className="section-head">
@@ -269,6 +245,7 @@ export default function Home() {
             </div>
           )}
 
+          {/* Ask Viya */}
           <div className="card-press ask-viya-bar hero-card night clickable" onClick={() => nav('/chat')}>
             <img src="/logo.png" alt="Viya AI" className="ask-viya-logo" />
             <div className="flex-1">
@@ -278,6 +255,7 @@ export default function Home() {
             <Zap size={16} color="var(--viya-gold-500)" />
           </div>
 
+          {/* Quick Actions */}
           <div className="stagger-children home-section">
             <div className="title-m title-m-14 mb-8">{'⚡'} Quick Actions</div>
             <div className="qa-grid-4">
@@ -292,30 +270,14 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="home-section">
-            <div className="title-m title-m-15 mb-10">{'\u{1F680}'} Explore More</div>
-            <div className="explore-grid">
-              {[
-                { emoji: '\u{1F4CA}', label: 'Weekly Report', to: '/weekly-report' },
-                { emoji: '☀️', label: 'Morning Brief', to: '/morning-brief' },
-                { emoji: '✂️', label: 'Sub Audit', to: '/subscription-audit' },
-                { emoji: '\u{1F381}', label: 'Refer & Earn', to: '/referral' },
-              ].map((l, i) => (
-                <button key={i} onClick={() => nav(l.to)} className="feature-card ripple">
-                  <span className="feature-emoji">{l.emoji}</span>
-                  <span className="feature-label">{l.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
+          {/* Recent Activity */}
           <div className="home-section-20">
             <div className="section-head">
               <span className="title-m title-m-15">Recent Activity</span>
               <button className="btn-ghost body-s" onClick={() => nav('/expenses')}>See All</button>
             </div>
-            {(data?.recent_transactions || []).slice(0, 5).map((t, i) => (
-              <div key={i} className="txn-list-item" style={{ borderBottom: i < 4 ? '1px solid var(--border-light)' : 'none' }}>
+            {(data?.recent_transactions || []).slice(0, 4).map((t, i) => (
+              <div key={i} className="txn-list-item" style={{ borderBottom: i < 3 ? '1px solid var(--border-light)' : 'none' }}>
                 <div className={`txn-icon-box ${t.type}`}>{t.type === 'income' ? '\u{1F4B0}' : '\u{1F6D2}'}</div>
                 <div className="flex-1">
                   <div className="txn-desc">{t.description || t.category}</div>
@@ -327,54 +289,25 @@ export default function Home() {
               </div>
             ))}
             {(!data?.recent_transactions?.length) && (
-              <div className="empty-txn card">No transactions yet. Say "spent 500 on food" to start! {'\u{1F680}'}</div>
+              <div className="empty-txn card" style={{ textAlign: 'center', padding: '24px 16px', opacity: 0.7 }}>
+                No transactions yet — say "spent 500 on food" to Viya to start tracking.
+              </div>
             )}
           </div>
 
-          <div className="health-pair">
-            <div onClick={() => nav('/health')} className="health-card steps health-card-home clickable">
-              <div className="flex items-center gap-1 mb-8"><Droplets size={14} /> <span className="health-label">STEPS</span></div>
-              <div className="health-value">0</div>
-              <div className="health-sub">/ 10,000 steps</div>
-              <div className="health-cta">Open Health {'\u{1F4AA}'}</div>
-            </div>
-            <div onClick={() => nav('/health')} className="health-card calories health-card-home clickable">
-              <div className="flex items-center gap-1 mb-8"><Heart size={14} /> <span className="health-label">CALORIES</span></div>
-              <div className="health-value">0</div>
-              <div className="health-sub">/ 2,200 kcal</div>
-              <div className="health-cta">Log Meal {'\u{1F37D}️'}</div>
-            </div>
-          </div>
-
-          <div className="home-section-20">
-            <div className="title-m title-m-14 mb-8">{'✏️'} Manual Quick Add</div>
-            <div className="quick-add-bar">
-              {[
-                { icon: <Plus size={18}/>, label: 'Expense', to: '/expenses', bg: 'var(--gradient-primary)', color: 'white', primary: true },
-                { icon: <ClipboardList size={18}/>, label: 'Task', to: '/reminders', bg: 'var(--surface)', color: 'var(--violet)' },
-                { icon: <Bell size={18}/>, label: 'Reminder', to: '/reminders', bg: 'var(--surface)', color: 'var(--gold)' },
-                { icon: <Activity size={18}/>, label: 'Health', to: '/health', bg: 'var(--surface)', color: 'var(--red)' },
-              ].map((a, i) => (
-                <button key={i} onClick={() => nav(a.to)} className={`quick-add-btn ripple ${a.primary ? 'primary-bg' : 'normal-bg'}`}
-                  style={{ background: a.bg, color: a.color }}>
-                  {a.icon}<span className="quick-add-label">{a.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
+          {/* Upcoming Bills */}
           {unpaidBills.length > 0 && (
             <div className="home-section-20">
               <div className="section-head">
                 <span className="title-m title-m-15">{'\u{1F9FE}'} Upcoming Bills</span>
                 <button className="link-right" onClick={() => nav('/bills')}>All Bills {'→'}</button>
               </div>
-              {unpaidBills.slice(0, 4).map((b, i) => {
+              {unpaidBills.slice(0, 3).map((b, i) => {
                 const daysLeft = b.due_date ? Math.ceil((new Date(b.due_date) - Date.now()) / 86400000) : 99
                 const dotColor = daysLeft <= 1 ? 'var(--coral-500)' : daysLeft <= 3 ? 'var(--amber-500)' : 'var(--emerald-500)'
                 return (
                   <div key={b.id || i} onClick={() => nav('/bills')} className="bill-row"
-                    style={{ borderBottom: i < 3 ? '1px solid var(--border)' : 'none' }}>
+                    style={{ borderBottom: i < 2 ? '1px solid var(--border)' : 'none' }}>
                     <div className="bill-dot" style={{ background: dotColor }} />
                     <div className="flex-1">
                       <div className="bill-name">{b.name}</div>
@@ -387,6 +320,7 @@ export default function Home() {
               })}
             </div>
           )}
+
           <div className="spacer-20" />
         </>
       )}

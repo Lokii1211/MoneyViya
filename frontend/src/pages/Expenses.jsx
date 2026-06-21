@@ -147,7 +147,7 @@ export default function Expenses() {
         <>
           <div className="money-left-card">
             <div className="section-label">MONEY LEFT TODAY</div>
-            <div className="stat-value num-42" style={{ color: moneyLeft >= 0 ? 'var(--primary)' : 'var(--red)' }}>₹{animatedMoneyLeft}</div>
+            <div className="stat-value num-42" style={{ color: moneyLeft >= 0 ? 'var(--primary)' : 'var(--expense)' }}>₹{animatedMoneyLeft}</div>
             {moneyLeft < 0 && <div className="text-error body-s" style={{ fontWeight: 700, marginTop: 4 }}>⚠️ Over budget by ₹{Math.abs(moneyLeft)}</div>}
             <div className="body-s text-secondary mt-2">Daily budget: ₹{dailyBudget} · Spent: ₹{todayExp}</div>
           </div>
