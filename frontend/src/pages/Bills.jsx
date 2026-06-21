@@ -245,7 +245,7 @@ export default function Bills() {
             <div className="empty-state-card">
               <div className="empty-emoji">📋</div>
               <h3>No bills tracked yet</h3>
-              <p>Tell Viya: "Track my electricity bill" or tap + to add one</p>
+              <p>Tap + above to add your first bill or recurring payment</p>
             </div>
           )}
 
