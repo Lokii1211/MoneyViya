@@ -1989,6 +1989,10 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
 .text-right { text-align:right; }
 
 /* Number display sizes */
+.num-xl { font-family:var(--mono); font-weight:700; font-size:48px; line-height:56px; letter-spacing:-1px; }
+.num-l { font-family:var(--mono); font-weight:600; font-size:32px; line-height:40px; letter-spacing:-.5px; }
+.num-m { font-family:var(--mono); font-weight:500; font-size:22px; line-height:30px; }
+.num-s { font-family:var(--mono); font-weight:400; font-size:16px; line-height:24px; }
 .num-28 { font-size:28px; font-weight:700; }
 .num-32 { font-size:32px; color:white; line-height:1.1; }
 .num-42 { font-size:42px; font-weight:900; }
