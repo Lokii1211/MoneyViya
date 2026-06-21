@@ -160,42 +160,42 @@ export default function Reminders() {
     <div className="page">
       {toast && <div className="toast">{toast}</div>}
       <div className="page-header">
-        <h2 style={{fontSize:22, fontWeight:800}}>Reminders</h2>
-        <button className="btn-primary" style={{padding:'8px 16px', fontSize:13, borderRadius:10}} onClick={() => setShowAdd(!showAdd)}>
-          <Plus size={16} style={{marginRight:4}}/> New
+        <h2 className="header-left">Reminders</h2>
+        <button className="btn-primary btn-sm-primary" onClick={() => setShowAdd(!showAdd)}>
+          <Plus size={16} /> New
         </button>
       </div>
 
       {/* Status */}
-      <div style={{background:'linear-gradient(135deg, var(--primary-dim), var(--cyan-dim))', border:'1px solid var(--border2)', borderRadius:16, padding:'16px 18px', marginBottom:20}}>
-        <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:8}}>
+      <div className="reminder-status-card">
+        <div className="reminder-status-header">
           <Bell size={14} color="var(--primary)"/>
-          <span style={{fontSize:13, fontWeight:700, color:'var(--primary)'}}>SMART REMINDERS</span>
+          <span className="reminder-status-title">SMART REMINDERS</span>
         </div>
-        <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
-          <div style={{display:'flex', alignItems:'center', gap:4, fontSize:12, color:'var(--text)'}}>
+        <div className="reminder-status-channels">
+          <div className="reminder-channel">
             <MessageCircle size={12} color="var(--primary)"/>
             <span><strong>WhatsApp</strong> — exact time delivery</span>
           </div>
-          <div style={{display:'flex', alignItems:'center', gap:4, fontSize:12, color:'var(--text)'}}>
+          <div className="reminder-channel">
             <Smartphone size={12} color="var(--cyan)"/>
             <span><strong>Browser</strong> — when tab is open</span>
           </div>
         </div>
-        <div style={{fontSize:11, color:'var(--text3)', marginTop:6}}>
+        <div className="reminder-status-count">
           ✅ {reminders.filter(r => r.enabled).length} active reminder(s) — fires on WhatsApp accurately to the minute
         </div>
       </div>
 
       {/* Notification Permission Prompt */}
       {'Notification' in window && Notification.permission !== 'granted' && (
-        <div style={{background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:12, padding:'12px 16px', marginBottom:16, display:'flex', alignItems:'center', gap:10}}>
+        <div className="notif-permission-banner">
           <Bell size={18} color="var(--primary)"/>
-          <div style={{flex:1}}>
-            <div style={{fontSize:13, fontWeight:700}}>Enable browser notifications</div>
-            <div style={{fontSize:11, color:'var(--text3)'}}>Get notified when your reminders are due, even if the tab is in the background.</div>
+          <div className="notif-permission-body">
+            <div className="notif-permission-title">Enable browser notifications</div>
+            <div className="notif-permission-desc">Get notified when your reminders are due, even if the tab is in the background.</div>
           </div>
-          <button className="btn-primary" style={{padding:'6px 14px', fontSize:12, borderRadius:8}} onClick={() => {
+          <button className="btn-primary btn-sm" onClick={() => {
             Notification.requestPermission().then(p => {
               if (p === 'granted') showMsg('Notifications enabled!')
               else showMsg('Notifications blocked. Enable in browser settings.')
@@ -206,45 +206,57 @@ export default function Reminders() {
 
       {/* Add Panel */}
       {showAdd && (
-        <div style={{background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:16, padding:20, marginBottom:20, animation:'slideUp 0.3s var(--ease)'}}>
-          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14}}>
-            <h3 style={{fontSize:15, fontWeight:700}}>Add Reminder</h3>
-            <button style={{background:'none', border:'none', color:'var(--text3)', cursor:'pointer'}} onClick={() => setShowAdd(false)}><X size={18}/></button>
+        <div className="reminder-add-panel">
+          <div className="reminder-add-header">
+            <h3 className="reminder-add-title">Add Reminder</h3>
+            <button className="reminder-close-btn" onClick={() => setShowAdd(false)}><X size={18}/></button>
           </div>
 
-          <div style={{fontSize:12, fontWeight:700, color:'var(--text3)', marginBottom:8, textTransform:'uppercase', letterSpacing:0.5}}>Quick Add</div>
-          <div style={{display:'flex', flexDirection:'column', gap:6, marginBottom:16}}>
+          <div className="reminder-section-label">Quick Add</div>
+          <div className="preset-list">
             {REMINDER_PRESETS.filter(p => !reminders.some(r => r.title === p.title)).map((p, i) => (
-              <button key={i} style={{display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:10, cursor:'pointer', fontFamily:'inherit', color:'var(--text)', textAlign:'left', width:'100%', transition:'all 0.2s'}} onClick={() => addReminder(p)}>
-                <span style={{fontSize:18}}>{p.icon}</span>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:13, fontWeight:700}}>{p.title}</div>
-                  <div style={{fontSize:11, color:'var(--text3)'}}>{p.description}</div>
+              <button key={i} className="preset-item" onClick={() => addReminder(p)}>
+                <span className="preset-emoji">{p.icon}</span>
+                <div className="preset-body">
+                  <div className="preset-title">{p.title}</div>
+                  <div className="preset-desc">{p.description}</div>
                 </div>
-                <span style={{fontSize:11, color:gc(p.freq), fontWeight:700, padding:'3px 8px', background:'var(--surface)', borderRadius:6}}>{p.freq}</span>
+                <span className="preset-freq" style={{ color: gc(p.freq) }}>{p.freq}</span>
               </button>
             ))}
           </div>
 
-          <div style={{fontSize:12, fontWeight:700, color:'var(--text3)', marginBottom:8, textTransform:'uppercase', letterSpacing:0.5}}>Custom Reminder</div>
-          <input className="form-input" placeholder="Reminder title..." value={form.title} onChange={e => setForm({...form, title: e.target.value})} style={{marginBottom:8}} />
-          <input className="form-input" placeholder="Description (optional)" value={form.description} onChange={e => setForm({...form, description: e.target.value})} style={{marginBottom:10}} />
+          <div className="reminder-section-label">Custom Reminder</div>
+          <input className="form-input mb-8" placeholder="Reminder title..." value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
+          <input className="form-input mb-10" placeholder="Description (optional)" value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
 
-          <div style={{fontSize:11, fontWeight:700, color:'var(--text3)', marginBottom:4}}>FREQUENCY</div>
-          <div style={{display:'flex', gap:4, marginBottom:10}}>
+          <div className="time-label">FREQUENCY</div>
+          <div className="reminder-freq-bar">
             {[{v:'daily',l:'Daily',i:<Sun size={13}/>},{v:'weekly',l:'Weekly',i:<Calendar size={13}/>},{v:'monthly',l:'Monthly',i:<Repeat size={13}/>}].map(f => (
-              <button key={f.v} style={{flex:1, padding:'8px', border:`1px solid ${form.freq === f.v ? 'var(--primary)' : 'var(--border)'}`, background:form.freq === f.v ? 'var(--primary-dim)' : 'var(--bg2)', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', color:form.freq === f.v ? 'var(--primary)' : 'var(--text2)', display:'flex', alignItems:'center', justifyContent:'center', gap:4}} onClick={() => setForm({...form, freq: f.v})}>
+              <button key={f.v} className="reminder-freq-btn"
+                style={{
+                  border: `1px solid ${form.freq === f.v ? 'var(--primary)' : 'var(--border)'}`,
+                  background: form.freq === f.v ? 'var(--primary-dim)' : 'var(--bg2)',
+                  color: form.freq === f.v ? 'var(--primary)' : 'var(--text2)',
+                }}
+                onClick={() => setForm({...form, freq: f.v})}>
                 {f.i} {f.l}
               </button>
             ))}
           </div>
 
           {form.freq === 'weekly' && (
-            <div style={{marginBottom:10}}>
-              <div style={{fontSize:11, fontWeight:700, color:'var(--text3)', marginBottom:4}}>WHICH DAY</div>
-              <div style={{display:'flex', gap:4, flexWrap:'wrap'}}>
+            <div className="mb-10">
+              <div className="time-label">WHICH DAY</div>
+              <div className="day-selector">
                 {WEEKDAYS.map(d => (
-                  <button key={d} style={{padding:'6px 10px', border:`1px solid ${form.weekday === d ? 'var(--cyan)' : 'var(--border)'}`, background:form.weekday === d ? 'var(--cyan-dim)' : 'var(--bg2)', borderRadius:8, fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', color:form.weekday === d ? 'var(--cyan)' : 'var(--text3)'}} onClick={() => setForm({...form, weekday: d})}>
+                  <button key={d} className="day-btn"
+                    style={{
+                      border: `1px solid ${form.weekday === d ? 'var(--cyan)' : 'var(--border)'}`,
+                      background: form.weekday === d ? 'var(--cyan-dim)' : 'var(--bg2)',
+                      color: form.weekday === d ? 'var(--cyan)' : 'var(--text3)',
+                    }}
+                    onClick={() => setForm({...form, weekday: d})}>
                     {d.slice(0,3)}
                   </button>
                 ))}
@@ -253,11 +265,17 @@ export default function Reminders() {
           )}
 
           {form.freq === 'monthly' && (
-            <div style={{marginBottom:10}}>
-              <div style={{fontSize:11, fontWeight:700, color:'var(--text3)', marginBottom:4}}>WHICH DATE</div>
-              <div style={{display:'flex', gap:4, flexWrap:'wrap'}}>
+            <div className="mb-10">
+              <div className="time-label">WHICH DATE</div>
+              <div className="day-selector">
                 {[1,5,10,15,20,25,28].map(d => (
-                  <button key={d} style={{padding:'6px 12px', border:`1px solid ${form.month_date === d ? 'var(--violet)' : 'var(--border)'}`, background:form.month_date === d ? 'var(--violet-dim)' : 'var(--bg2)', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', color:form.month_date === d ? 'var(--violet)' : 'var(--text3)'}} onClick={() => setForm({...form, month_date: d})}>
+                  <button key={d} className="date-btn"
+                    style={{
+                      border: `1px solid ${form.month_date === d ? 'var(--violet)' : 'var(--border)'}`,
+                      background: form.month_date === d ? 'var(--violet-dim)' : 'var(--bg2)',
+                      color: form.month_date === d ? 'var(--violet)' : 'var(--text3)',
+                    }}
+                    onClick={() => setForm({...form, month_date: d})}>
                     {ordinal(d)}
                   </button>
                 ))}
@@ -265,24 +283,24 @@ export default function Reminders() {
             </div>
           )}
 
-          <div style={{display:'flex', gap:8, marginBottom:12}}>
-            <div style={{flex:1}}>
-              <div style={{fontSize:11, fontWeight:700, color:'var(--text3)', marginBottom:4}}>TIME</div>
-              <input type="time" className="form-input" value={form.time} onChange={e => setForm({...form, time: e.target.value})} style={{padding:'8px 12px', fontSize:14}} />
+          <div className="time-input-row">
+            <div className="time-input-col">
+              <div className="time-label">TIME</div>
+              <input type="time" className="form-input" value={form.time} onChange={e => setForm({...form, time: e.target.value})} />
             </div>
           </div>
 
-          <button className="btn-primary" style={{width:'100%', padding:12, display:'flex', alignItems:'center', justifyContent:'center', gap:6}} onClick={() => addReminder()}>
+          <button className="btn-primary w-full flex items-center justify-center gap-2" onClick={() => addReminder()}>
             <Bell size={16}/> Set Reminder (App + WhatsApp)
           </button>
-          <div style={{fontSize:11, color:'var(--text3)', textAlign:'center', marginTop:6}}>
+          <div className="reminder-hint">
             📱 You'll receive this on WhatsApp at the exact time
           </div>
         </div>
       )}
 
       {/* List */}
-      {loading ? <p style={{textAlign:'center', color:'var(--text3)', padding:40}}>Loading...</p> : reminders.length === 0 ? (
+      {loading ? <p className="loading-center">Loading...</p> : reminders.length === 0 ? (
         <div className="empty-state">
           <Bell size={48} className="empty-icon" />
           <h3>No Reminders Yet</h3>
@@ -290,26 +308,27 @@ export default function Reminders() {
           <button className="btn-primary" onClick={() => setShowAdd(true)}>Add Your First Reminder</button>
         </div>
       ) : (
-        <div style={{display:'flex', flexDirection:'column', gap:8}}>
+        <div className="reminder-list">
           {reminders.map(r => (
-            <div key={r.id} style={{display:'flex', alignItems:'center', gap:12, padding:'14px 16px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, opacity:r.enabled ? 1 : 0.45, transition:'all 0.3s var(--ease)'}}>
-              <span style={{fontSize:22}}>{r.icon || '⏰'}</span>
-              <div style={{flex:1}}>
-                <div style={{fontSize:14, fontWeight:700}}>{r.title}</div>
-                <div style={{fontSize:11, color:gc(r.freq), fontWeight:600, marginTop:2}}>{getScheduleText(r)}</div>
+            <div key={r.id} className={`reminder-item${r.enabled ? '' : ' disabled'}`}>
+              <span className="reminder-emoji">{r.icon || '⏰'}</span>
+              <div className="reminder-body">
+                <div className="reminder-title">{r.title}</div>
+                <div className="reminder-schedule" style={{ color: gc(r.freq) }}>{getScheduleText(r)}</div>
                 {r.enabled && (
-                  <div style={{display:'flex', alignItems:'center', gap:8, marginTop:3}}>
-                    <span style={{fontSize:10, color:'var(--text3)'}}>Next: {nextFireTime(r)}</span>
-                    <span style={{fontSize:10, color:'var(--primary)', display:'flex', alignItems:'center', gap:2}}>
+                  <div className="reminder-meta">
+                    <span className="reminder-next">Next: {nextFireTime(r)}</span>
+                    <span className="reminder-wa">
                       <MessageCircle size={9}/> WhatsApp ✓
                     </span>
                   </div>
                 )}
               </div>
-              <button onClick={() => toggleReminder(r.id, r.enabled)} style={{width:38, height:22, borderRadius:11, padding:2, cursor:'pointer', border:'none', background:r.enabled ? 'var(--primary)' : 'var(--surface3)', transition:'all 0.3s'}}>
-                <div style={{width:18, height:18, borderRadius:'50%', background:'#fff', transition:'transform 0.3s', transform:r.enabled ? 'translateX(16px)' : 'translateX(0)', boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}} />
+              <button onClick={() => toggleReminder(r.id, r.enabled)}
+                className={`reminder-toggle ${r.enabled ? 'on' : 'off'}`}>
+                <div className="reminder-toggle-dot" style={{ transform: r.enabled ? 'translateX(16px)' : 'translateX(0)' }} />
               </button>
-              <button onClick={() => removeReminder(r.id)} style={{background:'none', border:'none', color:'var(--text3)', cursor:'pointer', padding:4}}><Trash2 size={16}/></button>
+              <button onClick={() => removeReminder(r.id)} className="reminder-delete-btn"><Trash2 size={16}/></button>
             </div>
           ))}
         </div>

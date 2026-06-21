@@ -2548,3 +2548,261 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
 
 /* 3-column quick action grid */
 .qa-grid-3 { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+
+/* ═══════════════════════════════════════════════════
+   VIYA v6.2 — Lending & Reminders CSS classes
+   ═══════════════════════════════════════════════════ */
+
+/* Page header with add button */
+.page-header-lending { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.page-header-lending h1 { font-family:'Sora',sans-serif; font-weight:700; font-size:22px; }
+
+/* Gradient add button */
+.btn-add-gradient {
+  padding:10px 16px; border-radius:12px; border:none;
+  background:var(--gradient-primary); color:#fff; font-weight:700; font-size:13px;
+  display:flex; align-items:center; gap:4px; cursor:pointer;
+}
+
+/* Lending tab bar */
+.lending-tab-bar { display:flex; gap:8px; margin-bottom:16px; }
+.lending-tab-btn {
+  flex:1; padding:12px 16px; border-radius:12px; border:none;
+  font-size:14px; font-weight:700; display:flex; align-items:center; justify-content:center;
+  gap:6px; cursor:pointer; transition:all 0.25s var(--ease);
+}
+
+/* Stat summary row */
+.stat-summary-row { display:flex; gap:10px; margin-bottom:16px; }
+.stat-summary-card {
+  flex:1; padding:14px 12px; border-radius:14px; text-align:center;
+}
+.stat-summary-value { font-family:var(--mono); font-size:20px; font-weight:800; }
+.stat-summary-label { font-size:11px; color:var(--text-tertiary); font-weight:600; letter-spacing:0.5px; }
+
+/* Lending entries list */
+.lending-list { display:flex; flex-direction:column; gap:10px; }
+
+/* Lending entry card */
+.lending-card {
+  padding:16px; border-radius:14px; background:var(--bg-card);
+  border:1px solid var(--border-light);
+}
+.lending-card.overdue { border:1.5px solid var(--coral-400); }
+.lending-card.settled { opacity:0.5; }
+.lending-card-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+.lending-card-person { display:flex; align-items:center; gap:10px; }
+.lending-card-avatar {
+  width:40px; height:40px; border-radius:12px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; font-weight:700;
+}
+.lending-card-name { font-size:15px; font-weight:700; }
+.lending-card-reason { font-size:12px; color:var(--text-tertiary); }
+.lending-card-amount { font-family:var(--mono); font-size:18px; font-weight:800; }
+.lending-card-interest { font-family:var(--mono); font-size:10px; color:var(--amber-500); font-weight:600; }
+.lending-card-tags { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+
+/* Lending tag badges */
+.lending-tag {
+  font-size:10px; padding:3px 8px; border-radius:6px; font-weight:700;
+  display:flex; align-items:center; gap:3px;
+}
+.lending-tag.interest { background:var(--amber-50); color:var(--amber-500); }
+.lending-tag.due { background:var(--cosmos-50); color:var(--cosmos-400); }
+.lending-tag.overdue { background:var(--coral-50); color:var(--coral-500); }
+.lending-tag.reminder { background:var(--teal-50, var(--primary-dim)); color:var(--viya-primary-700); }
+.lending-tag.settled { background:var(--viya-success-light); color:var(--viya-success); }
+.lending-tag.pending { background:var(--bg-secondary); color:var(--text-tertiary); }
+
+/* Settle button */
+.btn-settle {
+  width:100%; padding:10px 0; border-radius:10px;
+  border:1.5px solid rgba(0,232,126,0.2); background:var(--viya-success-light);
+  color:var(--viya-success); font-size:13px; font-weight:700; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+}
+
+/* Bottom sheet */
+.sheet-overlay-lending { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:100; }
+.sheet-lending {
+  position:fixed; bottom:0; left:0; right:0; z-index:101;
+  background:var(--bg-primary); border-radius:24px 24px 0 0;
+  padding:24px 20px; padding-bottom:calc(24px + env(safe-area-inset-bottom));
+  max-height:85vh; overflow-y:auto;
+}
+.sheet-handle { width:36px; height:4px; border-radius:2px; background:var(--border-light); margin:0 auto 16px; }
+.sheet-title { font-family:'Sora',sans-serif; font-size:18px; font-weight:700; margin-bottom:16px; }
+.sheet-form { display:flex; flex-direction:column; gap:12px; }
+
+/* Form label */
+.form-label {
+  font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:4px; display:block;
+}
+.form-label-sm {
+  font-size:11px; font-weight:700; color:var(--text-tertiary); margin-bottom:4px; display:block;
+}
+
+/* Toggle row (interest/reminder) */
+.toggle-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 14px; border-radius:12px; background:var(--bg-secondary);
+}
+.toggle-row-left { display:flex; align-items:center; gap:8px; }
+.toggle-row-label { font-size:13px; font-weight:600; }
+
+/* Toggle switch */
+.toggle-switch {
+  width:44px; height:24px; border-radius:12px; border:none; cursor:pointer;
+  position:relative; transition:background 0.2s;
+}
+.toggle-switch.on { background:var(--viya-primary-500); }
+.toggle-switch.off { background:var(--border-light); }
+.toggle-dot {
+  width:18px; height:18px; border-radius:9px; background:#fff;
+  position:absolute; top:3px; transition:left 0.2s;
+}
+.toggle-dot.on { left:23px; }
+.toggle-dot.off { left:3px; }
+
+/* Interest rate row */
+.interest-row { display:flex; gap:10px; }
+.interest-col { flex:1; }
+
+/* Frequency selector row */
+.freq-row { display:flex; gap:8px; }
+.freq-btn {
+  flex:1; padding:8px 0; border-radius:8px; border:none; cursor:pointer;
+  font-size:12px; font-weight:700; text-transform:capitalize;
+}
+.freq-btn.active { background:var(--teal-50, var(--primary-dim)); color:var(--viya-primary-700); }
+.freq-btn.inactive { background:var(--bg-secondary); color:var(--text-tertiary); }
+
+/* Full-width gradient submit */
+.btn-submit-gradient {
+  width:100%; padding:14px 0; border-radius:12px; border:none;
+  background:var(--gradient-primary); color:#fff;
+  font-size:15px; font-weight:700; cursor:pointer; margin-top:8px;
+}
+
+/* Skeleton helpers */
+.skeleton-row { display:flex; gap:10px; margin-bottom:16px; }
+.skeleton-card { flex:1; height:100px; border-radius:14px; }
+.skeleton-item { height:72px; border-radius:14px; margin-bottom:10px; }
+
+/* --- Reminders page --- */
+
+/* Smart reminders status card */
+.reminder-status-card {
+  background:linear-gradient(135deg, var(--primary-dim), var(--cyan-dim));
+  border:1px solid var(--border2); border-radius:16px;
+  padding:16px 18px; margin-bottom:20px;
+}
+.reminder-status-header { display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+.reminder-status-title { font-size:13px; font-weight:700; color:var(--primary); }
+.reminder-status-channels { display:flex; gap:8px; flex-wrap:wrap; }
+.reminder-channel { display:flex; align-items:center; gap:4px; font-size:12px; color:var(--text); }
+.reminder-status-count { font-size:11px; color:var(--text3); margin-top:6px; }
+
+/* Notification permission banner */
+.notif-permission-banner {
+  background:var(--surface); border:1px solid var(--border2); border-radius:12px;
+  padding:12px 16px; margin-bottom:16px;
+  display:flex; align-items:center; gap:10px;
+}
+.notif-permission-body { flex:1; }
+.notif-permission-title { font-size:13px; font-weight:700; }
+.notif-permission-desc { font-size:11px; color:var(--text3); }
+
+/* Add reminder panel */
+.reminder-add-panel {
+  background:var(--surface); border:1px solid var(--border2); border-radius:16px;
+  padding:20px; margin-bottom:20px; animation:slideUp 0.3s var(--ease);
+}
+.reminder-add-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.reminder-add-title { font-size:15px; font-weight:700; }
+.reminder-close-btn { background:none; border:none; color:var(--text3); cursor:pointer; }
+
+/* Section label for reminders */
+.reminder-section-label {
+  font-size:12px; font-weight:700; color:var(--text3);
+  margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;
+}
+
+/* Preset list */
+.preset-list { display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
+.preset-item {
+  display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--bg2); border:1px solid var(--border); border-radius:10px;
+  cursor:pointer; font-family:inherit; color:var(--text); text-align:left;
+  width:100%; transition:all 0.2s;
+}
+.preset-emoji { font-size:18px; }
+.preset-body { flex:1; }
+.preset-title { font-size:13px; font-weight:700; }
+.preset-desc { font-size:11px; color:var(--text3); }
+.preset-freq {
+  font-size:11px; font-weight:700; padding:3px 8px;
+  background:var(--surface); border-radius:6px;
+}
+
+/* Frequency selector for reminders */
+.reminder-freq-bar { display:flex; gap:4px; margin-bottom:10px; }
+.reminder-freq-btn {
+  flex:1; padding:8px; border-radius:8px; font-size:12px; font-weight:700;
+  cursor:pointer; font-family:inherit;
+  display:flex; align-items:center; justify-content:center; gap:4px;
+}
+
+/* Weekday/date selector */
+.day-selector { display:flex; gap:4px; flex-wrap:wrap; }
+.day-btn {
+  padding:6px 10px; border-radius:8px; font-size:11px; font-weight:700;
+  cursor:pointer; font-family:inherit;
+}
+.date-btn {
+  padding:6px 12px; border-radius:8px; font-size:12px; font-weight:700;
+  cursor:pointer; font-family:inherit;
+}
+
+/* Time input row */
+.time-input-row { display:flex; gap:8px; margin-bottom:12px; }
+.time-input-col { flex:1; }
+.time-label { font-size:11px; font-weight:700; color:var(--text3); margin-bottom:4px; }
+
+/* Reminder set hint */
+.reminder-hint { font-size:11px; color:var(--text3); text-align:center; margin-top:6px; }
+
+/* Reminder list */
+.reminder-list { display:flex; flex-direction:column; gap:8px; }
+.reminder-item {
+  display:flex; align-items:center; gap:12px; padding:14px 16px;
+  background:var(--surface); border:1px solid var(--border); border-radius:14px;
+  transition:all 0.3s var(--ease);
+}
+.reminder-item.disabled { opacity:0.45; }
+.reminder-emoji { font-size:22px; }
+.reminder-body { flex:1; }
+.reminder-title { font-size:14px; font-weight:700; }
+.reminder-schedule { font-size:11px; font-weight:600; margin-top:2px; }
+.reminder-meta { display:flex; align-items:center; gap:8px; margin-top:3px; }
+.reminder-next { font-size:10px; color:var(--text3); }
+.reminder-wa { font-size:10px; color:var(--primary); display:flex; align-items:center; gap:2px; }
+
+/* Reminder toggle */
+.reminder-toggle {
+  width:38px; height:22px; border-radius:11px; padding:2px;
+  cursor:pointer; border:none; transition:all 0.3s;
+}
+.reminder-toggle.on { background:var(--primary); }
+.reminder-toggle.off { background:var(--surface3); }
+.reminder-toggle-dot {
+  width:18px; height:18px; border-radius:50%; background:#fff;
+  transition:transform 0.3s; box-shadow:0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Delete button for reminders */
+.reminder-delete-btn { background:none; border:none; color:var(--text3); cursor:pointer; padding:4px; }
+
+/* Loading state */
+.loading-center { text-align:center; color:var(--text3); padding:40px; }

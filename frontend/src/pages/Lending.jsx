@@ -93,31 +93,30 @@ export default function Lending() {
 
   return (
     <PageTransition>
-      <div className="page" style={{ paddingTop: 8, paddingBottom: 100 }}>
+      <div className="page page-padded">
         {toast && <div className="toast">{toast}</div>}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div className="page-header-lending">
           <div>
-            <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22 }}>Lending</h1>
+            <h1>Lending</h1>
             <p className="body-s text-secondary">Track money given & taken 💰</p>
           </div>
           <motion.button whileTap={{ scale: 0.92 }}
             onClick={() => setShowAdd(true)}
-            style={{ padding: '10px 16px', borderRadius: 12, border: 'none', background: 'var(--gradient-primary)', color: '#fff', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+            className="btn-add-gradient">
             <Plus size={16} /> Add
           </motion.button>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <div className="lending-tab-bar">
           {TABS.map(t => (
             <motion.button key={t.key} whileTap={{ scale: 0.96 }}
               onClick={() => setTab(t.key)}
+              className="lending-tab-btn"
               style={{
-                flex: 1, padding: '12px 16px', borderRadius: 12, border: 'none',
                 background: tab === t.key ? (t.key === 'given' ? 'var(--cosmos-50)' : 'var(--emerald-50)') : 'var(--bg-secondary)',
                 color: tab === t.key ? t.hex : 'var(--text-secondary)',
-                fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer',
                 border: tab === t.key ? `1.5px solid ${t.hex}30` : '1px solid transparent',
               }}>
               {t.icon} Money {t.label}
@@ -128,52 +127,40 @@ export default function Lending() {
         {/* Loading Skeleton */}
         {loading ? (
           <div>
-            {/* Summary card skeleton */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              style={{ display: 'flex', gap: 10, marginBottom: 16 }}
-            >
-              <div className="skeleton" style={{ flex: 1, height: 100, borderRadius: 14 }} />
-              <div className="skeleton" style={{ flex: 1, height: 100, borderRadius: 14 }} />
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="skeleton-row">
+              <div className="skeleton skeleton-card" />
+              <div className="skeleton skeleton-card" />
             </motion.div>
-
-            {/* Lending item skeletons */}
             {[0, 1, 2].map(i => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 + i * 0.08 }}
-                className="skeleton"
-                style={{ height: 72, borderRadius: 14, marginBottom: 10 }}
-              />
+              <motion.div key={i} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + i * 0.08 }} className="skeleton skeleton-item" />
             ))}
           </div>
         ) : (
           <>
             {/* Stats */}
-            <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+            <div className="stat-summary-row">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                style={{ flex: 1, padding: '14px 12px', borderRadius: 14, textAlign: 'center',
-                  background: tabDim,
-                  border: `1px solid ${tabHex}18` }}>
-                <div style={{ fontFamily: 'var(--mono)', fontSize: 20, fontWeight: 800, color: tabColor }}>
+                className="stat-summary-card"
+                style={{ background: tabDim, border: `1px solid ${tabHex}18` }}>
+                <div className="stat-summary-value" style={{ color: tabColor }}>
                   ₹{pendingTotal.toLocaleString()}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5 }}>PENDING</div>
+                <div className="stat-summary-label">PENDING</div>
               </motion.div>
               {interestTotal > 0 && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                  style={{ flex: 1, padding: '14px 12px', borderRadius: 14, textAlign: 'center', background: 'var(--amber-50)', border: '1px solid rgba(255,152,0,0.12)' }}>
-                  <div style={{ fontFamily: 'var(--mono)', fontSize: 20, fontWeight: 800, color: 'var(--amber-500)' }}>₹{interestTotal.toLocaleString()}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5 }}>INTEREST</div>
+                  className="stat-summary-card"
+                  style={{ background: 'var(--amber-50)', border: '1px solid rgba(255,152,0,0.12)' }}>
+                  <div className="stat-summary-value" style={{ color: 'var(--amber-500)' }}>₹{interestTotal.toLocaleString()}</div>
+                  <div className="stat-summary-label">INTEREST</div>
                 </motion.div>
               )}
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                style={{ flex: 1, padding: '14px 12px', borderRadius: 14, textAlign: 'center', background: 'var(--viya-success-light)', border: '1px solid rgba(0,232,126,0.12)' }}>
-                <div style={{ fontFamily: 'var(--mono)', fontSize: 20, fontWeight: 800, color: 'var(--viya-success)' }}>₹{settledTotal.toLocaleString()}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5 }}>SETTLED</div>
+                className="stat-summary-card"
+                style={{ background: 'var(--viya-success-light)', border: '1px solid rgba(0,232,126,0.12)' }}>
+                <div className="stat-summary-value text-success">₹{settledTotal.toLocaleString()}</div>
+                <div className="stat-summary-label">SETTLED</div>
               </motion.div>
             </div>
 
@@ -184,11 +171,11 @@ export default function Lending() {
                 <h3>No {tab === 'given' ? 'lendings' : 'borrowings'} yet</h3>
                 <p>{tab === 'given' ? 'Record money you\'ve lent to others' : 'Track money you\'ve borrowed'}</p>
                 <button className="btn-primary" onClick={() => setShowAdd(true)}>
-                  <Plus size={16} style={{ marginRight: 4 }} /> Add {tab === 'given' ? 'Lending' : 'Borrowing'}
+                  <Plus size={16} /> Add {tab === 'given' ? 'Lending' : 'Borrowing'}
                 </button>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className="lending-list">
                 {filtered.map((entry, i) => {
                   const interest = calcInterest(entry)
                   const totalOwed = Number(entry.amount) + interest
@@ -196,55 +183,47 @@ export default function Lending() {
                   return (
                     <motion.div key={entry.id}
                       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                      style={{
-                        padding: 16, borderRadius: 14, background: 'var(--bg-card)',
-                        border: isOverdue ? '1.5px solid var(--coral-400)' : '1px solid var(--border-light)',
-                        opacity: entry.status === 'settled' ? 0.5 : 1,
-                      }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{
-                            width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700,
-                            background: tabDim,
-                            color: tabColor,
-                          }}>
+                      className={`lending-card${isOverdue ? ' overdue' : ''}${entry.status === 'settled' ? ' settled' : ''}`}>
+                      <div className="lending-card-top">
+                        <div className="lending-card-person">
+                          <div className="lending-card-avatar" style={{ background: tabDim, color: tabColor }}>
                             {entry.person_name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div style={{ fontSize: 15, fontWeight: 700 }}>{entry.person_name}</div>
-                            {entry.reason && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{entry.reason}</div>}
+                            <div className="lending-card-name">{entry.person_name}</div>
+                            {entry.reason && <div className="lending-card-reason">{entry.reason}</div>}
                           </div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontFamily: 'var(--mono)', fontSize: 18, fontWeight: 800, color: tabColor }}>
+                        <div className="text-right">
+                          <div className="lending-card-amount" style={{ color: tabColor }}>
                             ₹{totalOwed.toLocaleString()}
                           </div>
                           {interest > 0 && (
-                            <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--amber-500)', fontWeight: 600 }}>
+                            <div className="lending-card-interest">
                               +₹{interest.toLocaleString()} interest
                             </div>
                           )}
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                      <div className="lending-card-tags">
                         {entry.has_interest && (
-                          <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: 'var(--amber-50)', color: 'var(--amber-500)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <span className="lending-tag interest">
                             <Percent size={10} /> {entry.interest_rate}% {entry.interest_type}
                           </span>
                         )}
                         {entry.due_date && (
-                          <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: isOverdue ? 'var(--coral-50)' : 'var(--cosmos-50)', color: isOverdue ? 'var(--coral-500)' : 'var(--cosmos-400)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <span className={`lending-tag ${isOverdue ? 'overdue' : 'due'}`}>
                             <Calendar size={10} /> {new Date(entry.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                             {isOverdue && ' ⚠️ OVERDUE'}
                           </span>
                         )}
                         {entry.reminder_enabled && entry.status === 'pending' && (
-                          <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: 'var(--teal-50)', color: 'var(--viya-primary-700)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <span className="lending-tag reminder">
                             <Bell size={10} /> {entry.reminder_frequency} reminder
                           </span>
                         )}
-                        <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: entry.status === 'settled' ? 'var(--viya-success-light)' : 'var(--bg-secondary)', color: entry.status === 'settled' ? 'var(--viya-success)' : 'var(--text-tertiary)', fontWeight: 700 }}>
+                        <span className={`lending-tag ${entry.status === 'settled' ? 'settled' : 'pending'}`}>
                           {entry.status === 'settled' ? '✅ Settled' : '⏳ Pending'}
                         </span>
                       </div>
@@ -252,7 +231,7 @@ export default function Lending() {
                       {entry.status === 'pending' && (
                         <motion.button whileTap={{ scale: 0.95 }}
                           onClick={() => markSettled(entry.id)}
-                          style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: '1.5px solid rgba(0,232,126,0.2)', background: 'var(--viya-success-light)', color: 'var(--viya-success)', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                          className="btn-settle">
                           <Check size={14} /> Mark as Settled
                         </motion.button>
                       )}
@@ -270,66 +249,59 @@ export default function Lending() {
             <>
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 onClick={() => setShowAdd(false)}
-                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100 }} />
+                className="sheet-overlay-lending" />
               <motion.div
                 initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                style={{
-                  position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 101,
-                  background: 'var(--bg-primary)', borderRadius: '24px 24px 0 0',
-                  padding: '24px 20px', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))',
-                  maxHeight: '85vh', overflowY: 'auto',
-                }}>
-                <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border-light)', margin: '0 auto 16px' }} />
-                <h3 style={{ fontFamily: "'Sora',sans-serif", fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
+                className="sheet-lending">
+                <div className="sheet-handle" />
+                <h3 className="sheet-title">
                   {tab === 'given' ? '💸 Money Given' : '📥 Money Taken'}
                 </h3>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div className="sheet-form">
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Person Name *</label>
+                    <label className="form-label">Person Name *</label>
                     <input className="form-input" placeholder="e.g. Rahul, Mom" value={form.person}
-                      onChange={e => setForm(p => ({ ...p, person: e.target.value }))} style={{ width: '100%' }} />
+                      onChange={e => setForm(p => ({ ...p, person: e.target.value }))} />
                   </div>
 
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Amount (₹) *</label>
+                    <label className="form-label">Amount (₹) *</label>
                     <input className="form-input" type="number" placeholder="5000" value={form.amount}
-                      onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} style={{ width: '100%' }} />
+                      onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} />
                   </div>
 
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Reason</label>
+                    <label className="form-label">Reason</label>
                     <input className="form-input" placeholder="e.g. Emergency, Business, Personal" value={form.reason}
-                      onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} style={{ width: '100%' }} />
+                      onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} />
                   </div>
 
                   {/* Interest Toggle */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 12, background: 'var(--bg-secondary)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div className="toggle-row">
+                    <div className="toggle-row-left">
                       <Percent size={16} color="var(--amber-500)" />
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>With Interest?</span>
+                      <span className="toggle-row-label">With Interest?</span>
                     </div>
                     <button onClick={() => setForm(p => ({ ...p, hasInterest: !p.hasInterest }))}
-                      style={{ width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', position: 'relative',
-                        background: form.hasInterest ? 'var(--viya-primary-500)' : 'var(--border-light)', transition: 'background 0.2s' }}>
-                      <div style={{ width: 18, height: 18, borderRadius: 9, background: '#fff', position: 'absolute', top: 3,
-                        left: form.hasInterest ? 23 : 3, transition: 'left 0.2s' }} />
+                      className={`toggle-switch ${form.hasInterest ? 'on' : 'off'}`}>
+                      <div className={`toggle-dot ${form.hasInterest ? 'on' : 'off'}`} />
                     </button>
                   </div>
 
                   {form.hasInterest && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
-                      style={{ display: 'flex', gap: 10 }}>
-                      <div style={{ flex: 1 }}>
-                        <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 4, display: 'block' }}>Rate (%)</label>
+                      className="interest-row">
+                      <div className="interest-col">
+                        <label className="form-label-sm">Rate (%)</label>
                         <input className="form-input" type="number" placeholder="2" value={form.interestRate}
-                          onChange={e => setForm(p => ({ ...p, interestRate: e.target.value }))} style={{ width: '100%' }} />
+                          onChange={e => setForm(p => ({ ...p, interestRate: e.target.value }))} />
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 4, display: 'block' }}>Type</label>
+                      <div className="interest-col">
+                        <label className="form-label-sm">Type</label>
                         <select className="form-input" value={form.interestType}
-                          onChange={e => setForm(p => ({ ...p, interestType: e.target.value }))} style={{ width: '100%' }}>
+                          onChange={e => setForm(p => ({ ...p, interestType: e.target.value }))}>
                           <option value="monthly">Monthly</option>
                           <option value="yearly">Yearly</option>
                         </select>
@@ -338,44 +310,37 @@ export default function Lending() {
                   )}
 
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Due Date (optional)</label>
+                    <label className="form-label">Due Date (optional)</label>
                     <input className="form-input" type="date" value={form.dueDate}
-                      onChange={e => setForm(p => ({ ...p, dueDate: e.target.value }))} style={{ width: '100%' }} />
+                      onChange={e => setForm(p => ({ ...p, dueDate: e.target.value }))} />
                   </div>
 
                   {/* Reminder Toggle */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 12, background: 'var(--bg-secondary)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div className="toggle-row">
+                    <div className="toggle-row-left">
                       <Bell size={16} color="var(--viya-primary-500)" />
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>Send Reminders</span>
+                      <span className="toggle-row-label">Send Reminders</span>
                     </div>
                     <button onClick={() => setForm(p => ({ ...p, reminderEnabled: !p.reminderEnabled }))}
-                      style={{ width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', position: 'relative',
-                        background: form.reminderEnabled ? 'var(--viya-primary-500)' : 'var(--border-light)', transition: 'background 0.2s' }}>
-                      <div style={{ width: 18, height: 18, borderRadius: 9, background: '#fff', position: 'absolute', top: 3,
-                        left: form.reminderEnabled ? 23 : 3, transition: 'left 0.2s' }} />
+                      className={`toggle-switch ${form.reminderEnabled ? 'on' : 'off'}`}>
+                      <div className={`toggle-dot ${form.reminderEnabled ? 'on' : 'off'}`} />
                     </button>
                   </div>
 
                   {form.reminderEnabled && (
                     <div>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 4, display: 'block' }}>Frequency</label>
-                      <div style={{ display: 'flex', gap: 8 }}>
+                      <label className="form-label-sm">Frequency</label>
+                      <div className="freq-row">
                         {['daily', 'weekly', 'monthly'].map(f => (
                           <button key={f} onClick={() => setForm(p => ({ ...p, reminderFrequency: f }))}
-                            style={{
-                              flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
-                              background: form.reminderFrequency === f ? 'var(--teal-50)' : 'var(--bg-secondary)',
-                              color: form.reminderFrequency === f ? 'var(--viya-primary-700)' : 'var(--text-tertiary)',
-                              fontSize: 12, fontWeight: 700, textTransform: 'capitalize',
-                            }}>{f}</button>
+                            className={`freq-btn ${form.reminderFrequency === f ? 'active' : 'inactive'}`}>{f}</button>
                         ))}
                       </div>
                     </div>
                   )}
 
                   <motion.button whileTap={{ scale: 0.96 }} onClick={addEntry}
-                    style={{ width: '100%', padding: '14px 0', borderRadius: 12, border: 'none', background: 'var(--gradient-primary)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 8 }}>
+                    className="btn-submit-gradient">
                     {tab === 'given' ? '💸 Record Lending' : '📥 Record Borrowing'}
                   </motion.button>
                 </div>
