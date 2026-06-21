@@ -31,6 +31,33 @@ export default function Reminders() {
     }
   }, [phone])
 
+  // Check for due reminders every 30 seconds while the page is open
+  useEffect(() => {
+    function checkReminders() {
+      const now = new Date()
+      reminders.forEach(r => {
+        if (!r.enabled) return
+        const [hours, mins] = (r.time || '09:00').split(':').map(Number)
+        const target = new Date()
+        target.setHours(hours, mins, 0, 0)
+        const diff = target - now
+        // Due within the next 60 seconds (so 30s interval catches it)
+        if (diff >= 0 && diff < 60000) {
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(`${r.icon || '⏰'} ${r.title}`, {
+              body: r.description || 'Time for your reminder!',
+              icon: '/logo-192.png',
+              tag: `reminder-check-${r.id}`,
+            })
+          }
+          showMsg(`⏰ ${r.title} - it's time!`)
+        }
+      })
+    }
+    const interval = setInterval(checkReminders, 30000)
+    return () => clearInterval(interval)
+  }, [reminders])
+
   const loadReminders = async () => {
     setLoading(true)
     const data = await api.getUserReminders(phone)
@@ -159,6 +186,23 @@ export default function Reminders() {
           ✅ {reminders.filter(r => r.enabled).length} active reminder(s) — fires on WhatsApp accurately to the minute
         </div>
       </div>
+
+      {/* Notification Permission Prompt */}
+      {'Notification' in window && Notification.permission !== 'granted' && (
+        <div style={{background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:12, padding:'12px 16px', marginBottom:16, display:'flex', alignItems:'center', gap:10}}>
+          <Bell size={18} color="var(--primary)"/>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13, fontWeight:700}}>Enable browser notifications</div>
+            <div style={{fontSize:11, color:'var(--text3)'}}>Get notified when your reminders are due, even if the tab is in the background.</div>
+          </div>
+          <button className="btn-primary" style={{padding:'6px 14px', fontSize:12, borderRadius:8}} onClick={() => {
+            Notification.requestPermission().then(p => {
+              if (p === 'granted') showMsg('Notifications enabled!')
+              else showMsg('Notifications blocked. Enable in browser settings.')
+            })
+          }}>Enable</button>
+        </div>
+      )}
 
       {/* Add Panel */}
       {showAdd && (

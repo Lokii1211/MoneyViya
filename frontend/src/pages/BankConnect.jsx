@@ -296,6 +296,9 @@ export default function BankConnect() {
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>Active — monitoring bank SMS</span>
           </div>
         )}
+        <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--surface2, rgba(255,255,255,0.05))', borderRadius: 8, fontSize: 12, color: 'var(--text3)', lineHeight: 1.5 }}>
+          On Android app, bank SMS will be auto-detected. On web, use <strong style={{ color: 'var(--text2)' }}>Paste SMS</strong> below to manually add transactions from bank messages.
+        </div>
       </motion.div>
 
       {/* ═══════ Section 2: Select Banks ═══════ */}
@@ -339,6 +342,9 @@ export default function BankConnect() {
             {connectedBanks.length} bank{connectedBanks.length > 1 ? 's' : ''} connected
           </div>
         )}
+        <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--surface2, rgba(255,255,255,0.05))', borderRadius: 8, fontSize: 12, color: 'var(--text3)', lineHeight: 1.5 }}>
+          Selected banks' SMS patterns will be recognized when you paste or import transactions.
+        </div>
         <div className="trust-row">
           <div className="trust-badge"><Shield size={12} /> RBI regulated</div>
           <div className="trust-badge"><Lock size={12} /> Read-only</div>

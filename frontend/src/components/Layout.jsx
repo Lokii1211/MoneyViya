@@ -4,20 +4,24 @@ import { Home, Mail, Wallet, Heart, User, Bell, Search } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNotificationStore } from '../stores'
 import { useHaptics } from '../hooks/useHaptics'
+import { t } from '../lib/i18n'
 
-const NAV_ITEMS = [
-  { to: '/', icon: Home, label: 'Home', end: true },
-  { to: '/email', icon: Mail, label: 'Inbox' },
-  { to: '/wealth', icon: Wallet, label: 'Wealth', center: true },
-  { to: '/health', icon: Heart, label: 'Health' },
-  { to: '/profile', icon: User, label: 'Me' },
-]
+function getNavItems() {
+  return [
+    { to: '/', icon: Home, label: t('home'), end: true },
+    { to: '/email', icon: Mail, label: 'Inbox' },
+    { to: '/wealth', icon: Wallet, label: 'Wealth', center: true },
+    { to: '/health', icon: Heart, label: 'Health' },
+    { to: '/profile', icon: User, label: t('profile') },
+  ]
+}
 
 function AnimatedTabBar() {
   const location = useLocation()
   const haptics = useHaptics()
+  const navItems = getNavItems()
 
-  const activeIndex = NAV_ITEMS.findIndex(item =>
+  const activeIndex = navItems.findIndex(item =>
     item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)
   )
 
@@ -34,7 +38,7 @@ function AnimatedTabBar() {
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
       />
 
-      {NAV_ITEMS.map((item) => (
+      {navItems.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}

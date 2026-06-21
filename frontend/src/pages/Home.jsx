@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
-import { useCountUp, getCurrentFestival, formatINR, getGreeting, getGreetingEmoji } from '../lib/utils'
+import { useCountUp, getCurrentFestival, formatINR, getGreeting, getGreetingEmoji, getGreetingKey } from '../lib/utils'
+import { t } from '../lib/i18n'
 import { TrendingUp, TrendingDown, Plus, Flame, Target, BarChart3, Zap, Activity, CreditCard, MessageCircle, Link2 } from 'lucide-react'
 
 const BRIEF_ITEMS_POOL = {
@@ -135,7 +136,7 @@ export default function Home() {
           <div className="home-greeting">
             <div className="avatar">{localStorage.getItem('mv_avatar') || name.charAt(0).toUpperCase()}</div>
             <div>
-              <div className="home-greeting-name">{getGreeting()}, {name.split(' ')[0]}! {getGreetingEmoji()}</div>
+              <div className="home-greeting-name">{t(getGreetingKey())}, {name.split(' ')[0]}! {getGreetingEmoji()}</div>
               <div className="body-s text-secondary">{formatDateLine()}</div>
             </div>
           </div>

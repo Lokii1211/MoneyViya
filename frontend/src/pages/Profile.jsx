@@ -5,7 +5,7 @@ import { api } from '../lib/supabase'
 import { formatINR } from '../lib/utils'
 import { useNavigate } from 'react-router-dom'
 import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown, Clock, FileText, Lock, Smartphone, Mail } from 'lucide-react'
-import { LANGUAGES } from '../lib/i18n'
+import { LANGUAGES, setLang, t, getLang } from '../lib/i18n'
 
 const AVATARS = ['😎','🦊','🐱','🐶','🦁','🐼','🐨','🦄','🐸','🐵','🦋','🌺','🌈','⭐','🔥','💎','🎯','🚀','🎓','💼']
 
@@ -18,6 +18,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false)
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [selectedAvatar, setSelectedAvatar] = useState(localStorage.getItem('mv_avatar') || '')
+  const [toast, setToast] = useState('')
   const [editForm, setEditForm] = useState({
     name: '', age: '', city: '', occupation: '', monthly_income: '', daily_budget: ''
   })
@@ -89,7 +90,8 @@ export default function Profile() {
 
   return (
     <div className="page profile-page">
-      <header className="page-header"><div className="header-left"><h2>Profile</h2></div></header>
+      {toast && <div className="toast">{toast}</div>}
+      <header className="page-header"><div className="header-left"><h2>{t('profile')}</h2></div></header>
 
       {/* Loading Skeleton */}
       {loading ? (
@@ -433,14 +435,16 @@ export default function Profile() {
           <div className="section-head" style={{marginTop:16}}><h3>More Settings</h3></div>
           <div className="settings-group">
             <button className="settings-item" onClick={() => {
-              const current = localStorage.getItem('mv_lang') || 'en'
+              const current = getLang()
               const idx = LANGUAGES.findIndex(l => l.code === current)
-              const next = LANGUAGES[(idx + 1) % LANGUAGES.length].code
-              localStorage.setItem('mv_lang', next)
-              window.location.reload()
+              const nextLang = LANGUAGES[(idx + 1) % LANGUAGES.length]
+              setLang(nextLang.code)
+              setToast(`Language changed to ${nextLang.native}`)
+              setTimeout(() => setToast(''), 2500)
+              setTimeout(() => window.location.reload(), 800)
             }}>
               <div className="si-icon">🌐</div>
-              <div className="si-info"><div className="si-label">Language</div><div className="si-sub">{LANGUAGES.find(l => l.code === (localStorage.getItem('mv_lang') || 'en'))?.native || 'English'} — tap to switch</div></div>
+              <div className="si-info"><div className="si-label">{t('language')}</div><div className="si-sub">{LANGUAGES.find(l => l.code === getLang())?.native || 'English'} — tap to switch</div></div>
               <ChevronRight size={16} className="si-arrow"/>
             </button>
             <button className="settings-item" onClick={() => nav('/family')}>

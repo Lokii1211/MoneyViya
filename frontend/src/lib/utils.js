@@ -20,6 +20,11 @@ export function getGreeting() {
   if (h < 5) return 'Good night'; if (h < 12) return 'Good morning'
   if (h < 17) return 'Good afternoon'; return 'Good evening'
 }
+export function getGreetingKey() {
+  const h = new Date().getHours()
+  if (h < 5) return 'greeting_night'; if (h < 12) return 'greeting_morning'
+  if (h < 17) return 'greeting_afternoon'; return 'greeting_evening'
+}
 export function getGreetingEmoji() {
   const h = new Date().getHours()
   if (h < 5) return '🌙'; if (h < 12) return '☀️'; if (h < 17) return '🌤️'; return '🌙'
