@@ -89,12 +89,47 @@ export default function Goals() {
 
       {/* Milestone Celebration Overlay */}
       {celebration && (
-        <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.7)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', animation:'fadeIn 0.3s'}}>
-          <div style={{background:'var(--surface)', borderRadius:24, padding:32, textAlign:'center', maxWidth:320, animation:'scaleIn 0.4s var(--ease)', margin:16}}>
-            <div style={{fontSize:64, marginBottom:8}}>{celebration.emoji}</div>
-            <div style={{fontSize:22, fontWeight:900, color:'var(--primary)', marginBottom:4}}>{celebration.label}</div>
-            <div style={{fontSize:14, color:'var(--text2)', marginBottom:12}}>{celebration.goalIcon} {celebration.goalName}</div>
-            <div style={{fontSize:13, color:'var(--text3)', lineHeight:1.5}}>{celebration.msg}</div>
+        <div className="celebration-overlay" style={{position:'fixed', top:0, left:0, right:0, bottom:0, background: celebration.pct >= 100 ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.7)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', animation:'fadeIn 0.3s'}}>
+          {/* Confetti particles for 100% */}
+          {celebration.pct >= 100 && (
+            <div style={{position:'absolute', inset:0, overflow:'hidden', pointerEvents:'none'}}>
+              {Array.from({length: 40}).map((_, i) => (
+                <div key={i} style={{
+                  position:'absolute',
+                  left: `${Math.random() * 100}%`,
+                  top: '-10%',
+                  width: Math.random() * 8 + 4,
+                  height: Math.random() * 8 + 4,
+                  borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+                  background: ['#FFD700','#FF6B6B','#00E5B0','#5514FF','#FF9F43','#54A0FF','#FF78C4'][i % 7],
+                  animation: `confettiFall ${1.5 + Math.random() * 2}s ease-in ${Math.random() * 0.8}s forwards`,
+                  transform: `rotate(${Math.random() * 360}deg)`,
+                }} />
+              ))}
+            </div>
+          )}
+          <div style={{
+            background: celebration.pct >= 100
+              ? 'linear-gradient(145deg, #1a1a2e, #16213e)'
+              : 'var(--surface)',
+            borderRadius:24, padding:40, textAlign:'center', maxWidth:340,
+            animation:'scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+            margin:16, position:'relative', overflow:'hidden',
+            border: celebration.pct >= 100 ? '2px solid #FFD700' : '1px solid var(--border)',
+            boxShadow: celebration.pct >= 100 ? '0 0 60px rgba(255,215,0,0.3), 0 0 120px rgba(255,215,0,0.1)' : 'none'
+          }}>
+            {celebration.pct >= 100 && (
+              <div style={{position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(255,215,0,0.08), transparent, rgba(255,165,0,0.08))', pointerEvents:'none'}} />
+            )}
+            <div style={{fontSize:72, marginBottom:12, animation:'bounceIn 0.6s ease'}}>{celebration.emoji}</div>
+            <div style={{fontSize:24, fontWeight:900, color: celebration.pct >= 100 ? '#FFD700' : 'var(--primary)', marginBottom:6, letterSpacing:1}}>{celebration.label}</div>
+            <div style={{fontSize:15, color:'var(--text2)', marginBottom:14}}>{celebration.goalIcon} {celebration.goalName}</div>
+            <div style={{fontSize:14, color:'var(--text3)', lineHeight:1.6, marginBottom:16}}>{celebration.msg}</div>
+            {celebration.pct >= 100 && (
+              <div style={{display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,215,0,0.15)', padding:'8px 18px', borderRadius:20, fontSize:13, color:'#FFD700', fontWeight:700}}>
+                <Trophy size={16} /> Achievement Unlocked!
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -187,20 +222,48 @@ export default function Goals() {
 
                   {/* Progress with milestone markers */}
                   <div style={{position:'relative', marginBottom:4}}>
-                    <div className="progress-bar"><div className="progress-fill" style={{width: pct + '%'}} /></div>
-                    <div style={{display:'flex', justifyContent:'space-between', marginTop:4}}>
-                      {MILESTONES.filter(m => m.pct <= 100).map(m => (
-                        <div key={m.pct} style={{fontSize:9, color: pct >= m.pct ? 'var(--primary)' : 'var(--text3)', fontWeight: pct >= m.pct ? 700 : 400}}>
-                          {pct >= m.pct ? '✓' : m.pct + '%'}
+                    <div className="progress-bar" style={{position:'relative', overflow:'visible', height:8, marginBottom:16}}>
+                      <div className="progress-fill" style={{width: pct + '%', height:'100%'}} />
+                      {/* Milestone dots on the bar */}
+                      {[25, 50, 75, 100].map(m => (
+                        <div key={m} style={{
+                          position:'absolute',
+                          left: `${m}%`,
+                          top:'50%',
+                          transform:'translate(-50%, -50%)',
+                          width: pct >= m ? 14 : 10,
+                          height: pct >= m ? 14 : 10,
+                          borderRadius:'50%',
+                          background: pct >= m ? 'var(--primary)' : 'var(--bg2)',
+                          border: pct >= m ? '2px solid var(--primary-light)' : '2px solid var(--border2)',
+                          boxShadow: pct >= m ? '0 0 8px var(--primary-glow)' : 'none',
+                          transition:'all 0.4s var(--ease)',
+                          zIndex:2,
+                          display:'flex', alignItems:'center', justifyContent:'center',
+                          fontSize:7, color:'#fff', fontWeight:800,
+                        }}>
+                          {pct >= m && '✓'}
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{display:'flex', justifyContent:'space-between', fontSize:10, color:'var(--text3)', paddingLeft:2, paddingRight:0}}>
+                      {[25, 50, 75, 100].map(m => (
+                        <div key={m} style={{textAlign:'center', width:30, color: pct >= m ? 'var(--primary)' : 'var(--text3)', fontWeight: pct >= m ? 700 : 400}}>
+                          {m}%
                         </div>
                       ))}
                     </div>
                   </div>
 
                   <div className="goal-amounts">
-                    <span>₹{Number(g.current_amount)}</span>
-                    <span>₹{Number(g.target_amount)}</span>
+                    <span style={{color:'var(--primary)', fontWeight:700}}>₹{Number(g.current_amount).toLocaleString('en-IN')}</span>
+                    <span>of ₹{Number(g.target_amount).toLocaleString('en-IN')}</span>
                   </div>
+                  {remaining > 0 && (
+                    <div style={{fontSize:13, color:'var(--text2)', marginTop:6, fontWeight:600}}>
+                      ₹{remaining.toLocaleString('en-IN')} left to reach your goal
+                    </div>
+                  )}
 
                   {/* Next milestone prompt */}
                   {pct < 100 && (
@@ -215,10 +278,12 @@ export default function Goals() {
                     </div>
                   )}
 
-                  <div style={{display:'flex', gap:8, marginTop:12}}>
-                    <input className="form-input" type="number" placeholder="Add ₹..." style={{flex:1, padding:'8px 12px', fontSize:14}} value={addAmt[g.id] || ''} onChange={e => setAddAmt(p => ({...p, [g.id]: e.target.value}))} />
-                    <button className="btn-primary" style={{padding:'8px 16px', fontSize:13}} onClick={() => contribute(g.id)}><TrendingUp size={14} /> Add</button>
-                    <button style={{padding:'8px', background:'var(--red-dim)', border:'1px solid rgba(255,71,87,0.2)', borderRadius:8, color:'var(--red)', cursor:'pointer'}} onClick={() => removeGoal(g.id)}><Trash2 size={14} /></button>
+                  <div style={{display:'flex', gap:8, marginTop:12, alignItems:'center'}}>
+                    <input className="form-input" type="number" placeholder="₹ amount" style={{flex:1, padding:'8px 12px', fontSize:14}} value={addAmt[g.id] || ''} onChange={e => setAddAmt(p => ({...p, [g.id]: e.target.value}))} />
+                    <button className="btn-primary" style={{padding:'8px 18px', fontSize:13, fontWeight:700, whiteSpace:'nowrap'}} onClick={() => contribute(g.id)}>
+                      <Plus size={14} style={{marginRight:2}} /> Add Money
+                    </button>
+                    <button style={{padding:'8px', background:'var(--red-dim)', border:'1px solid rgba(255,71,87,0.2)', borderRadius:8, color:'var(--red)', cursor:'pointer', flexShrink:0}} onClick={() => removeGoal(g.id)}><Trash2 size={14} /></button>
                   </div>
                 </div>
               )

@@ -14,14 +14,38 @@ const PRESETS = [
   { icon: '📝', name: 'Journal' },
   { icon: '🚫', name: 'No junk food' },
   { icon: '⏰', name: 'Wake up early' },
-  { icon: '📱', name: 'No social media 1h' },
   { icon: '🏃', name: 'Run 2km' },
   { icon: '🧮', name: 'Study 2 hours' },
   { icon: '😴', name: 'Sleep by 11 PM' },
+  { icon: '📱', name: 'No social media 1h' },
   { icon: '🚶', name: 'Walk 5000 steps' },
 ]
 
 const MAX_FREE_FREEZES = 2
+
+// Get the current month key for freeze tracking (e.g. "2026-06")
+function getFreezeMonthKey() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+// Load freeze data from localStorage (persists across sessions, resets monthly)
+function loadFreezeData() {
+  try {
+    const raw = localStorage.getItem('mv_freeze_data')
+    if (!raw) return { month: getFreezeMonthKey(), used: 0, frozenHabits: {} }
+    const data = JSON.parse(raw)
+    // Reset if it's a new month (2 free freezes per month)
+    if (data.month !== getFreezeMonthKey()) {
+      return { month: getFreezeMonthKey(), used: 0, frozenHabits: {} }
+    }
+    return data
+  } catch { return { month: getFreezeMonthKey(), used: 0, frozenHabits: {} } }
+}
+
+function saveFreezeData(data) {
+  localStorage.setItem('mv_freeze_data', JSON.stringify(data))
+}
 
 export default function Habits() {
   const { phone } = useApp()
@@ -31,8 +55,12 @@ export default function Habits() {
   const [showAdd, setShowAdd] = useState(false)
   const [custom, setCustom] = useState('')
   const [toast, setToast] = useState('')
-  const [freezesLeft, setFreezesLeft] = useState(MAX_FREE_FREEZES)
-  const [frozenHabits, setFrozenHabits] = useState({})
+  const [freezePrompt, setFreezePrompt] = useState(null) // { habitId, habitName }
+
+  // Load freeze state from localStorage with monthly reset
+  const [freezeData, setFreezeData] = useState(loadFreezeData)
+  const freezesLeft = MAX_FREE_FREEZES - freezeData.used
+  const frozenHabits = freezeData.frozenHabits || {}
 
   const loadData = async () => {
     const [h, c] = await Promise.all([
@@ -130,10 +158,59 @@ export default function Habits() {
     <div className="page">
       {toast && <div className="toast">{toast}</div>}
 
-      {/* Streak Milestone Celebration */}
+      {/* Streak Freeze Prompt */}
+      {freezePrompt && (
+        <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', animation:'fadeIn 0.3s'}}>
+          <div style={{background:'var(--surface)', borderRadius:20, padding:28, textAlign:'center', maxWidth:300, animation:'scaleIn 0.3s var(--ease)', margin:16, border:'1px solid rgba(56,189,248,0.3)'}}>
+            <div style={{fontSize:48, marginBottom:8}}>🧊</div>
+            <div style={{fontSize:17, fontWeight:800, color:'#38bdf8', marginBottom:6}}>Use Streak Freeze?</div>
+            <div style={{fontSize:13, color:'var(--text2)', marginBottom:4}}>
+              {freezePrompt.habitIcon || '✅'} {freezePrompt.habitName}
+            </div>
+            <div style={{fontSize:12, color:'var(--text3)', lineHeight:1.5, marginBottom:16}}>
+              This will preserve your streak for today without checking in. You have <strong style={{color:'#38bdf8'}}>{freezesLeft} freeze{freezesLeft !== 1 ? 's' : ''}</strong> left this month.
+            </div>
+            <div style={{display:'flex', gap:10, justifyContent:'center'}}>
+              <button className="btn-secondary" style={{padding:'8px 20px', fontSize:13, borderRadius:10}} onClick={() => setFreezePrompt(null)}>
+                Cancel
+              </button>
+              <button className="btn-primary" style={{padding:'8px 20px', fontSize:13, borderRadius:10, background:'#38bdf8'}} onClick={() => {
+                const newData = {
+                  ...freezeData,
+                  used: freezeData.used + 1,
+                  frozenHabits: { ...freezeData.frozenHabits, [freezePrompt.habitId]: true },
+                }
+                setFreezeData(newData)
+                saveFreezeData(newData)
+                showToast(`🧊 Streak frozen for ${freezePrompt.habitName}! Protected.`)
+                setFreezePrompt(null)
+              }}>
+                Use Freeze
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Streak Milestone Celebration with confetti */}
       {celebration && (
-        <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.7)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', animation:'fadeIn 0.3s'}}>
-          <div style={{background:'var(--surface)', borderRadius:24, padding:32, textAlign:'center', maxWidth:320, animation:'scaleIn 0.4s var(--ease)', margin:16}}>
+        <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.7)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', animation:'fadeIn 0.3s', overflow:'hidden'}}>
+          {/* Confetti particles */}
+          {Array.from({ length: 30 }).map((_, i) => (
+            <div key={i} style={{
+              position:'absolute',
+              top: -10,
+              left: `${Math.random() * 100}%`,
+              width: 8 + Math.random() * 6,
+              height: 8 + Math.random() * 6,
+              borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+              background: ['#00B870','#F59E0B','#38bdf8','#EF4444','#A855F7','#EC4899','#10B981','#F97316'][i % 8],
+              animation: `confettiFall ${1.5 + Math.random() * 2}s ease-in forwards`,
+              animationDelay: `${Math.random() * 0.5}s`,
+              transform: `rotate(${Math.random() * 360}deg)`,
+            }} />
+          ))}
+          <div style={{background:'var(--surface)', borderRadius:24, padding:32, textAlign:'center', maxWidth:320, animation:'scaleIn 0.4s var(--ease)', margin:16, position:'relative', zIndex:1}}>
             <div style={{fontSize:64, marginBottom:8}}>{celebration.emoji}</div>
             <div style={{fontSize:22, fontWeight:900, color:'var(--primary)', marginBottom:4}}>{celebration.label}</div>
             <div style={{fontSize:14, color:'var(--text2)', marginBottom:12}}>{celebration.habitIcon} {celebration.habitName}</div>
@@ -287,9 +364,7 @@ export default function Habits() {
                 <div style={{display:'flex', alignItems:'center', gap:8}}>
                   {!checkins[h.id] && !frozenHabits[h.id] && freezesLeft > 0 && (h.current_streak || 0) > 0 && (
                     <button className="checkin-btn" onClick={() => {
-                      setFrozenHabits(prev => ({ ...prev, [h.id]: true }))
-                      setFreezesLeft(prev => prev - 1)
-                      showToast(`🧊 Streak frozen for ${h.name}! Protected.`)
+                      setFreezePrompt({ habitId: h.id, habitName: h.name, habitIcon: h.icon })
                     }} style={{color:'#38bdf8', opacity:0.7}} title="Freeze streak">
                       <Snowflake size={16} />
                     </button>

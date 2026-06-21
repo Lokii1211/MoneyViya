@@ -5,11 +5,11 @@ import { formatINR, useCountUp } from '../lib/utils'
 import { useToast } from '../components/Toast'
 import { Plus, TrendingDown, TrendingUp, Trash2, Camera, X, Check, Sparkles } from 'lucide-react'
 
-const CATEGORIES = ['🍔 Food', '🚗 Transport', '🛒 Shopping', '🏠 Rent', '💊 Health', '🎬 Entertainment', '📱 Recharge', '📚 Education', '👔 Work', '🎁 Other']
-const INCOME_CATS = ['💼 Salary', '🏦 Investment', '💸 Freelance', '🎁 Gift', '📱 Cashback', '🎁 Other']
+const CATEGORIES = ['🍔 Food', '🚗 Transport', '🛍️ Shopping', '📱 Bills', '💊 Health', '🎬 Entertainment', '📚 Education', '💳 Other']
+const INCOME_CATS = ['💼 Salary', '🏦 Investment', '💸 Freelance', '🎁 Gift', '📱 Cashback', '💳 Other']
 const QUICK_AMOUNTS = [50, 100, 200, 500, 1000, 2000]
 
-const CAT_MAP = { Food: '🍔 Food', Transport: '🚗 Transport', Shopping: '🛒 Shopping', Rent: '🏠 Rent', Health: '💊 Health', Entertainment: '🎬 Entertainment', Recharge: '📱 Recharge', Education: '📚 Education', Work: '👔 Work', Salary: '💼 Salary', Investment: '🏦 Investment', Other: '🎁 Other' }
+const CAT_MAP = { Food: '🍔 Food', Transport: '🚗 Transport', Shopping: '🛍️ Shopping', Rent: '📱 Bills', Bills: '📱 Bills', Health: '💊 Health', Entertainment: '🎬 Entertainment', Recharge: '📱 Bills', Education: '📚 Education', Work: '💳 Other', Salary: '💼 Salary', Investment: '🏦 Investment', Other: '💳 Other' }
 
 export default function Expenses() {
   const { phone, user } = useApp()
@@ -62,7 +62,7 @@ export default function Expenses() {
       const resp = await fetch(`/api/webhook?action=ocr_bill`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: base64, phone }) })
       const parsed = await resp.json()
       if (parsed.error) { toast.show('Could not read bill. Try clearer image.', 'warning'); setShowOCR(false) }
-      else if (parsed.amount) { setOcrResult({ amount: parsed.amount, type: parsed.type || 'expense', category: CAT_MAP[parsed.category] || '🎁 Other', description: parsed.description || parsed.merchant || '', merchant: parsed.merchant || '' }) }
+      else if (parsed.amount) { setOcrResult({ amount: parsed.amount, type: parsed.type || 'expense', category: CAT_MAP[parsed.category] || '💳 Other', description: parsed.description || parsed.merchant || '', merchant: parsed.merchant || '' }) }
       else { toast.show('Could not detect amount.', 'warning'); setShowOCR(false) }
     } catch { toast.show('OCR failed. Add manually.', 'error'); setShowOCR(false) }
     setOcrLoading(false)
@@ -83,14 +83,14 @@ export default function Expenses() {
     for (const p of patterns) { const m = text.match(p); if (m) { amt = parseFloat(m[1].replace(/,/g, '')); break } }
     if (!amt) return null
     const l = text.toLowerCase()
-    let cat = '🎁 Other'
+    let cat = '💳 Other'
     if (/swiggy|zomato|food|restaurant|lunch|dinner/i.test(l)) cat = '🍔 Food'
     else if (/uber|ola|rapido|cab|petrol|metro/i.test(l)) cat = '🚗 Transport'
-    else if (/amazon|flipkart|myntra|shop|mall/i.test(l)) cat = '🛒 Shopping'
-    else if (/rent|house|emi/i.test(l)) cat = '🏠 Rent'
+    else if (/amazon|flipkart|myntra|shop|mall/i.test(l)) cat = '🛍️ Shopping'
+    else if (/rent|house|emi|electricity|water|gas|bill/i.test(l)) cat = '📱 Bills'
     else if (/hospital|pharmacy|doctor/i.test(l)) cat = '💊 Health'
     else if (/netflix|hotstar|movie|spotify/i.test(l)) cat = '🎬 Entertainment'
-    else if (/recharge|jio|airtel|bsnl/i.test(l)) cat = '📱 Recharge'
+    else if (/recharge|jio|airtel|bsnl/i.test(l)) cat = '📱 Bills'
     else if (/college|school|course|udemy/i.test(l)) cat = '📚 Education'
     const mm = text.match(/(?:at|to|towards|for|@)\s+([A-Za-z][A-Za-z\s]+)/i)
     return { amount: amt, category: cat, merchant: mm ? mm[1].trim().split(/\s+/).slice(0,3).join(' ') : '', isIncome: /credit|received|deposit|salary|refund/i.test(l) }
@@ -250,6 +250,11 @@ export default function Expenses() {
               </div>
               <div className="form-group"><label>Amount (₹)</label>
                 <input className="form-input big-input" type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} autoFocus />
+                <div className="pill-bar" style={{ marginTop: 8 }}>
+                  {QUICK_AMOUNTS.map(a => (
+                    <button key={a} className={`pill-btn${amount === String(a) ? ' active' : ''}`} onClick={() => setAmount(String(a))}>₹{a}</button>
+                  ))}
+                </div>
               </div>
               <div className="form-group"><label>Category {amount && '(tap to auto-save)'}</label>
                 <div className="cat-grid">
@@ -272,7 +277,9 @@ export default function Expenses() {
               </div>
               <div className="form-actions">
                 <button className="btn-secondary" onClick={() => setShowAdd(false)}>Cancel</button>
-                <button className="btn-primary" onClick={submit}>{type === 'expense' ? 'Add Expense' : 'Add Income'}</button>
+                {amount && Number(amount) > 0
+                  ? <div style={{ flex: 2, textAlign: 'center', fontSize: 12, color: 'var(--text3)', fontWeight: 600 }}>👆 Tap a category above to save</div>
+                  : <div style={{ flex: 2, textAlign: 'center', fontSize: 12, color: 'var(--text3)' }}>Enter amount, then tap category</div>}
               </div>
             </div>
           )}

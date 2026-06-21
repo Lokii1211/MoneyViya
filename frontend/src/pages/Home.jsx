@@ -254,6 +254,17 @@ export default function Home() {
             <Zap size={16} color="var(--viya-gold-500)" />
           </div>
 
+          {/* WhatsApp CTA */}
+          <a href="https://wa.me/917305021304?text=Hi" target="_blank" rel="noopener noreferrer"
+            style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', background:'linear-gradient(135deg, #075E54 0%, #128C7E 100%)', borderRadius:14, textDecoration:'none', marginTop:2 }}>
+            <span style={{fontSize:24}}>💬</span>
+            <div style={{flex:1}}>
+              <div style={{fontSize:14, fontWeight:700, color:'#fff'}}>Chat with Viya on WhatsApp</div>
+              <div style={{fontSize:11, color:'rgba(255,255,255,0.7)', marginTop:2}}>Get instant money help — no app needed</div>
+            </div>
+            <span style={{fontSize:18, color:'#25D366'}}>→</span>
+          </a>
+
           {/* Quick Actions */}
           <div className="stagger-children home-section">
             <div className="title-m title-m-14 mb-8">{'⚡'} Quick Actions</div>
@@ -324,7 +335,10 @@ export default function Home() {
         </>
       )}
     </div>
-    <button className="viya-fab-fixed" onClick={() => nav('/chat')} aria-label="Talk to Viya"><MessageCircle size={26} /></button>
+    <button className="viya-fab-fixed" onClick={() => nav('/chat')} aria-label="Ask Viya" title="Ask Viya">
+      <MessageCircle size={22} />
+      <span style={{fontSize:10, fontWeight:700, marginTop:1, lineHeight:1}}>Ask Viya</span>
+    </button>
     </>
   )
 }

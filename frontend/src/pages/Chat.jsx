@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
-import { Send, Mic, Paperclip, CheckCircle, TrendingUp, AlertTriangle, Target, Bell, BarChart3 } from 'lucide-react'
+import { Send, Mic, Paperclip, CheckCircle, TrendingUp, AlertTriangle, Target, Bell, BarChart3, Camera, Image, FileText, X } from 'lucide-react'
 import { timeAgo } from '../lib/utils'
 
 const SUGGESTIONS = [
@@ -24,6 +24,12 @@ const QUICK_ACTIONS = [
   { emoji: '🧠', label: 'Remember', prompt: 'Remember that ' },
 ]
 
+const ATTACH_OPTIONS = [
+  { id: 'camera', icon: Camera, label: 'Camera', desc: 'Take a photo' },
+  { id: 'gallery', icon: Image, label: 'Gallery', desc: 'Choose from gallery' },
+  { id: 'document', icon: FileText, label: 'Document', desc: 'Upload a file' },
+]
+
 function formatMessage(text) {
   if (!text) return ''
   return text
@@ -37,12 +43,19 @@ function formatMessage(text) {
 function detectCardType(content) {
   if (!content) return null
   const lower = content.toLowerCase()
+  // Warning card: bill overdue, payment due, alert
+  if (lower.includes('overdue') || lower.includes('due date') || lower.includes('⚠️') || lower.includes('warning') || lower.includes('missed payment'))
+    return 'warning'
+  // Action card: expense logged, reminder set, task done
   if (lower.includes('✅ done') || lower.includes('expense logged') || lower.includes('logged successfully') || lower.includes('reminder set'))
     return 'action'
-  if (lower.includes('noticed') || lower.includes('tip:') || lower.includes('💡') || lower.includes('insight'))
-    return 'suggestion'
+  // Insight card: spending pattern, tip, suggestion
+  if (lower.includes('noticed') || lower.includes('tip:') || lower.includes('💡') || lower.includes('insight') || lower.includes('pattern'))
+    return 'insight'
+  // Report card: weekly/monthly breakdown with amounts
   if (lower.includes('this week') && (lower.includes('₹') || lower.includes('spending')))
     return 'report'
+  // Goal card: goal progress updates
   if (lower.includes('goal') && lower.includes('%'))
     return 'goal'
   return null
@@ -50,11 +63,23 @@ function detectCardType(content) {
 
 function getCardStyle(type) {
   switch(type) {
-    case 'action': return { bg: 'var(--viya-success-light)', border: 'var(--viya-success)', icon: <CheckCircle size={16} color="var(--viya-success)"/> }
-    case 'suggestion': return { bg: 'var(--viya-primary-50)', border: 'var(--viya-primary-500)', icon: <AlertTriangle size={16} color="var(--viya-primary-500)"/> }
+    case 'action': return { bg: 'var(--emerald-50)', border: 'var(--emerald-500)', icon: <CheckCircle size={16} color="var(--emerald-500)"/> }
+    case 'insight': return { bg: 'var(--viya-primary-50)', border: 'var(--teal-500)', icon: <TrendingUp size={16} color="var(--teal-500)"/> }
+    case 'warning': return { bg: 'var(--coral-50)', border: 'var(--coral-500)', icon: <AlertTriangle size={16} color="var(--coral-500)"/> }
     case 'report': return { bg: 'var(--bg-card)', border: 'var(--viya-violet-500)', icon: <BarChart3 size={16} color="var(--viya-violet-500)"/> }
     case 'goal': return { bg: 'var(--viya-gold-100)', border: 'var(--viya-gold-500)', icon: <Target size={16} color="var(--viya-gold-500)"/> }
     default: return null
+  }
+}
+
+function getCardTitle(type) {
+  switch(type) {
+    case 'action': return 'Action Complete'
+    case 'insight': return 'Viya Insight'
+    case 'warning': return 'Alert'
+    case 'report': return 'Report'
+    case 'goal': return 'Goal Update'
+    default: return ''
   }
 }
 
@@ -91,11 +116,13 @@ export default function Chat() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [showActions, setShowActions] = useState(false)
+  const [showAttach, setShowAttach] = useState(false)
   const [voiceOpen, setVoiceOpen] = useState(false)
   const [recording, setRecording] = useState(false)
   const [recTime, setRecTime] = useState(0)
   const endRef = useRef(null)
   const inputRef = useRef(null)
+  const fileRef = useRef(null)
   const recTimerRef = useRef(null)
 
   const name = user?.name || 'there'
@@ -124,6 +151,7 @@ export default function Chat() {
     if (!msg || loading) return
     setInput('')
     setShowActions(false)
+    setShowAttach(false)
     setMessages(prev => [...prev, { role: 'user', content: msg, time: new Date().toISOString() }])
     setLoading(true)
     try {
@@ -138,11 +166,55 @@ export default function Chat() {
 
   const handleKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg() } }
 
+  const handleAttachOption = (optionId) => {
+    setShowAttach(false)
+    if (optionId === 'camera') {
+      // Open camera capture
+      if (fileRef.current) {
+        fileRef.current.accept = 'image/*'
+        fileRef.current.capture = 'environment'
+        fileRef.current.click()
+      }
+    } else if (optionId === 'gallery') {
+      // Open gallery picker
+      if (fileRef.current) {
+        fileRef.current.accept = 'image/*'
+        fileRef.current.removeAttribute('capture')
+        fileRef.current.click()
+      }
+    } else if (optionId === 'document') {
+      // Open document picker
+      if (fileRef.current) {
+        fileRef.current.accept = '.pdf,.doc,.docx,.txt,.csv,.xls,.xlsx'
+        fileRef.current.removeAttribute('capture')
+        fileRef.current.click()
+      }
+    }
+  }
+
+  const handleFileSelected = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    // Send a message indicating file was attached
+    sendMsg(`📎 Attached: ${file.name}`)
+    // Reset file input
+    e.target.value = ''
+  }
+
   const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant')
   const quickReplies = messages.length > 2 ? getQuickReplies(lastAssistantMsg?.content || '') : []
 
   return (
     <div className="chat-container">
+      {/* Hidden file input for attachments */}
+      <input
+        type="file"
+        ref={fileRef}
+        className="sr-hidden"
+        style={{ display: 'none' }}
+        onChange={handleFileSelected}
+      />
+
       {/* Chat Header Bar */}
       <div className="chat-header-bar">
         <div className="chat-header-avatar">
@@ -176,7 +248,7 @@ export default function Chat() {
                   <div className="chat-card-header">
                     {cardStyle.icon}
                     <span className={`chat-card-title ${cardType}`}>
-                      {cardType === 'action' ? 'Action Complete' : cardType === 'suggestion' ? 'Viya Insight' : cardType === 'goal' ? 'Goal Update' : 'Report'}
+                      {getCardTitle(cardType)}
                     </span>
                   </div>
                 )}
@@ -191,7 +263,7 @@ export default function Chat() {
           )
         })}
 
-        {/* Typing indicator */}
+        {/* Typing indicator — 3 dots bounce animation */}
         {loading && (
           <div className="chat-msg-row assistant">
             <div className="chat-msg-avatar">
@@ -201,7 +273,7 @@ export default function Chat() {
               <div className="chat-typing-inner">
                 <div className="chat-typing-dots">
                   {[0, 1, 2].map(i => (
-                    <div key={i} className="typing-dot" />
+                    <div key={i} className="typing-dot" style={{ animationDelay: `${i * 0.15}s` }} />
                   ))}
                 </div>
                 <span className="chat-typing-text">Viya is thinking...</span>
@@ -246,10 +318,36 @@ export default function Chat() {
         </div>
       )}
 
+      {/* Attachment Picker Menu */}
+      {showAttach && (
+        <div className="chat-attach-menu">
+          <div className="chat-attach-menu-header">
+            <span className="chat-attach-menu-title">Attach</span>
+            <button className="chat-attach-menu-close" onClick={() => setShowAttach(false)}>
+              <X size={16} />
+            </button>
+          </div>
+          <div className="chat-attach-options">
+            {ATTACH_OPTIONS.map(opt => (
+              <button key={opt.id} className="chat-attach-option" onClick={() => handleAttachOption(opt.id)}>
+                <div className={`chat-attach-option-icon ${opt.id}`}>
+                  <opt.icon size={20} />
+                </div>
+                <div className="chat-attach-option-info">
+                  <span className="chat-attach-option-label">{opt.label}</span>
+                  <span className="chat-attach-option-desc">{opt.desc}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Input Bar */}
       <div className="chat-input-bar-v2">
-        <button onClick={() => setShowActions(!showActions)}
-          className={`chat-attach-btn${showActions ? ' active' : ''}`}>
+        <button onClick={() => { setShowAttach(!showAttach); setShowActions(false) }}
+          className={`chat-attach-btn${showAttach ? ' active' : ''}`}
+          aria-label="Attach file">
           <Paperclip size={18} />
         </button>
 
@@ -271,7 +369,7 @@ export default function Chat() {
         )}
       </div>
 
-      {/* ═══ VOICE OVERLAY (PRD lines 703-791, fullscreen mic) ═══ */}
+      {/* Voice Overlay (fullscreen mic) */}
       {voiceOpen && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 999,

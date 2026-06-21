@@ -27,10 +27,28 @@ function enrichBill(bill) {
 }
 
 function getUrgencyClass(bill) {
-  if (bill.status === 'paid') return 'green'
-  if (bill.status === 'overdue' || bill._daysLeft < 0) return 'red'
-  if (bill._daysLeft <= 3) return 'gold'
-  return 'green'
+  if (bill.status === 'paid') return 'paid'
+  if (bill.status === 'overdue' || bill._daysLeft < 0) return 'overdue'
+  if (bill._daysLeft <= 1) return 'due-now'
+  if (bill._daysLeft <= 7) return 'upcoming'
+  return 'upcoming'
+}
+
+function getUrgencyStyle(bill) {
+  if (bill.status === 'paid') return { borderLeft: '4px solid #10B981', opacity: 0.75 }
+  if (bill.status === 'overdue' || bill._daysLeft < 0) return { borderLeft: '4px solid #FF6B6B', background: 'rgba(255,107,107,0.04)' }
+  if (bill._daysLeft <= 1) return { borderLeft: '4px solid #F59E0B', background: 'rgba(245,158,11,0.04)' }
+  if (bill._daysLeft <= 7) return { borderLeft: '4px solid #10B981' }
+  return {}
+}
+
+function getUrgencyLabel(bill) {
+  if (bill.status === 'paid') return { emoji: '✅', text: 'Paid', color: '#10B981' }
+  if (bill.status === 'overdue' || bill._daysLeft < 0) return { emoji: '🔴', text: `Overdue by ${Math.abs(bill._daysLeft)}d`, color: '#FF6B6B' }
+  if (bill._daysLeft === 0) return { emoji: '⚠️', text: 'Due Today', color: '#F59E0B' }
+  if (bill._daysLeft === 1) return { emoji: '⚠️', text: 'Due Tomorrow', color: '#F59E0B' }
+  if (bill._daysLeft <= 7) return { emoji: '🟢', text: `Due in ${bill._daysLeft}d`, color: '#10B981' }
+  return { emoji: '', text: `Due in ${bill._daysLeft}d`, color: 'var(--text2)' }
 }
 
 function LoadingSkeleton() {
@@ -57,7 +75,7 @@ export default function Bills() {
   const [bills, setBills] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', amount: '', due_date: '', bill_type: 'credit_card' })
+  const [form, setForm] = useState({ name: '', amount: '', due_date: '', bill_type: 'credit_card', auto_debit: false })
 
   const loadBills = useCallback(async () => {
     if (!phone) return
@@ -96,10 +114,11 @@ export default function Bills() {
         amount: parseFloat(form.amount),
         due_date: form.due_date || null,
         bill_type: form.bill_type,
+        auto_debit: form.auto_debit,
         status: 'pending',
       })
       toast.show(`${form.name} added!`, 'success')
-      setForm({ name: '', amount: '', due_date: '', bill_type: 'credit_card' })
+      setForm({ name: '', amount: '', due_date: '', bill_type: 'credit_card', auto_debit: false })
       setShowForm(false)
       loadBills()
     } catch { toast.show('Failed to add bill', 'error') }
@@ -149,8 +168,11 @@ export default function Bills() {
               {formatINR(totalPending)}
             </div>
             <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
-              {overdueCount > 0 && <span className="text-error" style={{ fontWeight: 600 }}>{overdueCount} overdue</span>}
-              <span>{upcomingCount} upcoming</span>
+              {overdueCount > 0 && <span style={{ fontWeight: 600, color: '#FF6B6B' }}>🔴 {overdueCount} overdue</span>}
+              <span>🟢 {upcomingCount} upcoming</span>
+              {bills.filter(b => b.status === 'paid').length > 0 && (
+                <span style={{ color: '#A7F3D0' }}>✅ {bills.filter(b => b.status === 'paid').length} paid</span>
+              )}
             </div>
           </div>
 
@@ -194,6 +216,21 @@ export default function Bills() {
                       ))}
                     </div>
                   </div>
+                  <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <label style={{ flex: 1, margin: 0 }}>Auto-pay enabled</label>
+                    <button type="button" onClick={() => setForm(f => ({ ...f, auto_debit: !f.auto_debit }))}
+                      style={{
+                        width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+                        background: form.auto_debit ? '#10B981' : 'var(--surface2)',
+                        position: 'relative', transition: 'background 0.2s',
+                      }}>
+                      <span style={{
+                        position: 'absolute', top: 2, left: form.auto_debit ? 22 : 2,
+                        width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                        transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                      }} />
+                    </button>
+                  </div>
                   <div className="form-actions">
                     <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
                     <button className="btn-primary" onClick={handleAdd}>Add Bill</button>
@@ -216,27 +253,48 @@ export default function Bills() {
           {filtered.map((bill, i) => {
             const cfg = BILL_ICONS[bill.bill_type] || BILL_ICONS.credit_card
             const urgency = getUrgencyClass(bill)
+            const urgencyStyle = getUrgencyStyle(bill)
+            const urgencyLabel = getUrgencyLabel(bill)
+            const isPaid = bill.status === 'paid'
             return (
               <motion.div key={bill.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04 }}>
-                <div className="info-row">
-                  <div className={`info-icon ${urgency}`}>{cfg.icon}</div>
+                <div className="info-row" style={{ ...urgencyStyle, borderRadius: 14, marginBottom: 6, paddingLeft: 12 }}>
+                  <div className={`info-icon ${urgency === 'overdue' ? 'red' : urgency === 'due-now' ? 'gold' : 'green'}`}>{cfg.icon}</div>
                   <div className="info-body">
-                    <div className="info-title">{bill.name}</div>
-                    <div className="info-sub">
-                      {bill.status === 'paid' ? 'Paid' :
-                        bill.status === 'overdue' ? `Overdue by ${Math.abs(bill._daysLeft)}d` :
-                          bill._daysLeft === 0 ? 'Due today' :
-                            `Due in ${bill._daysLeft}d`}
-                      {bill.auto_debit && ' · Auto-debit'}
+                    <div className="info-title" style={isPaid ? { textDecoration: 'line-through', opacity: 0.6 } : {}}>
+                      {bill.name}
+                    </div>
+                    <div className="info-sub" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ color: urgencyLabel.color, fontWeight: 600 }}>
+                        {urgencyLabel.emoji} {urgencyLabel.text}
+                      </span>
+                      {bill.due_date && !isPaid && (
+                        <span style={{ color: 'var(--text3)', fontSize: 11 }}>
+                          · {new Date(bill.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </span>
+                      )}
+                      {bill.auto_debit && (
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#10B981', background: 'rgba(16,185,129,0.1)', padding: '2px 6px', borderRadius: 4 }}>
+                          Auto-pay ✅
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                    <span className={`info-value ${urgency}`}>{formatINR(bill.amount)}</span>
+                    <span className={`info-value`} style={{
+                      fontWeight: 700,
+                      color: isPaid ? '#10B981' : urgency === 'overdue' ? '#FF6B6B' : urgency === 'due-now' ? '#F59E0B' : 'var(--text1)',
+                      textDecoration: isPaid ? 'line-through' : 'none',
+                    }}>
+                      {formatINR(bill.amount)}
+                    </span>
                     <div style={{ display: 'flex', gap: 4 }}>
-                      {bill.status !== 'paid' && (
+                      {!isPaid && (
                         <button className="pill-btn active" onClick={() => handleMarkPaid(bill)}
-                          style={{ padding: '3px 10px', fontSize: 10, minHeight: 'auto' }}>Pay</button>
+                          style={{ padding: '3px 10px', fontSize: 10, minHeight: 'auto' }}>
+                          {urgency === 'overdue' ? 'Pay Now' : 'Mark Paid'}
+                        </button>
                       )}
                       <button className="btn-ghost" onClick={() => handleDelete(bill)}
                         style={{ minHeight: 'auto', padding: 4 }}>
