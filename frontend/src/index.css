@@ -1001,7 +1001,7 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
   box-shadow:0 4px 20px rgba(37,211,102,0.4), 0 2px 8px rgba(0,0,0,0.2);
   transition:all 0.3s var(--ease);
   animation:waPulse 2s ease-in-out infinite;
-  text-decoration:none;
+  text-decoration:none; color:#fff;
 }
 .whatsapp-fab:hover { transform:scale(1.1); box-shadow:0 6px 28px rgba(37,211,102,0.5); }
 @keyframes waPulse {
