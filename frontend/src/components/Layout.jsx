@@ -88,7 +88,7 @@ export default function Layout() {
 
   return (
     <div className="app-shell">
-      <a href="#main-content" className="skip-link">Skip to content</a>
+      <a href="#main-content" className="skip-to-content">Skip to content</a>
       <header className={`app-header${scrolled ? ' scrolled' : ''}`} role="banner">
         <motion.div
           style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
