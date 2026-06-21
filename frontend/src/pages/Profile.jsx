@@ -270,14 +270,11 @@ export default function Profile() {
             const r = 58, circ = 2 * Math.PI * r, pct = lifeScore / 100
 
             return (
-              <div style={{
-                background: 'var(--bg-card)', borderRadius: 'var(--radius-2xl)', padding: 20,
-                border: '1px solid var(--border-light)', marginBottom: 16, boxShadow: 'var(--shadow-2)',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+              <div className="life-score-card">
+                <div className="life-score-layout">
                   {/* Animated Ring */}
-                  <div style={{ position: 'relative', width: 130, height: 130, flexShrink: 0 }}>
-                    <svg width={130} height={130} style={{ transform: 'rotate(-90deg)' }}>
+                  <div className="life-score-ring">
+                    <svg width={130} height={130} className="life-score-svg">
                       <defs>
                         <linearGradient id="lifeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                           <stop offset="0%" stopColor="#00E5B0" />
@@ -287,29 +284,29 @@ export default function Profile() {
                       <circle cx={65} cy={65} r={r} fill="none" stroke="var(--viya-neutral-100)" strokeWidth={10} />
                       <circle cx={65} cy={65} r={r} fill="none" stroke="url(#lifeGrad)" strokeWidth={10}
                         strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)}
-                        strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1.2s ease' }} />
+                        strokeLinecap="round" className="life-score-arc" />
                     </svg>
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                      <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 32, color: 'var(--text-primary)' }}>{lifeScore}</div>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: 1, textTransform: 'uppercase' }}>Life Score</div>
+                    <div className="life-score-center">
+                      <div className="life-score-value">{lifeScore}</div>
+                      <div className="life-score-label">Life Score</div>
                     </div>
                   </div>
 
                   {/* 4 Dimension Breakdown */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div className="life-score-dimensions">
                     {[
                       { label: 'Financial', score: financial, color: 'var(--viya-success)' },
                       { label: 'Health', score: health, color: '#FF7062' },
                       { label: 'Productivity', score: productivity, color: 'var(--viya-gold-500)' },
                       { label: 'Relationships', score: relationships, color: 'var(--viya-violet-500)' },
                     ].map((d, i) => (
-                      <div key={i}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, marginBottom: 3 }}>
-                          <span style={{ color: 'var(--text-secondary)' }}>{d.label}</span>
+                      <div key={i} className="life-score-bar">
+                        <div className="life-score-bar-header">
+                          <span className="life-score-bar-label">{d.label}</span>
                           <span style={{ color: d.color }}>{d.score}%</span>
                         </div>
-                        <div style={{ height: 4, borderRadius: 99, background: 'var(--viya-neutral-100)', overflow: 'hidden' }}>
-                          <div style={{ width: `${d.score}%`, height: '100%', borderRadius: 99, background: d.color, transition: 'width 0.8s ease' }} />
+                        <div className="life-score-bar-track">
+                          <div className="life-score-bar-fill" style={{ width: `${d.score}%`, background: d.color }} />
                         </div>
                       </div>
                     ))}
@@ -329,24 +326,20 @@ export default function Profile() {
           )}
 
           {/* V2 Life Modules */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10, paddingLeft: 2 }}>Life Modules</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+          <div className="mb-16">
+            <div className="section-label" style={{ marginBottom: 10, paddingLeft: 2 }}>Life Modules</div>
+            <div className="life-modules-grid">
               {[
                 { path: '/health', emoji: '❤️', label: 'Health', gradient: 'linear-gradient(135deg, #FF7062, #FF3D71)' },
-                { path: '/bills', emoji: '📋', label: 'Bills', gradient: 'linear-gradient(135deg, #0D0020, #1a0040)' },
+                { path: '/bills', emoji: '📋', label: 'Bills', gradient: 'linear-gradient(135deg, #0d0020, #1a0040)' },
                 { path: '/wealth', emoji: '📈', label: 'Wealth', gradient: 'linear-gradient(135deg, #4CAF50, #2E7D32)' },
                 { path: '/email', emoji: '📧', label: 'Email AI', gradient: 'linear-gradient(135deg, #0091FF, #0052CC)' },
                 { path: '/calendar', emoji: '📅', label: 'Calendar', gradient: 'linear-gradient(135deg, #7C3AED, #5B21B6)' },
                 { path: '/chat', emoji: '🧠', label: 'Viya AI', gradient: 'var(--gradient-primary)' },
               ].map((mod, i) => (
-                <button key={i} onClick={() => nav(mod.path)} style={{
-                  padding: '14px 8px', borderRadius: 'var(--radius-lg)', background: mod.gradient,
-                  color: 'white', border: 'none', cursor: 'pointer', textAlign: 'center',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)', transition: 'transform 0.15s',
-                }}>
-                  <div style={{ fontSize: 22, marginBottom: 4 }}>{mod.emoji}</div>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.3 }}>{mod.label}</div>
+                <button key={i} onClick={() => nav(mod.path)} className="life-module-btn" style={{ background: mod.gradient }}>
+                  <div className="life-module-emoji">{mod.emoji}</div>
+                  <div className="life-module-label">{mod.label}</div>
                 </button>
               ))}
             </div>
