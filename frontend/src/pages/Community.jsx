@@ -59,12 +59,20 @@ export default function Community() {
   const [goals, setGoals] = useState([])
   const [txns, setTxns] = useState([])
   const [liked, setLiked] = useState({})
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (phone) {
-      api.getHabits(phone).then(h => setHabits(h || []))
-      api.getGoals(phone).then(g => setGoals(g || []))
-      api.getTransactions(phone).then(t => setTxns(t || []))
+      Promise.all([
+        api.getHabits(phone),
+        api.getGoals(phone),
+        api.getTransactions(phone),
+      ]).then(([h, g, t]) => {
+        setHabits(h || [])
+        setGoals(g || [])
+        setTxns(t || [])
+        setLoading(false)
+      }).catch(() => setLoading(false))
     }
   }, [phone])
 
