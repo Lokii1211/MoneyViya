@@ -994,7 +994,7 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
 
 /* ===== WHATSAPP FAB ===== */
 .whatsapp-fab {
-  position:fixed; bottom:80px; right:16px; z-index:999;
+  position:fixed; bottom:84px; left:max(calc(50% - 195px), 16px); z-index:160;
   width:56px; height:56px; border-radius:50%;
   background:linear-gradient(135deg, #25D366, #128C7E);
   display:flex; align-items:center; justify-content:center;
@@ -1935,8 +1935,9 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
 .ask-viya-title { font-weight:700; font-size:15px; }
 .ask-viya-sub { font-size:12px; opacity:0.7; }
 
-/* Quick actions 4-col grid */
+/* Quick actions grids */
 .qa-grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.qa-grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
 .qa-btn {
   display:flex; flex-direction:column; align-items:center; gap:5px;
   padding:10px 4px; border-radius:var(--radius-sm);

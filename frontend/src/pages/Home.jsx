@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useCountUp, getCurrentFestival, formatINR, getGreeting, getGreetingEmoji } from '../lib/utils'
-import { TrendingUp, TrendingDown, Plus, Flame, Target, BarChart3, Zap, Activity, CreditCard, MessageCircle } from 'lucide-react'
+import { TrendingUp, TrendingDown, Plus, Flame, Target, BarChart3, Zap, Activity, CreditCard, MessageCircle, Link2 } from 'lucide-react'
 
 const BRIEF_ITEMS_POOL = {
   morning: [
@@ -50,6 +50,8 @@ export default function Home() {
   const period = getPeriod()
   const festival = getCurrentFestival()
 
+  const smsEnabled = localStorage.getItem('mv_sms_enabled') === 'true'
+
   useEffect(() => {
     if (phone) {
       Promise.all([
@@ -93,8 +95,8 @@ export default function Home() {
 
   const actions = [
     { icon: <Plus size={18}/>, label: 'Add Expense', to: '/expenses', color: 'var(--viya-success)' },
-    { icon: <Flame size={18}/>, label: 'Habits', to: '/habits', color: 'var(--viya-gold-500)' },
     { icon: <Target size={18}/>, label: 'Goals', to: '/goals', color: 'var(--viya-error)' },
+    { icon: <Flame size={18}/>, label: 'Habits', to: '/habits', color: 'var(--viya-gold-500)' },
     { icon: <Activity size={18}/>, label: 'Health', to: '/health', color: '#FF7062' },
     { icon: <CreditCard size={18}/>, label: 'Bills', to: '/bills', color: 'var(--viya-warning)' },
     { icon: <BarChart3 size={18}/>, label: 'Report', to: '/report', color: 'var(--viya-primary-400)' },
@@ -119,8 +121,8 @@ export default function Home() {
             <motion.div {...anim(0.2)} className="skeleton" style={{ height: 100, borderRadius: 16 }} />
             <motion.div {...anim(0.25)} className="skeleton" style={{ height: 100, borderRadius: 16 }} />
           </div>
-          <div className="qa-grid-4 mb-16">
-            {[0,1,2,3,4,5,6,7].map(i => (
+          <div className="qa-grid-3 mb-16">
+            {[0,1,2,3,4,5].map(i => (
               <motion.div key={i} {...anim(0.3 + i * 0.04)} className="skeleton" style={{ height: 64, borderRadius: 12 }} />
             ))}
           </div>
@@ -137,6 +139,26 @@ export default function Home() {
               <div className="body-s text-secondary">{formatDateLine()}</div>
             </div>
           </div>
+
+          {/* Connect Bank card — show if no SMS and no bank connected */}
+          {!smsEnabled && (
+            <div className="insight-card" onClick={() => nav('/bank-connect')}>
+              <div className="insight-icon">
+                <Link2 size={20} />
+              </div>
+              <div className="insight-text">
+                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>Auto-track expenses</div>
+                <div style={{ fontSize: 12, color: 'var(--text2)' }}>Connect bank SMS or sync bank account</div>
+              </div>
+              <button
+                className="btn-primary"
+                onClick={(e) => { e.stopPropagation(); nav('/bank-connect') }}
+                style={{ padding: '8px 16px', fontSize: 12, borderRadius: 10 }}
+              >
+                Connect
+              </button>
+            </div>
+          )}
 
           {/* Festival banner */}
           {festival && (
@@ -254,21 +276,10 @@ export default function Home() {
             <Zap size={16} color="var(--viya-gold-500)" />
           </div>
 
-          {/* WhatsApp CTA */}
-          <a href="https://wa.me/917305021304?text=Hi" target="_blank" rel="noopener noreferrer"
-            style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', background:'linear-gradient(135deg, #075E54 0%, #128C7E 100%)', borderRadius:14, textDecoration:'none', marginTop:2 }}>
-            <span style={{fontSize:24}}>💬</span>
-            <div style={{flex:1}}>
-              <div style={{fontSize:14, fontWeight:700, color:'#fff'}}>Chat with Viya on WhatsApp</div>
-              <div style={{fontSize:11, color:'rgba(255,255,255,0.7)', marginTop:2}}>Get instant money help — no app needed</div>
-            </div>
-            <span style={{fontSize:18, color:'#25D366'}}>→</span>
-          </a>
-
           {/* Quick Actions */}
           <div className="stagger-children home-section">
             <div className="title-m title-m-14 mb-8">{'⚡'} Quick Actions</div>
-            <div className="qa-grid-4">
+            <div className="qa-grid-3">
               {actions.map((a, i) => (
                 <button key={i} onClick={() => nav(a.to)} className={`qa-btn ripple ${i === 0 ? 'highlight' : 'normal'}`}>
                   <div className="qa-icon-wrap" style={i !== 0 ? { background: a.color + '15', color: a.color } : undefined}>
@@ -335,9 +346,13 @@ export default function Home() {
         </>
       )}
     </div>
+    {/* WhatsApp FAB — bottom-left */}
+    <a href="https://wa.me/917305021304?text=Hi" target="_blank" className="whatsapp-fab" aria-label="Chat on WhatsApp">
+      <MessageCircle size={24} />
+    </a>
+    {/* Ask Viya FAB — bottom-right */}
     <button className="viya-fab-fixed" onClick={() => nav('/chat')} aria-label="Ask Viya" title="Ask Viya">
       <MessageCircle size={22} />
-      <span style={{fontSize:10, fontWeight:700, marginTop:1, lineHeight:1}}>Ask Viya</span>
     </button>
     </>
   )

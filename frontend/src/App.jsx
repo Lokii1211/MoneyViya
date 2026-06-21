@@ -59,6 +59,7 @@ const MorningBrief = lazy(() => import('./pages/MorningBrief'))
 
 // Fintech Phase 1
 const CashFlow = lazy(() => import('./pages/CashFlow'))
+const BankConnect = lazy(() => import('./pages/BankConnect'))
 
 // Fintech Phase 2+3
 
@@ -110,6 +111,7 @@ function AppContent() {
             <Route path="splits" element={<Splits />} />
             <Route path="lending" element={<Lending />} />
             <Route path="cashflow" element={<CashFlow />} />
+            <Route path="bank-connect" element={<BankConnect />} />
             {/* Life */}
             <Route path="habits" element={<Habits />} />
             <Route path="health" element={<Health />} />
