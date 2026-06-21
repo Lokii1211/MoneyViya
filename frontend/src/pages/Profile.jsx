@@ -380,14 +380,14 @@ export default function Profile() {
           </div>
 
           {/* Referral Card */}
-          <div style={{background:'linear-gradient(135deg, var(--primary-dim), var(--cyan-dim))', border:'1px solid rgba(0,208,132,0.2)', borderRadius:16, padding:'16px 18px', margin:'16px 0'}}>
-            <div style={{fontSize:13, fontWeight:800, marginBottom:6}}>🎁 Invite Friends, Earn Rewards</div>
-            <div style={{fontSize:11, color:'var(--text2)', marginBottom:10}}>Share your code — when friends join, you both level up!</div>
-            <div style={{display:'flex', gap:8, alignItems:'center'}}>
-              <div style={{flex:1, background:'var(--bg)', borderRadius:10, padding:'10px 14px', fontFamily:'var(--mono)', fontSize:14, fontWeight:800, letterSpacing:2, textAlign:'center', border:'1px dashed var(--border2)'}}>
+          <div className="referral-card">
+            <div className="referral-title">🎁 Invite Friends, Earn Rewards</div>
+            <div className="referral-subtitle">Share your code — when friends join, you both level up!</div>
+            <div className="referral-row">
+              <div className="referral-code">
                 VIYA{phone?.slice(-4) || '0000'}
               </div>
-              <button style={{padding:'10px 16px', background:'var(--primary)', color:'#fff', borderRadius:10, border:'none', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap'}} onClick={() => {
+              <button className="referral-share-btn" onClick={() => {
                 const code = `VIYA${phone?.slice(-4) || '0000'}`
                 const text = `Hey! I use Viya — an AI friend that helps me save money & build habits. 🔥\n\nUse my code ${code} when you sign up!\n\nhttps://heyviya.vercel.app/auth?ref=${code}`
                 if (navigator.share) navigator.share({ title: 'Join Viya!', text })
