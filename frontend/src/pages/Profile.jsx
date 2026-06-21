@@ -330,12 +330,12 @@ export default function Profile() {
             <div className="section-label" style={{ marginBottom: 10, paddingLeft: 2 }}>Life Modules</div>
             <div className="life-modules-grid">
               {[
-                { path: '/health', emoji: '❤️', label: 'Health', gradient: 'linear-gradient(135deg, #FF7062, #FF3D71)' },
-                { path: '/bills', emoji: '📋', label: 'Bills', gradient: 'linear-gradient(135deg, #0d0020, #1a0040)' },
-                { path: '/wealth', emoji: '📈', label: 'Wealth', gradient: 'linear-gradient(135deg, #4CAF50, #2E7D32)' },
-                { path: '/email', emoji: '📧', label: 'Email AI', gradient: 'linear-gradient(135deg, #0091FF, #0052CC)' },
-                { path: '/calendar', emoji: '📅', label: 'Calendar', gradient: 'linear-gradient(135deg, #7C3AED, #5B21B6)' },
-                { path: '/chat', emoji: '🧠', label: 'Viya AI', gradient: 'var(--gradient-primary)' },
+                { path: '/health', emoji: '❤️', label: 'Health', gradient: 'linear-gradient(145deg, #B83815, #D4451A)' },
+                { path: '/bills', emoji: '📋', label: 'Bills', gradient: 'linear-gradient(145deg, #0F172A, #1E293B)' },
+                { path: '/wealth', emoji: '📈', label: 'Wealth', gradient: 'linear-gradient(145deg, #0A6E4E, #0D9B6A)' },
+                { path: '/email', emoji: '📧', label: 'Email AI', gradient: 'linear-gradient(145deg, #0052CC, #0066FF)' },
+                { path: '/calendar', emoji: '📅', label: 'Calendar', gradient: 'linear-gradient(145deg, #3308A0, #5514FF)' },
+                { path: '/chat', emoji: '🧠', label: 'Viya AI', gradient: 'linear-gradient(145deg, #0A6E4E, #5514FF)' },
               ].map((mod, i) => (
                 <button key={i} onClick={() => nav(mod.path)} className="life-module-btn" style={{ background: mod.gradient }}>
                   <div className="life-module-emoji">{mod.emoji}</div>

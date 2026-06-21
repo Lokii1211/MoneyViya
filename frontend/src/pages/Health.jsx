@@ -286,7 +286,7 @@ export default function Health() {
           {tab === 'water' && (
             <motion.div key="water" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               {/* Water Progress */}
-              <div className="hero-card text-center mb-4" style={{ background: 'linear-gradient(135deg, #06B6D4, #22D3EE)', padding: 24 }}>
+              <div className="hero-card text-center mb-4 health-card water" style={{ padding: 24 }}>
                 <ProgressRing value={water} max={waterGoal} size={140} stroke={12} color="white">
                   <span className="currency" style={{ fontSize: 36, fontWeight: 800, color: '#fff' }}>{water}</span>
                   <span className="body-s" style={{ opacity: 0.8 }}>of {waterGoal} glasses</span>
