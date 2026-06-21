@@ -189,11 +189,10 @@ export const api = {
   async chat(phone, message) {
     try {
       await insert('chat_history', { phone, role: 'user', content: message, source: 'app' })
-      const apiUrl = import.meta.env.VITE_API_URL || ''
-      const r = await fetch(`${apiUrl}/api/webhook?action=chat&phone=${phone}&message=${encodeURIComponent(message)}`)
+      const r = await fetch(`/api/chat?phone=${encodeURIComponent(phone)}&message=${encodeURIComponent(message)}`)
       if (r.ok) {
         const data = await r.json()
-        const reply = data.reply || data.message || "I couldn't process that. Try again!"
+        const reply = data.reply || "I couldn't process that. Try again!"
         await insert('chat_history', { phone, role: 'assistant', content: reply, source: 'app' })
         return { reply }
       }
