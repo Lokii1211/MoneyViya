@@ -188,8 +188,7 @@ export default function Home() {
           </div>
 
           {/* Monthly Overview */}
-          <div onClick={() => nav('/expenses')} className="hero-card green wealth-overview clickable"
-            style={{ padding: 20, boxShadow: '0 6px 20px rgba(76,175,80,0.25)' }}>
+          <div onClick={() => nav('/expenses')} className="hero-card green wealth-overview clickable">
             <div className="stat-card-label">Monthly Overview</div>
             <div className="wealth-overview-top">
               <div>
