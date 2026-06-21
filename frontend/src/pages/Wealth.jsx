@@ -5,7 +5,7 @@ import { api } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { formatINR } from '../lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
-import { TrendingUp, TrendingDown, PiggyBank, Plus, BarChart3, Shield, X, ChevronRight, Smartphone } from 'lucide-react'
+import { TrendingUp, TrendingDown, PiggyBank, Plus, BarChart3, Shield, X, ChevronRight, Smartphone, Target, Calendar } from 'lucide-react'
 
 const typeConfig = {
   mutual_fund: { emoji: '📈', color: 'var(--primary)', label: 'Mutual Fund' },
@@ -15,6 +15,35 @@ const typeConfig = {
   nps: { emoji: '🏛️', color: 'var(--cyan)', label: 'NPS' },
   gold: { emoji: '🥇', color: '#FFB800', label: 'Gold' },
   crypto: { emoji: '₿', color: '#F7931A', label: 'Crypto' },
+}
+
+const INVESTMENT_TYPES = [
+  { value: 'mutual_fund', label: 'Mutual Fund' },
+  { value: 'stock', label: 'Stock' },
+  { value: 'fd', label: 'Fixed Deposit' },
+  { value: 'ppf', label: 'PPF' },
+  { value: 'nps', label: 'NPS' },
+  { value: 'gold', label: 'Gold' },
+  { value: 'crypto', label: 'Crypto' },
+]
+
+const GOAL_ICONS = [
+  { emoji: '🎯', label: 'General' },
+  { emoji: '🏠', label: 'Home' },
+  { emoji: '🚗', label: 'Car' },
+  { emoji: '✈️', label: 'Travel' },
+  { emoji: '💍', label: 'Wedding' },
+  { emoji: '🎓', label: 'Education' },
+  { emoji: '🛡️', label: 'Emergency' },
+  { emoji: '👶', label: 'Child' },
+  { emoji: '💰', label: 'Retirement' },
+  { emoji: '📱', label: 'Gadget' },
+]
+
+const inputStyle = {
+  padding: '10px 12px', borderRadius: 10, border: '1px solid var(--glass-border, #333)',
+  background: 'var(--glass-bg, #1a1a1a)', color: 'var(--text1, #fff)', fontSize: 14,
+  width: '100%', boxSizing: 'border-box',
 }
 
 function LoadingSkeleton() {
@@ -48,48 +77,129 @@ export default function Wealth() {
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState('ALL')
+  const [goals, setGoals] = useState([])
+
+  // Add Investment form
   const [showAddForm, setShowAddForm] = useState(false)
   const [addSaving, setAddSaving] = useState(false)
-  const [addForm, setAddForm] = useState({ name: '', investment_type: 'mutual_fund', invested_amount: '', current_value: '' })
+  const [addForm, setAddForm] = useState({
+    name: '', investment_type: 'mutual_fund', invested_amount: '', current_value: '',
+    is_sip: false, sip_amount: '', sip_date: '',
+  })
+
+  // Add Goal form
+  const [showGoalForm, setShowGoalForm] = useState(false)
+  const [goalSaving, setGoalSaving] = useState(false)
+  const [goalForm, setGoalForm] = useState({
+    name: '', emoji: '🎯', target_amount: '', deadline: '',
+  })
+
+  // Add money to goal
+  const [addMoneyGoalId, setAddMoneyGoalId] = useState(null)
+  const [addMoneyAmount, setAddMoneyAmount] = useState('')
+  const [addMoneySaving, setAddMoneySaving] = useState(false)
 
   const loadData = useCallback(async () => {
     if (!phone) return
     setLoading(true)
     try {
-      const [invData, txnData] = await Promise.all([
+      const [invData, txnData, goalData] = await Promise.all([
         api.getInvestments(phone),
         api.getTransactions(phone),
+        api.getGoals(phone),
       ])
       if (invData?.length) setInvestments(invData)
       if (txnData?.length) setTransactions(txnData)
+      if (goalData?.length) setGoals(goalData)
     } catch (e) { console.error('Wealth load error:', e) }
     setLoading(false)
   }, [phone])
 
   useEffect(() => { loadData() }, [loadData])
 
+  /* ─── Add Investment ─── */
   async function handleAddInvestment() {
-    if (!addForm.name || !addForm.invested_amount) {
-      toast.error('Please enter name and invested amount')
+    if (!addForm.name.trim()) {
+      toast.show('Enter investment name', 'warning')
+      return
+    }
+    if (!addForm.invested_amount || Number(addForm.invested_amount) <= 0) {
+      toast.show('Enter invested amount', 'warning')
       return
     }
     setAddSaving(true)
     try {
-      await api.addInvestment(phone, {
-        name: addForm.name,
+      const data = {
+        name: addForm.name.trim(),
         investment_type: addForm.investment_type,
         invested_amount: Number(addForm.invested_amount),
         current_value: Number(addForm.current_value || addForm.invested_amount),
-      })
-      toast.success('Investment added!')
-      setAddForm({ name: '', investment_type: 'mutual_fund', invested_amount: '', current_value: '' })
+        is_sip: addForm.is_sip,
+      }
+      if (addForm.is_sip) {
+        data.sip_amount = Number(addForm.sip_amount || 0)
+        data.sip_date = addForm.sip_date || ''
+      }
+      await api.addInvestment(phone, data)
+      toast.show('Investment added!', 'success')
+      setAddForm({ name: '', investment_type: 'mutual_fund', invested_amount: '', current_value: '', is_sip: false, sip_amount: '', sip_date: '' })
       setShowAddForm(false)
       loadData()
     } catch (e) {
       console.error('Add investment error:', e)
-      toast.error('Failed to add investment')
+      toast.show('Failed to add investment', 'error')
     }
     setAddSaving(false)
+  }
+
+  /* ─── Add Goal ─── */
+  async function handleAddGoal() {
+    if (!goalForm.name.trim()) {
+      toast.show('Enter goal name', 'warning')
+      return
+    }
+    if (!goalForm.target_amount || Number(goalForm.target_amount) <= 0) {
+      toast.show('Enter target amount', 'warning')
+      return
+    }
+    setGoalSaving(true)
+    try {
+      await api.addGoal(
+        phone,
+        goalForm.name.trim(),
+        goalForm.emoji,
+        Number(goalForm.target_amount),
+        goalForm.deadline || null
+      )
+      toast.show('Goal created!', 'success')
+      setGoalForm({ name: '', emoji: '🎯', target_amount: '', deadline: '' })
+      setShowGoalForm(false)
+      loadData()
+    } catch (e) {
+      console.error('Add goal error:', e)
+      toast.show('Failed to create goal', 'error')
+    }
+    setGoalSaving(false)
+  }
+
+  /* ─── Add Money to Goal ─── */
+  async function handleAddMoney(goalId) {
+    if (!addMoneyAmount || Number(addMoneyAmount) <= 0) {
+      toast.show('Enter amount to add', 'warning')
+      return
+    }
+    setAddMoneySaving(true)
+    try {
+      await api.addToGoal(goalId, Number(addMoneyAmount))
+      toast.show(`₹${Number(addMoneyAmount).toLocaleString('en-IN')} added to goal!`, 'success')
+      setAddMoneyGoalId(null)
+      setAddMoneyAmount('')
+      loadData()
+    } catch (e) {
+      console.error('Add to goal error:', e)
+      toast.show('Failed to add money', 'error')
+    }
+    setAddMoneySaving(false)
   }
 
   // Portfolio computations
@@ -101,7 +211,6 @@ export default function Wealth() {
   // Net worth from transactions
   const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount || 0), 0)
   const totalExpense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount || 0), 0)
-  const netWorth = currentValue + (totalIncome - totalExpense)
 
   // Group by type
   const grouped = investments.reduce((acc, inv) => {
@@ -129,6 +238,165 @@ export default function Wealth() {
     { id: 'goals', label: 'Goals' },
   ]
 
+  /* ─── Inline Add Investment Form (shared between sections) ─── */
+  const renderAddInvestmentForm = () => (
+    <motion.div
+      key="add-form"
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      style={{ overflow: 'hidden' }}
+    >
+      <div className="card mb-4" style={{ padding: 16, border: '1px solid var(--primary)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <span style={{ fontSize: 14, fontWeight: 700 }}>New Investment</span>
+          <button onClick={() => setShowAddForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer' }}>
+            <X size={18} />
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <input type="text" placeholder="Investment name (e.g. Axis Bluechip Fund)"
+            value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })}
+            style={inputStyle} />
+          <select value={addForm.investment_type} onChange={e => setAddForm({ ...addForm, investment_type: e.target.value })}
+            style={inputStyle}>
+            {INVESTMENT_TYPES.map(t => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', fontSize: 14, pointerEvents: 'none' }}>₹</span>
+              <input type="number" placeholder="Invested amount"
+                value={addForm.invested_amount} onChange={e => setAddForm({ ...addForm, invested_amount: e.target.value })}
+                style={{ ...inputStyle, paddingLeft: 28 }} />
+            </div>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', fontSize: 14, pointerEvents: 'none' }}>₹</span>
+              <input type="number" placeholder="Current value"
+                value={addForm.current_value} onChange={e => setAddForm({ ...addForm, current_value: e.target.value })}
+                style={{ ...inputStyle, paddingLeft: 28 }} />
+            </div>
+          </div>
+
+          {/* SIP Toggle */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '10px 14px', borderRadius: 10,
+            background: 'var(--surface2, rgba(255,255,255,0.05))',
+            border: '1px solid var(--glass-border, rgba(255,255,255,0.08))',
+          }}>
+            <span style={{ fontSize: 14, fontWeight: 600 }}>Is this a SIP?</span>
+            <button onClick={() => setAddForm({ ...addForm, is_sip: !addForm.is_sip })} style={{
+              width: 48, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer',
+              background: addForm.is_sip ? 'var(--primary)' : 'var(--surface3)',
+              position: 'relative', transition: 'background 0.3s',
+            }}>
+              <span style={{
+                position: 'absolute', top: 3, left: addForm.is_sip ? 25 : 3,
+                width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                transition: 'left 0.3s var(--ease)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              }} />
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {addForm.is_sip && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                style={{ overflow: 'hidden' }}
+              >
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', fontSize: 14, pointerEvents: 'none' }}>₹</span>
+                    <input type="number" placeholder="SIP amount/month"
+                      value={addForm.sip_amount} onChange={e => setAddForm({ ...addForm, sip_amount: e.target.value })}
+                      style={{ ...inputStyle, paddingLeft: 28 }} />
+                  </div>
+                  <input type="number" min="1" max="28" placeholder="SIP date (1-28)"
+                    value={addForm.sip_date} onChange={e => setAddForm({ ...addForm, sip_date: e.target.value })}
+                    style={{ ...inputStyle, flex: 1 }} />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <button className="btn-primary full" onClick={handleAddInvestment} disabled={addSaving}
+            style={{ marginTop: 4 }}>
+            {addSaving ? 'Saving...' : 'Save Investment'}
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  )
+
+  /* ─── Inline Add Goal Form ─── */
+  const renderAddGoalForm = () => (
+    <motion.div
+      key="goal-form"
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      style={{ overflow: 'hidden' }}
+    >
+      <div className="card mb-4" style={{ padding: 16, border: '1px solid var(--cyan)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <span style={{ fontSize: 14, fontWeight: 700 }}>New Savings Goal</span>
+          <button onClick={() => setShowGoalForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer' }}>
+            <X size={18} />
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Icon picker */}
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', marginBottom: 6 }}>Choose icon</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {GOAL_ICONS.map(ic => (
+                <button
+                  key={ic.emoji}
+                  onClick={() => setGoalForm({ ...goalForm, emoji: ic.emoji })}
+                  style={{
+                    width: 40, height: 40, borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 20,
+                    background: goalForm.emoji === ic.emoji ? 'var(--primary-dim)' : 'var(--surface2, rgba(255,255,255,0.05))',
+                    outline: goalForm.emoji === ic.emoji ? '2px solid var(--primary)' : 'none',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  {ic.emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <input type="text" placeholder="Goal name (e.g. Emergency Fund)"
+            value={goalForm.name} onChange={e => setGoalForm({ ...goalForm, name: e.target.value })}
+            style={inputStyle} />
+
+          <div style={{ position: 'relative' }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', fontSize: 14, pointerEvents: 'none' }}>₹</span>
+            <input type="number" placeholder="Target amount"
+              value={goalForm.target_amount} onChange={e => setGoalForm({ ...goalForm, target_amount: e.target.value })}
+              style={{ ...inputStyle, paddingLeft: 28 }} />
+          </div>
+
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', marginBottom: 4 }}>Target date (optional)</div>
+            <input type="date" value={goalForm.deadline}
+              onChange={e => setGoalForm({ ...goalForm, deadline: e.target.value })}
+              style={inputStyle} />
+          </div>
+
+          <button className="btn-primary full" onClick={handleAddGoal} disabled={goalSaving}
+            style={{ marginTop: 4 }}>
+            {goalSaving ? 'Saving...' : 'Create Goal'}
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  )
+
   return (
     <div className="page">
       {/* Header */}
@@ -140,17 +408,10 @@ export default function Wealth() {
         <button className="pill-btn active" onClick={() => nav('/chat?q=investment+advice')}>Ask Viya</button>
       </div>
 
-      {/* Connect Investment Accounts */}
+      {/* Track Portfolio — action buttons (no broker redirects to chat) */}
       <div className="card mb-4" style={{ padding: 16 }}>
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Track your portfolio</div>
-        <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 12 }}>Connect your broker or add investments manually</div>
-        <div className="flex gap-2 flex-wrap" style={{ marginBottom: 12 }}>
-          {['Zerodha', 'Groww', 'Kuvera'].map(broker => (
-            <button key={broker} className="pill-btn" onClick={() => nav(`/chat?q=I+have+investments+in+${broker}`)}>
-              {broker}
-            </button>
-          ))}
-        </div>
+        <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 12 }}>Add investments manually to track your net worth</div>
         <div className="flex gap-2">
           <button className="pill-btn active" onClick={() => setShowAddForm(!showAddForm)}>
             <Plus size={14} /> Add Investment
@@ -163,51 +424,7 @@ export default function Wealth() {
 
       {/* Add Investment Form (inline expandable) */}
       <AnimatePresence>
-        {showAddForm && (
-          <motion.div
-            key="add-form"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            style={{ overflow: 'hidden' }}
-          >
-            <div className="card mb-4" style={{ padding: 16, border: '1px solid var(--primary)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <span style={{ fontSize: 14, fontWeight: 700 }}>New Investment</span>
-                <button onClick={() => setShowAddForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer' }}>
-                  <X size={18} />
-                </button>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <input type="text" placeholder="Investment name (e.g. Axis Bluechip Fund)"
-                  value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })}
-                  style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--glass-border, #333)', background: 'var(--glass-bg, #1a1a1a)', color: 'var(--text1, #fff)', fontSize: 14 }} />
-                <select value={addForm.investment_type} onChange={e => setAddForm({ ...addForm, investment_type: e.target.value })}
-                  style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--glass-border, #333)', background: 'var(--glass-bg, #1a1a1a)', color: 'var(--text1, #fff)', fontSize: 14 }}>
-                  <option value="mutual_fund">Mutual Fund</option>
-                  <option value="stock">Stock</option>
-                  <option value="fd">Fixed Deposit</option>
-                  <option value="ppf">PPF</option>
-                  <option value="nps">NPS</option>
-                  <option value="gold">Gold</option>
-                  <option value="crypto">Crypto</option>
-                </select>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input type="number" placeholder="Invested amount"
-                    value={addForm.invested_amount} onChange={e => setAddForm({ ...addForm, invested_amount: e.target.value })}
-                    style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--glass-border, #333)', background: 'var(--glass-bg, #1a1a1a)', color: 'var(--text1, #fff)', fontSize: 14 }} />
-                  <input type="number" placeholder="Current value"
-                    value={addForm.current_value} onChange={e => setAddForm({ ...addForm, current_value: e.target.value })}
-                    style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--glass-border, #333)', background: 'var(--glass-bg, #1a1a1a)', color: 'var(--text1, #fff)', fontSize: 14 }} />
-                </div>
-                <button className="btn-primary full" onClick={handleAddInvestment} disabled={addSaving}
-                  style={{ marginTop: 4 }}>
-                  {addSaving ? 'Saving...' : 'Save Investment'}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
+        {showAddForm && renderAddInvestmentForm()}
       </AnimatePresence>
 
       {loading ? <LoadingSkeleton /> : (
@@ -256,7 +473,10 @@ export default function Wealth() {
             <div className="empty-state-card">
               <div className="empty-emoji">📈</div>
               <h3>No investments tracked yet</h3>
-              <p>Tell Viya: "I have a SIP in Axis Bluechip Fund of Rs 5000/month"</p>
+              <p>Add your first investment using the form above to start tracking your portfolio.</p>
+              <button className="btn-primary" onClick={() => setShowAddForm(true)} style={{ marginTop: 4 }}>
+                <Plus size={14} /> Add Your First Investment
+              </button>
             </div>
           )}
 
@@ -358,6 +578,13 @@ export default function Wealth() {
                         </div>
                       )
                     })}
+
+                    <button className="btn-primary full mt-2" onClick={() => setShowAddForm(true)}>
+                      <Plus size={16} /> Add Investment
+                    </button>
+                    <AnimatePresence>
+                      {showAddForm && renderAddInvestmentForm()}
+                    </AnimatePresence>
                   </motion.div>
                 )}
 
@@ -377,7 +604,11 @@ export default function Wealth() {
                       <div className="empty-state-card">
                         <div className="empty-emoji">📈</div>
                         <h3>No SIPs tracked</h3>
-                        <p>Tell Viya: "Track my SIP of Rs 5000 in Axis Bluechip"</p>
+                        <p>Add a SIP investment using the form below to start tracking your systematic investments.</p>
+                        <button className="btn-primary" onClick={() => { setAddForm({ ...addForm, is_sip: true }); setShowAddForm(true) }}
+                          style={{ marginTop: 4 }}>
+                          <Plus size={14} /> Add Your First SIP
+                        </button>
                       </div>
                     )}
 
@@ -395,53 +626,107 @@ export default function Wealth() {
                       </div>
                     ))}
 
-                    <button className="btn-primary full mt-2" onClick={() => nav('/chat?q=suggest+best+SIP+funds')}>
-                      <Plus size={16} /> Start New SIP with AI Guidance
+                    <button className="btn-primary full mt-2" onClick={() => { setAddForm({ ...addForm, is_sip: true }); setShowAddForm(true) }}>
+                      <Plus size={16} /> Add New SIP
                     </button>
+                    <AnimatePresence>
+                      {showAddForm && renderAddInvestmentForm()}
+                    </AnimatePresence>
                   </motion.div>
                 )}
 
                 {/* === GOALS === */}
                 {tab === 'goals' && (
                   <motion.div key="goals" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                    {[
-                      { name: 'Emergency Fund', emoji: '🛡️', target: 300000, saved: 185000, color: 'var(--cyan)', deadline: 'Dec 2025' },
-                      { name: 'New Laptop', emoji: '💻', target: 85000, saved: 42000, color: 'var(--violet)', deadline: 'Aug 2025' },
-                      { name: 'Goa Trip', emoji: '✈️', target: 40000, saved: 28000, color: 'var(--orange)', deadline: 'Jul 2025' },
-                    ].map((g, i) => {
-                      const pct = Math.round((g.saved / g.target) * 100)
+                    {goals.length === 0 && !showGoalForm && (
+                      <div className="empty-state-card">
+                        <div className="empty-emoji">🎯</div>
+                        <h3>No savings goals yet</h3>
+                        <p>Create your first savings goal to start building towards your financial dreams.</p>
+                        <button className="btn-primary" onClick={() => setShowGoalForm(true)} style={{ marginTop: 4 }}>
+                          <Plus size={14} /> Create Your First Goal
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Add Goal Form */}
+                    <AnimatePresence>
+                      {showGoalForm && renderAddGoalForm()}
+                    </AnimatePresence>
+
+                    {goals.map((g, i) => {
+                      const target = Number(g.target_amount || 0)
+                      const saved = Number(g.current_amount || 0)
+                      const pct = target > 0 ? Math.round((saved / target) * 100) : 0
+                      const deadline = g.deadline ? new Date(g.deadline).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : ''
+                      const colors = ['var(--cyan)', 'var(--violet)', 'var(--orange)', 'var(--primary)', 'var(--gold)']
+                      const color = colors[i % colors.length]
+                      const isAddingMoney = addMoneyGoalId === g.id
                       return (
-                        <div key={i} className="card mb-2" style={{ padding: 16 }}>
+                        <div key={g.id || i} className="card mb-2" style={{ padding: 16 }}>
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
-                              <span style={{ fontSize: 24 }}>{g.emoji}</span>
+                              <span style={{ fontSize: 24 }}>{g.emoji || g.icon || '🎯'}</span>
                               <div>
                                 <div style={{ fontSize: 14, fontWeight: 700 }}>{g.name}</div>
-                                <div className="body-s text-tertiary">Target: {g.deadline}</div>
+                                {deadline && <div className="body-s text-tertiary">Target: {deadline}</div>}
                               </div>
                             </div>
-                            <span style={{ fontWeight: 700, color: g.color }}>{pct}%</span>
+                            <span style={{ fontWeight: 700, color }}>{pct}%</span>
                           </div>
                           <div className="progress-bar mb-2" style={{ height: 8 }}>
-                            <div className="progress-fill" style={{ width: `${pct}%`, background: g.color }} />
+                            <div className="progress-fill" style={{ width: `${Math.min(pct, 100)}%`, background: color }} />
                           </div>
                           <div className="flex justify-between body-s">
-                            <span className="text-secondary">{formatINR(g.saved)} saved</span>
-                            <span style={{ fontWeight: 600 }}>{formatINR(g.target)} goal</span>
+                            <span className="text-secondary">{formatINR(saved)} saved</span>
+                            <span style={{ fontWeight: 600 }}>{formatINR(target)} goal</span>
                           </div>
+
+                          {/* Add Money inline */}
                           <div className="flex gap-2 mt-2">
                             <button className="pill-btn active"
-                              onClick={() => nav(`/chat?q=add+money+to+${encodeURIComponent(g.name)}`)}>
-                              + Add Money
+                              onClick={() => { setAddMoneyGoalId(isAddingMoney ? null : g.id); setAddMoneyAmount('') }}>
+                              {isAddingMoney ? 'Cancel' : '+ Add Money'}
                             </button>
-                            <button className="pill-btn">Edit Goal</button>
                           </div>
+
+                          <AnimatePresence>
+                            {isAddingMoney && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                style={{ overflow: 'hidden' }}
+                              >
+                                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                                  <div style={{ flex: 1, position: 'relative' }}>
+                                    <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', fontSize: 14, pointerEvents: 'none' }}>₹</span>
+                                    <input
+                                      type="number"
+                                      placeholder="Amount to add"
+                                      value={addMoneyAmount}
+                                      onChange={e => setAddMoneyAmount(e.target.value)}
+                                      style={{ ...inputStyle, paddingLeft: 28 }}
+                                      autoFocus
+                                    />
+                                  </div>
+                                  <button className="btn-primary" onClick={() => handleAddMoney(g.id)} disabled={addMoneySaving}
+                                    style={{ padding: '10px 20px', whiteSpace: 'nowrap' }}>
+                                    {addMoneySaving ? '...' : 'Add'}
+                                  </button>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
                       )
                     })}
-                    <button className="btn-primary full" onClick={() => nav('/chat?q=create+new+savings+goal')}>
-                      <Plus size={16} /> Create New Goal
-                    </button>
+
+                    {(goals.length > 0 || showGoalForm) && (
+                      <button className="btn-primary full" onClick={() => setShowGoalForm(!showGoalForm)} style={{ marginTop: 8 }}>
+                        <Plus size={16} /> Create New Goal
+                      </button>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>

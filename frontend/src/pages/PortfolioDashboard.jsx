@@ -279,33 +279,40 @@ export default function PortfolioDashboard() {
       )}
 
       {/* ═══ TAX ═══ */}
-      {tab === 'tax' && (
+      {tab === 'tax' && (() => {
+        const totalGains = portfolio.pnl > 0 ? portfolio.pnl : 0
+        const ltcgExempt = 125000
+        const taxableGains = Math.max(0, totalGains - ltcgExempt)
+        const estimatedTax = Math.round(taxableGains * 0.125)
+        return (
         <>
           <div className="cf-summary-grid">
             <div className="cf-card cf-income">
-              <span className="cf-card-label">LTCG (Equity)</span>
-              <span className="cf-card-value" style={{ fontSize: 18 }}>₹1,43,500</span>
-              <span className="cf-card-tag">Exempt: ₹1,25,000</span>
+              <span className="cf-card-label">Total Gains</span>
+              <span className="cf-card-value" style={{ fontSize: 18 }}>{fmt(totalGains)}</span>
+              <span className="cf-card-tag">Exempt up to {fmt(ltcgExempt)}</span>
             </div>
             <div className="cf-card cf-expense">
-              <span className="cf-card-label">STCG (Equity)</span>
-              <span className="cf-card-value" style={{ fontSize: 18 }}>₹0</span>
-              <span className="cf-card-tag">Tax @ 20%</span>
+              <span className="cf-card-label">Taxable Gains</span>
+              <span className="cf-card-value" style={{ fontSize: 18 }}>{fmt(taxableGains)}</span>
+              <span className="cf-card-tag">LTCG @ 12.5%</span>
             </div>
             <div className="cf-card cf-net">
               <span className="cf-card-label">Estimated Tax</span>
-              <span className="cf-card-value" style={{ fontSize: 18, color: 'var(--amber-400)' }}>₹2,312</span>
-              <span className="cf-card-tag">LTCG 12.5% on ₹18,500</span>
+              <span className="cf-card-value" style={{ fontSize: 18, color: 'var(--amber-400)' }}>{fmt(estimatedTax)}</span>
+              <span className="cf-card-tag">Based on current holdings</span>
             </div>
           </div>
 
           <div className="section-card">
-            <h2 className="section-title">💡 Tax Insights</h2>
+            <h2 className="section-title">Tax Insights</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[
-                '₹6,500 more LTCG is tax-free this FY — consider booking profits',
-                'ELSS investments give 80C benefit up to ₹1.5L',
-                'NPS gives additional ₹50K deduction under 80CCD(1B)',
+                totalGains < ltcgExempt
+                  ? `${fmt(ltcgExempt - totalGains)} more LTCG is tax-free this FY — consider booking profits`
+                  : `${fmt(taxableGains)} of your gains is taxable at 12.5%`,
+                'ELSS investments give 80C benefit up to 1.5L',
+                'NPS gives additional 50K deduction under 80CCD(1B)',
               ].map((tip, i) => (
                 <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 12px', background: 'var(--glass-bg)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
                   <span style={{ fontSize: 16 }}>💡</span>
@@ -315,7 +322,8 @@ export default function PortfolioDashboard() {
             </div>
           </div>
         </>
-      )}
+        )
+      })()}
 
       {/* ═══ SIP CALCULATOR ═══ */}
       {tab === 'sip' && (
