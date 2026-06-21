@@ -33,11 +33,13 @@ export default function Meals() {
   const [saving, setSaving] = useState(false)
 
   const goal = 2000
-  const water = 6 // glasses — placeholder until water tracking API exists
+  const [water, setWater] = useState(0)
+  const [waterLoading, setWaterLoading] = useState(false)
 
   useEffect(() => {
     if (!phone) return
     loadMeals()
+    loadWater()
   }, [phone])
 
   const loadMeals = async () => {
@@ -52,6 +54,33 @@ export default function Meals() {
       toast.show('Could not load meals', 'error')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadWater = async () => {
+    try {
+      const log = await api.getHealthLog(phone)
+      if (log && log.water_glasses != null) {
+        setWater(Number(log.water_glasses) || 0)
+      }
+    } catch (e) {
+      console.error('Failed to load water data:', e)
+    }
+  }
+
+  const handleAddWater = async () => {
+    if (waterLoading) return
+    setWaterLoading(true)
+    const newCount = water + 1
+    setWater(newCount) // optimistic update
+    try {
+      await api.upsertHealthLog(phone, { water_glasses: newCount })
+    } catch (e) {
+      console.error('Failed to update water:', e)
+      setWater(water) // revert on error
+      toast.show('Could not update water', 'error')
+    } finally {
+      setWaterLoading(false)
     }
   }
 
@@ -123,7 +152,12 @@ export default function Meals() {
               />
             </div>
           </div>
-          <div className="card" style={{ padding: 16, textAlign: 'center' }}>
+          <motion.div
+            className="card"
+            style={{ padding: 16, textAlign: 'center', cursor: 'pointer' }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleAddWater}
+          >
             <Droplets size={20} color="#2196F3" style={{ marginBottom: 6 }} />
             <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Sora',sans-serif" }}>{water}</div>
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>/ 8 glasses</div>
@@ -132,7 +166,10 @@ export default function Meals() {
                 <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: i < water ? '#2196F3' : 'var(--bg-secondary)' }} />
               ))}
             </div>
-          </div>
+            <div style={{ fontSize: 10, color: 'var(--viya-primary-500)', marginTop: 6, fontWeight: 600 }}>
+              {waterLoading ? 'Saving...' : 'Tap to add glass'}
+            </div>
+          </motion.div>
         </div>
 
         {/* Loading State */}

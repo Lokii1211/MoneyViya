@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
-const getPortfolioAnalysis = async () => null
+import { api } from '../lib/supabase'
+import { motion } from 'framer-motion'
+
 const getEPFProjection = async () => null
-const optimize80C = async () => null
 
 const TABS = [
   { key: 'overview', label: '📊 Overview' },
@@ -13,23 +14,41 @@ const TABS = [
   { key: 'retire', label: '🏖️ Retire' },
 ]
 
-// Demo data — used when API is unavailable (offline/sandbox)
-const DEMO_HOLDINGS = [
-  { name: 'Parag Parikh Flexi Cap', type: 'Mutual Fund', invested: 200000, current: 268000, returns_pct: 34, sector: 'Flexi Cap' },
-  { name: 'UTI Nifty 50 Index', type: 'Index Fund', invested: 150000, current: 172500, returns_pct: 15, sector: 'Large Cap' },
-  { name: 'Reliance Industries', type: 'Equity', invested: 100000, current: 135000, returns_pct: 35, sector: 'Energy' },
-  { name: 'HDFC Bank', type: 'Equity', invested: 80000, current: 92000, returns_pct: 15, sector: 'Banking' },
-  { name: 'Gold BeES', type: 'ETF', invested: 50000, current: 62000, returns_pct: 24, sector: 'Gold' },
-  { name: 'Infosys', type: 'Equity', invested: 60000, current: 54000, returns_pct: -10, sector: 'IT' },
-]
+const TYPE_MAP = {
+  mutual_fund: { type: 'Mutual Fund', sector: 'Flexi Cap' },
+  stock: { type: 'Equity', sector: 'Equity' },
+  fd: { type: 'FD', sector: 'Fixed Income' },
+  ppf: { type: 'PPF', sector: 'Fixed Income' },
+  nps: { type: 'NPS', sector: 'Retirement' },
+  gold: { type: 'ETF', sector: 'Gold' },
+  crypto: { type: 'Crypto', sector: 'Crypto' },
+}
+
+function PortfolioSkeleton() {
+  return (
+    <div>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="skeleton"
+        style={{ height: 120, borderRadius: 16, marginBottom: 16 }} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
+        {[0, 1, 2].map(i => (
+          <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 + i * 0.06 }} className="skeleton" style={{ height: 80, borderRadius: 12 }} />
+        ))}
+      </div>
+      {[0, 1, 2, 3].map(i => (
+        <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 + i * 0.06 }} className="skeleton"
+          style={{ height: 64, borderRadius: 12, marginBottom: 8 }} />
+      ))}
+    </div>
+  )
+}
 
 export default function PortfolioDashboard() {
   const navigate = useNavigate()
-  const { user } = useApp()
+  const { user, phone } = useApp()
   const [tab, setTab] = useState('overview')
-  const [holdings, setHoldings] = useState(DEMO_HOLDINGS)
-  const [apiAnalysis, setApiAnalysis] = useState(null)
-  const [taxData, setTaxData] = useState(null)
+  const [holdings, setHoldings] = useState([])
   const [loading, setLoading] = useState(true)
   const [sipAmount, setSipAmount] = useState(10000)
   const [sipYears, setSipYears] = useState(20)
@@ -39,29 +58,36 @@ export default function PortfolioDashboard() {
   const [epfAge, setEpfAge] = useState(28)
   const [epfResult, setEpfResult] = useState(null)
 
-  // Fetch portfolio analysis from live API
+  // Load real investment data from API
   useEffect(() => {
     async function fetchData() {
+      if (!phone) { setLoading(false); return }
       setLoading(true)
       try {
-        const apiHoldings = holdings.map(h => ({
-          symbol: h.name, quantity: 1,
-          buy_price: h.invested, current_price: h.current,
-          buy_date: '2023-01-15', type: h.type,
-        }))
-        const res = await getPortfolioAnalysis(apiHoldings)
-        if (res?.data) setApiAnalysis(res.data)
-      } catch { /* offline — use demo */ }
-
-      try {
-        const taxRes = await optimize80C({ ELSS: 80000, PPF: 30000 }, 1500000)
-        if (taxRes?.data) setTaxData(taxRes.data)
-      } catch { /* offline */ }
-
+        const invData = await api.getInvestments(phone)
+        if (invData?.length) {
+          setHoldings(invData.map(inv => {
+            const mapping = TYPE_MAP[inv.investment_type] || { type: inv.investment_type || 'Other', sector: 'Other' }
+            const invested = Number(inv.invested_amount || 0)
+            const current = Number(inv.current_value || inv.invested_amount || 0)
+            const returns_pct = invested > 0 ? Math.round(((current - invested) / invested) * 100) : 0
+            return {
+              name: inv.name,
+              type: mapping.type,
+              invested,
+              current,
+              returns_pct,
+              sector: mapping.sector,
+            }
+          }))
+        }
+      } catch (e) {
+        console.error('Portfolio load error:', e)
+      }
       setLoading(false)
     }
     fetchData()
-  }, [])
+  }, [phone])
 
   // Fetch EPF projection from API when inputs change
   useEffect(() => {
@@ -123,6 +149,8 @@ export default function PortfolioDashboard() {
     years: epfResult.years_to_retirement || epfResult.years || 0,
   } : null
 
+  const isEmpty = holdings.length === 0 && !loading
+
   return (
     <div className="page" id="portfolio-page">
       <div className="page-header">
@@ -130,6 +158,24 @@ export default function PortfolioDashboard() {
         <p className="page-subtitle">Investment command center</p>
       </div>
 
+      {loading && <PortfolioSkeleton />}
+
+      {isEmpty && (
+        <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>📈</div>
+          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: 'var(--text-primary)' }}>No investments tracked yet</h3>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20, lineHeight: 1.5 }}>
+            Add your mutual funds, stocks, FDs and more to track your portfolio in one place.
+          </p>
+          <button className="cf-action-btn" onClick={() => navigate('/wealth')}
+            style={{ padding: '12px 24px', fontSize: 15, fontWeight: 600 }}>
+            + Add Investment
+          </button>
+        </div>
+      )}
+
+      {!loading && !isEmpty && (
+        <>
       {/* Tab Bar */}
       <div className="cf-period-bar" style={{ overflowX: 'auto', gap: 4 }}>
         {TABS.map(t => (
@@ -401,6 +447,8 @@ export default function PortfolioDashboard() {
         <button className="cf-action-btn" onClick={() => navigate('/insights')}>💡 Insights</button>
         <button className="cf-action-btn" onClick={() => navigate('/wealth')}>💰 Wealth</button>
       </div>
+        </>
+      )}
     </div>
   )
 }

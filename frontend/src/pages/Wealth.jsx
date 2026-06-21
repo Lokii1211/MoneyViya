@@ -5,7 +5,7 @@ import { api } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { formatINR } from '../lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
-import { TrendingUp, TrendingDown, PiggyBank, Plus, BarChart3, Shield } from 'lucide-react'
+import { TrendingUp, TrendingDown, PiggyBank, Plus, BarChart3, Shield, X, ChevronRight, Smartphone } from 'lucide-react'
 
 const typeConfig = {
   mutual_fund: { emoji: '📈', color: 'var(--primary)', label: 'Mutual Fund' },
@@ -48,6 +48,9 @@ export default function Wealth() {
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState('ALL')
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [addSaving, setAddSaving] = useState(false)
+  const [addForm, setAddForm] = useState({ name: '', investment_type: 'mutual_fund', invested_amount: '', current_value: '' })
 
   const loadData = useCallback(async () => {
     if (!phone) return
@@ -64,6 +67,30 @@ export default function Wealth() {
   }, [phone])
 
   useEffect(() => { loadData() }, [loadData])
+
+  async function handleAddInvestment() {
+    if (!addForm.name || !addForm.invested_amount) {
+      toast.error('Please enter name and invested amount')
+      return
+    }
+    setAddSaving(true)
+    try {
+      await api.addInvestment(phone, {
+        name: addForm.name,
+        investment_type: addForm.investment_type,
+        invested_amount: Number(addForm.invested_amount),
+        current_value: Number(addForm.current_value || addForm.invested_amount),
+      })
+      toast.success('Investment added!')
+      setAddForm({ name: '', investment_type: 'mutual_fund', invested_amount: '', current_value: '' })
+      setShowAddForm(false)
+      loadData()
+    } catch (e) {
+      console.error('Add investment error:', e)
+      toast.error('Failed to add investment')
+    }
+    setAddSaving(false)
+  }
 
   // Portfolio computations
   const totalInvested = investments.reduce((s, i) => s + Number(i.invested_amount || 0), 0)
@@ -112,6 +139,76 @@ export default function Wealth() {
         </div>
         <button className="pill-btn active" onClick={() => nav('/chat?q=investment+advice')}>Ask Viya</button>
       </div>
+
+      {/* Connect Investment Accounts */}
+      <div className="card mb-4" style={{ padding: 16 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Track your portfolio</div>
+        <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 12 }}>Connect your broker or add investments manually</div>
+        <div className="flex gap-2 flex-wrap" style={{ marginBottom: 12 }}>
+          {['Zerodha', 'Groww', 'Kuvera'].map(broker => (
+            <button key={broker} className="pill-btn" onClick={() => nav(`/chat?q=I+have+investments+in+${broker}`)}>
+              {broker}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <button className="pill-btn active" onClick={() => setShowAddForm(!showAddForm)}>
+            <Plus size={14} /> Add Investment
+          </button>
+          <button className="pill-btn" onClick={() => nav('/bank-connect')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Smartphone size={14} /> Connect Bank
+          </button>
+        </div>
+      </div>
+
+      {/* Add Investment Form (inline expandable) */}
+      <AnimatePresence>
+        {showAddForm && (
+          <motion.div
+            key="add-form"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div className="card mb-4" style={{ padding: 16, border: '1px solid var(--primary)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontSize: 14, fontWeight: 700 }}>New Investment</span>
+                <button onClick={() => setShowAddForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer' }}>
+                  <X size={18} />
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <input type="text" placeholder="Investment name (e.g. Axis Bluechip Fund)"
+                  value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })}
+                  style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--glass-border, #333)', background: 'var(--glass-bg, #1a1a1a)', color: 'var(--text1, #fff)', fontSize: 14 }} />
+                <select value={addForm.investment_type} onChange={e => setAddForm({ ...addForm, investment_type: e.target.value })}
+                  style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--glass-border, #333)', background: 'var(--glass-bg, #1a1a1a)', color: 'var(--text1, #fff)', fontSize: 14 }}>
+                  <option value="mutual_fund">Mutual Fund</option>
+                  <option value="stock">Stock</option>
+                  <option value="fd">Fixed Deposit</option>
+                  <option value="ppf">PPF</option>
+                  <option value="nps">NPS</option>
+                  <option value="gold">Gold</option>
+                  <option value="crypto">Crypto</option>
+                </select>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input type="number" placeholder="Invested amount"
+                    value={addForm.invested_amount} onChange={e => setAddForm({ ...addForm, invested_amount: e.target.value })}
+                    style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--glass-border, #333)', background: 'var(--glass-bg, #1a1a1a)', color: 'var(--text1, #fff)', fontSize: 14 }} />
+                  <input type="number" placeholder="Current value"
+                    value={addForm.current_value} onChange={e => setAddForm({ ...addForm, current_value: e.target.value })}
+                    style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--glass-border, #333)', background: 'var(--glass-bg, #1a1a1a)', color: 'var(--text1, #fff)', fontSize: 14 }} />
+                </div>
+                <button className="btn-primary full" onClick={handleAddInvestment} disabled={addSaving}
+                  style={{ marginTop: 4 }}>
+                  {addSaving ? 'Saving...' : 'Save Investment'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {loading ? <LoadingSkeleton /> : (
         <>

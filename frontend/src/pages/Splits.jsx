@@ -19,6 +19,12 @@ export default function Splits() {
   const [showAdd, setShowAdd] = useState(false)
   const [settling, setSettling] = useState(null)
 
+  // Split form state
+  const [splitTitle, setSplitTitle] = useState('')
+  const [splitAmount, setSplitAmount] = useState('')
+  const [splitPeople, setSplitPeople] = useState('')
+  const [savingSplit, setSavingSplit] = useState(false)
+
   useEffect(() => {
     if (!phone) return
     loadLendings()
@@ -52,6 +58,53 @@ export default function Splits() {
     }
   }
 
+  const handleCreateSplit = async () => {
+    const title = splitTitle.trim()
+    const total = Number(splitAmount)
+    const people = Math.floor(Number(splitPeople))
+
+    if (!title) { toast.show('Enter a title', 'error'); return }
+    if (!total || total <= 0) { toast.show('Enter a valid amount', 'error'); return }
+    if (!people || people < 2) { toast.show('Need at least 2 people', 'error'); return }
+
+    setSavingSplit(true)
+    const perPerson = Math.round((total / people) * 100) / 100
+
+    try {
+      // Create one lending entry per person (excluding self)
+      const created = []
+      for (let i = 1; i < people; i++) {
+        const result = await api.addLending({
+          user_phone: phone,
+          person_name: `${title} — Person ${i}`,
+          amount: perPerson,
+          type: 'given',
+          note: `Split: ${title} (${formatCurrency(perPerson)} each, ${people} people)`,
+          status: 'pending',
+        })
+        if (result) created.push(result)
+      }
+
+      if (created.length > 0) {
+        setLendings(prev => [...created, ...prev])
+        toast.show(`Split created! ${formatCurrency(perPerson)} each`, 'success')
+        setSplitTitle('')
+        setSplitAmount('')
+        setSplitPeople('')
+        setShowAdd(false)
+      } else {
+        toast.show('Failed to create split', 'error')
+      }
+    } catch (e) {
+      console.error('Failed to create split:', e)
+      toast.show('Failed to create split', 'error')
+    } finally {
+      setSavingSplit(false)
+    }
+  }
+
+  const formatCurrency = (val) => `₹${Number(val).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
+
   const activeLendings = lendings.filter(l => l.status !== 'settled')
   const settledLendings = lendings.filter(l => l.status === 'settled')
 
@@ -62,6 +115,10 @@ export default function Splits() {
   const totalTaken = activeLendings
     .filter(l => l.type === 'taken' || l.direction === 'taken')
     .reduce((sum, l) => sum + (Number(l.amount) || 0), 0)
+
+  const splitPerPerson = (Number(splitAmount) > 0 && Number(splitPeople) >= 2)
+    ? Math.round((Number(splitAmount) / Number(splitPeople)) * 100) / 100
+    : 0
 
   return (
     <PageTransition>
@@ -86,7 +143,7 @@ export default function Splits() {
               <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>You gave</span>
             </div>
             <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Sora',sans-serif", color: 'var(--viya-success)' }}>
-              {loading ? '...' : `₹${totalGiven.toLocaleString()}`}
+              {loading ? '...' : formatCurrency(totalGiven)}
             </div>
           </div>
           <div className="card" style={{
@@ -97,7 +154,7 @@ export default function Splits() {
               <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>You took</span>
             </div>
             <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Sora',sans-serif", color: 'var(--viya-error)' }}>
-              {loading ? '...' : `₹${totalTaken.toLocaleString()}`}
+              {loading ? '...' : formatCurrency(totalTaken)}
             </div>
           </div>
         </div>
@@ -109,7 +166,7 @@ export default function Splits() {
         }}>
           <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 4 }}>Net Balance</div>
           <div style={{ fontSize: 32, fontWeight: 700, fontFamily: "'Sora',sans-serif" }}>
-            {loading ? '...' : `₹${Math.abs(totalGiven - totalTaken).toLocaleString()}`}
+            {loading ? '...' : formatCurrency(Math.abs(totalGiven - totalTaken))}
           </div>
           <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>
             {totalGiven >= totalTaken ? 'Others owe you' : 'You owe others'}
@@ -170,7 +227,7 @@ export default function Splits() {
                       </div>
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: 18, fontWeight: 700, color: isGiven ? 'var(--viya-success)' : 'var(--viya-error)' }}>
-                          {isGiven ? '+' : '-'}₹{Number(lending.amount || 0).toLocaleString()}
+                          {isGiven ? '+' : '-'}{formatCurrency(lending.amount || 0)}
                         </div>
                         {lending.created_at && (
                           <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
@@ -215,7 +272,7 @@ export default function Splits() {
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{lending.person_name || lending.contact_name || 'Unknown'}</div>
                     </div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-tertiary)' }}>
-                      ₹{Number(lending.amount || 0).toLocaleString()}
+                      {formatCurrency(lending.amount || 0)}
                     </div>
                   </motion.div>
                 )
@@ -224,9 +281,61 @@ export default function Splits() {
           </>
         )}
 
-        <BottomSheet isOpen={showAdd} onClose={() => setShowAdd(false)} title="New Split">
-          <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-tertiary)' }}>
-            Split bill creation form coming soon
+        <BottomSheet isOpen={showAdd} onClose={() => setShowAdd(false)} title="Split a Bill">
+          <div className="entry-form" style={{ border: 'none', padding: 0 }}>
+            <div className="form-group">
+              <label>Title</label>
+              <input
+                className="form-input"
+                type="text"
+                value={splitTitle}
+                onChange={e => setSplitTitle(e.target.value)}
+                placeholder="e.g. Dinner at restaurant"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Total Amount</label>
+              <input
+                className="form-input"
+                type="number"
+                value={splitAmount}
+                onChange={e => setSplitAmount(e.target.value)}
+                placeholder="e.g. 2400"
+                min="0"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Number of People (including you)</label>
+              <input
+                className="form-input"
+                type="number"
+                value={splitPeople}
+                onChange={e => setSplitPeople(e.target.value)}
+                placeholder="e.g. 4"
+                min="2"
+              />
+            </div>
+
+            {splitPerPerson > 0 && (
+              <div className="card" style={{
+                padding: 16, textAlign: 'center', marginBottom: 18,
+                background: 'var(--bg-secondary)', borderRadius: 14,
+              }}>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 4 }}>Each person pays</div>
+                <div style={{ fontSize: 28, fontWeight: 700, fontFamily: "'Sora',sans-serif", color: 'var(--viya-primary-500)' }}>
+                  {formatCurrency(splitPerPerson)}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                  {Number(splitPeople) - 1} share{Number(splitPeople) - 1 > 1 ? 's' : ''} will be tracked (others owe you)
+                </div>
+              </div>
+            )}
+
+            <HapticButton fullWidth onClick={handleCreateSplit} disabled={savingSplit || !splitTitle.trim() || !splitAmount || !splitPeople}>
+              {savingSplit ? 'Creating Split...' : 'Create Split'}
+            </HapticButton>
           </div>
         </BottomSheet>
       </div>

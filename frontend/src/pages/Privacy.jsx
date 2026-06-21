@@ -28,7 +28,7 @@ export default function Privacy() {
     },
     {
       id: 'export', icon: <Download size={20}/>, title: 'Data Export',
-      content: `You have the right to export all your data. Coming soon: One-click data export to CSV/PDF. For now, contact support to request a full data export of your account.`
+      content: `You have the right to export all your data at any time. Go to Profile → Settings → Delete Account to download your data as a ZIP file, or contact support at support@heyviya.com for a full export.`
     },
   ]
 

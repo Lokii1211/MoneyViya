@@ -4,7 +4,7 @@ import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { formatINR } from '../lib/utils'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown, Clock, FileText, Lock } from 'lucide-react'
+import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown, Clock, FileText, Lock, Smartphone, Mail } from 'lucide-react'
 import { LANGUAGES } from '../lib/i18n'
 
 const AVATARS = ['😎','🦊','🐱','🐶','🦁','🐼','🐨','🦄','🐸','🐵','🦋','🌺','🌈','⭐','🔥','💎','🎯','🚀','🎓','💼']
@@ -76,6 +76,8 @@ export default function Profile() {
     } catch (e) { console.error('Save error:', e) }
     setSaving(false)
   }
+
+  const connectedBanksCount = (() => { try { return JSON.parse(localStorage.getItem('mv_connected_banks') || '[]').length } catch { return 0 } })()
 
   const name = user?.name || 'User'
   const level = stats.streak >= 30 ? { label: 'Legend', icon: <Crown size={14}/>, color: '#ffd700' } :
@@ -343,6 +345,35 @@ export default function Profile() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Connected Accounts */}
+          <div style={{ marginBottom: 16 }}>
+            <div className="section-label" style={{ marginBottom: 10 }}>CONNECTED ACCOUNTS</div>
+            <button className="settings-item" onClick={() => nav('/bank-connect')}>
+              <div className="si-icon"><Smartphone size={18} /></div>
+              <div className="si-info">
+                <div className="si-label">Bank & SMS Tracking</div>
+                <div className="si-sub">{connectedBanksCount > 0 ? `${connectedBanksCount} banks connected` : 'Connect to auto-track expenses'}</div>
+              </div>
+              <ChevronRight size={16} className="si-arrow" />
+            </button>
+            <button className="settings-item" onClick={() => nav('/wealth')}>
+              <div className="si-icon"><TrendingUp size={18} /></div>
+              <div className="si-info">
+                <div className="si-label">Investments & Portfolio</div>
+                <div className="si-sub">Track mutual funds, stocks, SIPs</div>
+              </div>
+              <ChevronRight size={16} className="si-arrow" />
+            </button>
+            <button className="settings-item" onClick={() => nav('/email')}>
+              <div className="si-icon"><Mail size={18} /></div>
+              <div className="si-info">
+                <div className="si-label">Email Intelligence</div>
+                <div className="si-sub">Auto-detect bills, meetings, deliveries</div>
+              </div>
+              <ChevronRight size={16} className="si-arrow" />
+            </button>
           </div>
 
           {/* Settings */}
