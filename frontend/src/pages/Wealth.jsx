@@ -288,12 +288,12 @@ export default function Wealth() {
                       <div key={inv.id} className="info-row">
                         <div className="info-icon green">📈</div>
                         <div className="info-body">
-                          <div className="info-title" style={{ fontSize: 13 }}>{inv.name}</div>
+                          <div className="info-title">{inv.name}</div>
                           <div className="info-sub">{inv.broker || 'N/A'} · Active SIP</div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
+                        <div>
                           <div className="info-value green">{formatINR(inv.sip_amount || 0)}/mo</div>
-                          <div style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 600 }}>+{inv.return_pct || 0}%</div>
+                          <div className="text-success" style={{ fontSize: 11, fontWeight: 600 }}>+{inv.return_pct || 0}%</div>
                         </div>
                       </div>
                     ))}
