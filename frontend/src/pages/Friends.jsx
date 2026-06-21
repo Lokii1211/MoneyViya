@@ -1,22 +1,22 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
-import { ArrowLeft, UserPlus, Send, Check, X, Flame, PiggyBank, Trash2, Eye } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { UserPlus, Send, Check, X, Trash2 } from 'lucide-react'
 
 export default function Friends() {
   const { phone, user } = useApp()
-  const nav = useNavigate()
   const [friends, setFriends] = useState([])
   const [pendingReceived, setPendingReceived] = useState([])
   const [pendingSent, setPendingSent] = useState([])
   const [showAdd, setShowAdd] = useState(false)
   const [friendPhone, setFriendPhone] = useState('')
   const [toast, setToast] = useState('')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => { if (phone) loadAll() }, [phone])
 
   const loadAll = async () => {
+    setLoading(true)
     const sent = await api.getFamilyConnections(phone)
     const received = await api.getFamilyInvitesReceived(phone)
     const sentF = (sent || []).filter(c => c.connection_type === 'friend')
@@ -49,6 +49,7 @@ export default function Friends() {
     }
     setPendingReceived(pRecv)
     setPendingSent(sentF.filter(c => c.status === 'pending'))
+    setLoading(false)
   }
 
   const sendRequest = async () => {
@@ -80,17 +81,27 @@ export default function Friends() {
   }
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(''), 3000) }
 
+  if (loading) {
+    return (
+      <div className="page">
+        <div className="page-header">
+          <h2 style={{fontSize:20, fontWeight:800}}>Friends</h2>
+        </div>
+        {[1,2,3].map(i => <div key={i} className="skeleton" style={{height:72, marginBottom:8, borderRadius:'var(--radius)'}} />)}
+      </div>
+    )
+  }
+
   return (
     <div className="page">
       {toast && <div className="toast">{toast}</div>}
 
       <div className="page-header">
-        <div style={{display:'flex', alignItems:'center', gap:8}}>
-          <button style={{background:'none', border:'none', cursor:'pointer', padding:4, color:'var(--text)'}} onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
-          <h2 style={{fontSize:20, fontWeight:800}}>🤝 Friends</h2>
+        <div className="header-left">
+          <h2 style={{fontSize:20, fontWeight:800}}>Friends</h2>
         </div>
-        <button className="btn-primary" style={{padding:'8px 14px', fontSize:12, borderRadius:10}} onClick={() => setShowAdd(!showAdd)}>
-          <UserPlus size={14} style={{marginRight:4}}/> Add
+        <button className="btn-primary" style={{padding:'8px 14px', fontSize:12, minHeight:36}} onClick={() => setShowAdd(!showAdd)}>
+          <UserPlus size={14}/> Add
         </button>
       </div>
 

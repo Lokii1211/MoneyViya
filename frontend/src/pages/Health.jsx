@@ -2,30 +2,45 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
+import { useToast } from '../components/Toast'
 import { formatINR } from '../lib/utils'
-import { Activity, Droplets, Moon, Footprints, Flame, Apple, Pill, Plus, TrendingUp, ChevronRight, Heart, Dumbbell, Brain, Camera, X } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Activity, Droplets, Moon, Footprints, Flame, Plus, TrendingUp, Heart, Scale, Smile } from 'lucide-react'
 
 const HEALTH_TIPS = [
-  '💧 Drink water first thing in the morning — boosts metabolism 30%',
-  '🏃 10,000 steps = ~400 calories burned',
-  '😴 7-9 hours sleep = optimal cognitive function',
-  '🥗 Eat protein within 30 min of waking up',
-  '🧘 5 min meditation reduces cortisol by 25%',
+  'Drink water first thing in the morning -- boosts metabolism 30%',
+  '10,000 steps = ~400 calories burned',
+  '7-9 hours sleep = optimal cognitive function',
+  'Eat protein within 30 min of waking up',
+  '5 min meditation reduces cortisol by 25%',
 ]
 
-const MEAL_ICONS = { breakfast: '🌅', lunch: '☀️', dinner: '🌙', snack: '🍿' }
+const MOODS = [
+  { emoji: '😄', label: 'Great', value: 'great' },
+  { emoji: '😊', label: 'Good', value: 'good' },
+  { emoji: '😐', label: 'Okay', value: 'okay' },
+  { emoji: '😟', label: 'Low', value: 'low' },
+  { emoji: '😔', label: 'Sad', value: 'sad' },
+]
 
-function CircleProgress({ value, max, size = 120, stroke = 10, color, children }) {
+const DEFAULT_HEALTH = {
+  steps: 0, water_glasses: 0, sleep_hours: 0, calories: 0,
+  weight: 0, heart_rate: 0, health_score: 50, mood: null,
+}
+
+const goals = { steps: 10000, water: 8, sleep: 8, calories: 2200 }
+
+function ProgressRing({ value, max, size = 100, stroke = 8, color = 'var(--primary)', children }) {
   const r = (size - stroke) / 2
   const circ = 2 * Math.PI * r
   const pct = Math.min(value / max, 1)
   return (
     <div style={{ position: 'relative', width: size, height: size }}>
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--border-light)" strokeWidth={stroke} />
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
           strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)}
-          strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s ease' }} />
+          strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.8s var(--ease)' }} />
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         {children}
@@ -34,484 +49,334 @@ function CircleProgress({ value, max, size = 120, stroke = 10, color, children }
   )
 }
 
-function PillarCard({ icon, label, value, unit, target, color, onClick }) {
-  const pct = target > 0 ? Math.min(Math.round((value / target) * 100), 100) : 0
+function LoadingSkeleton() {
   return (
-    <div onClick={onClick} style={{
-      background: 'var(--bg-card)', borderRadius: 'var(--radius-xl)', padding: 16,
-      border: '1px solid var(--border-light)', cursor: 'pointer',
-      boxShadow: 'var(--shadow-1)', transition: 'transform 0.15s',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: 10, background: color + '15', color: color,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>{icon}</div>
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</span>
+    <div>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="skeleton" style={{ height: 140, borderRadius: 20, marginBottom: 16 }} />
+      <div className="stat-grid">
+        {[0, 1, 2, 3].map(i => (
+          <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 + i * 0.05 }} className="skeleton" style={{ height: 100, borderRadius: 16 }} />
+        ))}
       </div>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, fontSize: 24, color: 'var(--text-primary)', marginBottom: 2 }}>
-        {value}<span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)', marginLeft: 2 }}>{unit}</span>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-        <div style={{ flex: 1, height: 4, borderRadius: 99, background: 'var(--viya-neutral-100)', overflow: 'hidden' }}>
-          <div style={{ width: `${pct}%`, height: '100%', borderRadius: 99, background: color, transition: 'width 0.6s ease' }} />
-        </div>
-        <span style={{ fontSize: 11, fontWeight: 600, color }}>{pct}%</span>
-      </div>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+        className="skeleton" style={{ height: 48, borderRadius: 12, marginBottom: 12 }} />
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}
+        className="skeleton" style={{ height: 120, borderRadius: 16 }} />
     </div>
   )
-}
-
-// Defaults when no DB data exists yet
-const DEFAULT_HEALTH = {
-  score: 50, steps: 0, water_glasses: 0, sleep_hours: 0, calories: 0,
-  weight: 0, heart_rate: 0, health_score: 50, mood: 'neutral',
 }
 
 export default function Health() {
   const { phone } = useApp()
   const nav = useNavigate()
+  const toast = useToast()
   const [tab, setTab] = useState('overview')
-  const [timeRange, setTimeRange] = useState('today')
   const [mood, setMood] = useState(null)
-  const [foodScanOpen, setFoodScanOpen] = useState(false)
-  const [scanResult, setScanResult] = useState(null)
-  const tip = HEALTH_TIPS[Math.floor(Date.now() / 3600000) % HEALTH_TIPS.length]
-
   const [healthData, setHealthData] = useState(DEFAULT_HEALTH)
-  const [meals, setMeals] = useState([])
-  const [medicines, setMedicines] = useState([])
-  const [checkins, setCheckins] = useState([])
+  const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // Goals (user-configurable later)
-  const goals = { steps: 10000, water: 8, sleep: 8, calories: 2200 }
+  // Weight / Water form state
+  const [weightInput, setWeightInput] = useState('')
+  const [waterGoal, setWaterGoal] = useState(8)
+
+  const tip = HEALTH_TIPS[Math.floor(Date.now() / 3600000) % HEALTH_TIPS.length]
 
   const loadData = useCallback(async () => {
     if (!phone) return
     setLoading(true)
     try {
-      const [log, mealsData, medsData, medCheckins] = await Promise.all([
+      const [log, hist] = await Promise.all([
         api.getHealthLog(phone),
-        api.getMeals(phone),
-        api.getMedicines(phone),
-        api.getMedicineCheckins(phone),
+        api.getHealthHistory(phone),
       ])
       if (log) setHealthData(log)
-      if (mealsData?.length) setMeals(mealsData)
-      if (medsData?.length) setMedicines(medsData)
-      if (medCheckins?.length) setCheckins(medCheckins)
+      if (hist?.length) setHistory(hist)
     } catch (e) { console.error('Health load error:', e) }
     setLoading(false)
   }, [phone])
 
   useEffect(() => { loadData() }, [loadData])
 
-  // Quick log helpers
-  const quickLogWater = async () => {
-    const newVal = (healthData.water_glasses || 0) + 1
-    setHealthData(d => ({ ...d, water_glasses: newVal }))
-    await api.upsertHealthLog(phone, { water_glasses: newVal })
-  }
-
-  const takeMedicine = async (med) => {
-    await api.checkinMedicine(med.id, phone)
-    setCheckins(prev => [...prev, { medicine_id: med.id }])
-  }
-
-  const isMedTaken = (medId) => checkins.some(c => c.medicine_id === medId)
-
-  // Computed
-  const score = healthData.health_score || healthData.score || 50
+  const score = healthData.health_score || 50
   const steps = healthData.steps || 0
   const water = healthData.water_glasses || 0
   const sleep = healthData.sleep_hours || 0
   const calories = healthData.calories || 0
-  const totalMealCals = meals.reduce((s, m) => s + (m.calories || 0), 0) || calories
-  const streak = 0 // TODO: calculate from health_logs history
+
+  const quickLogWater = async () => {
+    const newVal = water + 1
+    setHealthData(d => ({ ...d, water_glasses: newVal }))
+    try {
+      await api.upsertHealthLog(phone, { water_glasses: newVal })
+      toast.show('+1 glass logged!', 'success')
+    } catch { toast.show('Failed to log water', 'error') }
+  }
+
+  const saveWeight = async () => {
+    const w = parseFloat(weightInput)
+    if (!w || w < 20 || w > 300) return toast.show('Enter valid weight (20-300 kg)', 'error')
+    setHealthData(d => ({ ...d, weight: w }))
+    try {
+      await api.upsertHealthLog(phone, { weight: w })
+      toast.show(`Weight updated: ${w} kg`, 'success')
+      setWeightInput('')
+    } catch { toast.show('Failed to save weight', 'error') }
+  }
+
+  const saveMood = async (m) => {
+    setMood(m.value)
+    try {
+      await api.upsertHealthLog(phone, { mood: m.value })
+      toast.show(`Mood logged: ${m.emoji} ${m.label}`, 'success')
+    } catch { toast.show('Failed to log mood', 'error') }
+  }
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
-    { id: 'diet', label: 'Diet' },
-    { id: 'medicine', label: 'Medicine' },
+    { id: 'weight', label: 'Weight' },
+    { id: 'water', label: 'Water' },
+    { id: 'mood', label: 'Mood' },
+  ]
+
+  const pillars = [
+    { icon: <Footprints size={16} />, label: 'Steps', value: steps, unit: 'steps', target: goals.steps, cls: 'steps' },
+    { icon: <Flame size={16} />, label: 'Calories', value: calories, unit: 'kcal', target: goals.calories, cls: 'calories' },
+    { icon: <Moon size={16} />, label: 'Sleep', value: sleep, unit: 'hrs', target: goals.sleep, cls: 'sleep' },
+    { icon: <Droplets size={16} />, label: 'Water', value: water, unit: 'glasses', target: goals.water, cls: 'water', onClick: quickLogWater },
   ]
 
   return (
-    <div className="page" style={{ paddingTop: 8 }}>
+    <div className="page">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div className="page-header">
         <div>
-          <h1 style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 24, letterSpacing: -0.3 }}>Health Center</h1>
-          <p className="body-s text-secondary">Your wellness command center 💪</p>
+          <h2>Health Center</h2>
+          <p className="body-s text-secondary">Your wellness command center</p>
         </div>
-        <button onClick={() => nav('/chat?q=health+tips')} style={{
-          padding: '8px 14px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 600,
-          background: 'var(--gradient-health)', color: 'white', border: 'none', cursor: 'pointer',
-          boxShadow: '0 4px 12px rgba(255,107,107,0.3)',
-        }}>Ask Viya 🧠</button>
+        <button className="pill-btn active" onClick={() => nav('/chat?q=health+tips')}>Ask Viya</button>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 16, padding: 4, background: 'var(--bg-secondary)', borderRadius: 'var(--radius-full)' }}>
+      {/* Tab Bar */}
+      <div className="tab-bar">
         {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{
-            flex: 1, padding: '8px 12px', borderRadius: 'var(--radius-full)', fontSize: 13, fontWeight: 600,
-            background: tab === t.id ? 'var(--bg-card)' : 'transparent',
-            color: tab === t.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-            boxShadow: tab === t.id ? 'var(--shadow-1)' : 'none',
-            transition: 'all 0.2s', cursor: 'pointer', border: 'none',
-          }}>{t.label}</button>
+          <button key={t.id} className={`tab-btn ${tab === t.id ? 'active' : ''}`}
+            onClick={() => setTab(t.id)}>{t.label}</button>
         ))}
       </div>
 
-      {/* Time Range Tabs (PRD line 957) */}
-      {tab === 'overview' && (
-        <div style={{ display: 'flex', gap: 6, marginBottom: 16, justifyContent: 'center' }}>
-          {['today', 'week', 'month'].map(t => (
-            <button key={t} onClick={() => setTimeRange(t)} style={{
-              padding: '6px 18px', borderRadius: 'var(--r-full)', fontSize: 12, fontWeight: 600,
-              background: timeRange === t ? 'var(--gradient-health)' : 'transparent',
-              color: timeRange === t ? 'white' : 'var(--text-secondary)',
-              border: timeRange === t ? 'none' : '1px solid var(--border-light)',
-              cursor: 'pointer', transition: 'all 0.2s',
-              boxShadow: timeRange === t ? '0 4px 12px rgba(255,107,107,0.25)' : 'none',
-            }}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>
-          ))}
-        </div>
-      )}
-
-      {tab === 'overview' && (
-        <>
-          {/* Health Score Circle */}
-          <div style={{
-            background: 'var(--gradient-health)', borderRadius: 'var(--radius-2xl)', padding: 24,
-            marginBottom: 16, display: 'flex', alignItems: 'center', gap: 20, color: 'white',
-            boxShadow: '0 8px 24px rgba(255,107,107,0.3)',
-          }}>
-            <CircleProgress value={score} max={100} size={160} stroke={12} color="white">
-              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 40, color: 'white' }}>{score}</div>
-              <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.8, letterSpacing: 1 }}>SCORE</div>
-            </CircleProgress>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, marginBottom: 4 }}>
-                {score >= 80 ? 'Excellent! 🌟' : score >= 60 ? 'Good Shape! 👍' : 'Needs Work 💪'}
+      {loading ? <LoadingSkeleton /> : (
+        <AnimatePresence mode="wait">
+          {/* === OVERVIEW TAB === */}
+          {tab === 'overview' && (
+            <motion.div key="overview" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              {/* Health Score Hero */}
+              <div className="hero-card health flex items-center gap-4 mb-4" style={{ padding: 20 }}>
+                <ProgressRing value={score} max={100} size={120} stroke={10} color="white">
+                  <span className="currency" style={{ fontSize: 32, fontWeight: 800, color: '#fff' }}>{score}</span>
+                  <span className="stat-card-label" style={{ opacity: 0.8 }}>SCORE</span>
+                </ProgressRing>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 4 }}>
+                    {score >= 80 ? 'Excellent!' : score >= 60 ? 'Good Shape!' : 'Needs Work'}
+                  </div>
+                  <p className="body-s" style={{ opacity: 0.85, marginBottom: 6 }}>
+                    Track daily to improve your score
+                  </p>
+                  <div className="flex gap-3" style={{ fontSize: 12 }}>
+                    {healthData.heart_rate > 0 && <span>❤️ {healthData.heart_rate} bpm</span>}
+                    {healthData.weight > 0 && <span>⚖️ {healthData.weight} kg</span>}
+                  </div>
+                </div>
               </div>
-              <div style={{ fontSize: 13, opacity: 0.85, lineHeight: 1.4, marginBottom: 8 }}>
-                {streak > 0 ? `🔥 ${streak}-day streak! Keep going.` : 'Start tracking today!'}
+
+              {/* 4 Pillar Cards */}
+              <div className="stat-grid">
+                {pillars.map(p => {
+                  const pct = p.target > 0 ? Math.min(Math.round((p.value / p.target) * 100), 100) : 0
+                  return (
+                    <div key={p.label} className={`health-card ${p.cls}`}
+                      onClick={p.onClick} style={p.onClick ? { cursor: 'pointer' } : {}}>
+                      <div className="health-label">{p.label}</div>
+                      <div className="health-value">
+                        {p.value}<span className="health-sub" style={{ fontSize: 13, marginLeft: 2 }}>{p.unit}</span>
+                      </div>
+                      <div className="progress-bar" style={{ marginTop: 8, background: 'rgba(255,255,255,0.2)' }}>
+                        <div className="progress-fill" style={{ width: `${pct}%`, background: 'rgba(255,255,255,0.8)' }} />
+                      </div>
+                      <div className="health-sub" style={{ marginTop: 4, fontSize: 11 }}>{pct}% of goal</div>
+                    </div>
+                  )
+                })}
               </div>
-              <div style={{ display: 'flex', gap: 12, fontSize: 12 }}>
-                {healthData.heart_rate > 0 && <span>❤️ {healthData.heart_rate} bpm</span>}
-                {healthData.weight > 0 && <span>⚖️ {healthData.weight} kg</span>}
+
+              {/* Health Tip */}
+              <div className="insight-card mt-2">
+                <Activity size={16} className="insight-icon" />
+                <span className="insight-text">{tip}</span>
               </div>
-            </div>
-          </div>
 
-          {/* 4 Pillar Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-            <PillarCard icon={<Footprints size={16}/>} label="Steps" value={steps} unit="steps" target={goals.steps} color="var(--viya-primary-500)" />
-            <PillarCard icon={<Droplets size={16}/>} label="Water" value={water} unit="glasses" target={goals.water} color="#0091FF" onClick={quickLogWater} />
-            <PillarCard icon={<Moon size={16}/>} label="Sleep" value={sleep} unit="hrs" target={goals.sleep} color="var(--viya-violet-500)" />
-            <PillarCard icon={<Flame size={16}/>} label="Calories" value={totalMealCals} unit="kcal" target={goals.calories} color="var(--viya-gold-500)" />
-          </div>
+              {/* Quick Log Buttons */}
+              <div className="flex gap-2 mt-2">
+                {[
+                  { emoji: '💧', label: '+Water', action: quickLogWater },
+                  { emoji: '🏃', label: 'Steps', action: () => nav('/chat?q=log+steps') },
+                  { emoji: '😴', label: 'Sleep', action: () => nav('/chat?q=log+sleep') },
+                  { emoji: '🍎', label: 'Calories', action: () => nav('/chat?q=log+calories') },
+                ].map((a, i) => (
+                  <button key={i} className="qa-btn normal" onClick={a.action} style={{ flex: 1 }}>
+                    <span style={{ fontSize: 20 }}>{a.emoji}</span>
+                    <span className="qa-btn-label">{a.label}</span>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
-          {/* Health Tip */}
-          <div style={{
-            padding: '12px 16px', borderRadius: 'var(--radius-lg)', marginBottom: 16,
-            background: 'var(--viya-primary-50)', border: '1px solid var(--viya-primary-200)',
-            display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--viya-primary-700)',
-          }}>
-            <Activity size={16} color="var(--viya-primary-500)" />
-            <span style={{ flex: 1 }}>{tip}</span>
-          </div>
+          {/* === WEIGHT TAB === */}
+          {tab === 'weight' && (
+            <motion.div key="weight" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              {/* Current Weight */}
+              <div className="hero-card coral text-center mb-4" style={{ padding: 24 }}>
+                <div className="stat-card-label" style={{ opacity: 0.7 }}>Current Weight</div>
+                <div className="currency" style={{ fontSize: 40, fontWeight: 800 }}>
+                  {healthData.weight > 0 ? `${healthData.weight} kg` : '-- kg'}
+                </div>
+              </div>
 
-          {/* Quick Log Buttons */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {[
-              { emoji: '💧', label: '+Water', action: () => quickLogWater() },
-              { emoji: '🏃', label: 'Steps', action: () => nav('/chat?q=log+steps') },
-              { emoji: '😴', label: 'Sleep', action: () => nav('/chat?q=log+sleep') },
-              { emoji: '🍎', label: 'Meal', action: () => setTab('diet') },
-            ].map((a, i) => (
-              <button key={i} onClick={a.action} style={{
-                flex: 1, padding: '10px 8px', borderRadius: 'var(--radius-lg)', textAlign: 'center',
-                background: 'var(--bg-card)', border: '1px solid var(--border-light)',
-                fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-              }}>
-                <span style={{ fontSize: 20 }}>{a.emoji}</span>
-                <span style={{ color: 'var(--text-secondary)' }}>{a.label}</span>
+              {/* Log Weight Form */}
+              <div className="entry-form mb-4">
+                <div className="form-group">
+                  <label>Log Today's Weight (kg)</label>
+                  <input className="form-input" type="number" placeholder="e.g. 72.5"
+                    value={weightInput} onChange={e => setWeightInput(e.target.value)}
+                    min="20" max="300" step="0.1" />
+                </div>
+                <button className="btn-primary full" onClick={saveWeight}>Save Weight</button>
+              </div>
+
+              {/* Weight History */}
+              <div className="section">
+                <div className="section-head">
+                  <h3>Recent Entries</h3>
+                </div>
+                {history.filter(h => h.weight > 0).length === 0 ? (
+                  <div className="empty-state-card">
+                    <div className="empty-emoji">⚖️</div>
+                    <h3>No weight data yet</h3>
+                    <p>Log your weight above to start tracking trends</p>
+                  </div>
+                ) : (
+                  history.filter(h => h.weight > 0).slice(0, 7).map((h, i) => (
+                    <div key={i} className="info-row">
+                      <div className="info-icon gold"><Scale size={16} /></div>
+                      <div className="info-body">
+                        <div className="info-title">{h.weight} kg</div>
+                        <div className="info-sub">{new Date(h.log_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* === WATER TAB === */}
+          {tab === 'water' && (
+            <motion.div key="water" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              {/* Water Progress */}
+              <div className="hero-card text-center mb-4" style={{ background: 'linear-gradient(135deg, #06B6D4, #22D3EE)', padding: 24 }}>
+                <ProgressRing value={water} max={waterGoal} size={140} stroke={12} color="white">
+                  <span className="currency" style={{ fontSize: 36, fontWeight: 800, color: '#fff' }}>{water}</span>
+                  <span className="body-s" style={{ opacity: 0.8 }}>of {waterGoal} glasses</span>
+                </ProgressRing>
+                <p style={{ marginTop: 12, fontSize: 14, fontWeight: 600 }}>
+                  {water >= waterGoal ? 'Goal reached! Great job!' : `${waterGoal - water} more glasses to go`}
+                </p>
+              </div>
+
+              {/* Quick Add */}
+              <button className="btn-primary full mb-4" onClick={quickLogWater}>
+                <Droplets size={16} /> + Add Glass of Water
               </button>
-            ))}
-          </div>
 
-          {/* Mood Log (PRD lines 1016-1019 — Evening 6-9 PM) */}
-          {(() => {
-            const hr = new Date().getHours()
-            const isEvening = hr >= 18 && hr <= 21
-            return (
-              <div style={{
-                background: 'var(--bg-card)', borderRadius: 'var(--r-xl)', padding: 16,
-                border: '1px solid var(--border-light)', marginBottom: 16,
-                opacity: isEvening ? 1 : 0.6,
-              }}>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>
-                  {isEvening ? 'How are you feeling tonight?' : '🌙 Mood check available 6–9 PM'}
-                </div>
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                  {[
-                    { emoji: '😄', label: 'Great' },
-                    { emoji: '😊', label: 'Good' },
-                    { emoji: '😐', label: 'Okay' },
-                    { emoji: '😟', label: 'Low' },
-                    { emoji: '😔', label: 'Sad' },
-                    { emoji: '😡', label: 'Angry' },
-                  ].map(m => (
-                    <button key={m.emoji} onClick={() => setMood(m.emoji)} style={{
-                      fontSize: 28, background: mood === m.emoji ? 'var(--teal-50)' : 'none',
-                      border: mood === m.emoji ? '2px solid var(--teal-500)' : '2px solid transparent',
-                      borderRadius: 'var(--r-md)', padding: '6px 4px', cursor: 'pointer',
-                      transition: 'all 0.15s', transform: mood === m.emoji ? 'scale(1.15)' : 'scale(1)',
-                    }}>{m.emoji}</button>
-                  ))}
-                </div>
-                {mood && (
-                  <div style={{ textAlign: 'center', marginTop: 8, fontSize: 12, color: 'var(--emerald-500)', fontWeight: 600 }}>
-                    Mood logged: {mood} ✓
+              {/* Water History */}
+              <div className="section">
+                <div className="section-head"><h3>This Week</h3></div>
+                {history.slice(0, 7).map((h, i) => (
+                  <div key={i} className="info-row">
+                    <div className="info-icon cyan"><Droplets size={16} /></div>
+                    <div className="info-body">
+                      <div className="info-title">{h.water_glasses || 0} glasses</div>
+                      <div className="info-sub">{new Date(h.log_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+                    </div>
+                    <span className={`info-value ${(h.water_glasses || 0) >= waterGoal ? 'green' : ''}`}>
+                      {(h.water_glasses || 0) >= waterGoal ? 'Done' : `${waterGoal - (h.water_glasses || 0)} left`}
+                    </span>
+                  </div>
+                ))}
+                {history.length === 0 && (
+                  <div className="empty-state-card">
+                    <div className="empty-emoji">💧</div>
+                    <h3>No water data yet</h3>
+                    <p>Tap the button above to start logging your water intake</p>
                   </div>
                 )}
               </div>
-            )
-          })()}
-        </>
-      )}
+            </motion.div>
+          )}
 
-      {tab === 'diet' && (
-        <>
-          {/* Calories Summary */}
-          <div style={{
-            background: 'var(--bg-card)', borderRadius: 'var(--radius-xl)', padding: 20,
-            border: '1px solid var(--border-light)', marginBottom: 16, textAlign: 'center',
-          }}>
-            <CircleProgress value={totalMealCals} max={goals.calories} size={110} stroke={10} color="var(--viya-gold-500)">
-              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 22 }}>{totalMealCals}</div>
-              <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>of {goals.calories}</div>
-            </CircleProgress>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 12 }}>
-              {[
-                { label: 'Protein', val: `${meals.reduce((s,m) => s + (Number(m.protein) || 0), 0)}g`, color: '#FF7062' },
-                { label: 'Carbs', val: `${meals.reduce((s,m) => s + (Number(m.carbs) || 0), 0)}g`, color: '#FFB800' },
-                { label: 'Fat', val: `${meals.reduce((s,m) => s + (Number(m.fat) || 0), 0)}g`, color: '#0091FF' },
-              ].map((m, i) => (
-                <div key={i} style={{ textAlign: 'center' }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: m.color, margin: '0 auto 4px' }} />
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{m.val}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{m.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Today's Meals */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <span className="title-m" style={{ fontSize: 15 }}>Today's Meals</span>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={() => setFoodScanOpen(true)} style={{
-                  padding: '6px 12px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 600,
-                  background: 'var(--gradient-health)', color: 'white', border: 'none', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 4,
-                }}><Camera size={12} /> Scan Food</button>
-                <button onClick={() => nav('/chat?q=log+meal')} style={{
-                  padding: '6px 12px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 600,
-                  background: 'var(--viya-gold-100)', color: 'var(--viya-gold-500)', border: 'none', cursor: 'pointer',
-                }}>+ Log Meal</button>
-              </div>
-            </div>
-            {meals.length === 0 && (
-              <div className="card" style={{ textAlign: 'center', padding: 24, color: 'var(--text-tertiary)' }}>
-                No meals logged yet. Tell Viya what you ate! 🍎
-              </div>
-            )}
-            {meals.map((m, i) => (
-              <div key={m.id || i} style={{
-                display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0',
-                borderBottom: i < meals.length - 1 ? '1px solid var(--border-light)' : 'none',
-              }}>
-                <span style={{ fontSize: 24 }}>{MEAL_ICONS[m.meal_type] || '🍽️'}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 500 }}>{m.name}</div>
-                  <div className="body-s text-secondary">{(m.meal_type || '').charAt(0).toUpperCase() + (m.meal_type || '').slice(1)}{m.time ? ` · ${m.time}` : ''}</div>
-                </div>
-                <span className="num-s" style={{ fontWeight: 600, color: 'var(--viya-gold-500)' }}>{m.calories || 0} kcal</span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {tab === 'medicine' && (
-        <>
-          {/* Medicine Tracker */}
-          <div style={{
-            background: 'var(--gradient-card)', borderRadius: 'var(--radius-xl)', padding: 16,
-            border: '1px solid var(--border-light)', marginBottom: 16,
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <span className="title-m" style={{ fontSize: 15 }}>💊 Today's Medicines</span>
-              <span className="body-s" style={{ color: 'var(--viya-success)', fontWeight: 600 }}>
-                {medicines.filter(m => isMedTaken(m.id)).length}/{medicines.length} taken
-              </span>
-            </div>
-            {medicines.length === 0 && (
-              <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-tertiary)', fontSize: 13 }}>
-                No medicines tracked. Tell Viya to add one! 💊
-              </div>
-            )}
-            {medicines.map((m, i) => {
-              const taken = isMedTaken(m.id)
-              return (
-                <div key={m.id || i} style={{
-                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', marginBottom: 8,
-                  borderRadius: 'var(--radius-md)', background: taken ? 'var(--viya-success-light)' : 'var(--bg-secondary)',
-                  border: `1px solid ${taken ? 'var(--viya-success)20' : 'var(--border-light)'}`,
-                }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: taken ? 'var(--viya-success)' : 'var(--viya-neutral-200)', color: 'white', fontSize: 14,
-                  }}>{taken ? '✓' : '·'}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, textDecoration: taken ? 'line-through' : 'none', opacity: taken ? 0.6 : 1 }}>{m.name}</div>
-                    <div className="body-s text-secondary">{m.dosage || ''}{m.time ? ` · ${m.time}` : ''}</div>
-                  </div>
-                  {!taken && (
-                    <button onClick={() => takeMedicine(m)} style={{
-                      padding: '6px 12px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 600,
-                      background: 'var(--viya-success)', color: 'white', border: 'none', cursor: 'pointer',
-                    }}>Take</button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </>
-      )}
-
-      {/* ═══ FOOD SCANNER MODAL (PRD lines 1020-1035) ═══ */}
-      {foodScanOpen && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 999,
-          background: '#000', display: 'flex', flexDirection: 'column',
-          animation: 'fadeIn 0.2s ease',
-        }}>
-          {/* Header */}
-          <div style={{
-            padding: '50px 20px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          }}>
-            <div style={{ color: 'white', fontSize: 18, fontWeight: 700, fontFamily: "'Sora',sans-serif" }}>
-              📷 Food Scanner
-            </div>
-            <button onClick={() => { setFoodScanOpen(false); setScanResult(null) }} style={{
-              width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.15)',
-              border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}><X size={18} color="white" /></button>
-          </div>
-
-          {/* Camera Viewfinder */}
-          <div style={{
-            flex: 1, margin: '0 20px', borderRadius: 'var(--r-xl)', overflow: 'hidden',
-            background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-            position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            {/* Scan Frame Corners */}
-            {[[0,0],[1,0],[0,1],[1,1]].map(([x,y], i) => (
-              <div key={i} style={{
-                position: 'absolute',
-                [y === 0 ? 'top' : 'bottom']: 24,
-                [x === 0 ? 'left' : 'right']: 24,
-                width: 40, height: 40,
-                borderTop: y === 0 ? '3px solid var(--teal-500)' : 'none',
-                borderBottom: y === 1 ? '3px solid var(--teal-500)' : 'none',
-                borderLeft: x === 0 ? '3px solid var(--teal-500)' : 'none',
-                borderRight: x === 1 ? '3px solid var(--teal-500)' : 'none',
-              }} />
-            ))}
-
-            {/* Scanning line animation */}
-            {!scanResult && (
-              <div style={{
-                position: 'absolute', left: 24, right: 24, height: 2,
-                background: 'linear-gradient(90deg, transparent, var(--teal-500), transparent)',
-                animation: 'scanLine 2s ease-in-out infinite',
-              }} />
-            )}
-
-            {!scanResult ? (
-              <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
-                <Camera size={48} style={{ marginBottom: 12, opacity: 0.4 }} />
-                <div style={{ fontSize: 14 }}>Point camera at your food</div>
-                <div style={{ fontSize: 12, marginTop: 4 }}>AI will detect nutrition info</div>
-              </div>
-            ) : (
-              <div style={{
-                background: 'rgba(0,0,0,0.85)', borderRadius: 'var(--r-xl)', padding: 20,
-                margin: 16, width: 'calc(100% - 32px)',
-              }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: 'white', marginBottom: 12, textAlign: 'center' }}>
-                  🍛 Chicken Biryani
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-                  {[
-                    { label: 'Calories', val: '520 kcal', color: '#FF7062' },
-                    { label: 'Protein', val: '28g', color:'var(--viya-primary-700)' },
-                    { label: 'Carbs', val: '62g', color: '#FFB800' },
-                    { label: 'Fat', val: '18g', color: '#0091FF' },
-                  ].map((n, i) => (
-                    <div key={i} style={{
-                      padding: '8px 12px', borderRadius: 'var(--r-md)',
-                      background: n.color + '15', textAlign: 'center',
-                    }}>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: n.color }}>{n.val}</div>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{n.label}</div>
-                    </div>
+          {/* === MOOD TAB === */}
+          {tab === 'mood' && (
+            <motion.div key="mood" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <div className="card text-center mb-4" style={{ padding: 24 }}>
+                <h3 style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>How are you feeling?</h3>
+                <p className="body-s text-secondary mb-4">Tap to log your mood for today</p>
+                <div className="flex gap-2 justify-center">
+                  {MOODS.map(m => (
+                    <button key={m.value} onClick={() => saveMood(m)}
+                      className={`cat-chip flex-col items-center ${mood === m.value ? 'active' : ''}`}
+                      style={{ fontSize: 28, padding: '8px 10px' }}>
+                      <span>{m.emoji}</span>
+                      <span style={{ fontSize: 10, fontWeight: 600 }}>{m.label}</span>
+                    </button>
                   ))}
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--teal-400)', textAlign: 'center', marginBottom: 12 }}>
-                  ✅ Fits your daily target · 1,680 kcal remaining
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => { setFoodScanOpen(false); setScanResult(null); nav('/chat?q=log+chicken+biryani+520+cal') }} style={{
-                    flex: 1, padding: '10px', borderRadius: 'var(--r-full)', fontSize: 13, fontWeight: 600,
-                    background: 'var(--gradient-health)', color: 'white', border: 'none', cursor: 'pointer',
-                  }}>Log This Meal</button>
-                  <button onClick={() => setScanResult(null)} style={{
-                    flex: 1, padding: '10px', borderRadius: 'var(--r-full)', fontSize: 13, fontWeight: 600,
-                    background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer',
-                  }}>Scan Again</button>
-                </div>
+                {mood && (
+                  <p className="text-success mt-2" style={{ fontWeight: 600, fontSize: 13 }}>
+                    Mood logged for today!
+                  </p>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Bottom Controls */}
-          <div style={{ padding: '20px 20px 40px', display: 'flex', justifyContent: 'center' }}>
-            {!scanResult && (
-              <button onClick={() => setScanResult(true)} style={{
-                width: 72, height: 72, borderRadius: '50%',
-                background: 'var(--gradient-hero)', border: '4px solid rgba(255,255,255,0.3)',
-                cursor: 'pointer', boxShadow: '0 0 30px rgba(0,229,212,0.4)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <Camera size={28} color="white" />
-              </button>
-            )}
-          </div>
-
-          <style>{`
-            @keyframes scanLine {
-              0%, 100% { top: 24px; }
-              50% { top: calc(100% - 24px); }
-            }
-          `}</style>
-        </div>
+              {/* Mood History */}
+              <div className="section">
+                <div className="section-head"><h3>Mood History</h3></div>
+                {history.filter(h => h.mood).length === 0 ? (
+                  <div className="empty-state-card">
+                    <div className="empty-emoji">😊</div>
+                    <h3>No mood data yet</h3>
+                    <p>Log your mood above to see patterns over time</p>
+                  </div>
+                ) : (
+                  history.filter(h => h.mood).slice(0, 7).map((h, i) => {
+                    const moodObj = MOODS.find(m => m.value === h.mood) || { emoji: '😐', label: h.mood }
+                    return (
+                      <div key={i} className="info-row">
+                        <div className="info-icon" style={{ fontSize: 24 }}>{moodObj.emoji}</div>
+                        <div className="info-body">
+                          <div className="info-title">{moodObj.label}</div>
+                          <div className="info-sub">{new Date(h.log_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       )}
     </div>
   )

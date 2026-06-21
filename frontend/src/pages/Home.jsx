@@ -8,24 +8,24 @@ import { TrendingUp, TrendingDown, Plus, Flame, Target, Wallet, BarChart3, Zap, 
 
 const BRIEF_ITEMS_POOL = {
   morning: [
-    { icon: '💳', text: 'Review your pending bills before the day starts' },
-    { icon: '💪', text: 'Morning workout streak — keep it going!' },
-    { icon: '📊', text: 'Check your weekly spending report' },
+    { icon: '\u{1F4B3}', text: 'Review your pending bills before the day starts' },
+    { icon: '\u{1F4AA}', text: 'Morning workout streak — keep it going!' },
+    { icon: '\u{1F4CA}', text: 'Check your weekly spending report' },
   ],
   afternoon: [
-    { icon: '🍱', text: 'Log your lunch expense to stay on budget' },
-    { icon: '📈', text: '₹100/day saved = ₹36,500/year!' },
-    { icon: '💡', text: 'Take a 10-min walk — boosts productivity 40%' },
+    { icon: '\u{1F371}', text: 'Log your lunch expense to stay on budget' },
+    { icon: '\u{1F4C8}', text: '₹100/day saved = ₹36,500/year!' },
+    { icon: '\u{1F4A1}', text: 'Take a 10-min walk — boosts productivity 40%' },
   ],
   evening: [
-    { icon: '🌅', text: 'Log expenses before they slip away' },
-    { icon: '🏋️', text: 'Hit the gym? Log your workout!' },
-    { icon: '📖', text: '20 mins reading/day = 30 books/year!' },
+    { icon: '\u{1F305}', text: 'Log expenses before they slip away' },
+    { icon: '\u{1F3CB}️', text: 'Hit the gym? Log your workout!' },
+    { icon: '\u{1F4D6}', text: '20 mins reading/day = 30 books/year!' },
   ],
   night: [
-    { icon: '🌙', text: 'Review today\'s habits before bed' },
-    { icon: '😴', text: 'Good sleep = better financial decisions' },
-    { icon: '📝', text: 'Journal your wins — even small ones!' },
+    { icon: '\u{1F319}', text: 'Review today\'s habits before bed' },
+    { icon: '\u{1F634}', text: 'Good sleep = better financial decisions' },
+    { icon: '\u{1F4DD}', text: 'Journal your wins — even small ones!' },
   ],
 }
 
@@ -90,16 +90,14 @@ export default function Home() {
   const animatedIncome = useCountUp(income, 700)
   const animatedExpense = useCountUp(expense, 700)
 
-  // Build dynamic brief items
   const briefItems = []
   if (moneyLeft < 200 && moneyLeft > 0) briefItems.push({ icon: '⚠️', text: `Only ₹${moneyLeft} left in today's budget — spend wisely!` })
-  if (moneyLeft < 0) briefItems.push({ icon: '🔴', text: `Over budget by ₹${Math.abs(moneyLeft)} today — review expenses` })
-  if (maxStreak > 0) briefItems.push({ icon: '🔥', text: `${maxStreak}-day streak going strong — don't break it!` })
+  if (moneyLeft < 0) briefItems.push({ icon: '\u{1F534}', text: `Over budget by ₹${Math.abs(moneyLeft)} today — review expenses` })
+  if (maxStreak > 0) briefItems.push({ icon: '\u{1F525}', text: `${maxStreak}-day streak going strong — don't break it!` })
   if (goals.length > 0) {
     const g = goals.find(g => g.current_amount < g.target_amount)
-    if (g) briefItems.push({ icon: '🎯', text: `${g.name}: ₹${Number(g.current_amount)} of ₹${Number(g.target_amount)}` })
+    if (g) briefItems.push({ icon: '\u{1F3AF}', text: `${g.name}: ₹${Number(g.current_amount)} of ₹${Number(g.target_amount)}` })
   }
-  // Pad with period tips
   const poolItems = BRIEF_ITEMS_POOL[period]
   while (briefItems.length < 3 && poolItems.length > 0) {
     briefItems.push(poolItems[briefItems.length % poolItems.length])
@@ -117,127 +115,73 @@ export default function Home() {
     { icon: <Sparkles size={18}/>, label: 'Premium', to: '/premium', color:'var(--viya-primary-700)' },
   ]
 
+  const unpaidBills = bills.filter(b => b.status !== 'paid')
 
   return (
     <>
     <div className="page" style={{ paddingTop: 8, paddingBottom: 80 }}>
 
-      {/* Loading Skeleton */}
       {loading ? (
         <div>
-          {/* Greeting skeleton */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="home-greeting">
             <div className="skeleton" style={{ width: 44, height: 44, borderRadius: '50%', flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <div className="skeleton" style={{ height: 18, width: '60%', borderRadius: 8, marginBottom: 6 }} />
               <div className="skeleton" style={{ height: 12, width: '40%', borderRadius: 6 }} />
             </div>
           </motion.div>
-
-          {/* Wealth card skeleton */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="skeleton"
-            style={{ height: 160, borderRadius: 20, marginBottom: 16 }}
-          />
-
-          {/* Two grid cards skeleton */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="skeleton"
-              style={{ height: 100, borderRadius: 16 }}
-            />
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 }}
-              className="skeleton"
-              style={{ height: 100, borderRadius: 16 }}
-            />
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            className="skeleton" style={{ height: 160, borderRadius: 20, marginBottom: 16 }} />
+          <div className="stat-grid">
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+              className="skeleton" style={{ height: 100, borderRadius: 16 }} />
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+              className="skeleton" style={{ height: 100, borderRadius: 16 }} />
           </div>
-
-          {/* Action grid skeleton */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
-            {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 + i * 0.04 }}
-                className="skeleton"
-                style={{ height: 64, borderRadius: 12 }}
-              />
+          <div className="qa-grid-4" style={{ marginBottom: 16 }}>
+            {[0,1,2,3,4,5,6,7].map(i => (
+              <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + i * 0.04 }}
+                className="skeleton" style={{ height: 64, borderRadius: 12 }} />
             ))}
           </div>
-
-          {/* More content skeletons */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="skeleton"
-            style={{ height: 80, borderRadius: 14, marginBottom: 12 }}
-          />
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.55 }}
-            className="skeleton"
-            style={{ height: 80, borderRadius: 14 }}
-          />
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+            className="skeleton" style={{ height: 80, borderRadius: 14, marginBottom: 12 }} />
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
+            className="skeleton" style={{ height: 80, borderRadius: 14 }} />
         </div>
       ) : (
         <>
-          {/* Greeting Row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-            <div className="avatar" style={{ width: 44, height: 44, fontSize: 18, flexShrink: 0 }}>
+          <div className="home-greeting">
+            <div className="avatar">
               {localStorage.getItem('mv_avatar') || name.charAt(0).toUpperCase()}
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 16 }}>{getGreeting()}, {name.split(' ')[0]}! {getGreetingEmoji()}</div>
+              <div className="home-greeting-name">{getGreeting()}, {name.split(' ')[0]}! {getGreetingEmoji()}</div>
               <div className="body-s text-secondary">Your AI Life & Wealth Partner</div>
             </div>
           </div>
 
-          {/* NEEDS ATTENTION */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <span className="title-m" style={{ fontSize: 15, color: 'var(--coral-500)' }}>🔔 Needs Attention</span>
-              <button onClick={() => nav('/email')} style={{ fontSize: 12, fontWeight: 600, color:'var(--viya-primary-700)', background: 'none', border: 'none', cursor: 'pointer' }}>View All →</button>
+          <div className="home-section">
+            <div className="section-head">
+              <span className="title-m title-m-15" style={{ color: 'var(--coral-500)' }}>{'\u{1F514}'} Needs Attention</span>
+              <button className="link-right" onClick={() => nav('/email')}>View All {'→'}</button>
             </div>
             <div className="scroll-snap-x" style={{ gap: 12, paddingBottom: 4 }}>
               {[
-                { icon: '🔴', title: 'Credit Card Due', sub: 'Check your bills section', border: 'var(--coral-500)', actions: ['Pay Now', 'Remind'], to: '/bills' },
-                { icon: '📅', title: 'Upcoming Meetings', sub: 'Check calendar for details', border: 'var(--info-500)', actions: ['View', 'Dismiss'], to: '/calendar' },
-                { icon: '📦', title: 'Package Updates', sub: 'Track your deliveries', border: 'var(--cosmos-400)', actions: ['Track', 'Alert'], to: '/email' },
+                { icon: '\u{1F534}', title: 'Credit Card Due', sub: 'Check your bills section', border: 'var(--coral-500)', actions: ['Pay Now', 'Remind'], to: '/bills' },
+                { icon: '\u{1F4C5}', title: 'Upcoming Meetings', sub: 'Check calendar for details', border: 'var(--info-500)', actions: ['View', 'Dismiss'], to: '/calendar' },
+                { icon: '\u{1F4E6}', title: 'Package Updates', sub: 'Track your deliveries', border: 'var(--cosmos-400)', actions: ['Track', 'Alert'], to: '/email' },
               ].map((c, i) => (
-                <div key={i} onClick={() => nav(c.to)} className="card-press" style={{
-                  minWidth: 260, padding: 14, borderRadius: 'var(--radius)',
-                  background: 'var(--surface)', border: '1px solid var(--border)',
-                  borderLeft: `4px solid ${c.border}`, cursor: 'pointer',
-                  boxShadow: 'var(--shadow-sm)',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <div key={i} onClick={() => nav(c.to)} className="attention-card card-press" style={{ borderLeft: `4px solid ${c.border}` }}>
+                  <div className="attention-header">
                     <span>{c.icon}</span>
-                    <span style={{ fontSize: 13, fontWeight: 700 }}>{c.title}</span>
+                    <span className="attention-title">{c.title}</span>
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 10 }}>{c.sub}</div>
-                  <div style={{ display: 'flex', gap: 6 }}>
+                  <div className="attention-sub">{c.sub}</div>
+                  <div className="attention-actions">
                     {c.actions.map((a, j) => (
-                      <button key={j} className="ripple" style={{
-                        padding: '4px 12px', borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 600,
-                        background: j === 0 ? c.border : 'var(--surface)', color: j === 0 ? 'white' : 'var(--text2)',
-                        border: j === 0 ? 'none' : '1px solid var(--border)', cursor: 'pointer',
-                      }}>{a}</button>
+                      <button key={j} className={`attention-btn ripple ${j === 0 ? 'primary' : 'secondary'}`}
+                        style={j === 0 ? { background: c.border } : undefined}>{a}</button>
                     ))}
                   </div>
                 </div>
@@ -245,145 +189,108 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Festival Banner */}
           {festival && (
-            <div onClick={() => nav('/chat?q=' + encodeURIComponent(festival.greeting))} className="card" style={{
-              background: festival.colors.bg, border: 'none', padding: '14px 16px',
-              marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', color: 'white',
-            }}>
-              <span style={{ fontSize: 28 }}>{festival.emoji}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{festival.greeting}</div>
-                <div style={{ fontSize: 11, opacity: 0.8 }}>Tap for festive money tips! 🎁</div>
+            <div onClick={() => nav('/chat?q=' + encodeURIComponent(festival.greeting))}
+              className="card festival-banner" style={{ background: festival.colors.bg }}>
+              <span className="festival-emoji">{festival.emoji}</span>
+              <div className="festival-body">
+                <div className="festival-title">{festival.greeting}</div>
+                <div className="festival-sub">Tap for festive money tips! {'\u{1F381}'}</div>
               </div>
             </div>
           )}
 
-          {/* SECTION A: Daily Brief Card */}
-          <div onClick={() => nav('/chat?q=daily+briefing')} style={{
-            background: 'var(--gradient-morning)', borderRadius: '0 0 28px 28px',
-            padding: 24, marginBottom: 16, cursor: 'pointer', color: 'white',
-            marginLeft: -20, marginRight: -20, marginTop: -8,
-            boxShadow: '0 8px 32px rgba(13,0,32,0.25)',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <span style={{ fontSize: 12, fontWeight: 500, letterSpacing: 0.5, opacity: 0.6, textTransform: 'uppercase' }}>
-                {period === 'morning' ? '☀️' : period === 'evening' ? '🌅' : period === 'night' ? '🌙' : '🌤️'} Daily Brief
+          <div onClick={() => nav('/chat?q=daily+briefing')} className="daily-brief">
+            <div className="brief-top">
+              <span className="brief-label">
+                {period === 'morning' ? '☀️' : period === 'evening' ? '\u{1F305}' : period === 'night' ? '\u{1F319}' : '\u{1F324}️'} Daily Brief
               </span>
-              <span style={{ fontSize: 11, opacity: 0.5, fontWeight: 500 }}>{formatTime()}</span>
+              <span className="brief-time">{formatTime()}</span>
             </div>
-            <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 24, lineHeight: 1.3, marginBottom: 16, letterSpacing: -0.4 }}>
-              {briefItems.length} things need you today
-            </div>
-            <div className="stagger" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="brief-headline">{briefItems.length} things need you today</div>
+            <div className="brief-list stagger">
               {briefItems.slice(0, 4).map((item, i) => (
-                <div key={i} className="animate-slideUp" style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  opacity: 0.85, fontSize: 14, lineHeight: 1.4,
-                  animationDelay: `${i * 0.08}s`, animationFillMode: 'backwards',
-                }}>
-                  <span style={{ fontSize: 16, flexShrink: 0 }}>{item.icon}</span>
+                <div key={i} className="brief-item animate-slideUp" style={{ animationDelay: `${i * 0.08}s`, animationFillMode: 'backwards' }}>
+                  <span className="brief-item-icon">{item.icon}</span>
                   <span>{item.text}</span>
                 </div>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-              <div style={{
-                padding: '10px 20px', borderRadius: 'var(--radius-full)', fontSize: 14, fontWeight: 600,
-                background: 'white', color: 'var(--cosmos-600)', cursor: 'pointer',
-              }}>Handle All with Viya →</div>
-            </div>
+            <button className="brief-cta">Handle All with Viya {'→'}</button>
           </div>
 
-          {/* SECTION B: Today's Overview */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-            {/* Money Today */}
-            <div onClick={() => nav('/expenses')} style={{
-              background: 'var(--gradient-primary)', borderRadius: 'var(--radius-xl)',
-              padding: 16, cursor: 'pointer', color: 'white', position: 'relative', overflow: 'hidden',
-            }}>
-              <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Money Left</div>
+          <div className="stat-grid">
+            <div onClick={() => nav('/expenses')} className="hero-card green" style={{ cursor: 'pointer' }}>
+              <div className="stat-card-label">Money Left</div>
               <div className="num-m" style={{ color: moneyLeft >= 0 ? '#fff' : '#FFB3B3', fontSize: 28, fontWeight: 700 }}>
                 {formatINR(moneyLeft < 0 ? -animatedMoney : animatedMoney)}
               </div>
-              <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div className="stat-card-sub">
                 {moneyLeft >= 0 ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
-                ₹{budget} daily budget
+                {'₹'}{budget} daily budget
               </div>
-              <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+              <div className="hero-orb" />
             </div>
-            {/* Habits Today */}
-            <div onClick={() => nav('/habits')} style={{
-              background: 'var(--viya-violet-500)', borderRadius: 'var(--radius-xl)',
-              padding: 16, cursor: 'pointer', color: 'white', position: 'relative', overflow: 'hidden',
-            }}>
-              <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Today's Habits</div>
+            <div onClick={() => nav('/habits')} className="hero-card violet" style={{ cursor: 'pointer' }}>
+              <div className="stat-card-label">Today's Habits</div>
               <div className="num-m" style={{ fontSize: 28, fontWeight: 700 }}>{todayDone}/{totalHabits || 7}</div>
-              <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div className="stat-card-sub">
                 <Flame size={12}/> {maxStreak}-day streak
               </div>
-              <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+              <div className="hero-orb" />
             </div>
           </div>
 
-          {/* SECTION C: Wealth Snapshot */}
-          <div onClick={() => nav('/expenses')} style={{
-            background: 'var(--gradient-wealth)', borderRadius: 'var(--radius-xl)',
-            padding: 20, marginBottom: 16, cursor: 'pointer', color: 'white',
-            boxShadow: '0 6px 20px rgba(76,175,80,0.25)',
-          }}>
-            <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Monthly Overview</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 }}>
+          <div onClick={() => nav('/expenses')} className="hero-card green wealth-overview"
+            style={{ cursor: 'pointer', padding: 20, boxShadow: '0 6px 20px rgba(76,175,80,0.25)' }}>
+            <div className="stat-card-label">Monthly Overview</div>
+            <div className="wealth-overview-top">
               <div>
                 <div className="num-l" style={{ fontSize: 32, color: 'white', lineHeight: 1.1 }}>{formatINR(animatedIncome)}</div>
-                <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>Total Income</div>
+                <div className="wealth-income-label">Total Income</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: budgetPct > 80 ? '#FFB3B3' : '#A7F3D0' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: budgetPct > 80 ? '#FFB3B3' : '#A7F3D0' }}>
                   {budgetPct}% used
-                </div>
+                </span>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 1, marginBottom: 8, height: 6, borderRadius: 99, overflow: 'hidden', background: 'rgba(255,255,255,0.2)' }}>
+            <div className="wealth-bar-track">
               <div style={{ width: `${Math.min(budgetPct, 100)}%`, background: budgetPct > 80 ? '#FFB3B3' : 'rgba(255,255,255,0.9)', borderRadius: 99, transition: 'width 0.6s ease' }} />
             </div>
-            <div style={{ display: 'flex', gap: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FCA5A5' }} />
-                <span style={{ fontSize: 12, opacity: 0.85 }}>Spent {formatINR(animatedExpense)}</span>
+            <div className="wealth-legend">
+              <div className="wealth-legend-item">
+                <div className="wealth-legend-dot" style={{ background: '#FCA5A5' }} />
+                <span className="wealth-legend-text">Spent {formatINR(animatedExpense)}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FDE68A' }} />
-                <span style={{ fontSize: 12, opacity: 0.85 }}>Saved {formatINR(savings)}</span>
+              <div className="wealth-legend-item">
+                <div className="wealth-legend-dot" style={{ background: '#FDE68A' }} />
+                <span className="wealth-legend-text">Saved {formatINR(savings)}</span>
               </div>
             </div>
           </div>
 
-          {/* SECTION D: Active Goals */}
           {goals.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <span className="title-m" style={{ fontSize: 15 }}>🎯 Your Goals</span>
-                <button className="btn-ghost body-s" onClick={() => nav('/goals')} style={{ fontWeight: 600, fontSize: 13 }}>All Goals →</button>
+            <div className="home-section">
+              <div className="section-head">
+                <span className="title-m title-m-15">{'\u{1F3AF}'} Your Goals</span>
+                <button className="btn-ghost body-s" onClick={() => nav('/goals')} style={{ fontWeight: 600, fontSize: 13 }}>All Goals {'→'}</button>
               </div>
-              <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4, scrollSnapType: 'x mandatory' }}>
+              <div className="goal-scroll">
                 {goals.slice(0, 4).map((g, i) => {
                   const pct = g.target_amount > 0 ? Math.min(Math.round((g.current_amount / g.target_amount) * 100), 100) : 0
                   return (
-                    <div key={i} onClick={() => nav('/goals')} className="card" style={{
-                      minWidth: 200, padding: 16, cursor: 'pointer', scrollSnapAlign: 'start', flexShrink: 0,
-                      background: 'var(--gradient-card)', border: '1px solid var(--border-light)',
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                        <span style={{ fontSize: 24 }}>{g.icon || '🎯'}</span>
-                        <span style={{ fontWeight: 600, fontSize: 14 }}>{g.name}</span>
+                    <div key={i} onClick={() => nav('/goals')} className="card goal-scroll-card" style={{ cursor: 'pointer' }}>
+                      <div className="goal-header-row">
+                        <span className="goal-icon-lg">{g.icon || '\u{1F3AF}'}</span>
+                        <span className="goal-name-text">{g.name}</span>
                       </div>
                       <div className="progress-bar" style={{ height: 6, marginBottom: 8 }}>
                         <div className="progress-fill" style={{ width: pct + '%' }} />
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className="body-s text-secondary">₹{Number(g.current_amount)} / ₹{Number(g.target_amount)}</span>
-                        <span className="num-s" style={{ color:'var(--viya-primary-700)', fontWeight: 700, fontSize: 13 }}>{pct}%</span>
+                      <div className="flex justify-between items-center">
+                        <span className="body-s text-secondary">{'₹'}{Number(g.current_amount)} / {'₹'}{Number(g.target_amount)}</span>
+                        <span className="goal-pct-text num-s">{pct}%</span>
                       </div>
                     </div>
                   )
@@ -392,180 +299,128 @@ export default function Home() {
             </div>
           )}
 
-          {/* SECTION E: Ask Viya */}
-          <div className="card-press" onClick={() => nav('/chat')} style={{
-            padding: '14px 16px', marginBottom: 16, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 12,
-            background: 'var(--gradient-night)', color: 'white', border: 'none',
-            borderRadius: 'var(--radius)',
-          }}>
-            <img src="/logo.png" alt="Viya AI" style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'contain', flexShrink: 0 }} />
+          <div className="card-press ask-viya-bar hero-card night" onClick={() => nav('/chat')} style={{ cursor: 'pointer' }}>
+            <img src="/logo.png" alt="Viya AI" className="ask-viya-logo" />
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>Ask Viya anything</div>
-              <div style={{ fontSize: 12, opacity: 0.7 }}>Create, update, delete, check-in — all in chat</div>
+              <div className="ask-viya-title">Ask Viya anything</div>
+              <div className="ask-viya-sub">Create, update, delete, check-in {'—'} all in chat</div>
             </div>
             <Zap size={16} color="var(--viya-gold-500)" />
           </div>
 
-          {/* Quick Actions Grid */}
-          <div className="stagger-children" style={{ marginBottom: 16 }}>
-            <div className="title-m" style={{ marginBottom: 8, fontSize: 14, color: 'var(--text2)' }}>⚡ Quick Actions</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+          <div className="stagger-children home-section">
+            <div className="title-m title-m-14" style={{ marginBottom: 8 }}>{'⚡'} Quick Actions</div>
+            <div className="qa-grid-4">
               {actions.map((a, i) => (
-                <button key={i} onClick={() => nav(a.to)} className="ripple" style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-                  padding: '10px 4px', borderRadius: 'var(--radius-sm)',
-                  background: i === 0 ? 'var(--gradient-primary)' : 'var(--surface)',
-                  border: i === 0 ? 'none' : '1px solid var(--border)',
-                  cursor: 'pointer', color: i === 0 ? 'white' : 'inherit',
-                  boxShadow: i === 0 ? '0 4px 16px var(--primary-glow)' : 'var(--shadow-sm)',
-                }}>
-                  <div style={{
-                    width: 34, height: 34, borderRadius: 9,
-                    background: i === 0 ? 'rgba(255,255,255,0.2)' : a.color + '15',
-                    color: i === 0 ? 'white' : a.color,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>{a.icon}</div>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: i === 0 ? 'white' : 'var(--text2)' }}>{a.label}</span>
+                <button key={i} onClick={() => nav(a.to)} className={`qa-btn ripple ${i === 0 ? 'highlight' : 'normal'}`}>
+                  <div className="qa-icon-wrap" style={i !== 0 ? { background: a.color + '15', color: a.color } : undefined}>
+                    {a.icon}
+                  </div>
+                  <span className="qa-btn-label">{a.label}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* SECTION F: SaaS Quick Links */}
-          <div style={{ marginBottom: 16 }}>
-            <div className="title-m" style={{ marginBottom: 10, fontSize: 15 }}>🚀 Explore More</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div className="home-section">
+            <div className="title-m title-m-15" style={{ marginBottom: 10 }}>{'\u{1F680}'} Explore More</div>
+            <div className="explore-grid">
               {[
-                { emoji: '📊', label: 'Weekly Report', to: '/weekly-report', bg: 'var(--violet-dim)', color: 'var(--violet)' },
-                { emoji: '☀️', label: 'Morning Brief', to: '/morning-brief', bg: 'var(--gold-dim)', color: 'var(--gold)' },
-                { emoji: '✂️', label: 'Sub Audit', to: '/subscription-audit', bg: 'var(--red-dim)', color: 'var(--red)' },
-                { emoji: '🎁', label: 'Refer & Earn', to: '/referral', bg: 'var(--primary-dim)', color: 'var(--primary)' },
+                { emoji: '\u{1F4CA}', label: 'Weekly Report', to: '/weekly-report' },
+                { emoji: '☀️', label: 'Morning Brief', to: '/morning-brief' },
+                { emoji: '✂️', label: 'Sub Audit', to: '/subscription-audit' },
+                { emoji: '\u{1F381}', label: 'Refer & Earn', to: '/referral' },
               ].map((l, i) => (
-                <button key={i} onClick={() => nav(l.to)} className="ripple" style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
-                  borderRadius: 'var(--radius-sm)', background: 'var(--surface)', border: '1px solid var(--border)',
-                  cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', color: 'var(--text)',
-                }}>
-                  <span style={{ fontSize: 22 }}>{l.emoji}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>{l.label}</span>
+                <button key={i} onClick={() => nav(l.to)} className="feature-card ripple">
+                  <span className="feature-emoji">{l.emoji}</span>
+                  <span className="feature-label">{l.label}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* SECTION G: Recent Transactions */}
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <span className="title-m" style={{ fontSize: 15 }}>Recent Activity</span>
+          <div className="home-section-20">
+            <div className="section-head">
+              <span className="title-m title-m-15">Recent Activity</span>
               <button className="btn-ghost body-s" onClick={() => nav('/expenses')} style={{ fontWeight: 600, fontSize: 13 }}>See All</button>
             </div>
             {(data?.recent_transactions || []).slice(0, 5).map((t, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0',
-                borderBottom: i < 4 ? '1px solid var(--border-light)' : 'none',
-              }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: 12,
-                  background: t.type === 'income' ? 'var(--viya-success-light)' : 'var(--viya-neutral-50)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
-                }}>
-                  {t.type === 'income' ? '💰' : '🛒'}
+              <div key={i} className="txn-list-item" style={{ borderBottom: i < 4 ? '1px solid var(--border-light)' : 'none' }}>
+                <div className={`txn-icon-box ${t.type}`}>
+                  {t.type === 'income' ? '\u{1F4B0}' : '\u{1F6D2}'}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 500 }}>{t.description || t.category}</div>
                   <div className="body-s text-secondary">{t.category}</div>
                 </div>
-                <div className="num-s" style={{
-                  color: t.type === 'income' ? 'var(--viya-success)' : 'var(--viya-error)',
-                  fontWeight: 600,
-                }}>
-                  {t.type === 'income' ? '+' : '-'}₹{Number(t.amount)}
+                <div className="num-s" style={{ color: t.type === 'income' ? 'var(--viya-success)' : 'var(--viya-error)', fontWeight: 600 }}>
+                  {t.type === 'income' ? '+' : '-'}{'₹'}{Number(t.amount)}
                 </div>
               </div>
             ))}
             {(!data?.recent_transactions?.length) && (
-              <div className="card" style={{ textAlign: 'center', padding: 24, color: 'var(--text-tertiary)' }}>
-                No transactions yet. Say "spent 500 on food" to start! 🚀
+              <div className="empty-txn card">
+                No transactions yet. Say "spent 500 on food" to start! {'\u{1F680}'}
               </div>
             )}
           </div>
 
-          {/* HEALTH TODAY */}
-          <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-            <div onClick={() => nav('/health')} style={{
-              flex: 1, padding: 16, borderRadius: 'var(--radius-xl)', cursor: 'pointer',
-              background: 'linear-gradient(135deg, #FF7062 0%, #FF9800 50%, #FFD700 100%)', color: 'white',
-              boxShadow: '0 4px 16px rgba(255,112,98,0.25)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
-                <Droplets size={14} /> <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>STEPS</span>
+          <div className="health-pair">
+            <div onClick={() => nav('/health')} className="health-card steps health-card-home" style={{ cursor: 'pointer' }}>
+              <div className="flex items-center gap-1" style={{ marginBottom: 8 }}>
+                <Droplets size={14} /> <span className="health-label">STEPS</span>
               </div>
-              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 22, lineHeight: 1 }}>0</div>
-              <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>/ 10,000 steps</div>
-              <div style={{ fontSize: 11, fontWeight: 600, marginTop: 6, opacity: 0.85 }}>Open Health 💪</div>
+              <div className="health-value">0</div>
+              <div className="health-sub">/ 10,000 steps</div>
+              <div className="health-cta">Open Health {'\u{1F4AA}'}</div>
             </div>
-            <div onClick={() => nav('/health')} style={{
-              flex: 1, padding: 16, borderRadius: 'var(--radius-xl)', cursor: 'pointer',
-              background: 'linear-gradient(135deg, #00E87E 0%, #00E5B0 100%)', color: 'white',
-              boxShadow: '0 4px 16px rgba(0,232,126,0.25)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
-                <Heart size={14} /> <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>CALORIES</span>
+            <div onClick={() => nav('/health')} className="health-card calories health-card-home" style={{ cursor: 'pointer' }}>
+              <div className="flex items-center gap-1" style={{ marginBottom: 8 }}>
+                <Heart size={14} /> <span className="health-label">CALORIES</span>
               </div>
-              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 22, lineHeight: 1 }}>0</div>
-              <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>/ 2,200 kcal</div>
-              <div style={{ fontSize: 11, fontWeight: 600, marginTop: 6, opacity: 0.85 }}>Log Meal 🍽️</div>
+              <div className="health-value">0</div>
+              <div className="health-sub">/ 2,200 kcal</div>
+              <div className="health-cta">Log Meal {'\u{1F37D}️'}</div>
             </div>
           </div>
 
-          {/* Quick Add Bar */}
-          <div style={{ marginBottom: 20 }}>
-            <div className="title-m" style={{ marginBottom: 8, fontSize: 14, color: 'var(--text2)' }}>✏️ Manual Quick Add</div>
-            <div style={{ display: 'flex', gap: 8 }}>
+          <div className="home-section-20">
+            <div className="title-m title-m-14" style={{ marginBottom: 8 }}>{'✏️'} Manual Quick Add</div>
+            <div className="quick-add-bar">
               {[
-                { icon: <Plus size={18}/>, label: 'Expense', to: '/expenses', bg: 'var(--gradient-primary)', color: 'white' },
+                { icon: <Plus size={18}/>, label: 'Expense', to: '/expenses', bg: 'var(--gradient-primary)', color: 'white', primary: true },
                 { icon: <ClipboardList size={18}/>, label: 'Task', to: '/reminders', bg: 'var(--surface)', color: 'var(--violet)' },
                 { icon: <Bell size={18}/>, label: 'Reminder', to: '/reminders', bg: 'var(--surface)', color: 'var(--gold)' },
                 { icon: <Activity size={18}/>, label: 'Health', to: '/health', bg: 'var(--surface)', color: 'var(--red)' },
               ].map((a, i) => (
-                <button key={i} onClick={() => nav(a.to)} className="ripple" style={{
-                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-                  padding: '12px 6px', borderRadius: 'var(--radius-sm)',
-                  background: a.bg, color: a.color,
-                  border: i === 0 ? 'none' : '1px solid var(--border)',
-                  boxShadow: i === 0 ? '0 4px 16px var(--primary-glow)' : 'var(--shadow-sm)',
-                  cursor: 'pointer',
-                }}>
+                <button key={i} onClick={() => nav(a.to)} className={`quick-add-btn ripple ${a.primary ? 'primary-bg' : 'normal-bg'}`}
+                  style={{ background: a.bg, color: a.color }}>
                   {a.icon}
-                  <span style={{ fontSize: 10, fontWeight: 600 }}>{a.label}</span>
+                  <span className="quick-add-label">{a.label}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* BILLS DUE STRIP */}
-          {bills.filter(b => b.status !== 'paid').length > 0 && (
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <span className="title-m" style={{ fontSize: 15 }}>🧾 Upcoming Bills</span>
-                <button onClick={() => nav('/bills')} style={{ fontSize: 12, fontWeight: 600, color:'var(--viya-primary-700)', background: 'none', border: 'none', cursor: 'pointer' }}>All Bills →</button>
+          {unpaidBills.length > 0 && (
+            <div className="home-section-20">
+              <div className="section-head">
+                <span className="title-m title-m-15">{'\u{1F9FE}'} Upcoming Bills</span>
+                <button className="link-right" onClick={() => nav('/bills')}>All Bills {'→'}</button>
               </div>
-              {bills.filter(b => b.status !== 'paid').slice(0, 4).map((b, i) => {
+              {unpaidBills.slice(0, 4).map((b, i) => {
                 const daysLeft = b.due_date ? Math.ceil((new Date(b.due_date) - Date.now()) / 86400000) : 99
                 const dotColor = daysLeft <= 1 ? 'var(--coral-500)' : daysLeft <= 3 ? 'var(--amber-500)' : 'var(--emerald-500)'
                 return (
-                  <div key={b.id || i} onClick={() => nav('/bills')} style={{
-                    display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0',
-                    borderBottom: i < 3 ? '1px solid var(--border)' : 'none', cursor: 'pointer',
-                  }}>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+                  <div key={b.id || i} onClick={() => nav('/bills')} className="bill-row"
+                    style={{ borderBottom: i < 3 ? '1px solid var(--border)' : 'none' }}>
+                    <div className="bill-dot" style={{ background: dotColor }} />
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 500 }}>{b.name}</div>
+                      <div className="bill-name">{b.name}</div>
                       <div className="body-s text-secondary">{b.due_date ? new Date(b.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'No date'}</div>
                     </div>
                     <div className="num-s" style={{ fontWeight: 600, color: dotColor }}>{formatINR(b.amount)}</div>
-                    {daysLeft <= 1 && <button className="ripple" style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 600, background: 'var(--coral-500)', color: 'white', border: 'none', cursor: 'pointer' }}>Pay Now</button>}
+                    {daysLeft <= 1 && <button className="bill-pay-btn ripple">Pay Now</button>}
                   </div>
                 )
               })}
@@ -577,12 +432,7 @@ export default function Home() {
       )}
     </div>
 
-    {/* FIXED FAB — always visible, even during loading */}
-    <button
-      className="viya-fab-fixed"
-      onClick={() => nav('/chat')}
-      aria-label="Talk to Viya"
-    >
+    <button className="viya-fab-fixed" onClick={() => nav('/chat')} aria-label="Talk to Viya">
       <MessageCircle size={26} />
     </button>
     </>

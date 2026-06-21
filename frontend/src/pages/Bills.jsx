@@ -2,46 +2,62 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
+import { useToast } from '../components/Toast'
 import { formatINR } from '../lib/utils'
-import { CreditCard, Zap, Wifi, Phone, Home, ShieldCheck, Calendar, AlertTriangle, CheckCircle, Clock, ChevronRight, Plus, TrendingUp } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { CreditCard, Zap, Wifi, Phone, Home, ShieldCheck, Calendar, Plus, TrendingUp, Trash2 } from 'lucide-react'
 
 const BILL_ICONS = {
-  credit_card: { icon: <CreditCard size={18}/>, color: '#E91E63', emoji: '💳' },
-  electricity: { icon: <Zap size={18}/>, color: '#FF9800', emoji: '⚡' },
-  internet: { icon: <Wifi size={18}/>, color: '#0091FF', emoji: '🌐' },
-  phone: { icon: <Phone size={18}/>, color: '#4CAF50', emoji: '📱' },
-  rent: { icon: <Home size={18}/>, color: '#9C27B0', emoji: '🏠' },
-  insurance: { icon: <ShieldCheck size={18}/>, color: '#00BCD4', emoji: '🛡️' },
-  emi: { icon: <TrendingUp size={18}/>, color: '#5514FF', emoji: '🏦' },
-  subscription: { icon: <Calendar size={18}/>, color: '#6422CC', emoji: '📺' },
-}
-
-function getBillStyle(bill) {
-  const config = BILL_ICONS[bill.bill_type || bill.type] || BILL_ICONS.credit_card
-  const daysLeft = bill._daysLeft
-  if (bill.status === 'overdue' || daysLeft < 0) return { ...config, statusColor: 'var(--viya-error)', statusBg: 'var(--viya-error-light)', statusText: 'Overdue' }
-  if (daysLeft <= 3) return { ...config, statusColor: 'var(--viya-warning)', statusBg: 'var(--viya-warning-light)', statusText: `Due in ${daysLeft}d` }
-  if (bill.status === 'paid') return { ...config, statusColor: 'var(--viya-success)', statusBg: 'var(--viya-success-light)', statusText: 'Paid' }
-  return { ...config, statusColor: 'var(--text-secondary)', statusBg: 'var(--bg-secondary)', statusText: `Due in ${daysLeft}d` }
+  credit_card: { icon: <CreditCard size={18} />, color: '#E91E63', emoji: '💳' },
+  electricity: { icon: <Zap size={18} />, color: '#FF9800', emoji: '⚡' },
+  internet: { icon: <Wifi size={18} />, color: '#0091FF', emoji: '🌐' },
+  phone: { icon: <Phone size={18} />, color: '#4CAF50', emoji: '📱' },
+  rent: { icon: <Home size={18} />, color: '#9C27B0', emoji: '🏠' },
+  insurance: { icon: <ShieldCheck size={18} />, color: '#00BCD4', emoji: '🛡️' },
+  emi: { icon: <TrendingUp size={18} />, color: '#5514FF', emoji: '🏦' },
+  subscription: { icon: <Calendar size={18} />, color: '#6422CC', emoji: '📺' },
 }
 
 function enrichBill(bill) {
-  // Compute daysLeft from due_date
   const dueDate = bill.due_date ? new Date(bill.due_date) : null
-  const today = new Date()
-  today.setHours(0,0,0,0)
+  const today = new Date(); today.setHours(0, 0, 0, 0)
   const daysLeft = dueDate ? Math.ceil((dueDate - today) / 86400000) : 999
-  // Auto-set overdue
   const status = daysLeft < 0 && bill.status !== 'paid' ? 'overdue' : bill.status
-  return { ...bill, _daysLeft: daysLeft, status, type: bill.bill_type }
+  return { ...bill, _daysLeft: daysLeft, status }
+}
+
+function getUrgencyClass(bill) {
+  if (bill.status === 'paid') return 'green'
+  if (bill.status === 'overdue' || bill._daysLeft < 0) return 'red'
+  if (bill._daysLeft <= 3) return 'gold'
+  return 'green'
+}
+
+function LoadingSkeleton() {
+  return (
+    <div>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="skeleton"
+        style={{ height: 120, borderRadius: 20, marginBottom: 16 }} />
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
+        className="skeleton" style={{ height: 44, borderRadius: 12, marginBottom: 16 }} />
+      {[0, 1, 2].map(i => (
+        <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 + i * 0.06 }} className="skeleton"
+          style={{ height: 68, borderRadius: 16, marginBottom: 8 }} />
+      ))}
+    </div>
+  )
 }
 
 export default function Bills() {
   const { phone } = useApp()
   const nav = useNavigate()
-  const [tab, setTab] = useState('upcoming')
+  const toast = useToast()
+  const [filter, setFilter] = useState('all')
   const [bills, setBills] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ name: '', amount: '', due_date: '', bill_type: 'credit_card' })
 
   const loadBills = useCallback(async () => {
     if (!phone) return
@@ -49,6 +65,7 @@ export default function Bills() {
     try {
       const data = await api.getBills(phone)
       if (data?.length) setBills(data.map(enrichBill))
+      else setBills([])
     } catch (e) { console.error('Bills load error:', e) }
     setLoading(false)
   }, [phone])
@@ -56,235 +73,187 @@ export default function Bills() {
   useEffect(() => { loadBills() }, [loadBills])
 
   const handleMarkPaid = async (bill) => {
-    await api.markBillPaid(bill.id)
-    setBills(prev => prev.map(b => b.id === bill.id ? { ...b, status: 'paid' } : b))
+    try {
+      await api.markBillPaid(bill.id)
+      setBills(prev => prev.map(b => b.id === bill.id ? { ...b, status: 'paid' } : b))
+      toast.show(`${bill.name} marked as paid!`, 'success')
+    } catch { toast.show('Failed to mark paid', 'error') }
   }
 
-  const overdue = bills.filter(b => b.status === 'overdue')
-  const urgent = bills.filter(b => b.status === 'pending' && b._daysLeft <= 3 && b._daysLeft >= 0)
-  const upcoming = bills.filter(b => b.status === 'pending' && b._daysLeft > 3)
-  const subscriptions = bills.filter(b => b.bill_type === 'subscription' || b.type === 'subscription')
-  const emis = bills.filter(b => b.bill_type === 'emi' || b.type === 'emi')
+  const handleDelete = async (bill) => {
+    try {
+      await api.deleteBill(bill.id)
+      setBills(prev => prev.filter(b => b.id !== bill.id))
+      toast.show(`${bill.name} deleted`, 'info')
+    } catch { toast.show('Failed to delete bill', 'error') }
+  }
+
+  const handleAdd = async () => {
+    if (!form.name || !form.amount) return toast.show('Name and amount are required', 'error')
+    try {
+      await api.addBill(phone, {
+        name: form.name,
+        amount: parseFloat(form.amount),
+        due_date: form.due_date || null,
+        bill_type: form.bill_type,
+        status: 'pending',
+      })
+      toast.show(`${form.name} added!`, 'success')
+      setForm({ name: '', amount: '', due_date: '', bill_type: 'credit_card' })
+      setShowForm(false)
+      loadBills()
+    } catch { toast.show('Failed to add bill', 'error') }
+  }
+
+  // Derived data
+  const filtered = bills.filter(b => {
+    if (filter === 'all') return true
+    if (filter === 'overdue') return b.status === 'overdue'
+    if (filter === 'upcoming') return b.status === 'pending' && b._daysLeft >= 0
+    if (filter === 'paid') return b.status === 'paid'
+    return true
+  })
+
   const totalPending = bills.filter(b => b.status !== 'paid').reduce((s, b) => s + Number(b.amount || 0), 0)
-  const totalSubs = subscriptions.reduce((s, sub) => s + Number(sub.amount || 0), 0)
-
-  const tabs = [
-    { id: 'upcoming', label: 'Bills' },
-    { id: 'subscriptions', label: 'Subscriptions' },
-    { id: 'emi', label: 'EMIs' },
-  ]
-
-  // Empty state
+  const overdueCount = bills.filter(b => b.status === 'overdue').length
+  const upcomingCount = bills.filter(b => b.status === 'pending' && b._daysLeft >= 0).length
   const isEmpty = bills.length === 0 && !loading
 
+  const filters = [
+    { id: 'all', label: 'All' },
+    { id: 'overdue', label: 'Overdue' },
+    { id: 'upcoming', label: 'Upcoming' },
+    { id: 'paid', label: 'Paid' },
+  ]
+
   return (
-    <div className="page" style={{ paddingTop: 8 }}>
+    <div className="page">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div className="page-header">
         <div>
-          <h1 style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 24, letterSpacing: -0.3 }}>Bills & Payments</h1>
-          <p className="body-s text-secondary">Never miss a due date 🎯</p>
+          <h2 style={{ fontSize: 22 }}>Bills & Payments</h2>
+          <p className="body-s text-secondary">Never miss a due date</p>
         </div>
-        <button onClick={() => nav('/chat?q=add+bill')} style={{
-          width: 40, height: 40, borderRadius: '50%', background: 'var(--gradient-primary)', color: 'white',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer',
-          boxShadow: 'var(--shadow-teal)',
-        }}><Plus size={18}/></button>
+        <button className="btn-primary" onClick={() => setShowForm(!showForm)}
+          style={{ width: 40, height: 40, borderRadius: '50%', padding: 0 }}>
+          <Plus size={18} />
+        </button>
       </div>
 
-      {/* Total Pending Card */}
-      <div style={{
-        background: 'var(--gradient-night)', borderRadius: 'var(--radius-2xl)', padding: 20,
-        marginBottom: 16, color: 'white', boxShadow: '0 8px 32px rgba(13,0,32,0.4)',
-      }}>
-        <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.6, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Total Pending</div>
-        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 36, marginBottom: 8 }}>
-          ₹{totalPending}
-        </div>
-        <div style={{ display: 'flex', gap: 16, fontSize: 12 }}>
-          {overdue.length > 0 && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--coral-200)' }}>
-              <AlertTriangle size={12}/> {overdue.length} overdue
-            </span>
-          )}
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4, opacity: 0.7 }}>
-            <Clock size={12}/> {urgent.length} due this week
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4, opacity: 0.7 }}>
-            <Calendar size={12}/> {upcoming.length} upcoming
-          </span>
-        </div>
-      </div>
-
-      {isEmpty && (
-        <div className="card" style={{ textAlign: 'center', padding: 40, color: 'var(--text-tertiary)' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
-          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>No bills tracked yet</div>
-          <div style={{ fontSize: 13 }}>Tell Viya: "Track my electricity bill" or "Add credit card due date"</div>
-        </div>
-      )}
-
-      {!isEmpty && (
+      {loading ? <LoadingSkeleton /> : (
         <>
-          {/* Tabs */}
-          <div style={{ display: 'flex', gap: 4, marginBottom: 16, padding: 4, background: 'var(--bg-secondary)', borderRadius: 'var(--radius-full)' }}>
-            {tabs.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{
-                flex: 1, padding: '8px 12px', borderRadius: 'var(--radius-full)', fontSize: 13, fontWeight: 600,
-                background: tab === t.id ? 'var(--bg-card)' : 'transparent',
-                color: tab === t.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-                boxShadow: tab === t.id ? 'var(--shadow-1)' : 'none',
-                transition: 'all 0.2s', cursor: 'pointer', border: 'none',
-              }}>{t.label}</button>
+          {/* Summary Card */}
+          <div className="hero-card night" style={{ marginBottom: 16, padding: 20 }}>
+            <div className="stat-card-label" style={{ color: 'rgba(255,255,255,0.6)' }}>Total Pending</div>
+            <div style={{ fontFamily: 'var(--mono)', fontWeight: 800, fontSize: 32, color: '#fff', marginBottom: 8 }}>
+              {formatINR(totalPending)}
+            </div>
+            <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
+              {overdueCount > 0 && <span className="text-error" style={{ fontWeight: 600 }}>{overdueCount} overdue</span>}
+              <span>{upcomingCount} upcoming</span>
+            </div>
+          </div>
+
+          {/* Filter Pills */}
+          <div className="pill-bar">
+            {filters.map(f => (
+              <button key={f.id} className={`pill-btn ${filter === f.id ? 'active' : ''}`}
+                onClick={() => setFilter(f.id)}>{f.label}</button>
             ))}
           </div>
 
-          {tab === 'upcoming' && (
-            <>
-              {/* Overdue */}
-              {overdue.length > 0 && (
-                <div style={{ marginBottom: 12, padding: 12, borderRadius: 'var(--radius-lg)', background: 'var(--coral-50)' }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--viya-error)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>⚠️ Overdue</div>
-                  {overdue.map(bill => {
-                    const style = getBillStyle(bill)
-                    return (
-                      <div key={bill.id} style={{
-                        display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', marginBottom: 8,
-                        borderRadius: 'var(--radius-lg)', background: 'var(--viya-error-light)',
-                        border: '1px solid rgba(255,59,48,0.15)', cursor: 'pointer',
-                      }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 12, background: style.color + '15', color: style.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{style.icon}</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 14, fontWeight: 600 }}>{bill.name}</div>
-                          <div className="body-s" style={{ color: 'var(--viya-error)' }}>Overdue by {Math.abs(bill._daysLeft)} days</div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div className="num-s" style={{ fontWeight: 700, color: 'var(--viya-error)' }}>₹{Number(bill.amount)}</div>
-                          <button onClick={() => handleMarkPaid(bill)} style={{
-                            marginTop: 4, padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 600,
-                            background: 'var(--viya-error)', color: 'white', border: 'none', cursor: 'pointer',
-                          }}>Pay Now</button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-
-              {/* Urgent */}
-              {urgent.length > 0 && (
-                <div style={{ marginBottom: 12, padding: 12, borderRadius: 'var(--radius-lg)', background: 'var(--amber-50)' }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--viya-warning)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>⏰ Due This Week</div>
-                  {urgent.map(bill => {
-                    const style = getBillStyle(bill)
-                    return (
-                      <div key={bill.id} style={{
-                        display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', marginBottom: 8,
-                        borderRadius: 'var(--radius-lg)', background: 'var(--bg-card)',
-                        border: '1px solid var(--viya-warning)30', cursor: 'pointer',
-                      }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 12, background: style.color + '15', color: style.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{style.icon}</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 14, fontWeight: 600 }}>{bill.name}</div>
-                          <div className="body-s text-secondary">Due in {bill._daysLeft} day{bill._daysLeft !== 1 ? 's' : ''}</div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div className="num-s" style={{ fontWeight: 700 }}>₹{Number(bill.amount)}</div>
-                          {bill.auto_debit && <span style={{ fontSize: 10, color: 'var(--viya-success)', fontWeight: 600 }}>Auto-debit</span>}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-
-              {/* Upcoming */}
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>📅 Upcoming</div>
-                {upcoming.length === 0 && overdue.length === 0 && urgent.length === 0 && (
-                  <div className="card" style={{ textAlign: 'center', padding: 20, color: 'var(--text-tertiary)' }}>All clear! No upcoming bills 🎉</div>
-                )}
-                {upcoming.map(bill => {
-                  const style = getBillStyle(bill)
-                  return (
-                    <div key={bill.id} style={{
-                      display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0',
-                      borderBottom: '1px solid var(--border-light)', cursor: 'pointer',
-                    }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 12, background: style.color + '15', color: style.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{style.icon}</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 500 }}>{bill.name}</div>
-                        <div className="body-s text-secondary">Due in {bill._daysLeft} days</div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div className="num-s" style={{ fontWeight: 600 }}>₹{Number(bill.amount)}</div>
-                        {bill.auto_debit && <span style={{ fontSize: 10, color: 'var(--viya-success)', fontWeight: 600 }}>Auto</span>}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </>
-          )}
-
-          {tab === 'subscriptions' && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={{
-                background: 'var(--cosmos-50)', borderRadius: 'var(--radius-lg)', padding: 16,
-                border: '1px solid var(--cosmos-200)', marginBottom: 16, textAlign: 'center',
-              }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--viya-violet-500)', marginBottom: 4 }}>Monthly Subscriptions</div>
-                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 28, color: 'var(--viya-violet-600)' }}>
-                  ₹{totalSubs}/mo
-                </div>
-                <div className="body-s text-secondary" style={{ marginTop: 4 }}>₹{(totalSubs * 12)}/year</div>
-              </div>
-              {subscriptions.length === 0 && (
-                <div className="card" style={{ textAlign: 'center', padding: 24, color: 'var(--text-tertiary)' }}>No subscriptions tracked. Tell Viya: "Track Netflix subscription" 📺</div>
-              )}
-              {subscriptions.map((sub, i) => (
-                <div key={sub.id || i} style={{
-                  display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', marginBottom: 8,
-                  borderRadius: 'var(--radius-lg)', background: 'var(--bg-card)', border: '1px solid var(--border-light)',
-                }}>
-                  <span style={{ fontSize: 24 }}>📺</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{sub.name}</div>
-                    <div className="body-s text-secondary">{sub.frequency || 'monthly'}</div>
+          {/* Add Bill Form */}
+          <AnimatePresence>
+            {showForm && (
+              <motion.div key="form" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden', marginBottom: 16 }}>
+                <div className="entry-form">
+                  <div className="form-group">
+                    <label>Bill Name</label>
+                    <input className="form-input" placeholder="e.g. Credit Card" value={form.name}
+                      onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
                   </div>
-                  <div className="num-s" style={{ fontWeight: 600 }}>₹{Number(sub.amount)}/mo</div>
+                  <div className="form-group">
+                    <label>Amount</label>
+                    <input className="form-input" type="number" placeholder="e.g. 5000"
+                      value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label>Due Date</label>
+                    <input className="form-input" type="date" value={form.due_date}
+                      onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label>Category</label>
+                    <div className="cat-grid">
+                      {Object.entries(BILL_ICONS).map(([key, cfg]) => (
+                        <button key={key} className={`cat-chip ${form.bill_type === key ? 'active' : ''}`}
+                          onClick={() => setForm(f => ({ ...f, bill_type: key }))}>
+                          {cfg.emoji} {cfg.emoji === '📺' ? 'Sub' : key.replace('_', ' ')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="form-actions">
+                    <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
+                    <button className="btn-primary" onClick={handleAdd}>Add Bill</button>
+                  </div>
                 </div>
-              ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Empty State */}
+          {isEmpty && (
+            <div className="empty-state-card">
+              <div className="empty-emoji">📋</div>
+              <h3>No bills tracked yet</h3>
+              <p>Tell Viya: "Track my electricity bill" or tap + to add one</p>
             </div>
           )}
 
-          {tab === 'emi' && (
-            <div style={{ marginBottom: 16 }}>
-              {emis.map(bill => (
-                <div key={bill.id} style={{
-                  background: 'var(--bg-card)', borderRadius: 'var(--radius-xl)', padding: 20,
-                  border: '1px solid var(--border-light)', marginBottom: 12,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--cosmos-50)', color: 'var(--cosmos-500)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <TrendingUp size={18}/>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 15, fontWeight: 600 }}>{bill.name}</div>
-                      <div className="body-s text-secondary">Next due: {bill.due_date || 'N/A'}</div>
+          {/* Bill List */}
+          {filtered.map((bill, i) => {
+            const cfg = BILL_ICONS[bill.bill_type] || BILL_ICONS.credit_card
+            const urgency = getUrgencyClass(bill)
+            return (
+              <motion.div key={bill.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04 }}>
+                <div className="info-row">
+                  <div className={`info-icon ${urgency}`}>{cfg.icon}</div>
+                  <div className="info-body">
+                    <div className="info-title">{bill.name}</div>
+                    <div className="info-sub">
+                      {bill.status === 'paid' ? 'Paid' :
+                        bill.status === 'overdue' ? `Overdue by ${Math.abs(bill._daysLeft)}d` :
+                          bill._daysLeft === 0 ? 'Due today' :
+                            `Due in ${bill._daysLeft}d`}
+                      {bill.auto_debit && ' · Auto-debit'}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <div><div className="body-s text-secondary">EMI Amount</div><div className="num-s" style={{ fontWeight: 700 }}>₹{Number(bill.amount)}</div></div>
-                    <div style={{ textAlign: 'right' }}><div className="body-s text-secondary">Status</div><div className="num-s" style={{ fontWeight: 700, color: bill.status === 'paid' ? 'var(--viya-success)' : 'var(--viya-warning)' }}>{bill.status}</div></div>
+                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                    <span className={`info-value ${urgency}`}>{formatINR(bill.amount)}</span>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {bill.status !== 'paid' && (
+                        <button className="pill-btn active" onClick={() => handleMarkPaid(bill)}
+                          style={{ padding: '3px 10px', fontSize: 10, minHeight: 'auto' }}>Pay</button>
+                      )}
+                      <button className="btn-ghost" onClick={() => handleDelete(bill)}
+                        style={{ minHeight: 'auto', padding: 4 }}>
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              ))}
-              {emis.length === 0 && (
-                <div className="card" style={{ textAlign: 'center', padding: 32, color: 'var(--text-tertiary)' }}>
-                  No EMIs tracked yet. Say "Track my car loan EMI" to Viya! 🚗
-                </div>
-              )}
+              </motion.div>
+            )
+          })}
+
+          {filtered.length === 0 && !isEmpty && (
+            <div className="empty-state-card" style={{ padding: 32 }}>
+              <div className="empty-emoji">📭</div>
+              <h3>No {filter} bills</h3>
+              <p>Switch filters to see other bills</p>
             </div>
           )}
         </>

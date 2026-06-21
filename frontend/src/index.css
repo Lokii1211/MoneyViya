@@ -1973,3 +1973,80 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
 /* Title utilities for home sections */
 .title-m-15 { font-size:15px; }
 .title-m-14 { font-size:14px; color:var(--text2); }
+
+/* ═══════════════════════════════════════════════════
+   VIYA v5.1 — Additional utility classes (Home & Expenses)
+   ═══════════════════════════════════════════════════ */
+
+/* Page padding overrides */
+.page-padded { padding-top:8px; padding-bottom:80px; }
+
+/* Clickable cards */
+.clickable { cursor:pointer; }
+
+/* Flex utilities */
+.flex-1 { flex:1; }
+.text-right { text-align:right; }
+
+/* Number display sizes */
+.num-28 { font-size:28px; font-weight:700; }
+.num-32 { font-size:32px; color:white; line-height:1.1; }
+.num-42 { font-size:42px; font-weight:900; }
+
+/* Margin utilities */
+.mb-8 { margin-bottom:8px; }
+.mb-10 { margin-bottom:10px; }
+.mb-12 { margin-bottom:12px; }
+.mb-14 { margin-bottom:14px; }
+.mb-16 { margin-bottom:16px; }
+.mb-20 { margin-bottom:20px; }
+.mt-8 { margin-top:8px; }
+
+/* Money Left Today card */
+.money-left-card {
+  border-radius:18px; padding:24px 20px; margin-bottom:16px;
+  text-align:center; position:relative; overflow:hidden;
+  background:linear-gradient(135deg, var(--primary-dim), var(--cyan-dim));
+  border:1px solid var(--border2);
+}
+.money-left-card .stat-label { letter-spacing:2px; }
+
+/* Txn description row */
+.txn-desc { font-size:14px; font-weight:500; }
+
+/* Swipe-to-delete background */
+.swipe-delete-bg {
+  position:absolute; right:0; top:0; bottom:0; width:80px;
+  background:var(--red); display:flex; align-items:center; justify-content:center;
+  border-radius:0 12px 12px 0; z-index:-1;
+}
+
+/* Delete button ghost style */
+.delete-ghost { opacity:0.4; padding:4px; }
+
+/* Header button small */
+.btn-sm { padding:8px 12px; font-size:13px; border-radius:10px; }
+.btn-sm-primary { padding:8px 16px; font-size:13px; border-radius:10px; }
+
+/* Section label (all-caps) */
+.section-label { font-size:11px; font-weight:700; color:var(--text3); letter-spacing:0.5px; text-transform:uppercase; }
+
+/* OCR/SMS form title */
+.form-title { font-size:14px; font-weight:800; }
+.form-subtitle { font-size:11px; color:var(--text3); }
+
+/* Info row vertical variant */
+.info-row-vertical { flex-direction:column; gap:8px; padding:14px; margin-bottom:12px; }
+.info-row-vertical .info-pair { display:flex; justify-content:space-between; width:100%; }
+
+/* Subscription card in horizontal scroll */
+.sub-card { min-width:120px; padding:10px 12px; }
+.sub-icon { font-size:18px; margin-bottom:4px; }
+.sub-name { font-size:12px; font-weight:700; margin-bottom:2px; }
+.sub-avg { font-size:13px; }
+
+/* Hidden file input */
+.sr-hidden { display:none; }
+
+/* Spacer */
+.spacer-20 { height:20px; }
