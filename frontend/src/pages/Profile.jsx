@@ -267,7 +267,7 @@ export default function Profile() {
           {/* Life Score Ring */}
           {(() => {
             const financial = Math.min(100, Math.round((stats.income > 0 ? (1 - stats.expenses / stats.income) : 0) * 100))
-            const health = Math.min(100, Math.max(0, score || 50))
+            const health = Math.min(100, Math.max(0, 50))
             const productivity = Math.min(100, stats.streak * 10 + stats.habits * 5)
             const relationships = Math.min(100, stats.chatCount > 0 ? 60 + Math.min(stats.chatCount, 40) : 40)
             const lifeScore = Math.round((financial + health + productivity + relationships) / 4)
@@ -438,10 +438,14 @@ export default function Profile() {
               <div className="si-info"><div className="si-label">Terms of Service</div><div className="si-sub">Usage policies & guidelines</div></div>
               <ChevronRight size={16} className="si-arrow"/>
             </button>
-            <button className="settings-item" onClick={() => {
+            <button className="settings-item" onClick={async () => {
               const newPass = prompt('Enter new password (min 6 chars):')
               if (newPass && newPass.length >= 6) {
-                api.updateUser(phone, { password_hash: newPass }).then(() => alert('Password updated!')).catch(() => alert('Failed to update'))
+                const encoder = new TextEncoder()
+                const data = encoder.encode(phone + newPass)
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+                const hashed = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('')
+                api.updateUser(phone, { password_hash: hashed }).then(() => alert('Password updated!')).catch(() => alert('Failed to update'))
               } else if (newPass) { alert('Password must be at least 6 characters') }
             }}>
               <div className="si-icon"><Lock size={18}/></div>
