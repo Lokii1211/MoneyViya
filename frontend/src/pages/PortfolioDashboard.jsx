@@ -451,7 +451,7 @@ export default function PortfolioDashboard() {
 
       {/* Quick Actions */}
       <div className="cf-actions">
-        <button className="cf-action-btn" onClick={() => navigate('/cashflow')}>📊 Cash Flow</button>
+        <button className="cf-action-btn" onClick={() => navigate('/report')}>📊 Reports</button>
         <button className="cf-action-btn" onClick={() => navigate('/insights')}>💡 Insights</button>
         <button className="cf-action-btn" onClick={() => navigate('/wealth')}>💰 Wealth</button>
       </div>
