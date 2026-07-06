@@ -40,11 +40,6 @@ const GOAL_ICONS = [
   { emoji: '📱', label: 'Gadget' },
 ]
 
-const inputStyle = {
-  padding: '10px 12px', borderRadius: 10, border: '1px solid var(--glass-border, #333)',
-  background: 'var(--glass-bg, #1a1a1a)', color: 'var(--text1, #fff)', fontSize: 14,
-  width: '100%', boxSizing: 'border-box',
-}
 
 function LoadingSkeleton() {
   return (
@@ -247,85 +242,60 @@ export default function Wealth() {
       exit={{ opacity: 0, height: 0 }}
       style={{ overflow: 'hidden' }}
     >
-      <div className="card mb-4" style={{ padding: 16, border: '1px solid var(--primary)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <span style={{ fontSize: 14, fontWeight: 700 }}>New Investment</span>
-          <button onClick={() => setShowAddForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer' }}>
-            <X size={18} />
-          </button>
+      <div className="card mb-4 wl-add-card">
+        <div className="wl-form-hdr">
+          <span className="wl-form-title">📈 New Investment</span>
+          <button onClick={() => setShowAddForm(false)} className="modal-close"><X size={18} /></button>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <input type="text" placeholder="Investment name (e.g. Axis Bluechip Fund)"
-            value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })}
-            style={inputStyle} />
-          <select value={addForm.investment_type} onChange={e => setAddForm({ ...addForm, investment_type: e.target.value })}
-            style={inputStyle}>
-            {INVESTMENT_TYPES.map(t => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
+        <div className="wl-form-body">
+          <input type="text" className="input-field" placeholder="Investment name (e.g. Axis Bluechip Fund)"
+            value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })} />
+          <select className="input-field" value={addForm.investment_type}
+            onChange={e => setAddForm({ ...addForm, investment_type: e.target.value })}>
+            {INVESTMENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ flex: 1, position: 'relative' }}>
-              <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', fontSize: 14, pointerEvents: 'none' }}>₹</span>
-              <input type="number" placeholder="Invested amount"
+          <div className="bc-inv-row2">
+            <div className="bc-amount-wrap">
+              <span className="bc-rupee">₹</span>
+              <input type="number" className="input-field" placeholder="Invested amount"
                 value={addForm.invested_amount} onChange={e => setAddForm({ ...addForm, invested_amount: e.target.value })}
-                style={{ ...inputStyle, paddingLeft: 28 }} />
+                style={{ paddingLeft: 26 }} />
             </div>
-            <div style={{ flex: 1, position: 'relative' }}>
-              <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', fontSize: 14, pointerEvents: 'none' }}>₹</span>
-              <input type="number" placeholder="Current value"
+            <div className="bc-amount-wrap">
+              <span className="bc-rupee">₹</span>
+              <input type="number" className="input-field" placeholder="Current value"
                 value={addForm.current_value} onChange={e => setAddForm({ ...addForm, current_value: e.target.value })}
-                style={{ ...inputStyle, paddingLeft: 28 }} />
+                style={{ paddingLeft: 26 }} />
             </div>
           </div>
-
-          {/* SIP Toggle */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '10px 14px', borderRadius: 10,
-            background: 'var(--surface2, rgba(255,255,255,0.05))',
-            border: '1px solid var(--glass-border, rgba(255,255,255,0.08))',
-          }}>
-            <span style={{ fontSize: 14, fontWeight: 600 }}>Is this a SIP?</span>
-            <button onClick={() => setAddForm({ ...addForm, is_sip: !addForm.is_sip })} style={{
-              width: 48, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer',
-              background: addForm.is_sip ? 'var(--primary)' : 'var(--surface3)',
-              position: 'relative', transition: 'background 0.3s',
-            }}>
-              <span style={{
-                position: 'absolute', top: 3, left: addForm.is_sip ? 25 : 3,
-                width: 20, height: 20, borderRadius: '50%', background: '#fff',
-                transition: 'left 0.3s var(--ease)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-              }} />
+          <div className="bc-sip-toggle-row">
+            <span className="bc-sip-label">Is this a SIP?</span>
+            <button
+              className={`bc-toggle ${addForm.is_sip ? 'bc-toggle--on' : ''}`}
+              onClick={() => setAddForm({ ...addForm, is_sip: !addForm.is_sip })}
+            >
+              <span className="bc-toggle-thumb" />
             </button>
           </div>
-
           <AnimatePresence>
             {addForm.is_sip && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                style={{ overflow: 'hidden' }}
-              >
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <div style={{ flex: 1, position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', fontSize: 14, pointerEvents: 'none' }}>₹</span>
-                    <input type="number" placeholder="SIP amount/month"
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
+                <div className="bc-inv-row2" style={{ marginTop: 8 }}>
+                  <div className="bc-amount-wrap">
+                    <span className="bc-rupee">₹</span>
+                    <input type="number" className="input-field" placeholder="SIP/month"
                       value={addForm.sip_amount} onChange={e => setAddForm({ ...addForm, sip_amount: e.target.value })}
-                      style={{ ...inputStyle, paddingLeft: 28 }} />
+                      style={{ paddingLeft: 26 }} />
                   </div>
-                  <input type="number" min="1" max="28" placeholder="SIP date (1-28)"
-                    value={addForm.sip_date} onChange={e => setAddForm({ ...addForm, sip_date: e.target.value })}
-                    style={{ ...inputStyle, flex: 1 }} />
+                  <input type="number" className="input-field" min="1" max="28" placeholder="SIP date (1-28)"
+                    value={addForm.sip_date} onChange={e => setAddForm({ ...addForm, sip_date: e.target.value })} />
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
-
-          <button className="btn-primary full" onClick={handleAddInvestment} disabled={addSaving}
-            style={{ marginTop: 4 }}>
-            {addSaving ? 'Saving...' : 'Save Investment'}
+          <button className="btn-primary full" onClick={handleAddInvestment} disabled={addSaving} style={{ marginTop: 4 }}>
+            {addSaving ? 'Saving…' : <><Plus size={14} /> Save Investment</>}
           </button>
         </div>
       </div>
@@ -341,56 +311,38 @@ export default function Wealth() {
       exit={{ opacity: 0, height: 0 }}
       style={{ overflow: 'hidden' }}
     >
-      <div className="card mb-4" style={{ padding: 16, border: '1px solid var(--cyan)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <span style={{ fontSize: 14, fontWeight: 700 }}>New Savings Goal</span>
-          <button onClick={() => setShowGoalForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer' }}>
-            <X size={18} />
-          </button>
+      <div className="card mb-4 wl-add-card" style={{ borderColor: 'var(--cyan)' }}>
+        <div className="wl-form-hdr">
+          <span className="wl-form-title">🎯 New Savings Goal</span>
+          <button onClick={() => setShowGoalForm(false)} className="modal-close"><X size={18} /></button>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Icon picker */}
+        <div className="wl-form-body">
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', marginBottom: 6 }}>Choose icon</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <div className="wl-form-label">Choose icon</div>
+            <div className="wl-icon-grid">
               {GOAL_ICONS.map(ic => (
-                <button
-                  key={ic.emoji}
-                  onClick={() => setGoalForm({ ...goalForm, emoji: ic.emoji })}
-                  style={{
-                    width: 40, height: 40, borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 20,
-                    background: goalForm.emoji === ic.emoji ? 'var(--primary-dim)' : 'var(--surface2, rgba(255,255,255,0.05))',
-                    outline: goalForm.emoji === ic.emoji ? '2px solid var(--primary)' : 'none',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
+                <button key={ic.emoji} className={`wl-icon-btn ${goalForm.emoji === ic.emoji ? 'wl-icon-btn--active' : ''}`}
+                  onClick={() => setGoalForm({ ...goalForm, emoji: ic.emoji })}>
                   {ic.emoji}
                 </button>
               ))}
             </div>
           </div>
-
-          <input type="text" placeholder="Goal name (e.g. Emergency Fund)"
-            value={goalForm.name} onChange={e => setGoalForm({ ...goalForm, name: e.target.value })}
-            style={inputStyle} />
-
-          <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', fontSize: 14, pointerEvents: 'none' }}>₹</span>
-            <input type="number" placeholder="Target amount"
+          <input type="text" className="input-field" placeholder="Goal name (e.g. Emergency Fund)"
+            value={goalForm.name} onChange={e => setGoalForm({ ...goalForm, name: e.target.value })} />
+          <div className="bc-amount-wrap">
+            <span className="bc-rupee">₹</span>
+            <input type="number" className="input-field" placeholder="Target amount"
               value={goalForm.target_amount} onChange={e => setGoalForm({ ...goalForm, target_amount: e.target.value })}
-              style={{ ...inputStyle, paddingLeft: 28 }} />
+              style={{ paddingLeft: 26 }} />
           </div>
-
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', marginBottom: 4 }}>Target date (optional)</div>
-            <input type="date" value={goalForm.deadline}
-              onChange={e => setGoalForm({ ...goalForm, deadline: e.target.value })}
-              style={inputStyle} />
+            <div className="wl-form-label">Target date (optional)</div>
+            <input type="date" className="input-field" value={goalForm.deadline}
+              onChange={e => setGoalForm({ ...goalForm, deadline: e.target.value })} />
           </div>
-
-          <button className="btn-primary full" onClick={handleAddGoal} disabled={goalSaving}
-            style={{ marginTop: 4 }}>
-            {goalSaving ? 'Saving...' : 'Create Goal'}
+          <button className="btn-primary full" onClick={handleAddGoal} disabled={goalSaving} style={{ marginTop: 4 }}>
+            {goalSaving ? 'Saving…' : <><Target size={14} /> Create Goal</>}
           </button>
         </div>
       </div>

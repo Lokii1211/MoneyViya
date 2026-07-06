@@ -1,381 +1,514 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useToast } from '../components/Toast'
-import { formatINR } from '../lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Activity, Droplets, Moon, Footprints, Flame, Plus, TrendingUp, Heart, Scale, Smile } from 'lucide-react'
+import { Activity, Droplets, Moon, Footprints, Flame, Plus, Heart, Scale, X, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react'
+
+const MOODS = [
+  { emoji: '😄', label: 'Great',  value: 'great' },
+  { emoji: '😊', label: 'Good',   value: 'good' },
+  { emoji: '😐', label: 'Okay',   value: 'okay' },
+  { emoji: '😟', label: 'Low',    value: 'low' },
+  { emoji: '😔', label: 'Sad',    value: 'sad' },
+]
+
+const STEP_PRESETS  = [2000, 4000, 6000, 8000, 10000, 12000]
+const SLEEP_PRESETS = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9]
+const CAL_PRESETS   = [1200, 1500, 1800, 2000, 2200, 2500]
+const GOALS = { steps: 10000, water: 8, sleep: 8, calories: 2200 }
 
 const HEALTH_TIPS = [
-  'Drink water first thing in the morning -- boosts metabolism 30%',
+  'Drink water first thing in the morning — boosts metabolism 30%',
   '10,000 steps = ~400 calories burned',
   '7-9 hours sleep = optimal cognitive function',
   'Eat protein within 30 min of waking up',
   '5 min meditation reduces cortisol by 25%',
+  'Cold water after workout reduces muscle soreness 20%',
 ]
 
-const MOODS = [
-  { emoji: '😄', label: 'Great', value: 'great' },
-  { emoji: '😊', label: 'Good', value: 'good' },
-  { emoji: '😐', label: 'Okay', value: 'okay' },
-  { emoji: '😟', label: 'Low', value: 'low' },
-  { emoji: '😔', label: 'Sad', value: 'sad' },
-]
-
-const DEFAULT_HEALTH = {
-  steps: 0, water_glasses: 0, sleep_hours: 0, calories: 0,
-  weight: 0, heart_rate: 0, health_score: 50, mood: null,
-}
-
-const goals = { steps: 10000, water: 8, sleep: 8, calories: 2200 }
-
-function ProgressRing({ value, max, size = 100, stroke = 8, color = 'var(--primary)', children }) {
+/* ── Progress ring ── */
+function Ring({ value, max, size = 100, stroke = 8, color, children }) {
   const r = (size - stroke) / 2
   const circ = 2 * Math.PI * r
-  const pct = Math.min(value / max, 1)
+  const pct = Math.min(value / (max || 1), 1)
   return (
-    <div style={{ position: 'relative', width: size, height: size }}>
-      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={stroke} />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-          strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)}
-          strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.8s var(--ease)' }} />
+    <div style={{ position:'relative', width:size, height:size }}>
+      <svg width={size} height={size} style={{ transform:'rotate(-90deg)' }}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--border)" strokeWidth={stroke}/>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+          strokeDasharray={circ} strokeDashoffset={circ*(1-pct)}
+          strokeLinecap="round" style={{ transition:'stroke-dashoffset 0.8s ease' }}/>
       </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
         {children}
       </div>
     </div>
   )
 }
 
-function LoadingSkeleton() {
+/* ── Inline log modal ── */
+function LogModal({ title, icon, onClose, children }) {
   return (
-    <div>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="skeleton" style={{ height: 140, borderRadius: 20, marginBottom: 16 }} />
-      <div className="stat-grid">
-        {[0, 1, 2, 3].map(i => (
-          <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + i * 0.05 }} className="skeleton" style={{ height: 100, borderRadius: 16 }} />
-        ))}
-      </div>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-        className="skeleton" style={{ height: 48, borderRadius: 12, marginBottom: 12 }} />
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}
-        className="skeleton" style={{ height: 120, borderRadius: 16 }} />
+    <motion.div className="modal-overlay" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <motion.div className="hl-modal" initial={{ y:60, opacity:0 }} animate={{ y:0, opacity:1 }} exit={{ y:60, opacity:0 }}>
+        <div className="hl-modal-hdr">
+          <div className="hl-modal-title">{icon} {title}</div>
+          <button className="modal-close" onClick={onClose}><X size={18}/></button>
+        </div>
+        {children}
+      </motion.div>
+    </motion.div>
+  )
+}
+
+/* ── 7-day sparkline bar ── */
+function WeekBar({ history, field, color, max }) {
+  const last7 = history.slice(0, 7).reverse()
+  const days = ['M','T','W','T','F','S','S']
+  return (
+    <div className="hl-week-bar">
+      {last7.map((h, i) => {
+        const val = Number(h[field] || 0)
+        const pct = max > 0 ? Math.min((val / max) * 100, 100) : 0
+        return (
+          <div key={i} className="hl-week-col">
+            <div className="hl-week-track">
+              <div className="hl-week-fill" style={{ height:`${pct}%`, background: color }} />
+            </div>
+            <div className="hl-week-label">{days[i]}</div>
+          </div>
+        )
+      })}
     </div>
   )
 }
 
 export default function Health() {
   const { phone } = useApp()
-  const nav = useNavigate()
   const toast = useToast()
-  const [tab, setTab] = useState('overview')
-  const [mood, setMood] = useState(null)
-  const [healthData, setHealthData] = useState(DEFAULT_HEALTH)
+  const [tab, setTab] = useState('today')
+  const [data, setData] = useState({ steps:0, water_glasses:0, sleep_hours:0, calories:0, weight:0, heart_rate:0, mood:null, health_score:50 })
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // Weight / Water form state
+  // Modal states — each opens inline form instead of navigating
+  const [modal, setModal] = useState(null) // 'steps' | 'sleep' | 'calories' | 'weight' | 'water' | 'heart'
+
+  // Form values
+  const [stepsInput, setStepsInput] = useState('')
+  const [sleepInput, setSleepInput] = useState('')
+  const [calInput, setCalInput] = useState('')
   const [weightInput, setWeightInput] = useState('')
-  const [waterGoal, setWaterGoal] = useState(8)
+  const [heartInput, setHeartInput] = useState('')
 
   const tip = HEALTH_TIPS[Math.floor(Date.now() / 3600000) % HEALTH_TIPS.length]
 
   const loadData = useCallback(async () => {
     if (!phone) return
     setLoading(true)
-    try {
-      const [log, hist] = await Promise.all([
-        api.getHealthLog(phone),
-        api.getHealthHistory(phone),
-      ])
-      if (log) setHealthData(log)
-      if (hist?.length) setHistory(hist)
-    } catch (e) { console.error('Health load error:', e) }
+    const [log, hist] = await Promise.all([api.getHealthLog(phone), api.getHealthHistory(phone, 14)])
+    if (log) setData(log)
+    if (hist?.length) setHistory(hist)
     setLoading(false)
   }, [phone])
 
   useEffect(() => { loadData() }, [loadData])
 
-  const score = healthData.health_score || 50
-  const steps = healthData.steps || 0
-  const water = healthData.water_glasses || 0
-  const sleep = healthData.sleep_hours || 0
-  const calories = healthData.calories || 0
-
-  const quickLogWater = async () => {
-    const newVal = water + 1
-    setHealthData(d => ({ ...d, water_glasses: newVal }))
+  /* ── Log helpers ── */
+  const logField = async (field, value, label) => {
+    const updated = { ...data, [field]: value }
+    setData(updated)
+    setModal(null)
     try {
-      await api.upsertHealthLog(phone, { water_glasses: newVal })
-      toast.show('+1 glass logged!', 'success')
-    } catch { toast.show('Failed to log water', 'error') }
+      await api.upsertHealthLog(phone, { [field]: value })
+      // Recalculate health score
+      const score = calcScore({ ...data, [field]: value })
+      await api.upsertHealthLog(phone, { health_score: score })
+      setData(d => ({ ...d, health_score: score }))
+      toast.show(`✅ ${label} logged!`, 'success')
+      loadData()
+    } catch { toast.show('Save failed', 'error') }
   }
 
-  const saveWeight = async () => {
-    const w = parseFloat(weightInput)
-    if (!w || w < 20 || w > 300) return toast.show('Enter valid weight (20-300 kg)', 'error')
-    setHealthData(d => ({ ...d, weight: w }))
-    try {
-      await api.upsertHealthLog(phone, { weight: w })
-      toast.show(`Weight updated: ${w} kg`, 'success')
-      setWeightInput('')
-    } catch { toast.show('Failed to save weight', 'error') }
+  const addWater = async () => {
+    const next = (data.water_glasses || 0) + 1
+    setData(d => ({ ...d, water_glasses: next }))
+    await api.upsertHealthLog(phone, { water_glasses: next })
+    toast.show(`💧 +1 glass (${next} total)`, 'success')
   }
 
   const saveMood = async (m) => {
-    setMood(m.value)
-    try {
-      await api.upsertHealthLog(phone, { mood: m.value })
-      toast.show(`Mood logged: ${m.emoji} ${m.label}`, 'success')
-    } catch { toast.show('Failed to log mood', 'error') }
+    setData(d => ({ ...d, mood: m.value }))
+    await api.upsertHealthLog(phone, { mood: m.value })
+    toast.show(`${m.emoji} Mood logged: ${m.label}`, 'success')
   }
 
-  const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'weight', label: 'Weight' },
-    { id: 'water', label: 'Water' },
-    { id: 'mood', label: 'Mood' },
+  function calcScore(d) {
+    let s = 0
+    if (d.steps >= 10000) s += 25; else if (d.steps >= 5000) s += 12
+    if (d.water_glasses >= 8) s += 20; else if (d.water_glasses >= 4) s += 10
+    if (d.sleep_hours >= 7 && d.sleep_hours <= 9) s += 25; else if (d.sleep_hours >= 6) s += 12
+    if (d.calories >= 1500 && d.calories <= 2200) s += 20; else if (d.calories > 0) s += 10
+    if (d.mood === 'great') s += 10; else if (d.mood === 'good') s += 7; else if (d.mood) s += 3
+    return Math.min(s, 100)
+  }
+
+  const score = data.health_score || calcScore(data)
+  const steps = data.steps || 0
+  const water = data.water_glasses || 0
+  const sleep = data.sleep_hours || 0
+  const calories = data.calories || 0
+  const weight = data.weight || 0
+
+  const metrics = [
+    { key:'steps',    icon:'🏃', label:'Steps',    value:steps,    unit:'steps',  target:GOALS.steps,    color:'#FF7062', onLog:() => setModal('steps') },
+    { key:'sleep',    icon:'😴', label:'Sleep',    value:sleep,    unit:'hrs',    target:GOALS.sleep,    color:'#7C6AF9', onLog:() => setModal('sleep') },
+    { key:'calories', icon:'🔥', label:'Calories', value:calories, unit:'kcal',   target:GOALS.calories, color:'#FF9500', onLog:() => setModal('calories') },
+    { key:'water',    icon:'💧', label:'Water',    value:water,    unit:'glasses',target:GOALS.water,    color:'#38bdf8', onLog:addWater },
   ]
 
-  const pillars = [
-    { icon: <Footprints size={16} />, label: 'Steps', value: steps, unit: 'steps', target: goals.steps, cls: 'steps' },
-    { icon: <Flame size={16} />, label: 'Calories', value: calories, unit: 'kcal', target: goals.calories, cls: 'calories' },
-    { icon: <Moon size={16} />, label: 'Sleep', value: sleep, unit: 'hrs', target: goals.sleep, cls: 'sleep' },
-    { icon: <Droplets size={16} />, label: 'Water', value: water, unit: 'glasses', target: goals.water, cls: 'water', onClick: quickLogWater },
+  const tabs = [
+    { id:'today',   label:'Today' },
+    { id:'history', label:'History' },
+    { id:'weight',  label:'Weight' },
+    { id:'mood',    label:'Mood' },
   ]
 
   return (
     <div className="page">
+      {/* Modals */}
+      <AnimatePresence>
+        {modal === 'steps' && (
+          <LogModal title="Log Steps" icon="🏃" onClose={() => setModal(null)}>
+            <div className="hl-presets-row">
+              {STEP_PRESETS.map(v => (
+                <button key={v} className={`hl-preset-chip ${stepsInput==v?'active':''}`}
+                  onClick={() => setStepsInput(String(v))}>{v.toLocaleString('en-IN')}</button>
+              ))}
+            </div>
+            <div className="hl-input-row">
+              <input className="input-field" type="number" placeholder="Or enter custom steps"
+                value={stepsInput} onChange={e => setStepsInput(e.target.value)} autoFocus/>
+            </div>
+            <button className="btn-primary full mt-12"
+              onClick={() => stepsInput && logField('steps', Number(stepsInput), `${Number(stepsInput).toLocaleString()} steps`)}>
+              Save Steps
+            </button>
+          </LogModal>
+        )}
+        {modal === 'sleep' && (
+          <LogModal title="Log Sleep" icon="😴" onClose={() => setModal(null)}>
+            <div className="hl-presets-row">
+              {SLEEP_PRESETS.map(v => (
+                <button key={v} className={`hl-preset-chip ${sleepInput==v?'active':''}`}
+                  onClick={() => setSleepInput(String(v))}>{v}h</button>
+              ))}
+            </div>
+            <div className="hl-input-row">
+              <input className="input-field" type="number" step="0.5" min="1" max="12" placeholder="Custom hours"
+                value={sleepInput} onChange={e => setSleepInput(e.target.value)}/>
+            </div>
+            <button className="btn-primary full mt-12"
+              onClick={() => sleepInput && logField('sleep_hours', Number(sleepInput), `${sleepInput}h sleep`)}>
+              Save Sleep
+            </button>
+          </LogModal>
+        )}
+        {modal === 'calories' && (
+          <LogModal title="Log Calories" icon="🔥" onClose={() => setModal(null)}>
+            <div className="hl-presets-row">
+              {CAL_PRESETS.map(v => (
+                <button key={v} className={`hl-preset-chip ${calInput==v?'active':''}`}
+                  onClick={() => setCalInput(String(v))}>{v} kcal</button>
+              ))}
+            </div>
+            <div className="hl-input-row">
+              <input className="input-field" type="number" placeholder="Custom calories"
+                value={calInput} onChange={e => setCalInput(e.target.value)}/>
+            </div>
+            <button className="btn-primary full mt-12"
+              onClick={() => calInput && logField('calories', Number(calInput), `${Number(calInput).toLocaleString()} kcal`)}>
+              Save Calories
+            </button>
+          </LogModal>
+        )}
+        {modal === 'weight' && (
+          <LogModal title="Log Weight" icon="⚖️" onClose={() => setModal(null)}>
+            <div className="hl-input-row">
+              <input className="input-field" type="number" step="0.1" min="20" max="300"
+                placeholder="Weight in kg (e.g. 72.5)" value={weightInput}
+                onChange={e => setWeightInput(e.target.value)} autoFocus/>
+            </div>
+            <button className="btn-primary full mt-12"
+              onClick={() => weightInput && logField('weight', Number(weightInput), `${weightInput} kg`)}>
+              Save Weight
+            </button>
+          </LogModal>
+        )}
+        {modal === 'heart' && (
+          <LogModal title="Log Heart Rate" icon="❤️" onClose={() => setModal(null)}>
+            <div className="hl-presets-row">
+              {[60,65,70,72,75,80,85,90].map(v => (
+                <button key={v} className={`hl-preset-chip ${heartInput==v?'active':''}`}
+                  onClick={() => setHeartInput(String(v))}>{v}</button>
+              ))}
+            </div>
+            <div className="hl-input-row">
+              <input className="input-field" type="number" placeholder="BPM" min="40" max="200"
+                value={heartInput} onChange={e => setHeartInput(e.target.value)}/>
+            </div>
+            <button className="btn-primary full mt-12"
+              onClick={() => heartInput && logField('heart_rate', Number(heartInput), `${heartInput} BPM`)}>
+              Save Heart Rate
+            </button>
+          </LogModal>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <div className="page-header">
         <div>
-          <h2>Health Center</h2>
-          <p className="body-s text-secondary">Your wellness command center</p>
+          <h2>Health</h2>
+          <p className="body-s text-secondary">Your daily wellness log</p>
         </div>
-        <button className="pill-btn active" onClick={() => nav('/chat?q=health+tips')}>Ask Viya</button>
+        <button className="hl-score-badge" style={{ background: score >= 70 ? 'rgba(0,229,176,0.15)' : score >= 40 ? 'rgba(255,149,0,0.15)' : 'rgba(255,112,98,0.15)', color: score >= 70 ? '#00E5B0' : score >= 40 ? '#FF9500' : '#FF7062' }}>
+          {score} score
+        </button>
       </div>
 
-      {/* Tab Bar */}
+      {/* Tab bar */}
       <div className="tab-bar">
         {tabs.map(t => (
-          <button key={t.id} className={`tab-btn ${tab === t.id ? 'active' : ''}`}
-            onClick={() => setTab(t.id)}>{t.label}</button>
+          <button key={t.id} className={`tab-btn ${tab===t.id?'active':''}`} onClick={() => setTab(t.id)}>
+            {t.label}
+          </button>
         ))}
       </div>
 
-      {loading ? <LoadingSkeleton /> : (
+      {loading ? (
+        <div>
+          {[0,1,2,3].map(i => <div key={i} className="skeleton mb-10" style={{height:80,borderRadius:16}} />)}
+        </div>
+      ) : (
         <AnimatePresence mode="wait">
-          {/* === OVERVIEW TAB === */}
-          {tab === 'overview' && (
-            <motion.div key="overview" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              {/* Health Score Hero */}
-              <div className="hero-card health flex items-center gap-4 mb-4" style={{ padding: 20 }}>
-                <ProgressRing value={score} max={100} size={120} stroke={10} color="white">
-                  <span className="currency" style={{ fontSize: 32, fontWeight: 800, color: '#fff' }}>{score}</span>
-                  <span className="stat-card-label" style={{ opacity: 0.8 }}>SCORE</span>
-                </ProgressRing>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 4 }}>
-                    {score >= 80 ? 'Excellent!' : score >= 60 ? 'Good Shape!' : 'Needs Work'}
+
+          {/* ══ TODAY TAB ══ */}
+          {tab === 'today' && (
+            <motion.div key="today" initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
+
+              {/* Health score hero */}
+              <div className="hl-hero">
+                <Ring value={score} max={100} size={110} stroke={9} color={score>=70?'#00E5B0':score>=40?'#FF9500':'#FF7062'}>
+                  <span style={{fontSize:26,fontWeight:800,color:'#fff'}}>{score}</span>
+                  <span style={{fontSize:10,color:'rgba(255,255,255,0.6)',letterSpacing:1}}>SCORE</span>
+                </Ring>
+                <div className="hl-hero-right">
+                  <div className="hl-hero-label">
+                    {score>=80?'Excellent! 🏆':score>=60?'Good Shape 💪':score>=40?'Keep Going 🌱':'Needs Attention ⚠️'}
                   </div>
-                  <p className="body-s" style={{ opacity: 0.85, marginBottom: 6 }}>
-                    Track daily to improve your score
-                  </p>
-                  <div className="flex gap-3" style={{ fontSize: 12 }}>
-                    {healthData.heart_rate > 0 && <span>❤️ {healthData.heart_rate} bpm</span>}
-                    {healthData.weight > 0 && <span>⚖️ {healthData.weight} kg</span>}
+                  <div className="hl-hero-sub">Log all 4 metrics to improve your score</div>
+                  <div className="hl-hero-vitals">
+                    {data.heart_rate > 0 && <span className="hl-vital"><Heart size={11} color="#FF7062"/> {data.heart_rate} bpm</span>}
+                    {weight > 0 && <span className="hl-vital"><Scale size={11} color="#7C6AF9"/> {weight} kg</span>}
+                    <span className="hl-vital-btn" onClick={() => setModal('heart')}>+ Heart rate</span>
+                    {weight === 0 && <span className="hl-vital-btn" onClick={() => setModal('weight')}>+ Weight</span>}
                   </div>
                 </div>
               </div>
 
-              {/* 4 Pillar Cards */}
-              <div className="stat-grid">
-                {pillars.map(p => {
-                  const pct = p.target > 0 ? Math.min(Math.round((p.value / p.target) * 100), 100) : 0
+              {/* 4 Metric cards */}
+              <div className="hl-metrics-grid">
+                {metrics.map(m => {
+                  const pct = GOALS[m.key] > 0 ? Math.min(Math.round((m.value / GOALS[m.key]) * 100), 100) : 0
+                  const done = pct >= 100
                   return (
-                    <div key={p.label} className={`health-card ${p.cls}`}
-                      onClick={p.onClick} style={p.onClick ? { cursor: 'pointer' } : {}}>
-                      <div className="health-label">{p.label}</div>
-                      <div className="health-value">
-                        {p.value}<span className="health-sub" style={{ fontSize: 13, marginLeft: 2 }}>{p.unit}</span>
+                    <motion.div key={m.key} className={`hl-metric-card ${done?'done':''}`}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={m.onLog}
+                      style={{ borderColor: done ? m.color + '50' : undefined }}>
+                      <div className="hl-metric-top">
+                        <span className="hl-metric-icon">{m.icon}</span>
+                        {done && <span className="hl-metric-done-badge">✓</span>}
                       </div>
-                      <div className="progress-bar" style={{ marginTop: 8, background: 'rgba(255,255,255,0.2)' }}>
-                        <div className="progress-fill" style={{ width: `${pct}%`, background: 'rgba(255,255,255,0.8)' }} />
+                      <div className="hl-metric-value" style={{ color: done ? m.color : 'var(--text1)' }}>
+                        {m.key === 'steps' ? m.value.toLocaleString('en-IN') : m.value}
+                        <span className="hl-metric-unit">{m.unit}</span>
                       </div>
-                      <div className="health-sub" style={{ marginTop: 4, fontSize: 11 }}>{pct}% of goal</div>
-                    </div>
+                      <div className="hl-metric-label">{m.label}</div>
+                      <div className="hl-metric-bar">
+                        <div style={{ width:`${pct}%`, background:m.color, height:'100%', borderRadius:99, transition:'width 0.6s ease' }}/>
+                      </div>
+                      <div className="hl-metric-pct">{pct}% of {m.key==='steps'?GOALS[m.key].toLocaleString():GOALS[m.key]} goal</div>
+                      <div className="hl-metric-tap">
+                        {m.key === 'water' ? '+ Add glass' : 'Tap to log'}
+                      </div>
+                    </motion.div>
                   )
                 })}
               </div>
 
-              {/* Health Tip */}
-              <div className="insight-card mt-2">
-                <Activity size={16} className="insight-icon" />
-                <span className="insight-text">{tip}</span>
-              </div>
-
-              {/* Quick Log Buttons */}
-              <div className="flex gap-2 mt-2">
+              {/* Quick log row */}
+              <div className="hl-quick-row">
                 {[
-                  { emoji: '💧', label: '+Water', action: quickLogWater },
-                  { emoji: '🏃', label: 'Steps', action: () => nav('/chat?q=log+steps') },
-                  { emoji: '😴', label: 'Sleep', action: () => nav('/chat?q=log+sleep') },
-                  { emoji: '🍎', label: 'Calories', action: () => nav('/chat?q=log+calories') },
-                ].map((a, i) => (
-                  <button key={i} className="qa-btn normal" onClick={a.action} style={{ flex: 1 }}>
-                    <span style={{ fontSize: 20 }}>{a.emoji}</span>
-                    <span className="qa-btn-label">{a.label}</span>
+                  { emoji:'🏃', label:'Steps',    action:() => setModal('steps') },
+                  { emoji:'😴', label:'Sleep',    action:() => setModal('sleep') },
+                  { emoji:'🔥', label:'Calories', action:() => setModal('calories') },
+                  { emoji:'⚖️', label:'Weight',   action:() => setModal('weight') },
+                ].map((a,i) => (
+                  <button key={i} className="hl-quick-btn" onClick={a.action}>
+                    <span className="hl-quick-emoji">{a.emoji}</span>
+                    <span className="hl-quick-label">{a.label}</span>
                   </button>
                 ))}
               </div>
-            </motion.div>
-          )}
 
-          {/* === WEIGHT TAB === */}
-          {tab === 'weight' && (
-            <motion.div key="weight" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              {/* Current Weight */}
-              <div className="hero-card coral text-center mb-4" style={{ padding: 24 }}>
-                <div className="stat-card-label" style={{ opacity: 0.7 }}>Current Weight</div>
-                <div className="currency" style={{ fontSize: 40, fontWeight: 800 }}>
-                  {healthData.weight > 0 ? `${healthData.weight} kg` : '-- kg'}
-                </div>
+              {/* Tip */}
+              <div className="insight-card">
+                <Activity size={16} color="var(--primary)"/>
+                <span className="insight-text">{tip}</span>
               </div>
 
-              {/* Log Weight Form */}
-              <div className="entry-form mb-4">
-                <div className="form-group">
-                  <label>Log Today's Weight (kg)</label>
-                  <input className="form-input" type="number" placeholder="e.g. 72.5"
-                    value={weightInput} onChange={e => setWeightInput(e.target.value)}
-                    min="20" max="300" step="0.1" />
-                </div>
-                <button className="btn-primary full" onClick={saveWeight}>Save Weight</button>
-              </div>
-
-              {/* Weight History */}
-              <div className="section">
-                <div className="section-head">
-                  <h3>Recent Entries</h3>
-                </div>
-                {history.filter(h => h.weight > 0).length === 0 ? (
-                  <div className="empty-state-card">
-                    <div className="empty-emoji">⚖️</div>
-                    <h3>No weight data yet</h3>
-                    <p>Log your weight above to start tracking trends</p>
-                  </div>
-                ) : (
-                  history.filter(h => h.weight > 0).slice(0, 7).map((h, i) => (
-                    <div key={i} className="info-row">
-                      <div className="info-icon gold"><Scale size={16} /></div>
-                      <div className="info-body">
-                        <div className="info-title">{h.weight} kg</div>
-                        <div className="info-sub">{new Date(h.log_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* === WATER TAB === */}
-          {tab === 'water' && (
-            <motion.div key="water" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              {/* Water Progress */}
-              <div className="hero-card text-center mb-4 health-card water" style={{ padding: 24 }}>
-                <ProgressRing value={water} max={waterGoal} size={140} stroke={12} color="white">
-                  <span className="currency" style={{ fontSize: 36, fontWeight: 800, color: '#fff' }}>{water}</span>
-                  <span className="body-s" style={{ opacity: 0.8 }}>of {waterGoal} glasses</span>
-                </ProgressRing>
-                <p style={{ marginTop: 12, fontSize: 14, fontWeight: 600 }}>
-                  {water >= waterGoal ? 'Goal reached! Great job!' : `${waterGoal - water} more glasses to go`}
-                </p>
-              </div>
-
-              {/* Quick Add */}
-              <button className="btn-primary full mb-4" onClick={quickLogWater}>
-                <Droplets size={16} /> + Add Glass of Water
-              </button>
-
-              {/* Water History */}
-              <div className="section">
-                <div className="section-head"><h3>This Week</h3></div>
-                {history.slice(0, 7).map((h, i) => (
-                  <div key={i} className="info-row">
-                    <div className="info-icon cyan"><Droplets size={16} /></div>
-                    <div className="info-body">
-                      <div className="info-title">{h.water_glasses || 0} glasses</div>
-                      <div className="info-sub">{new Date(h.log_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
-                    </div>
-                    <span className={`info-value ${(h.water_glasses || 0) >= waterGoal ? 'green' : ''}`}>
-                      {(h.water_glasses || 0) >= waterGoal ? 'Done' : `${waterGoal - (h.water_glasses || 0)} left`}
-                    </span>
-                  </div>
-                ))}
-                {history.length === 0 && (
-                  <div className="empty-state-card">
-                    <div className="empty-emoji">💧</div>
-                    <h3>No water data yet</h3>
-                    <p>Tap the button above to start logging your water intake</p>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* === MOOD TAB === */}
-          {tab === 'mood' && (
-            <motion.div key="mood" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <div className="card text-center mb-4" style={{ padding: 24 }}>
-                <h3 style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>How are you feeling?</h3>
-                <p className="body-s text-secondary mb-4">Tap to log your mood for today</p>
-                <div className="flex gap-2 justify-center">
+              {/* Mood */}
+              <div className="hl-mood-section">
+                <div className="hl-mood-title">How are you feeling today?</div>
+                <div className="hl-mood-row">
                   {MOODS.map(m => (
-                    <button key={m.value} onClick={() => saveMood(m)}
-                      className={`cat-chip flex-col items-center ${mood === m.value ? 'active' : ''}`}
-                      style={{ fontSize: 28, padding: '8px 10px' }}>
-                      <span>{m.emoji}</span>
-                      <span style={{ fontSize: 10, fontWeight: 600 }}>{m.label}</span>
+                    <button key={m.value} className={`hl-mood-btn ${data.mood===m.value?'active':''}`}
+                      onClick={() => saveMood(m)}>
+                      <span className="hl-mood-emoji">{m.emoji}</span>
+                      <span className="hl-mood-label">{m.label}</span>
                     </button>
                   ))}
                 </div>
-                {mood && (
-                  <p className="text-success mt-2" style={{ fontWeight: 600, fontSize: 13 }}>
-                    Mood logged for today!
-                  </p>
-                )}
-              </div>
-
-              {/* Mood History */}
-              <div className="section">
-                <div className="section-head"><h3>Mood History</h3></div>
-                {history.filter(h => h.mood).length === 0 ? (
-                  <div className="empty-state-card">
-                    <div className="empty-emoji">😊</div>
-                    <h3>No mood data yet</h3>
-                    <p>Log your mood above to see patterns over time</p>
-                  </div>
-                ) : (
-                  history.filter(h => h.mood).slice(0, 7).map((h, i) => {
-                    const moodObj = MOODS.find(m => m.value === h.mood) || { emoji: '😐', label: h.mood }
-                    return (
-                      <div key={i} className="info-row">
-                        <div className="info-icon" style={{ fontSize: 24 }}>{moodObj.emoji}</div>
-                        <div className="info-body">
-                          <div className="info-title">{moodObj.label}</div>
-                          <div className="info-sub">{new Date(h.log_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
-                        </div>
-                      </div>
-                    )
-                  })
-                )}
               </div>
             </motion.div>
           )}
+
+          {/* ══ HISTORY TAB ══ */}
+          {tab === 'history' && (
+            <motion.div key="history" initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
+              <div className="hl-history-grid">
+                <div className="hl-chart-card">
+                  <div className="hl-chart-title">🏃 Steps (7 days)</div>
+                  <WeekBar history={history} field="steps" color="#FF7062" max={GOALS.steps}/>
+                </div>
+                <div className="hl-chart-card">
+                  <div className="hl-chart-title">💧 Water (7 days)</div>
+                  <WeekBar history={history} field="water_glasses" color="#38bdf8" max={GOALS.water}/>
+                </div>
+                <div className="hl-chart-card">
+                  <div className="hl-chart-title">😴 Sleep (7 days)</div>
+                  <WeekBar history={history} field="sleep_hours" color="#7C6AF9" max={GOALS.sleep}/>
+                </div>
+                <div className="hl-chart-card">
+                  <div className="hl-chart-title">🔥 Calories</div>
+                  <WeekBar history={history} field="calories" color="#FF9500" max={GOALS.calories}/>
+                </div>
+              </div>
+              {history.length === 0 && (
+                <div className="empty-state-card">
+                  <div className="empty-emoji">📊</div>
+                  <h3>No history yet</h3>
+                  <p>Log daily metrics to see your trends</p>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ══ WEIGHT TAB ══ */}
+          {tab === 'weight' && (
+            <motion.div key="weight" initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
+              <div className="hl-weight-hero">
+                <div className="hl-weight-current">
+                  {weight > 0 ? `${weight} kg` : '— kg'}
+                </div>
+                <div className="hl-weight-sub">Current weight</div>
+                {history.length >= 2 && (() => {
+                  const prev = history.find((h,i) => i > 0 && h.weight > 0)?.weight
+                  if (!prev) return null
+                  const diff = weight - prev
+                  return (
+                    <div className="hl-weight-change" style={{ color: diff <= 0 ? '#00E5B0' : '#FF7062' }}>
+                      {diff > 0 ? <TrendingUp size={14}/> : <TrendingDown size={14}/>}
+                      {diff > 0 ? '+' : ''}{diff.toFixed(1)} kg from last entry
+                    </div>
+                  )
+                })()}
+              </div>
+              <button className="btn-primary full mb-16" onClick={() => setModal('weight')}>
+                <Scale size={16}/> Log Today's Weight
+              </button>
+              <div className="section-head mb-8">
+                <span className="title-m title-m-14">Recent Entries</span>
+              </div>
+              {history.filter(h => h.weight > 0).length === 0 ? (
+                <div className="empty-state-card">
+                  <div className="empty-emoji">⚖️</div>
+                  <h3>No weight data yet</h3>
+                  <p>Log your weight to start tracking trends</p>
+                </div>
+              ) : (
+                history.filter(h => h.weight > 0).slice(0, 10).map((h, i) => (
+                  <div key={i} className="info-row">
+                    <div className="info-icon gold"><Scale size={16}/></div>
+                    <div className="info-body">
+                      <div className="info-title">{h.weight} kg</div>
+                      <div className="info-sub">{new Date(h.log_date).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </motion.div>
+          )}
+
+          {/* ══ MOOD TAB ══ */}
+          {tab === 'mood' && (
+            <motion.div key="mood" initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
+              <div className="card text-center mb-16" style={{ padding:28 }}>
+                <h3 style={{fontSize:17,fontWeight:800,marginBottom:6}}>How are you feeling?</h3>
+                <p className="body-s text-secondary mb-16">Tracking mood helps you understand patterns</p>
+                <div className="hl-mood-row">
+                  {MOODS.map(m => (
+                    <button key={m.value} className={`hl-mood-btn large ${data.mood===m.value?'active':''}`} onClick={() => saveMood(m)}>
+                      <span className="hl-mood-emoji">{m.emoji}</span>
+                      <span className="hl-mood-label">{m.label}</span>
+                    </button>
+                  ))}
+                </div>
+                {data.mood && (
+                  <div className="text-success mt-12" style={{fontWeight:600,fontSize:13}}>
+                    Today's mood logged! ✓
+                  </div>
+                )}
+              </div>
+              <div className="section-head mb-8">
+                <span className="title-m title-m-14">Mood History</span>
+              </div>
+              {history.filter(h => h.mood).length === 0 ? (
+                <div className="empty-state-card">
+                  <div className="empty-emoji">😊</div>
+                  <h3>No mood history yet</h3>
+                  <p>Log daily to see your mood patterns</p>
+                </div>
+              ) : (
+                history.filter(h => h.mood).slice(0, 10).map((h, i) => {
+                  const m = MOODS.find(x => x.value === h.mood) || { emoji:'😐', label:h.mood }
+                  return (
+                    <div key={i} className="info-row">
+                      <div style={{fontSize:26,width:36,textAlign:'center'}}>{m.emoji}</div>
+                      <div className="info-body">
+                        <div className="info-title">{m.label}</div>
+                        <div className="info-sub">{new Date(h.log_date).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </motion.div>
+          )}
+
         </AnimatePresence>
       )}
     </div>
