@@ -1,115 +1,104 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
-import { Send, Mic, Paperclip, CheckCircle, TrendingUp, AlertTriangle, Target, Bell, BarChart3, Camera, Image, FileText, X } from 'lucide-react'
+import { Send, Mic, Paperclip, X, ChevronDown, Zap, CheckCircle, AlertTriangle, TrendingUp, Target, BarChart3, Bell, Plus, Trash2, Clock } from 'lucide-react'
 import { timeAgo } from '../lib/utils'
 
+// ── Suggestion chips ──────────────────────────────────────────────────────────
 const SUGGESTIONS = [
-  { text: '💰 How to save ₹1 lakh?', color: '#00B0B6' },
-  { text: '📊 Weekly spending review', color: '#6422CC' },
-  { text: '🏋️ Diet plan for gym', color: '#00D084' },
-  { text: '📖 Study schedule', color: '#FFB800' },
-  { text: '📈 Best SIP for beginners', color: '#FF9500' },
-  { text: '💼 Tax saving tips', color: '#834DE0' },
+  { text: 'How to save ₹1 lakh this year?', emoji: '💰' },
+  { text: 'Spent 500 on lunch', emoji: '🍔' },
+  { text: 'Done with morning workout', emoji: '🏋️' },
+  { text: 'Best SIP for beginners?', emoji: '📈' },
+  { text: 'Remind me at 9pm to journal', emoji: '🔔' },
+  { text: 'Give me my daily brief', emoji: '📊' },
 ]
 
+// ── Quick actions ─────────────────────────────────────────────────────────────
 const QUICK_ACTIONS = [
-  { emoji: '💸', label: 'Add Expense', prompt: 'I spent ₹' },
-  { emoji: '🎯', label: 'Create Goal', prompt: 'Create a new goal: ' },
-  { emoji: '✅', label: 'Check-in', prompt: 'Mark my habit as done: ' },
-  { emoji: '🔔', label: 'Reminder', prompt: 'Remind me to ' },
+  { emoji: '💸', label: 'Expense', prompt: 'Spent ₹' },
+  { emoji: '🎯', label: 'Goal', prompt: 'Create goal: ' },
+  { emoji: '✅', label: 'Check-in', prompt: 'Done with ' },
+  { emoji: '🔔', label: 'Reminder', prompt: 'Remind me at ' },
   { emoji: '📊', label: 'Brief', prompt: 'Give me my morning briefing' },
-  { emoji: '📝', label: 'Update', prompt: 'Update my ' },
-  { emoji: '🗑️', label: 'Delete', prompt: 'Delete my ' },
   { emoji: '🧠', label: 'Remember', prompt: 'Remember that ' },
+  { emoji: '💊', label: 'Medicine', prompt: 'Took my medicine' },
+  { emoji: '🚶', label: 'Health', prompt: 'Walked 8000 steps today' },
 ]
 
-const ATTACH_OPTIONS = [
-  { id: 'camera', icon: Camera, label: 'Camera', desc: 'Take a photo' },
-  { id: 'gallery', icon: Image, label: 'Gallery', desc: 'Choose from gallery' },
-  { id: 'document', icon: FileText, label: 'Document', desc: 'Upload a file' },
-]
-
-function formatMessage(text) {
+// ── Markdown formatter ────────────────────────────────────────────────────────
+function fmt(text) {
   if (!text) return ''
   return text
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/`(.*?)`/g, '<code style="background:var(--viya-neutral-100);padding:2px 6px;border-radius:4px;font-family:JetBrains Mono,monospace;font-size:13px">$1</code>')
+    .replace(/`(.*?)`/g, '<code class="inline-code">$1</code>')
     .replace(/\n/g, '<br/>')
 }
 
-// Detect rich card type from AI response content
-function detectCardType(content) {
+// ── Action badge component ────────────────────────────────────────────────────
+function ActionBadge({ action }) {
+  const map = {
+    expense:    { icon: '💸', label: `₹${action.amount} logged`, color: '#00E5B0', bg: 'rgba(0,229,176,0.12)' },
+    income:     { icon: '💰', label: `₹${action.amount} income`, color: '#00E5B0', bg: 'rgba(0,229,176,0.1)' },
+    reminder:   { icon: '🔔', label: `Reminder: ${action.title || action.text} at ${action.time}`, color: '#7C6AF9', bg: 'rgba(124,106,249,0.12)' },
+    habit:      { icon: '🔥', label: `${action.name} — ${action.streak}d streak!`, color: '#FF9500', bg: 'rgba(255,149,0,0.12)' },
+    habit_already: { icon: '✅', label: `${action.name} already done`, color: '#888', bg: 'rgba(136,136,136,0.1)' },
+    goal:       { icon: '🎯', label: `Goal: ${action.name} (₹${action.target?.toLocaleString('en-IN')})`, color: '#7C6AF9', bg: 'rgba(124,106,249,0.12)' },
+    new_habit:  { icon: '✨', label: `New habit: ${action.name}`, color: '#00E5B0', bg: 'rgba(0,229,176,0.1)' },
+    health:     { icon: '❤️', label: `Health logged${action.steps ? ` · ${action.steps.toLocaleString()} steps` : ''}${action.water ? ` · ${action.water}L` : ''}`, color: '#FF7062', bg: 'rgba(255,112,98,0.12)' },
+    memory:     { icon: '🧠', label: `Remembered: ${action.key}`, color: '#7C6AF9', bg: 'rgba(124,106,249,0.1)' },
+    habit_not_found: { icon: '⚠️', label: `Habit not found — add it first!`, color: '#FF9500', bg: 'rgba(255,149,0,0.1)' },
+  }
+  const cfg = map[action.type] || { icon: '✅', label: action.type, color: '#00E5B0', bg: 'rgba(0,229,176,0.1)' }
+  return (
+    <div className="action-badge" style={{ background: cfg.bg, borderColor: cfg.color + '40' }}>
+      <span className="action-badge-icon">{cfg.icon}</span>
+      <span className="action-badge-label" style={{ color: cfg.color }}>{cfg.label}</span>
+    </div>
+  )
+}
+
+// ── Smart card type detector ──────────────────────────────────────────────────
+function detectCard(content) {
   if (!content) return null
-  const lower = content.toLowerCase()
-  // Warning card: bill overdue, payment due, alert
-  if (lower.includes('overdue') || lower.includes('due date') || lower.includes('⚠️') || lower.includes('warning') || lower.includes('missed payment'))
-    return 'warning'
-  // Action card: expense logged, reminder set, task done
-  if (lower.includes('✅ done') || lower.includes('expense logged') || lower.includes('logged successfully') || lower.includes('reminder set'))
-    return 'action'
-  // Insight card: spending pattern, tip, suggestion
-  if (lower.includes('noticed') || lower.includes('tip:') || lower.includes('💡') || lower.includes('insight') || lower.includes('pattern'))
-    return 'insight'
-  // Report card: weekly/monthly breakdown with amounts
-  if (lower.includes('this week') && (lower.includes('₹') || lower.includes('spending')))
-    return 'report'
-  // Goal card: goal progress updates
-  if (lower.includes('goal') && lower.includes('%'))
-    return 'goal'
+  const l = content.toLowerCase()
+  if (l.includes('overdue') || l.includes('⚠️') || l.includes('warning') || l.includes('alert')) return 'warning'
+  if (l.includes('✅') && (l.includes('logged') || l.includes('created') || l.includes('set') || l.includes('done'))) return 'success'
+  if (l.includes('💡') || l.includes('tip:') || l.includes('noticed') || l.includes('insight')) return 'insight'
+  if ((l.includes('this week') || l.includes('this month')) && l.includes('₹')) return 'report'
+  if (l.includes('goal') && l.includes('%')) return 'goal'
   return null
 }
 
-function getCardStyle(type) {
-  switch(type) {
-    case 'action': return { bg: 'var(--emerald-50)', border: 'var(--emerald-500)', icon: <CheckCircle size={16} color="var(--emerald-500)"/> }
-    case 'insight': return { bg: 'var(--viya-primary-50)', border: 'var(--teal-500)', icon: <TrendingUp size={16} color="var(--teal-500)"/> }
-    case 'warning': return { bg: 'var(--coral-50)', border: 'var(--coral-500)', icon: <AlertTriangle size={16} color="var(--coral-500)"/> }
-    case 'report': return { bg: 'var(--bg-card)', border: 'var(--viya-violet-500)', icon: <BarChart3 size={16} color="var(--viya-violet-500)"/> }
-    case 'goal': return { bg: 'var(--viya-gold-100)', border: 'var(--viya-gold-500)', icon: <Target size={16} color="var(--viya-gold-500)"/> }
-    default: return null
-  }
+const CARD_CFG = {
+  success: { border: '#00E5B0', icon: <CheckCircle size={13} color="#00E5B0"/>, label: 'Done' },
+  insight: { border: '#7C6AF9', icon: <TrendingUp size={13} color="#7C6AF9"/>, label: 'Insight' },
+  warning: { border: '#FF7062', icon: <AlertTriangle size={13} color="#FF7062"/>, label: 'Alert' },
+  report:  { border: '#5514FF', icon: <BarChart3 size={13} color="#5514FF"/>, label: 'Report' },
+  goal:    { border: '#FFB800', icon: <Target size={13} color="#FFB800"/>, label: 'Goal' },
 }
 
-function getCardTitle(type) {
-  switch(type) {
-    case 'action': return 'Action Complete'
-    case 'insight': return 'Viya Insight'
-    case 'warning': return 'Alert'
-    case 'report': return 'Report'
-    case 'goal': return 'Goal Update'
-    default: return ''
-  }
+// ── Contextual quick replies ──────────────────────────────────────────────────
+function getQuickReplies(last) {
+  if (!last) return []
+  const l = last.toLowerCase()
+  if (l.includes('expense') || l.includes('₹') || l.includes('spent'))
+    return ['Add another', 'Monthly summary', 'Set budget alert']
+  if (l.includes('habit') || l.includes('streak') || l.includes('workout'))
+    return ['Check all habits', 'Check-in another', 'View streak']
+  if (l.includes('remind') || l.includes('reminder'))
+    return ['Add another reminder', 'View all reminders']
+  if (l.includes('goal'))
+    return ['Add money to goal', 'Create new goal', 'View all goals']
+  if (l.includes('brief') || l.includes('summary'))
+    return ['Handle bills', 'Check goals', 'Log expense']
+  if (l.includes('invest') || l.includes('sip') || l.includes('mutual fund'))
+    return ['Best SIPs for me', 'How to start SIP?', 'Compare funds']
+  return ['Tell me more', 'What else can I do?']
 }
 
-// Generate contextual quick replies based on last message
-function getQuickReplies(lastMsg) {
-  if (!lastMsg) return []
-  const lower = lastMsg.toLowerCase()
-  if (lower.includes('expense') || lower.includes('spent'))
-    return ['Add another expense', 'View this month', 'Set budget', 'Delete last expense']
-  if (lower.includes('goal'))
-    return ['Add ₹500 to goal', 'Create new goal', 'Update target', 'Delete goal']
-  if (lower.includes('habit') || lower.includes('streak'))
-    return ['Check-in habit', 'Create new habit', 'Skip today', 'View all streaks']
-  if (lower.includes('remind') || lower.includes('reminder'))
-    return ['Set another reminder', 'View all reminders', 'Delete reminder']
-  if (lower.includes('morning') || lower.includes('briefing'))
-    return ['Handle all', 'Show expenses', 'Check goals', 'Log health']
-  if (lower.includes('health') || lower.includes('step') || lower.includes('calorie'))
-    return ['Log 30min walk', 'Log meal', 'Check weight', 'View health report']
-  if (lower.includes('bill') || lower.includes('emi'))
-    return ['Pay bill now', 'Add new bill', 'View upcoming', 'Cancel subscription']
-  if (lower.includes('lend') || lower.includes('borrow'))
-    return ['Add new lending', 'Mark as returned', 'Send reminder', 'View all']
-  if (lower.includes('delete') || lower.includes('remove'))
-    return ['Confirm delete', 'Cancel', 'View item first']
-  if (lower.includes('update') || lower.includes('edit') || lower.includes('change'))
-    return ['Save changes', 'Cancel', 'View current']
-  return ['Tell me more', 'Thanks!', 'What else can you do?']
-}
-
+// ── Main Chat component ───────────────────────────────────────────────────────
 export default function Chat() {
   const { phone, user } = useApp()
   const [messages, setMessages] = useState([])
@@ -120,21 +109,25 @@ export default function Chat() {
   const [voiceOpen, setVoiceOpen] = useState(false)
   const [recording, setRecording] = useState(false)
   const [recTime, setRecTime] = useState(0)
+  const [showScrollBtn, setShowScrollBtn] = useState(false)
   const endRef = useRef(null)
   const inputRef = useRef(null)
   const fileRef = useRef(null)
+  const scrollAreaRef = useRef(null)
   const recTimerRef = useRef(null)
 
   const name = user?.name || 'there'
   const hour = new Date().getHours()
-  const timeGreet = hour < 12 ? '☀️ Good morning' : hour < 18 ? '🌤️ Good afternoon' : '🌙 Good evening'
+  const greet = hour < 12 ? '☀️ Good morning' : hour < 18 ? '🌤️ Good afternoon' : '🌙 Good evening'
+
+  const welcomeMsg = {
+    role: 'assistant',
+    content: `${greet}, ${name.split(' ')[0]}! 👋\n\nI'm **Viya** — your AI second brain. I don't just chat, I **take real actions**:\n\n💸 _"spent 500 on food"_ → logs it\n✅ _"done with workout"_ → marks habit\n🔔 _"remind me at 9pm to study"_ → sets reminder\n🎯 _"create goal Goa trip 50k"_ → creates goal\n🧠 _"remember mom's birthday is Dec 5"_ → saved\n\nEverything syncs with your app instantly. What's on your mind?`,
+    time: new Date().toISOString(),
+  }
 
   useEffect(() => {
-    setMessages([{
-      role: 'assistant',
-      content: `${timeGreet} ${name}! 👋\n\nI'm **Viya** — your AI second brain.\n\n**✨ What I can do:**\n• 💰 **Create**: "spent ₹500 on food" / "create goal Goa Trip"\n• ✅ **Check-in**: "done with morning run" / "took medicine"\n• 📝 **Update**: "change goal target to ₹1 lakh"\n• 🗑️ **Delete**: "delete last expense" / "remove reminder"\n• 📊 **Review**: "weekly report" / "morning briefing"\n• 🧠 **Remember**: "remember mom's birthday is Dec 5"\n• 🏋️ Gym plans, diet, study, investments & more!\n\nJust type naturally — I understand you!`,
-      time: new Date().toISOString()
-    }])
+    setMessages([welcomeMsg])
     if (!phone) return
     api.getChatHistory(phone, 20).then(history => {
       if (history?.length > 0) {
@@ -144,118 +137,136 @@ export default function Chat() {
     })
   }, [phone])
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, loading])
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, loading])
+
+  const onScroll = useCallback(() => {
+    const el = scrollAreaRef.current
+    if (!el) return
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    setShowScrollBtn(distFromBottom > 200)
+  }, [])
+
+  const scrollToBottom = () => endRef.current?.scrollIntoView({ behavior: 'smooth' })
 
   const sendMsg = async (text) => {
-    const msg = text || input.trim()
+    const msg = (text || input).trim()
     if (!msg || loading) return
     setInput('')
     setShowActions(false)
     setShowAttach(false)
-    setMessages(prev => [...prev, { role: 'user', content: msg, time: new Date().toISOString() }])
+
+    const userMsg = { role: 'user', content: msg, time: new Date().toISOString() }
+    setMessages(prev => [...prev, userMsg])
     setLoading(true)
+
     try {
-      const { reply } = await api.chat(phone, msg)
-      setMessages(prev => [...prev, { role: 'assistant', content: reply, time: new Date().toISOString() }])
+      // Pass last 10 messages as history for context
+      const history = messages.slice(-10).map(m => ({ role: m.role, content: m.content }))
+      const { reply, actions_executed } = await api.chat(phone, msg, history)
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: reply,
+        time: new Date().toISOString(),
+        actions: actions_executed || [],
+      }])
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: "🤖 Connection issue. Please try again!", time: new Date().toISOString() }])
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '🤖 Connection issue. Check your internet and try again!',
+        time: new Date().toISOString(),
+        actions: [],
+      }])
     }
     setLoading(false)
     inputRef.current?.focus()
   }
 
-  const handleKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg() } }
-
-  const handleAttachOption = (optionId) => {
-    setShowAttach(false)
-    if (optionId === 'camera') {
-      // Open camera capture
-      if (fileRef.current) {
-        fileRef.current.accept = 'image/*'
-        fileRef.current.capture = 'environment'
-        fileRef.current.click()
-      }
-    } else if (optionId === 'gallery') {
-      // Open gallery picker
-      if (fileRef.current) {
-        fileRef.current.accept = 'image/*'
-        fileRef.current.removeAttribute('capture')
-        fileRef.current.click()
-      }
-    } else if (optionId === 'document') {
-      // Open document picker
-      if (fileRef.current) {
-        fileRef.current.accept = '.pdf,.doc,.docx,.txt,.csv,.xls,.xlsx'
-        fileRef.current.removeAttribute('capture')
-        fileRef.current.click()
-      }
-    }
+  const handleKey = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg() }
   }
 
-  const handleFileSelected = (e) => {
+  const handleFile = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    // Send a message indicating file was attached
-    sendMsg(`📎 Attached: ${file.name}`)
-    // Reset file input
+    sendMsg(`📎 Attached: ${file.name} (${(file.size / 1024).toFixed(0)} KB)`)
     e.target.value = ''
   }
 
-  const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant')
-  const quickReplies = messages.length > 2 ? getQuickReplies(lastAssistantMsg?.content || '') : []
+  const lastAI = [...messages].reverse().find(m => m.role === 'assistant')
+  const quickReplies = messages.length > 2 ? getQuickReplies(lastAI?.content || '') : []
 
   return (
-    <div className="chat-container">
-      {/* Hidden file input for attachments */}
-      <input
-        type="file"
-        ref={fileRef}
-        className="sr-hidden"
-        style={{ display: 'none' }}
-        onChange={handleFileSelected}
-      />
+    <div className="chat-root">
+      {/* Hidden file input */}
+      <input ref={fileRef} type="file" className="sr-only" style={{display:'none'}} onChange={handleFile}
+        accept="image/*,.pdf,.doc,.docx,.txt,.csv" />
 
-      {/* Chat Header Bar */}
-      <div className="chat-header-bar">
-        <div className="chat-header-avatar">
-          <img src="/logo.png" alt="Viya" className="chat-header-img" />
+      {/* Header */}
+      <div className="chat-hdr">
+        <div className="chat-hdr-avatar">
+          <img src="/logo.png" alt="Viya" className="chat-hdr-img" />
+          <div className="chat-hdr-dot" />
         </div>
-        <div className="chat-header-info">
-          <div className="chat-header-name">Viya</div>
-          <div className="chat-header-status">
-            <div className="chat-status-dot" />
-            <span className="chat-status-text">Online</span>
+        <div className="chat-hdr-info">
+          <div className="chat-hdr-name">Viya AI</div>
+          <div className="chat-hdr-sub">
+            <span className="chat-hdr-live" />
+            Your 2nd brain · Always on
           </div>
         </div>
-        <button onClick={() => sendMsg('Give me my morning briefing')} className="chat-brief-btn">📊 Brief</button>
+        <button className="chat-brief-pill" onClick={() => sendMsg('Give me my morning briefing')} title="Daily brief">
+          <Zap size={13} /> Brief
+        </button>
       </div>
 
-      {/* Messages */}
-      <div className="chat-messages-area">
+      {/* Messages area */}
+      <div className="chat-msgs" ref={scrollAreaRef} onScroll={onScroll}>
+
+        {/* Suggestions — only at start */}
+        {messages.length <= 2 && (
+          <div className="chat-suggestions-grid">
+            <div className="chat-suggestions-label">Try asking:</div>
+            <div className="chat-suggestions-row">
+              {SUGGESTIONS.map((s, i) => (
+                <button key={i} className="chat-suggestion-chip" onClick={() => sendMsg(s.text)}>
+                  <span>{s.emoji}</span>
+                  <span>{s.text}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {messages.map((m, i) => {
-          const cardType = m.role === 'assistant' ? detectCardType(m.content) : null
-          const cardStyle = cardType ? getCardStyle(cardType) : null
+          const card = m.role === 'assistant' ? detectCard(m.content) : null
+          const cardCfg = card ? CARD_CFG[card] : null
 
           return (
-            <div key={i} className={`chat-msg-row ${m.role}`}>
+            <div key={i} className={`chat-row ${m.role}`}>
               {m.role === 'assistant' && (
-                <div className="chat-msg-avatar">
-                  <img src="/logo.png" alt="Viya" className="chat-msg-avatar-img" />
-                </div>
+                <img src="/logo.png" alt="Viya" className="chat-row-avatar" />
               )}
-              <div className={`chat-msg-bubble ${m.role}${cardType ? ` chat-card ${cardType}` : ''}`}>
-                {cardType && (
-                  <div className="chat-card-header">
-                    {cardStyle.icon}
-                    <span className={`chat-card-title ${cardType}`}>
-                      {getCardTitle(cardType)}
-                    </span>
+              <div className="chat-row-col">
+                {/* Action badges — show above the bubble */}
+                {m.role === 'assistant' && m.actions?.length > 0 && (
+                  <div className="chat-actions-strip">
+                    {m.actions.map((a, ai) => <ActionBadge key={ai} action={a} />)}
                   </div>
                 )}
-                <div className={cardType ? 'chat-card-body' : ''}>
-                  <div dangerouslySetInnerHTML={{ __html: formatMessage(m.content) }} />
+
+                <div className={`chat-bubble ${m.role}${card ? ` chat-card-${card}` : ''}`}
+                  style={cardCfg ? { borderLeftColor: cardCfg.border } : undefined}>
+                  {cardCfg && (
+                    <div className="chat-card-label">
+                      {cardCfg.icon}
+                      <span style={{ color: cardCfg.border }}>{cardCfg.label}</span>
+                    </div>
+                  )}
+                  <div dangerouslySetInnerHTML={{ __html: fmt(m.content) }} />
                 </div>
-                <div className={`chat-msg-time ${m.role}`}>
+                <div className={`chat-time ${m.role}`}>
                   {m.time ? timeAgo(m.time) : ''}
                 </div>
               </div>
@@ -263,210 +274,173 @@ export default function Chat() {
           )
         })}
 
-        {/* Typing indicator — 3 dots bounce animation */}
+        {/* Typing indicator */}
         {loading && (
-          <div className="chat-msg-row assistant">
-            <div className="chat-msg-avatar">
-              <img src="/logo.png" alt="Viya" className="chat-msg-avatar-img" />
-            </div>
-            <div className="chat-typing-bubble">
-              <div className="chat-typing-inner">
-                <div className="chat-typing-dots">
-                  {[0, 1, 2].map(i => (
-                    <div key={i} className="typing-dot" style={{ animationDelay: `${i * 0.15}s` }} />
-                  ))}
-                </div>
-                <span className="chat-typing-text">Viya is thinking...</span>
+          <div className="chat-row assistant">
+            <img src="/logo.png" alt="Viya" className="chat-row-avatar" />
+            <div className="chat-bubble assistant chat-typing-bubble">
+              <div className="chat-typing-dots">
+                {[0,1,2].map(i => <span key={i} className="typing-dot" style={{animationDelay:`${i*0.15}s`}} />)}
               </div>
+              <span className="chat-typing-label">Viya is thinking...</span>
             </div>
           </div>
         )}
-        <div ref={endRef} />
+        <div ref={endRef} style={{height: 4}} />
       </div>
 
-      {/* Quick Replies -- contextual chips above input */}
+      {/* Scroll-to-bottom button */}
+      {showScrollBtn && (
+        <button className="chat-scroll-btn" onClick={scrollToBottom} aria-label="Scroll to bottom">
+          <ChevronDown size={18} />
+        </button>
+      )}
+
+      {/* Quick replies */}
       {quickReplies.length > 0 && !loading && messages.length > 2 && (
-        <div className="chat-quick-replies">
+        <div className="chat-replies-row">
           {quickReplies.map((r, i) => (
-            <button key={i} onClick={() => sendMsg(r)} className="chip chat-reply-chip">{r}</button>
+            <button key={i} onClick={() => sendMsg(r)} className="chat-reply-pill">{r}</button>
           ))}
         </div>
       )}
 
-      {/* Suggestions -- show only at start */}
-      {messages.length <= 2 && (
-        <div className="chat-suggestions">
-          {SUGGESTIONS.map((s, i) => (
-            <button key={i} className="chip" onClick={() => sendMsg(s.text)}
-              style={{ borderColor: s.color + '30' }}>
-              {s.text}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Quick Actions Panel */}
+      {/* Quick Actions grid */}
       {showActions && (
-        <div className="chat-actions-panel">
-          {QUICK_ACTIONS.map((a, i) => (
-            <button key={i} onClick={() => { setInput(a.prompt); setShowActions(false); inputRef.current?.focus() }}
-              className="chat-action-btn">
-              <span className="chat-action-emoji">{a.emoji}</span>
-              <span className="chat-action-label">{a.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Attachment Picker Menu */}
-      {showAttach && (
-        <div className="chat-attach-menu">
-          <div className="chat-attach-menu-header">
-            <span className="chat-attach-menu-title">Attach</span>
-            <button className="chat-attach-menu-close" onClick={() => setShowAttach(false)}>
-              <X size={16} />
-            </button>
+        <div className="chat-qa-panel">
+          <div className="chat-qa-header">
+            <span className="chat-qa-title">⚡ Quick Actions</span>
+            <button onClick={() => setShowActions(false)} className="chat-qa-close"><X size={16}/></button>
           </div>
-          <div className="chat-attach-options">
-            {ATTACH_OPTIONS.map(opt => (
-              <button key={opt.id} className="chat-attach-option" onClick={() => handleAttachOption(opt.id)}>
-                <div className={`chat-attach-option-icon ${opt.id}`}>
-                  <opt.icon size={20} />
-                </div>
-                <div className="chat-attach-option-info">
-                  <span className="chat-attach-option-label">{opt.label}</span>
-                  <span className="chat-attach-option-desc">{opt.desc}</span>
-                </div>
+          <div className="chat-qa-grid">
+            {QUICK_ACTIONS.map((a, i) => (
+              <button key={i} className="chat-qa-btn"
+                onClick={() => { setInput(a.prompt); setShowActions(false); inputRef.current?.focus() }}>
+                <span className="chat-qa-emoji">{a.emoji}</span>
+                <span className="chat-qa-label">{a.label}</span>
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Input Bar */}
-      <div className="chat-input-bar-v2">
-        <button onClick={() => { setShowAttach(!showAttach); setShowActions(false) }}
-          className={`chat-attach-btn${showAttach ? ' active' : ''}`}
-          aria-label="Attach file">
+      {/* Attach menu */}
+      {showAttach && (
+        <div className="chat-attach-panel">
+          {[
+            { id: 'photo', emoji: '📷', label: 'Camera', desc: 'Take receipt photo' },
+            { id: 'gallery', emoji: '🖼️', label: 'Gallery', desc: 'From your photos' },
+            { id: 'doc', emoji: '📄', label: 'Document', desc: 'PDF, CSV, Excel' },
+          ].map(opt => (
+            <button key={opt.id} className="chat-attach-opt"
+              onClick={() => {
+                setShowAttach(false)
+                if (fileRef.current) {
+                  fileRef.current.accept = opt.id === 'doc' ? '.pdf,.doc,.docx,.txt,.csv,.xls,.xlsx' : 'image/*'
+                  if (opt.id === 'photo') fileRef.current.capture = 'environment'
+                  else fileRef.current.removeAttribute('capture')
+                  fileRef.current.click()
+                }
+              }}>
+              <span className="chat-attach-emoji">{opt.emoji}</span>
+              <div>
+                <div className="chat-attach-label">{opt.label}</div>
+                <div className="chat-attach-desc">{opt.desc}</div>
+              </div>
+            </button>
+          ))}
+          <button className="chat-attach-close" onClick={() => setShowAttach(false)}><X size={16}/></button>
+        </div>
+      )}
+
+      {/* Input bar */}
+      <div className="chat-bar">
+        <button className="chat-bar-btn"
+          onClick={() => { setShowActions(!showActions); setShowAttach(false) }}
+          aria-label="Quick actions"
+          title="Quick actions">
+          <Plus size={20} />
+        </button>
+
+        <button className="chat-bar-btn"
+          onClick={() => { setShowAttach(!showAttach); setShowActions(false) }}
+          aria-label="Attach file"
+          title="Attach file">
           <Paperclip size={18} />
         </button>
 
-        <input
-          ref={inputRef}
-          className="chat-text-input"
-          placeholder="Ask Viya anything..."
-          value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey}
-        />
+        <div className="chat-bar-input-wrap">
+          <textarea
+            ref={inputRef}
+            className="chat-bar-input"
+            placeholder="Ask Viya anything..."
+            value={input}
+            rows={1}
+            onChange={e => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px' }}
+            onKeyDown={handleKey}
+          />
+        </div>
 
         {input.trim() ? (
-          <button onClick={() => sendMsg()} disabled={loading} className="chat-send-btn send">
+          <button onClick={() => sendMsg()} disabled={loading} className="chat-bar-send send" aria-label="Send">
             <Send size={18} />
           </button>
         ) : (
-          <button onClick={() => setVoiceOpen(true)} className="chat-send-btn voice">
+          <button onClick={() => setVoiceOpen(true)} className="chat-bar-send voice" aria-label="Voice">
             <Mic size={18} />
           </button>
         )}
       </div>
 
-      {/* Voice Overlay (fullscreen mic) */}
+      {/* Voice overlay */}
       {voiceOpen && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 999,
-          background: 'linear-gradient(180deg, #0A0019 0%, #001917 100%)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          animation: 'fadeIn 0.25s ease',
-        }}>
-          {/* Close */}
-          <button onClick={() => {
-            setVoiceOpen(false); setRecording(false); setRecTime(0);
-            clearInterval(recTimerRef.current);
-          }} style={{
-            position: 'absolute', top: 60, right: 24, fontSize: 28, color: 'white',
-            background: 'none', border: 'none', cursor: 'pointer', opacity: 0.7,
-          }}>✕</button>
+        <div className="voice-overlay">
+          <button className="voice-close" onClick={() => { setVoiceOpen(false); setRecording(false); setRecTime(0); clearInterval(recTimerRef.current) }}>
+            <X size={22} />
+          </button>
 
-          {/* Viya Orb with pulse rings */}
-          <div style={{ position: 'relative', width: 160, height: 160, marginBottom: 40 }}>
+          <div className="voice-orb-wrap">
             {recording && [0,1,2].map(i => (
-              <div key={i} style={{
-                position: 'absolute', inset: -20 - i * 20, borderRadius: '50%',
-                border: '2px solid rgba(0,229,212,0.3)',
-                animation: `pulse 1.5s ease-in-out ${i * 0.5}s infinite`,
-              }} />
+              <div key={i} className="voice-ring" style={{ animationDelay: `${i * 0.4}s`, inset: -24 - i * 20 }} />
             ))}
-            <div style={{
-              width: 160, height: 160, borderRadius: '50%',
-              background: recording ? 'var(--gradient-hero)' : 'rgba(255,255,255,0.1)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: recording ? '0 0 60px rgba(0,229,212,0.4)' : 'none',
-              transition: 'all 0.3s ease',
-              animation: recording ? 'orbBreathe 1.5s ease-in-out infinite' : 'none',
-            }}>
-              <Mic size={48} color="white" />
+            <div className={`voice-orb ${recording ? 'active' : ''}`}>
+              <Mic size={40} color="white" />
             </div>
           </div>
 
-          {/* Timer */}
-          <div style={{
-            fontFamily: "'JetBrains Mono',monospace", fontSize: 28, color: 'white',
-            fontWeight: 600, marginBottom: 8,
-          }}>
-            {Math.floor(recTime / 60).toString().padStart(2, '0')}:{(recTime % 60).toString().padStart(2, '0')}
+          <div className="voice-timer">
+            {String(Math.floor(recTime/60)).padStart(2,'0')}:{String(recTime%60).padStart(2,'0')}
           </div>
-          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 40 }}>
-            {recording ? 'Listening...' : 'Tap to start recording'}
-          </div>
+          <div className="voice-hint">{recording ? 'Listening... speak clearly' : 'Tap to start'}</div>
 
-          {/* Waveform visualization */}
           {recording && (
-            <div style={{ display: 'flex', gap: 3, alignItems: 'center', height: 40, marginBottom: 40 }}>
-              {Array.from({ length: 24 }).map((_, i) => (
-                <div key={i} style={{
-                  width: 3, borderRadius: 2, background: 'var(--teal-500)',
-                  height: `${10 + Math.random() * 30}px`,
-                  animation: `pulse ${0.3 + Math.random() * 0.5}s ease-in-out infinite alternate`,
-                  animationDelay: `${i * 0.05}s`,
-                }} />
+            <div className="voice-wave">
+              {Array.from({length:20}).map((_,i) => (
+                <div key={i} className="voice-bar" style={{ animationDelay: `${i*0.06}s` }} />
               ))}
             </div>
           )}
 
-          {/* Controls */}
-          <div style={{ display: 'flex', gap: 24 }}>
+          <div className="voice-controls">
             {recording ? (
               <>
-                <button onClick={() => {
-                  setRecording(false); clearInterval(recTimerRef.current);
-                  setVoiceOpen(false); setRecTime(0);
-                }} style={{
-                  width: 56, height: 56, borderRadius: '50%', background: 'rgba(255,82,82,0.2)',
-                  border: '2px solid var(--coral-500)', color: 'var(--coral-500)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 20, cursor: 'pointer',
-                }}>✕</button>
-                <button onClick={() => {
-                  setRecording(false); clearInterval(recTimerRef.current);
-                  setVoiceOpen(false); setRecTime(0);
-                  sendMsg('Voice message recorded — process my request');
-                }} style={{
-                  width: 56, height: 56, borderRadius: '50%', background: 'var(--gradient-hero)',
-                  border: 'none', color: 'white',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: 'var(--sh-teal)', cursor: 'pointer',
-                }}><Send size={22} /></button>
+                <button className="voice-cancel" onClick={() => { setRecording(false); clearInterval(recTimerRef.current); setRecTime(0); setVoiceOpen(false) }}>
+                  <X size={20}/> Cancel
+                </button>
+                <button className="voice-send-btn" onClick={() => {
+                  setRecording(false); clearInterval(recTimerRef.current); setVoiceOpen(false); setRecTime(0)
+                  sendMsg('🎤 Voice message — please help me with my request')
+                }}>
+                  <Send size={20}/> Send
+                </button>
               </>
             ) : (
-              <button onClick={() => {
-                setRecording(true); setRecTime(0);
-                recTimerRef.current = setInterval(() => setRecTime(t => t + 1), 1000);
-              }} style={{
-                width: 72, height: 72, borderRadius: '50%', background: 'var(--gradient-hero)',
-                border: 'none', color: 'white',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 0 40px rgba(0,229,212,0.4)', cursor: 'pointer',
-                fontSize: 14, fontWeight: 600,
-              }}>Start</button>
+              <button className="voice-start" onClick={() => {
+                setRecording(true); setRecTime(0)
+                recTimerRef.current = setInterval(() => setRecTime(t => t + 1), 1000)
+              }}>
+                Start Recording
+              </button>
             )}
           </div>
         </div>

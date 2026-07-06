@@ -2,57 +2,396 @@
 Viya — WhatsApp Cloud API Webhook
 ==================================
 Vercel Serverless: api/whatsapp.py → /api/whatsapp
-Meta Cloud API webhook for receiving and sending messages.
+
+Real AI agent powered by Groq LLaMA 3.3 70B.
+WhatsApp messages SYNC with the Viya app — actions execute in real Supabase.
+
+Examples:
+  "completed workout"  → marks habit checkin (reflects in app instantly)
+  "spent 500 on food"  → logs expense (shows in Expenses page)
+  "remind me at 10am to call mom" → creates reminder (shows in Reminders page)
 """
 
-import sys
 import os
 import json
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+import re
+import urllib.request
+import urllib.error
+from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
+VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "viya_verify_2026")
+WHATSAPP_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
+PHONE_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("VITE_SUPABASE_URL", ""))
+SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY", os.getenv("VITE_SUPABASE_ANON_KEY", ""))
 
+_NOW = datetime.now()
+TODAY = _NOW.strftime("%Y-%m-%d")
+TOMORROW = (_NOW + timedelta(days=1)).strftime("%Y-%m-%d")
+
+WA_SYSTEM_PROMPT = f"""You are Viya — an AI second brain and personal life assistant for Indian users via WhatsApp.
+You're like a warm, brilliant best friend: part CA, part life coach, part therapist.
+
+TODAY: {TODAY} | TOMORROW: {TOMORROW}
+
+╔══ ACTION SYSTEM ══╗
+When user wants you to DO something, output ACTION lines at the start (before message text):
+
+ACTION:LOG_EXPENSE:amount:category:note
+ACTION:LOG_INCOME:amount:source
+ACTION:CREATE_REMINDER:title:HH:MM:YYYY-MM-DD
+ACTION:MARK_HABIT:keyword
+ACTION:CREATE_HABIT:name:emoji
+ACTION:CREATE_GOAL:name:target:YYYY-MM-DD
+ACTION:LOG_HEALTH:steps:water_glasses:weight_kg
+ACTION:REMEMBER:key:value
+
+Intent → Action:
+"spent/paid X on Y" → LOG_EXPENSE
+"earned/received X" → LOG_INCOME
+"remind me at TIME to TEXT" → CREATE_REMINDER
+"done/completed HABIT" → MARK_HABIT
+"worked out/exercised/gym/ran" → MARK_HABIT:workout
+"meditated" → MARK_HABIT:meditat
+"create goal NAME AMOUNT" → CREATE_GOAL
+"remember X is Y" → REMEMBER
+
+EXAMPLES:
+User: done workout
+→ ACTION:MARK_HABIT:workout
+🔥 Workout marked done! App updated. Streak continues!
+
+User: remind tomorrow 10am call mom
+→ ACTION:CREATE_REMINDER:Call mom:10:00:{TOMORROW}
+✅ Reminder set for tomorrow 10am. Will show in your app too!
+
+User: spent 300 on chai and snacks
+→ ACTION:LOG_EXPENSE:300:Food:chai and snacks
+✅ ₹300 logged! Check your Expenses in the Viya app.
+
+WHATSAPP STYLE:
+• Keep responses SHORT — max 3 lines for actions, 5 lines for info
+• Use WhatsApp bold: *bold text*
+• Use line breaks generously
+• Be warm, fun, Hinglish is perfect
+• Mention "your app" to encourage them to check the Viya app
+• Indian format: ₹1,50,000
+
+USER CONTEXT:
+{{context}}"""
+
+
+# ── Supabase helpers ──────────────────────────────────────────────────────────
+
+def _hdr(extra=None):
+    h = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json", "Prefer": "return=representation"}
+    if extra: h.update(extra)
+    return h
+
+
+def sb_get(path):
+    if not SUPABASE_URL or not SUPABASE_KEY: return []
+    try:
+        req = urllib.request.Request(f"{SUPABASE_URL}/rest/v1/{path}", headers=_hdr())
+        with urllib.request.urlopen(req, timeout=7) as r:
+            return json.loads(r.read()) or []
+    except Exception as e:
+        print(f"[SB GET] {e}"); return []
+
+
+def sb_post(table, data, upsert=False):
+    if not SUPABASE_URL or not SUPABASE_KEY: return None
+    extra = {"Prefer": "return=representation,resolution=merge-duplicates"} if upsert else None
+    try:
+        req = urllib.request.Request(f"{SUPABASE_URL}/rest/v1/{table}", data=json.dumps(data).encode(), headers=_hdr(extra), method="POST")
+        with urllib.request.urlopen(req, timeout=7) as r:
+            res = json.loads(r.read())
+            return res[0] if isinstance(res, list) else res
+    except Exception as e:
+        print(f"[SB POST] {table}: {e}"); return None
+
+
+def sb_patch(table, filt, data):
+    if not SUPABASE_URL or not SUPABASE_KEY: return None
+    try:
+        req = urllib.request.Request(f"{SUPABASE_URL}/rest/v1/{table}?{filt}", data=json.dumps(data).encode(), headers=_hdr(), method="PATCH")
+        with urllib.request.urlopen(req, timeout=7) as r:
+            res = json.loads(r.read())
+            return res[0] if isinstance(res, list) else res
+    except Exception as e:
+        print(f"[SB PATCH] {e}"); return None
+
+
+def norm_phone(phone):
+    c = re.sub(r"[^\d]", "", phone or "")
+    if c.startswith("91") and len(c) > 10: c = c[2:]
+    return c[-10:] if c else ""
+
+
+# ── Context builder ───────────────────────────────────────────────────────────
+
+def get_context(phone):
+    short = norm_phone(phone)
+    if not short: return "New user."
+    ctx = []
+    try:
+        users = sb_get(f"users?phone=eq.{short}&select=name,monthly_income,daily_budget")
+        if users:
+            u = users[0]
+            ctx.append(f"Name: {u.get('name','User')} | Budget: ₹{u.get('daily_budget',1000)}/day")
+        habits = sb_get(f"habits?phone=eq.{short}&select=name,icon,current_streak&order=current_streak.desc&limit=6")
+        if habits:
+            ctx.append("Habits: " + ", ".join(f"{h.get('icon','')}{h.get('name','')}({h.get('current_streak',0)}d)" for h in habits))
+        checkins = sb_get(f"habit_checkins?phone=eq.{short}&checked_date=eq.{TODAY}&select=habit_id")
+        if habits:
+            ctx.append(f"Done today: {len(checkins)}/{len(habits)}")
+        txns = sb_get(f"transactions?phone=eq.{short}&select=type,amount,category&order=created_at.desc&limit=3")
+        if txns:
+            ctx.append("Recent: " + ", ".join(f"₹{t.get('amount',0)} {t.get('category','')}" for t in txns))
+        goals = sb_get(f"goals?phone=eq.{short}&status=eq.active&select=name,current_amount,target_amount&limit=3")
+        if goals:
+            ctx.append("Goals: " + ", ".join(f"{g.get('name','')} ₹{g.get('current_amount',0)}/₹{g.get('target_amount',0)}" for g in goals))
+        memories = sb_get(f"viya_memory?phone=eq.{short}&select=content&order=importance.desc&limit=3")
+        if memories:
+            ctx.append("Know: " + " | ".join(m.get('content','') for m in memories))
+    except Exception as e:
+        ctx.append(f"(error: {e})")
+    return "\n".join(ctx) or "No data."
+
+
+# ── Action executor (same logic as chat.py) ───────────────────────────────────
+
+def execute_actions(action_lines, phone):
+    short = norm_phone(phone)
+    if not short: return []
+    executed = []
+    for raw_line in action_lines:
+        line = raw_line.strip()
+        if not line.startswith("ACTION:"): continue
+        parts = line[7:].split(":")
+        if not parts: continue
+        atype = parts[0].upper()
+        try:
+            if atype == "LOG_EXPENSE" and len(parts) >= 4:
+                sb_post("transactions", {"phone": short, "type": "expense", "amount": float(parts[1]), "category": parts[2], "description": ":".join(parts[3:])})
+                executed.append({"type": "expense", "amount": float(parts[1])})
+
+            elif atype == "LOG_INCOME" and len(parts) >= 3:
+                sb_post("transactions", {"phone": short, "type": "income", "amount": float(parts[1]), "category": ":".join(parts[2:]), "description": ":".join(parts[2:])})
+                executed.append({"type": "income", "amount": float(parts[1])})
+
+            elif atype == "CREATE_REMINDER" and len(parts) >= 5:
+                date_str = parts[4] if re.match(r"\d{4}-\d{2}-\d{2}", parts[4]) else TODAY
+                sb_post("user_reminders", {"phone": short, "title": parts[1], "time": f"{parts[2].zfill(2)}:{parts[3].zfill(2)}", "reminder_date": date_str, "is_active": True, "source": "whatsapp"})
+                executed.append({"type": "reminder", "title": parts[1]})
+
+            elif atype == "MARK_HABIT" and len(parts) >= 2:
+                keyword = ":".join(parts[1:]).lower().strip()
+                habits = sb_get(f"habits?phone=eq.{short}&select=id,name,current_streak,longest_streak")
+                kwords = [w for w in keyword.split() if len(w) > 2]
+                for h in (habits or []):
+                    hname = (h.get("name") or "").lower()
+                    if keyword in hname or any(w in hname for w in kwords) or any(w in keyword for w in hname.split() if len(w) > 2):
+                        existing = sb_get(f"habit_checkins?habit_id=eq.{h['id']}&checked_date=eq.{TODAY}&select=id")
+                        if not existing:
+                            sb_post("habit_checkins", {"habit_id": h["id"], "phone": short, "checked_date": TODAY, "status": "done"})
+                            yest = (_NOW - timedelta(days=1)).strftime("%Y-%m-%d")
+                            prev = sb_get(f"habit_checkins?habit_id=eq.{h['id']}&checked_date=eq.{yest}&select=id")
+                            new_streak = (h.get("current_streak") or 0) + 1 if prev else 1
+                            longest = max(new_streak, h.get("longest_streak") or 0)
+                            sb_patch("habits", f"id=eq.{h['id']}", {"current_streak": new_streak, "longest_streak": longest, "last_completed": TODAY})
+                            executed.append({"type": "habit", "name": h["name"], "streak": new_streak})
+                        else:
+                            executed.append({"type": "habit_already", "name": h["name"]})
+                        break
+
+            elif atype == "CREATE_GOAL" and len(parts) >= 4:
+                deadline = parts[3] if re.match(r"\d{4}-\d{2}-\d{2}", parts[3]) else "2025-12-31"
+                sb_post("goals", {"phone": short, "name": parts[1], "icon": "🎯", "target_amount": float(parts[2]), "current_amount": 0, "deadline": deadline, "status": "active", "priority": "medium"})
+                executed.append({"type": "goal", "name": parts[1]})
+
+            elif atype == "CREATE_HABIT" and len(parts) >= 3:
+                sb_post("habits", {"phone": short, "name": parts[1], "icon": parts[2] if len(parts) > 2 else "✅", "frequency": "daily", "current_streak": 0, "longest_streak": 0})
+                executed.append({"type": "new_habit", "name": parts[1]})
+
+            elif atype == "LOG_HEALTH" and len(parts) >= 4:
+                data = {"phone": short, "log_date": TODAY}
+                if parts[1] and parts[1] != "0": data["steps"] = int(parts[1])
+                if parts[2] and parts[2] != "0": data["water_glasses"] = int(parts[2])
+                if parts[3] and parts[3] not in ("0", ""): data["weight"] = float(parts[3])
+                sb_post("health_logs", data, upsert=True)
+                executed.append({"type": "health"})
+
+            elif atype == "REMEMBER" and len(parts) >= 3:
+                sb_post("viya_memory", {"phone": short, "content": f"{parts[1]}: {':'.join(parts[2:])}", "memory_type": "fact", "category": "personal", "importance": 7})
+                executed.append({"type": "memory"})
+
+        except Exception as e:
+            print(f"[WA ACTION] {atype}: {e}")
+
+    # Save to chat_history for app sync
+    try:
+        sb_post("chat_history", {"phone": short, "role": "system", "content": f"WhatsApp: {len(executed)} action(s) executed", "source": "whatsapp"})
+    except Exception:
+        pass
+
+    return executed
+
+
+# ── Groq AI call ──────────────────────────────────────────────────────────────
+
+def call_groq_wa(phone, text, wa_history=None):
+    if not GROQ_API_KEY:
+        return "Hi! I'm Viya. I need my AI key to respond fully. Please ask your admin to add GROQ_API_KEY. Meanwhile, try /bal /goals /bills /help"
+
+    context = get_context(phone)
+    system = WA_SYSTEM_PROMPT.replace("{context}", context)
+
+    msgs = [{"role": "system", "content": system}]
+    for h in (wa_history or [])[-4:]:
+        msgs.append({"role": h.get("role", "user"), "content": h.get("content", "")})
+    msgs.append({"role": "user", "content": text})
+
+    payload = json.dumps({"model": "llama-3.3-70b-versatile", "messages": msgs, "temperature": 0.8, "max_tokens": 400}).encode()
+    req = urllib.request.Request(
+        "https://api.groq.com/openai/v1/chat/completions",
+        data=payload,
+        headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            data = json.loads(r.read())
+            raw = data["choices"][0]["message"]["content"]
+            # Parse and execute actions
+            lines = raw.split("\n")
+            action_lines = [l.strip() for l in lines if l.strip().startswith("ACTION:")]
+            clean_lines = [l for l in lines if not l.strip().startswith("ACTION:")]
+            if action_lines:
+                execute_actions(action_lines, phone)
+            return "\n".join(clean_lines).strip()
+    except Exception as e:
+        print(f"[WA GROQ] {e}")
+        return "Oops! Technical issue. Try again in a bit. Type *help* for quick commands."
+
+
+# ── Quick commands (no AI needed) ─────────────────────────────────────────────
+
+def quick_balance(phone):
+    short = norm_phone(phone)
+    data = sb_get(f"users?phone=eq.{short}&select=monthly_income,monthly_expenses,daily_budget")
+    if data:
+        u = data[0]
+        inc = int(u.get("monthly_income", 0) or 0)
+        exp = int(u.get("monthly_expenses", 0) or 0)
+        budget = int(u.get("daily_budget", 1000) or 1000)
+        sav = inc - exp
+        return f"*💰 Balance Summary*\n\nMonthly Income: *₹{inc:,}*\nSpent: *₹{exp:,}*\nSaved: *₹{sav:,}*\nDaily Budget: *₹{budget:,}*\n\n{'✅ On track!' if sav > 0 else '⚠️ Overspending!'}\n\n_Open Viya app for full details →_"
+    return "Open the Viya app for your balance! 📱"
+
+
+def quick_goals(phone):
+    short = norm_phone(phone)
+    goals = sb_get(f"goals?phone=eq.{short}&status=eq.active&select=name,icon,current_amount,target_amount&order=created_at.desc&limit=5")
+    if goals:
+        lines = ["*🎯 Your Goals:*\n"]
+        for g in goals:
+            cur, tgt = int(g.get("current_amount", 0) or 0), int(g.get("target_amount", 1) or 1)
+            pct = min(round(cur / tgt * 100), 100)
+            bar = "█" * (pct // 10) + "░" * (10 - pct // 10)
+            lines.append(f"{g.get('icon','🎯')} *{g['name']}*\n{bar} {pct}%\n₹{cur:,} / ₹{tgt:,}\n")
+        return "\n".join(lines)
+    return "No active goals yet! Tell me to create one:\n_\"create goal Goa trip 50000\"_"
+
+
+def quick_bills(phone):
+    short = norm_phone(phone)
+    bills = sb_get(f"bills_and_dues?phone=eq.{short}&status=neq.paid&select=name,amount,due_date&order=due_date.asc&limit=5")
+    if bills:
+        lines = ["*🧾 Upcoming Bills:*\n"]
+        for b in bills:
+            due = b.get("due_date", "")[:10] if b.get("due_date") else "No date"
+            lines.append(f"• *{b['name']}* — ₹{int(b.get('amount', 0) or 0):,} (due {due})")
+        return "\n".join(lines)
+    return "No pending bills! 🎉"
+
+
+def quick_habits(phone):
+    short = norm_phone(phone)
+    habits = sb_get(f"habits?phone=eq.{short}&select=name,icon,current_streak&order=current_streak.desc&limit=8")
+    checkins = sb_get(f"habit_checkins?phone=eq.{short}&checked_date=eq.{TODAY}&select=habit_id")
+    done_ids = {c["habit_id"] for c in checkins}
+    if habits:
+        lines = [f"*✅ Habits — {len(done_ids)}/{len(habits)} done today*\n"]
+        for h in habits:
+            done = "✅" if h.get("id") in done_ids else "⬜"
+            lines.append(f"{done} {h.get('icon','')}{h.get('name','')} — 🔥{h.get('current_streak',0)} days")
+        return "\n".join(lines)
+    return "No habits yet! Tell me:\n_\"add habit morning run\"_"
+
+
+def quick_lending(phone):
+    short = norm_phone(phone)
+    items = sb_get(f"lending?user_phone=eq.{short}&status=eq.pending&select=type,person_name,amount&order=created_at.desc&limit=8")
+    if items:
+        given = [i for i in items if i.get("type") == "given"]
+        taken = [i for i in items if i.get("type") == "taken"]
+        lines = ["*💸 Lending Summary:*\n"]
+        if given: lines.append(f"You gave: *₹{sum(int(i.get('amount',0)) for i in given):,}* to {len(given)} people")
+        if taken: lines.append(f"You took: *₹{sum(int(i.get('amount',0)) for i in taken):,}* from {len(taken)} people")
+        lines.append("")
+        for i in items[:5]:
+            arrow = "→" if i.get("type") == "given" else "←"
+            lines.append(f"{arrow} {i['person_name']} — ₹{int(i.get('amount',0)):,}")
+        return "\n".join(lines)
+    return "No pending lendings! 🎉"
+
+
+def get_wa_history(phone):
+    short = norm_phone(phone)
+    if not short: return []
+    rows = sb_get(f"chat_history?phone=eq.{short}&source=eq.whatsapp&select=role,content&order=created_at.desc&limit=6")
+    return list(reversed(rows or []))
+
+
+def save_wa_message(phone, role, content):
+    short = norm_phone(phone)
+    if short:
+        sb_post("chat_history", {"phone": short, "role": role, "content": content, "source": "whatsapp"})
+
+
+# ── HTTP handler ──────────────────────────────────────────────────────────────
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        """Meta webhook verification (GET request from Meta)"""
-        try:
-            parsed = urlparse(self.path)
-            params = parse_qs(parsed.query)
-
-            mode = params.get("hub.mode", [None])[0]
-            token = params.get("hub.verify_token", [None])[0]
-            challenge = params.get("hub.challenge", [None])[0]
-
-            if mode == "subscribe" and token == VERIFY_TOKEN:
-                self.send_response(200)
-                self.send_header("Content-Type", "text/plain")
-                self.end_headers()
-                self.wfile.write(str(challenge).encode())
-            else:
-                self._respond(403, {"error": "Verification failed"})
-        except Exception as e:
-            self._respond(500, {"error": str(e)})
+        parsed = urlparse(self.path)
+        params = parse_qs(parsed.query)
+        mode = params.get("hub.mode", [None])[0]
+        token = params.get("hub.verify_token", [None])[0]
+        challenge = params.get("hub.challenge", [None])[0]
+        if mode == "subscribe" and token == VERIFY_TOKEN:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.end_headers()
+            self.wfile.write(str(challenge).encode())
+        else:
+            self._respond(403, {"error": "Verification failed"})
 
     def do_POST(self):
-        """Handle incoming WhatsApp messages via Meta Cloud API"""
         try:
-            content_length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_length)
-            data = json.loads(body) if body else {}
+            n = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(n)) if n else {}
 
-            entry = data.get("entry", [{}])[0]
+            entry = body.get("entry", [{}])[0]
             changes = entry.get("changes", [{}])[0]
             value = changes.get("value", {})
             messages = value.get("messages", [])
 
             if not messages:
-                self._respond(200, {"status": "ok"})
-                return
+                self._respond(200, {"status": "ok"}); return
 
             msg = messages[0]
             from_phone = msg.get("from", "")
@@ -61,13 +400,8 @@ class handler(BaseHTTPRequestHandler):
             if msg_type == "text":
                 text = msg.get("text", {}).get("body", "")
             elif msg_type == "interactive":
-                interactive = msg.get("interactive", {})
-                if interactive.get("type") == "button_reply":
-                    text = interactive.get("button_reply", {}).get("title", "")
-                elif interactive.get("type") == "list_reply":
-                    text = interactive.get("list_reply", {}).get("title", "")
-                else:
-                    text = "[interactive]"
+                iv = msg.get("interactive", {})
+                text = iv.get("button_reply", {}).get("title") or iv.get("list_reply", {}).get("title") or "[interactive]"
             elif msg_type == "image":
                 text = msg.get("image", {}).get("caption", "") or "[image]"
             elif msg_type == "audio":
@@ -75,193 +409,81 @@ class handler(BaseHTTPRequestHandler):
             else:
                 text = f"[{msg_type}]"
 
-            print(f"[WA] From: {from_phone}, Type: {msg_type}, Text: {text[:80]}")
+            print(f"[WA] {from_phone}: {text[:80]}")
 
-            reply = self._handle_command(from_phone, text)
+            # Save user message
+            save_wa_message(from_phone, "user", text)
 
-            if not reply:
-                reply = self._process_with_ai(from_phone, text, msg_type)
+            # Quick commands
+            cmd = text.strip().lower()
+            reply = None
+            if cmd in ("/help", "help", "/menu", "menu", "hi", "hello"):
+                reply = (
+                    "*👋 Hi! I'm Viya — your AI second brain.*\n\n"
+                    "*Quick commands:*\n"
+                    "/bal — Balance\n"
+                    "/habits — Habit tracker\n"
+                    "/goals — Goals\n"
+                    "/bills — Upcoming bills\n"
+                    "/lending — Money tracker\n\n"
+                    "*Or just chat naturally:*\n"
+                    "• _\"spent 500 on food\"_\n"
+                    "• _\"done with workout\"_\n"
+                    "• _\"remind me at 9pm to study\"_\n"
+                    "• _\"create goal Goa trip 50000\"_\n\n"
+                    "_Everything syncs with your Viya app! 📱_"
+                )
+            elif cmd in ("/bal", "/balance", "bal", "balance"):
+                reply = quick_balance(from_phone)
+            elif cmd in ("/goals", "goals"):
+                reply = quick_goals(from_phone)
+            elif cmd in ("/bills", "bills"):
+                reply = quick_bills(from_phone)
+            elif cmd in ("/habits", "habits"):
+                reply = quick_habits(from_phone)
+            elif cmd in ("/lending", "lending"):
+                reply = quick_lending(from_phone)
+            else:
+                # Full AI with action execution
+                history = get_wa_history(from_phone)
+                reply = call_groq_wa(from_phone, text, history)
 
-            self._send_reply(from_phone, reply or "Hey! Got your message. Type *help* to see what I can do!")
+            if reply:
+                save_wa_message(from_phone, "assistant", reply)
+                self._send_wa_message(from_phone, reply)
+
             self._respond(200, {"status": "processed"})
         except Exception as e:
             print(f"[WA] Error: {e}")
             self._respond(200, {"status": "ok"})
 
-    def _handle_command(self, phone, text):
-        """Handle quick commands that don't need AI"""
-        cmd = text.strip().lower()
-        if cmd in ('/help', 'help', '/menu', 'menu'):
-            return (
-                "*Viya Commands:*\n\n"
-                "/bal — Balance summary\n"
-                "/goals — Goals progress\n"
-                "/bills — Upcoming bills\n"
-                "/lending — Lending tracker\n"
-                "/expense — How to add expense\n\n"
-                "_Or just chat naturally — I understand!_"
-            )
-        elif cmd in ('/bal', '/balance', 'bal', 'balance'):
-            return self._quick_balance(phone)
-        elif cmd in ('/goals', 'goals'):
-            return self._quick_goals(phone)
-        elif cmd in ('/bills', 'bills'):
-            return self._quick_bills(phone)
-        elif cmd in ('/lending', 'lending'):
-            return self._quick_lending(phone)
-        elif cmd in ('/expense', 'expense'):
-            return (
-                "*Log an expense:*\n\n"
-                "Just type naturally:\n"
-                "• _spent 500 on food_\n"
-                "• _200 swiggy_\n"
-                "• _paid 1500 rent_\n\n"
-                "I'll handle the rest!"
-            )
-        return None
-
-    def _process_with_ai(self, phone, text, msg_type):
-        """Process message with AI agent"""
-        try:
-            from agents.advanced_whatsapp_agent import advanced_agent
-            if advanced_agent is not None:
-                import httpx
-                user_data = {"phone": phone, "name": "Friend"}
-                SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("VITE_SUPABASE_URL", ""))
-                SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY", os.getenv("VITE_SUPABASE_ANON_KEY", ""))
-
-                if SUPABASE_URL and SUPABASE_KEY:
-                    try:
-                        with httpx.Client(timeout=10) as client:
-                            short = phone.replace("+", "").replace(" ", "")[-10:]
-                            resp = client.get(
-                                f"{SUPABASE_URL}/rest/v1/users?phone=eq.{short}&select=*",
-                                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
-                            )
-                            if resp.status_code == 200 and resp.json():
-                                user_data = resp.json()[0]
-                                user_data["phone"] = phone
-                    except Exception:
-                        pass
-
-                import asyncio
-                loop = asyncio.new_event_loop()
-                reply = loop.run_until_complete(advanced_agent.process_message(phone, text, user_data))
-                loop.close()
-                return reply
-        except Exception as e:
-            print(f"[WA] AI error: {e}")
-        return None
-
-    def _send_reply(self, to_phone, message):
-        """Send reply via Meta WhatsApp Cloud API"""
-        try:
-            import httpx
-            token = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
-            phone_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
-            if not token or not phone_id:
-                print("[WA] Missing WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID")
-                return
-
-            clean = to_phone.replace("+", "").replace(" ", "")
-            if not clean.startswith("91"):
-                clean = "91" + clean
-
-            parts = [message[i:i+4000] for i in range(0, len(message), 4000)]
-
-            with httpx.Client(timeout=10) as client:
-                for part in parts:
-                    client.post(
-                        f"https://graph.facebook.com/v21.0/{phone_id}/messages",
-                        json={
-                            "messaging_product": "whatsapp",
-                            "to": clean,
-                            "type": "text",
-                            "text": {"body": part}
-                        },
-                        headers={
-                            "Authorization": f"Bearer {token}",
-                            "Content-Type": "application/json"
-                        }
-                    )
-        except Exception as e:
-            print(f"[WA] Send error: {e}")
-
-    def _supabase_query(self, path):
-        """Helper to query Supabase"""
-        import httpx
-        url = os.getenv("SUPABASE_URL", os.getenv("VITE_SUPABASE_URL", ""))
-        key = os.getenv("SUPABASE_ANON_KEY", os.getenv("VITE_SUPABASE_ANON_KEY", ""))
-        if not url or not key:
-            return None
-        hdrs = {"apikey": key, "Authorization": f"Bearer {key}"}
-        with httpx.Client(timeout=8) as c:
-            r = c.get(f"{url}/rest/v1/{path}", headers=hdrs)
-            return r.json() if r.status_code == 200 else None
-
-    def _quick_balance(self, phone):
-        short = phone.replace("+", "").replace(" ", "")[-10:]
-        data = self._supabase_query(f"users?phone=eq.{short}&select=monthly_income,monthly_expenses")
-        if data and len(data) > 0:
-            u = data[0]
-            inc = int(u.get("monthly_income", 0) or 0)
-            exp = int(u.get("monthly_expenses", 0) or 0)
-            sav = inc - exp
-            return (
-                f"*Balance Summary*\n\n"
-                f"Income: *{inc:,}*\n"
-                f"Spent: *{exp:,}*\n"
-                f"Saved: *{sav:,}*\n\n"
-                f"{'On track!' if sav > 0 else 'Overspending!'}"
-            )
-        return "Open Viya app for your balance details!"
-
-    def _quick_goals(self, phone):
-        short = phone.replace("+", "").replace(" ", "")[-10:]
-        goals = self._supabase_query(f"goals?phone=eq.{short}&status=eq.active&select=name,icon,current_amount,target_amount&order=created_at.desc&limit=5")
-        if goals and len(goals) > 0:
-            lines = ["*Your Goals:*\n"]
-            for g in goals:
-                cur = int(g.get("current_amount", 0) or 0)
-                tgt = int(g.get("target_amount", 1) or 1)
-                pct = min(round(cur / tgt * 100), 100)
-                bar = "█" * (pct // 10) + "░" * (10 - pct // 10)
-                lines.append(f"{g.get('icon', '🎯')} *{g['name']}*\n   {bar} {pct}%\n   {cur:,} / {tgt:,}")
-            return "\n".join(lines)
-        return "No active goals. Open the app to create one!"
-
-    def _quick_bills(self, phone):
-        short = phone.replace("+", "").replace(" ", "")[-10:]
-        bills = self._supabase_query(f"bills_and_dues?phone=eq.{short}&status=neq.paid&select=name,amount,due_date&order=due_date.asc&limit=5")
-        if bills and len(bills) > 0:
-            lines = ["*Upcoming Bills:*\n"]
-            for b in bills:
-                amt = int(b.get("amount", 0) or 0)
-                due = b.get("due_date", "")[:10] if b.get("due_date") else "No date"
-                lines.append(f"• *{b['name']}* — {amt:,} (due {due})")
-            return "\n".join(lines)
-        return "No pending bills!"
-
-    def _quick_lending(self, phone):
-        short = phone.replace("+", "").replace(" ", "")[-10:]
-        items = self._supabase_query(f"lending?user_phone=eq.{short}&status=eq.pending&select=type,person_name,amount&order=created_at.desc&limit=8")
-        if items and len(items) > 0:
-            given = [i for i in items if i["type"] == "given"]
-            taken = [i for i in items if i["type"] == "taken"]
-            lines = ["*Lending Summary:*\n"]
-            if given:
-                lines.append(f"Given: {sum(int(i.get('amount', 0)) for i in given):,} ({len(given)} people)")
-            if taken:
-                lines.append(f"Taken: {sum(int(i.get('amount', 0)) for i in taken):,} ({len(taken)} people)")
-            lines.append("")
-            for i in items[:5]:
-                arrow = "→" if i["type"] == "given" else "←"
-                lines.append(f"{arrow} {i['person_name']} — {int(i.get('amount', 0)):,}")
-            return "\n".join(lines)
-        return "No pending lendings! Open the app to add one."
+    def _send_wa_message(self, to_phone, message):
+        if not WHATSAPP_TOKEN or not PHONE_ID:
+            print("[WA] Missing WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID")
+            return
+        clean = re.sub(r"[^\d]", "", to_phone)
+        if not clean.startswith("91"):
+            clean = "91" + clean
+        # Split long messages
+        parts = [message[i:i+4000] for i in range(0, len(message), 4000)]
+        for part in parts:
+            try:
+                req = urllib.request.Request(
+                    f"https://graph.facebook.com/v21.0/{PHONE_ID}/messages",
+                    data=json.dumps({"messaging_product": "whatsapp", "to": clean, "type": "text", "text": {"body": part}}).encode(),
+                    headers={"Authorization": f"Bearer {WHATSAPP_TOKEN}", "Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    r.read()
+            except Exception as e:
+                print(f"[WA SEND] {e}")
 
     def _respond(self, status, data):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
+
+    def log_message(self, fmt, *args):
+        print(f"[WA] {fmt % args}")

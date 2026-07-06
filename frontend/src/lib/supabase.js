@@ -186,18 +186,19 @@ export const api = {
     return insert('notifications', { phone, title: message, description: message, type, is_read: false })
   },
 
-  async chat(phone, message) {
+  async chat(phone, message, history = []) {
     try {
-      await insert('chat_history', { phone, role: 'user', content: message, source: 'app' })
-      const r = await fetch(`/api/chat?phone=${encodeURIComponent(phone)}&message=${encodeURIComponent(message)}`)
+      const r = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, message, history: history.slice(-8) })
+      })
       if (r.ok) {
         const data = await r.json()
-        const reply = data.reply || "I couldn't process that. Try again!"
-        await insert('chat_history', { phone, role: 'assistant', content: reply, source: 'app' })
-        return { reply }
+        return { reply: data.reply || "I couldn't process that. Try again!", actions_executed: data.actions_executed || [] }
       }
     } catch {}
-    return { reply: "I'm having connection issues. Please try again!" }
+    return { reply: "I'm having connection issues. Please try again!", actions_executed: [] }
   },
   async getChatHistory(phone, limit = 30) {
     return query('chat_history', `?${phoneFilter(phone)}&select=*&order=created_at.desc&limit=${limit}`)
