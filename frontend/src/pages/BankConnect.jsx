@@ -7,45 +7,45 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft, Smartphone, Building2, TrendingUp, FileText,
   Shield, Lock, RefreshCw, Check, Upload, Plus, X,
-  ChevronDown, ChevronUp, Wifi, WifiOff,
+  ChevronDown, ChevronUp, Zap, Link2, MessageSquare,
+  AlertCircle, CheckCircle2, Clock,
 } from 'lucide-react'
 
+/* ─── Data ─── */
 const BANKS_TIER1 = [
-  { name: 'HDFC',     icon: '🏦', senders: ['HDFCBK'] },
-  { name: 'ICICI',    icon: '🏛️', senders: ['ICICIB'] },
-  { name: 'SBI',      icon: '🏦', senders: ['SBIINB', 'SBIBNK'] },
-  { name: 'Axis',     icon: '🏛️', senders: ['AXISBK'] },
-  { name: 'Kotak',    icon: '🏦', senders: ['KOTAKB'] },
-  { name: 'IndusInd', icon: '🏛️', senders: ['INDUSB'] },
-  { name: 'Yes Bank', icon: '🏦', senders: ['YESBK'] },
+  { name: 'HDFC',     icon: '🏦' },
+  { name: 'ICICI',    icon: '🏛️' },
+  { name: 'SBI',      icon: '🏦' },
+  { name: 'Axis',     icon: '🏛️' },
+  { name: 'Kotak',    icon: '🏦' },
+  { name: 'IndusInd', icon: '🏛️' },
+  { name: 'Yes Bank', icon: '🏦' },
 ]
 const BANKS_TIER2 = [
-  { name: 'PNB',          icon: '🏦', senders: ['PNBSMS'] },
-  { name: 'Canara',       icon: '🏦', senders: ['CANBNK'] },
-  { name: 'BOB',          icon: '🏛️', senders: ['BARBK'] },
-  { name: 'BOI',          icon: '🏦', senders: ['BOIIND'] },
-  { name: 'Union Bank',   icon: '🏛️', senders: ['UBIBNK'] },
-  { name: 'Central Bank', icon: '🏦', senders: ['CBIBNK'] },
+  { name: 'PNB',          icon: '🏦' },
+  { name: 'Canara',       icon: '🏦' },
+  { name: 'BOB',          icon: '🏛️' },
+  { name: 'Union Bank',   icon: '🏛️' },
 ]
 const BANKS_TIER3 = [
-  { name: 'Federal',   icon: '🏛️', senders: ['FEDBNK'] },
-  { name: 'Bandhan',   icon: '🏦', senders: ['BANDHN'] },
-  { name: 'RBL',       icon: '🏛️', senders: ['RBLBNK'] },
-  { name: 'IDFC First',icon: '🏦', senders: ['IDFCFB'] },
+  { name: 'Federal',    icon: '🏛️' },
+  { name: 'Bandhan',    icon: '🏦' },
+  { name: 'RBL',        icon: '🏛️' },
+  { name: 'IDFC First', icon: '🏦' },
 ]
 const BANKS_PAYMENT = [
-  { name: 'Paytm',  icon: '💰', senders: ['PAYTMB'] },
-  { name: 'Airtel', icon: '📱', senders: ['AIRTEL'] },
-  { name: 'Jio',    icon: '📶', senders: ['JIOFIN'] },
+  { name: 'Paytm',  icon: '💰' },
+  { name: 'Airtel', icon: '📱' },
+  { name: 'Jio',    icon: '📶' },
 ]
 const TOP_BANKS = [...BANKS_TIER1, BANKS_TIER2[0], BANKS_TIER2[1]]
 const ALL_BANKS  = [...BANKS_TIER1, ...BANKS_TIER2, ...BANKS_TIER3, ...BANKS_PAYMENT]
 
 const UPI_APPS = [
-  { id: 'gpay',    name: 'Google Pay', icon: '🟦', desc: 'Most popular UPI app' },
-  { id: 'phonepe', name: 'PhonePe',    icon: '💜', desc: 'India\'s #1 by volume' },
-  { id: 'paytm',   name: 'Paytm',      icon: '💰', desc: 'Payments + wallet' },
-  { id: 'bhim',    name: 'BHIM',       icon: '🇮🇳', desc: 'Official NPCI app' },
+  { id: 'gpay',    name: 'Google Pay',  icon: '🟦', color: '#4285F4', txns: '2B+/month' },
+  { id: 'phonepe', name: 'PhonePe',     icon: '💜', color: '#5F259F', txns: '#1 in India' },
+  { id: 'paytm',   name: 'Paytm',       icon: '💰', color: '#002970', txns: 'Wallet + UPI' },
+  { id: 'bhim',    name: 'BHIM',        icon: '🇮🇳', color: '#FF6B35', txns: 'NPCI Official' },
 ]
 
 const INVESTMENT_TYPES = [
@@ -73,85 +73,93 @@ function parseBankSMS(text) {
     if (m) { amount = parseFloat(m[1].replace(/,/g, '')); break }
   }
   if (!amount || amount <= 0) return null
-
   const lower = text.toLowerCase()
   const isIncome = /credit|received|deposit|salary|refund|cashback/i.test(lower)
   let category = '💳 Other'
-  if (/swiggy|zomato|food|restaurant|lunch|dinner|cafe|eat/i.test(lower))            category = '🍔 Food'
-  else if (/uber|ola|rapido|cab|petrol|metro|fuel|fastag/i.test(lower))              category = '🚗 Transport'
-  else if (/amazon|flipkart|myntra|shop|mall|meesho/i.test(lower))                   category = '🛍️ Shopping'
-  else if (/hospital|pharmacy|doctor|medical|1mg|pharmeasy/i.test(lower))            category = '💊 Health'
-  else if (/netflix|hotstar|movie|spotify|prime|entertainment/i.test(lower))         category = '🎬 Entertainment'
-  else if (/recharge|jio|airtel|bsnl|electricity|water|gas|internet/i.test(lower))  category = '📱 Bills'
-  else if (/college|school|course|udemy|education|tuition/i.test(lower))             category = '📚 Education'
-  else if (/sip|mutual|fund|stock|invest|fd|ppf/i.test(lower))                      category = '📈 Investment'
-  else if (/emi|loan|repayment/i.test(lower))                                        category = '🏦 EMI'
-  else if (/rent|house/i.test(lower))                                                category = '🏠 Rent'
-  else if (/salary|income/i.test(lower))                                             category = '💼 Salary'
-
-  const merchantMatch = text.match(/(?:at|to|towards|for|@|VPA)\s+([A-Za-z][A-Za-z0-9\s.*-]+)/i)
-  const merchant = merchantMatch
-    ? merchantMatch[1].trim().replace(/\*+/g, ' ').split(/\s+/).slice(0, 3).join(' ')
-    : ''
-
+  if (/swiggy|zomato|food|restaurant|lunch|dinner|cafe/i.test(lower))               category = '🍔 Food'
+  else if (/uber|ola|rapido|cab|petrol|metro|fuel|fastag/i.test(lower))             category = '🚗 Transport'
+  else if (/amazon|flipkart|myntra|shop|mall|meesho/i.test(lower))                  category = '🛍️ Shopping'
+  else if (/hospital|pharmacy|doctor|medical|1mg/i.test(lower))                     category = '💊 Health'
+  else if (/netflix|hotstar|movie|spotify|prime/i.test(lower))                      category = '🎬 Entertainment'
+  else if (/recharge|jio|airtel|bsnl|electricity|water|gas|internet/i.test(lower)) category = '📱 Bills'
+  else if (/sip|mutual|fund|stock|invest|fd|ppf/i.test(lower))                     category = '📈 Investment'
+  else if (/emi|loan|repayment/i.test(lower))                                       category = '🏦 EMI'
+  else if (/salary|income/i.test(lower))                                            category = '💼 Salary'
+  const m = text.match(/(?:at|to|towards|for|@|VPA)\s+([A-Za-z][A-Za-z0-9\s.*-]+)/i)
+  const merchant = m ? m[1].trim().replace(/\*+/g, ' ').split(/\s+/).slice(0, 3).join(' ') : ''
   return { amount, category, merchant, isIncome, raw: text }
 }
 
-const anim = d => ({ initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { delay: d, duration: 0.35 } })
+const anim = (d = 0) => ({
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+  transition: { delay: d, duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+})
 
-/* ─── Reusable toggle switch ─── */
-function Toggle({ on, onToggle }) {
+/* ─── Premium Toggle ─── */
+function Toggle({ on, onToggle, size = 'sm' }) {
+  const s = size === 'sm'
+    ? { w: 40, h: 22, r: 11, tw: 16, tTop: 3, tOn: 21, tOff: 3 }
+    : { w: 48, h: 26, r: 13, tw: 20, tTop: 3, tOn: 25, tOff: 3 }
   return (
     <button
       onClick={onToggle}
-      className={`bc-toggle ${on ? 'bc-toggle--on' : ''}`}
+      style={{
+        width: s.w, height: s.h, borderRadius: s.r, border: 'none',
+        cursor: onToggle ? 'pointer' : 'default',
+        background: on ? 'var(--primary, #00E5B0)' : 'var(--surface3, #2a2a2a)',
+        position: 'relative', transition: 'background 0.25s cubic-bezier(.4,0,.2,1)',
+        flexShrink: 0,
+        boxShadow: on ? '0 0 10px rgba(0,229,176,0.35)' : 'none',
+      }}
       aria-label={on ? 'Disable' : 'Enable'}
     >
-      <span className="bc-toggle-thumb" />
+      <span style={{
+        position: 'absolute', top: s.tTop, left: on ? s.tOn : s.tOff,
+        width: s.tw, height: s.tw, borderRadius: '50%', background: '#fff',
+        transition: 'left 0.25s cubic-bezier(.4,0,.2,1)',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+      }} />
     </button>
   )
 }
 
 /* ─── Bank setup modal ─── */
 function BankSetupModal({ bank, phone, onClose, onConnected, toast }) {
-  const [balance, setBalance]   = useState('')
-  const [smsText, setSmsText]   = useState('')
-  const [parsed, setParsed]     = useState(null)
-  const [saving, setSaving]     = useState(false)
-  const [step, setStep]         = useState('form') // form | success
+  const [balance, setBalance] = useState('')
+  const [smsText, setSmsText]  = useState('')
+  const [parsed, setParsed]    = useState(null)
+  const [saving, setSaving]    = useState(false)
+  const [done, setDone]        = useState(false)
 
   const handleParse = () => {
-    if (!smsText.trim()) { toast.show('Paste a bank SMS first', 'warning'); return }
     const r = parseBankSMS(smsText)
     if (r) setParsed(r)
-    else toast.show('Could not parse this SMS. Try a bank debit/credit message.', 'error')
+    else toast.show('Could not parse SMS. Try a bank debit/credit message.', 'error')
   }
 
   const handleSave = async () => {
     setSaving(true)
     try {
-      const connectedBanks = JSON.parse(localStorage.getItem('mv_connected_banks') || '[]')
-      if (!connectedBanks.includes(bank.name)) connectedBanks.push(bank.name)
-      const bankBalances = JSON.parse(localStorage.getItem('mv_bank_balances') || '{}')
-      if (balance) bankBalances[bank.name] = Number(balance)
+      const connected = JSON.parse(localStorage.getItem('mv_connected_banks') || '[]')
+      if (!connected.includes(bank.name)) connected.push(bank.name)
+      const balances = JSON.parse(localStorage.getItem('mv_bank_balances') || '{}')
+      if (balance) balances[bank.name] = Number(balance)
 
-      // Persist to Supabase
       await api.updateUser(phone, {
-        connected_banks: JSON.stringify(connectedBanks),
-        bank_balances: JSON.stringify(bankBalances),
+        connected_banks: JSON.stringify(connected),
+        bank_balances: JSON.stringify(balances),
         sms_enabled: true,
       })
-      localStorage.setItem('mv_connected_banks', JSON.stringify(connectedBanks))
-      localStorage.setItem('mv_bank_balances', JSON.stringify(bankBalances))
+      localStorage.setItem('mv_connected_banks', JSON.stringify(connected))
+      localStorage.setItem('mv_bank_balances', JSON.stringify(balances))
 
-      // Import SMS transaction if parsed
       if (parsed) {
         if (parsed.isIncome) await api.addIncome(phone, parsed.amount, parsed.category)
         else await api.addExpense(phone, parsed.amount, parsed.category, parsed.merchant)
       }
-
-      onConnected(bank.name, bankBalances)
-      setStep('success')
+      onConnected(bank.name, balances)
+      setDone(true)
       setTimeout(onClose, 1400)
     } catch {
       toast.show('Failed to save. Check connection.', 'error')
@@ -161,88 +169,56 @@ function BankSetupModal({ bank, phone, onClose, onConnected, toast }) {
 
   return (
     <motion.div className="modal-overlay" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <motion.div
-        className="bc-bank-modal"
-        onClick={e => e.stopPropagation()}
-        initial={{ y: 80, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 80, opacity: 0 }}
-        transition={{ type: 'spring', damping: 24, stiffness: 260 }}
-      >
+      <motion.div className="bc2-modal" onClick={e => e.stopPropagation()}
+        initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
+        transition={{ type: 'spring', damping: 26, stiffness: 280 }}>
         <AnimatePresence mode="wait">
-          {step === 'success' ? (
-            <motion.div key="success" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="bc-modal-success">
-              <div className="bc-modal-success-icon">✅</div>
-              <div className="bc-modal-success-title">{bank.name} Connected!</div>
-              <div className="bc-modal-success-sub">SMS from this bank will be tracked</div>
+          {done ? (
+            <motion.div key="done" initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} className="bc2-modal-done">
+              <div style={{ fontSize: 52, marginBottom: 10 }}>✅</div>
+              <div className="bc2-modal-done-title">{bank.name} connected</div>
+              <div className="bc2-modal-done-sub">SMS from this bank will be tracked</div>
             </motion.div>
           ) : (
             <motion.div key="form">
-              <div className="bc-modal-hdr">
-                <div className="bc-modal-bank-icon">{bank.icon}</div>
+              <div className="bc2-modal-hdr">
+                <div style={{ fontSize: 32 }}>{bank.icon}</div>
                 <div>
-                  <div className="bc-modal-title">Set up {bank.name}</div>
-                  <div className="bc-modal-sub">Enter balance + verify with an SMS</div>
+                  <div className="bc2-modal-title">Set up {bank.name}</div>
+                  <div className="bc2-modal-sub">Add balance · import via SMS</div>
                 </div>
                 <button className="modal-close" onClick={onClose}><X size={18} /></button>
               </div>
-
-              <div className="bc-modal-body">
-                {/* Balance */}
-                <div className="bc-modal-section">
-                  <label className="bc-modal-label">Current Balance (optional)</label>
-                  <div className="bc-modal-input-wrap">
-                    <span className="bc-modal-prefix">₹</span>
-                    <input
-                      type="number"
-                      className="input-field"
-                      placeholder="e.g. 45000"
-                      value={balance}
-                      onChange={e => setBalance(e.target.value)}
-                      style={{ paddingLeft: 28 }}
-                    />
-                  </div>
+              <div className="bc2-modal-body">
+                <div className="bc2-field-label">Current Balance (optional)</div>
+                <div style={{ position: 'relative' }}>
+                  <span className="bc-rupee">₹</span>
+                  <input className="input-field" type="number" placeholder="e.g. 45000"
+                    value={balance} onChange={e => setBalance(e.target.value)} style={{ paddingLeft: 26 }} />
                 </div>
 
-                {/* SMS import */}
-                <div className="bc-modal-section">
-                  <label className="bc-modal-label">Paste a recent bank SMS to verify + import</label>
-                  <textarea
-                    className="form-input"
-                    placeholder={`Paste SMS from ${bank.name}, e.g.:\n\nRs.1500 debited from A/c XX1234 on 30-06-26 for UPI/Swiggy`}
-                    value={smsText}
-                    onChange={e => { setSmsText(e.target.value); setParsed(null) }}
-                    style={{ minHeight: 72, resize: 'vertical', fontSize: 13 }}
-                  />
-                  <button className="btn-secondary" style={{ marginTop: 8, width: '100%' }} onClick={handleParse}>
-                    Detect Transaction from SMS
+                <div className="bc2-field-label" style={{ marginTop: 12 }}>Paste a recent SMS to import transaction</div>
+                <textarea className="form-input" style={{ minHeight: 70, resize: 'vertical', fontSize: 13 }}
+                  placeholder={`e.g. Rs.500 debited from ${bank.name} A/c XX1234 for UPI/Swiggy`}
+                  value={smsText} onChange={e => { setSmsText(e.target.value); setParsed(null) }} />
+
+                {!parsed && smsText.trim() && (
+                  <button className="btn-secondary" style={{ width: '100%', marginTop: 6 }} onClick={handleParse}>
+                    Detect Transaction
                   </button>
-                </div>
+                )}
 
                 <AnimatePresence>
                   {parsed && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                      className="bc-parsed-card"
-                    >
-                      <div className="bc-parsed-title">{parsed.isIncome ? '💚 Income Detected' : '🔴 Expense Detected'}</div>
-                      <div className="bc-parsed-row">
-                        <span>Amount</span><strong>₹{parsed.amount.toLocaleString('en-IN')}</strong>
-                      </div>
-                      <div className="bc-parsed-row">
-                        <span>Category</span><strong>{parsed.category}</strong>
-                      </div>
-                      {parsed.merchant && (
-                        <div className="bc-parsed-row">
-                          <span>Merchant</span><strong>{parsed.merchant}</strong>
-                        </div>
-                      )}
+                    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="bc2-parsed">
+                      <div className="bc2-parsed-type">{parsed.isIncome ? '💚 Income' : '🔴 Expense'} · ₹{parsed.amount.toLocaleString('en-IN')}</div>
+                      <div className="bc2-parsed-meta">{parsed.category}{parsed.merchant ? ` · ${parsed.merchant}` : ''}</div>
                     </motion.div>
                   )}
                 </AnimatePresence>
 
-                <button className="btn-primary full" onClick={handleSave} disabled={saving} style={{ marginTop: 4 }}>
-                  {saving ? 'Connecting…' : <><Check size={14} /> Connect {bank.name}</>}
+                <button className="btn-primary full" onClick={handleSave} disabled={saving} style={{ marginTop: 12 }}>
+                  {saving ? 'Connecting…' : <><CheckCircle2 size={14} /> Connect {bank.name}</>}
                 </button>
               </div>
             </motion.div>
@@ -253,65 +229,69 @@ function BankSetupModal({ bank, phone, onClose, onConnected, toast }) {
   )
 }
 
-/* ─── UPI SMS Paste section ─── */
-function UpiPasteSection({ app, phone, toast }) {
-  const [smsText, setSmsText] = useState('')
+/* ─── UPI SMS Import Drawer ─── */
+function UpiImportDrawer({ app, phone, toast, onClose }) {
+  const [sms, setSms]         = useState('')
   const [parsed, setParsed]   = useState(null)
   const [saving, setSaving]   = useState(false)
 
-  const handleParse = () => {
-    if (!smsText.trim()) { toast.show('Paste a UPI SMS first', 'warning'); return }
-    const r = parseBankSMS(smsText)
+  const detect = () => {
+    const r = parseBankSMS(sms)
     if (r) setParsed(r)
-    else toast.show('Could not parse SMS. Try a UPI payment confirmation message.', 'error')
+    else toast.show('Could not detect transaction from this SMS', 'error')
   }
 
-  const handleSave = async () => {
-    if (!parsed || !phone) return
+  const save = async () => {
+    if (!parsed) return
     setSaving(true)
     try {
       if (parsed.isIncome) await api.addIncome(phone, parsed.amount, parsed.category)
       else await api.addExpense(phone, parsed.amount, parsed.category, parsed.merchant)
-      toast.show(`₹${parsed.amount.toLocaleString('en-IN')} imported from ${app.name}!`, 'success')
-      setSmsText('')
-      setParsed(null)
-    } catch {
-      toast.show('Failed to save. Try again.', 'error')
-    }
+      toast.show(`₹${parsed.amount.toLocaleString('en-IN')} from ${app.name} imported!`, 'success')
+      setSms(''); setParsed(null); onClose()
+    } catch { toast.show('Failed to save', 'error') }
     setSaving(false)
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-      className="bc-upi-paste"
-    >
-      <textarea
-        className="form-input"
-        placeholder={`Paste ${app.name} payment SMS here, e.g.:\nPaid Rs.250 via GPay to Zomato`}
-        value={smsText}
-        onChange={e => { setSmsText(e.target.value); setParsed(null) }}
-        style={{ minHeight: 68, resize: 'vertical', fontSize: 13 }}
-      />
-      <button className="btn-secondary" style={{ marginTop: 8, width: '100%' }} onClick={handleParse}>
-        Detect Transaction
-      </button>
-      <AnimatePresence>
-        {parsed && (
-          <motion.div
-            initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="bc-parsed-card"
-            style={{ marginTop: 10 }}
-          >
-            <div className="bc-parsed-title">{parsed.isIncome ? '💚 Income' : '🔴 Expense'} — ₹{parsed.amount.toLocaleString('en-IN')}</div>
-            <div className="bc-parsed-row"><span>Category</span><strong>{parsed.category}</strong></div>
-            {parsed.merchant && <div className="bc-parsed-row"><span>Merchant</span><strong>{parsed.merchant}</strong></div>}
-            <button className="btn-primary full" onClick={handleSave} disabled={saving} style={{ marginTop: 10 }}>
-              {saving ? 'Saving…' : <><Check size={14} /> Add to Transactions</>}
+    <motion.div className="modal-overlay" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div className="bc2-modal" onClick={e => e.stopPropagation()}
+        initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
+        transition={{ type: 'spring', damping: 26, stiffness: 280 }}>
+        <div className="bc2-modal-hdr">
+          <div style={{ fontSize: 28 }}>{app.icon}</div>
+          <div>
+            <div className="bc2-modal-title">Import from {app.name}</div>
+            <div className="bc2-modal-sub">Paste a payment confirmation SMS</div>
+          </div>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
+        </div>
+        <div className="bc2-modal-body">
+          <div className="bc2-native-hint">
+            <Smartphone size={13} />
+            <span>On the Android app, {app.name} SMS are auto-read. On web, paste below.</span>
+          </div>
+          <textarea className="form-input" style={{ minHeight: 80, resize: 'vertical', fontSize: 13, marginTop: 10 }}
+            placeholder={`Paste ${app.name} payment SMS here…\ne.g. Paid Rs.250 via ${app.name} to Zomato`}
+            value={sms} onChange={e => { setSms(e.target.value); setParsed(null) }} />
+          {!parsed && sms.trim() && (
+            <button className="btn-secondary" style={{ width: '100%', marginTop: 8 }} onClick={detect}>
+              Detect Transaction
             </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+          <AnimatePresence>
+            {parsed && (
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="bc2-parsed" style={{ marginTop: 10 }}>
+                <div className="bc2-parsed-type">{parsed.isIncome ? '💚 Income' : '🔴 Expense'} · ₹{parsed.amount.toLocaleString('en-IN')}</div>
+                <div className="bc2-parsed-meta">{parsed.category}{parsed.merchant ? ` · ${parsed.merchant}` : ''}</div>
+                <button className="btn-primary full" onClick={save} disabled={saving} style={{ marginTop: 10 }}>
+                  {saving ? 'Saving…' : <><Check size={14} /> Add to Transactions</>}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
     </motion.div>
   )
 }
@@ -322,37 +302,29 @@ export default function BankConnect() {
   const toast = useToast()
   const fileRef = useRef(null)
 
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading]           = useState(true)
+  const [smsEnabled, setSmsEnabled]     = useState(false)
+  const [smsSaving, setSmsSaving]       = useState(false)
+  const [connectedBanks, setConnectedBanks] = useState([])
+  const [bankBalances, setBankBalances] = useState({})
+  const [showAllBanks, setShowAllBanks] = useState(false)
+  const [bankModal, setBankModal]       = useState(null)
+  const [upiApps, setUpiApps]           = useState({})
+  const [upiDrawer, setUpiDrawer]       = useState(null) // app object | null
 
-  // SMS toggle — persisted to Supabase
-  const [smsEnabled, setSmsEnabled] = useState(false)
-  const [smsSaving, setSmsSaving]   = useState(false)
-
-  // Banks — persisted to Supabase
-  const [connectedBanks, setConnectedBanks]   = useState([])
-  const [bankBalances, setBankBalances]         = useState({})
-  const [showAllBanks, setShowAllBanks]         = useState(false)
-  const [bankModal, setBankModal]               = useState(null) // bank object | null
-
-  // UPI — persisted to Supabase
-  const [upiApps, setUpiApps] = useState({})
-  const [upiSaving, setUpiSaving] = useState({})
-
-  // Investment form (already writes to Supabase)
-  const [invForm, setInvForm] = useState({
-    name: '', investment_type: 'mutual_fund', invested_amount: '', current_value: '', is_sip: false, sip_amount: '', sip_date: '',
-  })
-  const [invSaving, setInvSaving]           = useState(false)
+  // Investment form
+  const [invForm, setInvForm]           = useState({ name: '', investment_type: 'mutual_fund', invested_amount: '', current_value: '', is_sip: false, sip_amount: '', sip_date: '' })
+  const [invSaving, setInvSaving]       = useState(false)
   const [recentInvestments, setRecentInvestments] = useState([])
 
-  // Import SMS
-  const [pasteOpen, setPasteOpen]     = useState(false)
-  const [pastedSms, setPastedSms]     = useState('')
+  // Import
+  const [pasteOpen, setPasteOpen]       = useState(false)
+  const [pastedSms, setPastedSms]       = useState('')
   const [parsedResult, setParsedResult] = useState(null)
-  const [saving, setSaving]           = useState(false)
+  const [saving, setSaving]             = useState(false)
   const [recentImports, setRecentImports] = useState([])
 
-  /* ─── Load state from Supabase on mount ─── */
+  /* ─── Load from Supabase ─── */
   useEffect(() => {
     if (!phone) { setLoading(false); return }
     api.getUser(phone).then(user => {
@@ -366,103 +338,69 @@ export default function BankConnect() {
     }).catch(() => setLoading(false))
   }, [phone])
 
-  /* ─── SMS Toggle — real Supabase write ─── */
+  /* ─── SMS Toggle ─── */
   const toggleSms = async () => {
     const next = !smsEnabled
     setSmsEnabled(next)
     setSmsSaving(true)
     try {
       await api.updateUser(phone, { sms_enabled: next })
-      localStorage.setItem('mv_sms_enabled', String(next))
-      toast.show(
-        next ? 'SMS tracking enabled — paste bank messages below to auto-import' : 'SMS tracking disabled',
-        next ? 'success' : 'info'
-      )
-    } catch {
-      setSmsEnabled(!next) // revert on fail
-      toast.show('Failed to save. Check connection.', 'error')
-    }
+      toast.show(next ? 'SMS tracking enabled' : 'SMS tracking disabled', next ? 'success' : 'info')
+    } catch { setSmsEnabled(!next); toast.show('Failed to save', 'error') }
     setSmsSaving(false)
   }
 
-  /* ─── Bank Connect — opens setup modal ─── */
+  /* ─── Bank connect ─── */
   const handleBankClick = bank => {
     if (connectedBanks.includes(bank.name)) {
-      // Disconnect
       const updated = connectedBanks.filter(b => b !== bank.name)
-      const updatedBalances = { ...bankBalances }
-      delete updatedBalances[bank.name]
-      setConnectedBanks(updated)
-      setBankBalances(updatedBalances)
-      api.updateUser(phone, {
-        connected_banks: JSON.stringify(updated),
-        bank_balances: JSON.stringify(updatedBalances),
-      })
+      const updBal  = { ...bankBalances }; delete updBal[bank.name]
+      setConnectedBanks(updated); setBankBalances(updBal)
+      api.updateUser(phone, { connected_banks: JSON.stringify(updated), bank_balances: JSON.stringify(updBal) })
       toast.show(`${bank.name} disconnected`, 'info')
     } else {
       setBankModal(bank)
     }
   }
 
-  const handleBankConnected = (bankName, newBalances) => {
-    if (!connectedBanks.includes(bankName)) {
-      setConnectedBanks(prev => [...prev, bankName])
-    }
-    setBankBalances(newBalances)
+  const handleBankConnected = (name, newBal) => {
+    setConnectedBanks(prev => prev.includes(name) ? prev : [...prev, name])
+    setBankBalances(newBal)
   }
 
-  /* ─── UPI Toggle — real Supabase write ─── */
+  /* ─── UPI Toggle ─── */
   const toggleUpiApp = async (appId) => {
     const next = !upiApps[appId]
     const updated = { ...upiApps, [appId]: next }
     setUpiApps(updated)
-    setUpiSaving(s => ({ ...s, [appId]: true }))
     try {
       await api.updateUser(phone, { upi_apps: JSON.stringify(updated) })
-      localStorage.setItem('mv_upi_apps', JSON.stringify(updated))
       const app = UPI_APPS.find(a => a.id === appId)
-      toast.show(next ? `${app.name} tracking enabled — paste SMS below` : `${app.name} tracking disabled`, next ? 'success' : 'info')
-    } catch {
-      setUpiApps(prev => ({ ...prev, [appId]: !next })) // revert
-      toast.show('Failed to save', 'error')
-    }
-    setUpiSaving(s => ({ ...s, [appId]: false }))
+      toast.show(next ? `${app.name} tracking enabled` : `${app.name} disabled`, next ? 'success' : 'info')
+    } catch { setUpiApps(prev => ({ ...prev, [appId]: !next })); toast.show('Failed', 'error') }
   }
 
-  /* ─── Investment form ─── */
+  /* ─── Investment ─── */
   const handleAddInvestment = async () => {
     if (!invForm.name.trim()) { toast.show('Enter investment name', 'warning'); return }
-    if (!invForm.invested_amount || Number(invForm.invested_amount) <= 0) { toast.show('Enter invested amount', 'warning'); return }
-    if (!phone) { toast.show('Please log in first', 'error'); return }
+    if (!invForm.invested_amount || Number(invForm.invested_amount) <= 0) { toast.show('Enter amount', 'warning'); return }
     setInvSaving(true)
     try {
-      const data = {
-        name: invForm.name.trim(),
-        investment_type: invForm.investment_type,
-        invested_amount: Number(invForm.invested_amount),
-        current_value: Number(invForm.current_value || invForm.invested_amount),
-        is_sip: invForm.is_sip,
-      }
-      if (invForm.is_sip) {
-        data.sip_amount = Number(invForm.sip_amount || 0)
-        data.sip_date   = invForm.sip_date || ''
-      }
+      const data = { name: invForm.name.trim(), investment_type: invForm.investment_type, invested_amount: Number(invForm.invested_amount), current_value: Number(invForm.current_value || invForm.invested_amount), is_sip: invForm.is_sip }
+      if (invForm.is_sip) { data.sip_amount = Number(invForm.sip_amount || 0); data.sip_date = invForm.sip_date || '' }
       await api.addInvestment(phone, data)
-      setRecentInvestments(prev => [{ ...data, time: new Date().toLocaleTimeString() }, ...prev.slice(0, 4)])
-      toast.show(`${data.name} added to portfolio!`, 'success')
+      setRecentInvestments(p => [{ ...data, time: new Date().toLocaleTimeString() }, ...p.slice(0, 4)])
+      toast.show(`${data.name} added!`, 'success')
       setInvForm({ name: '', investment_type: 'mutual_fund', invested_amount: '', current_value: '', is_sip: false, sip_amount: '', sip_date: '' })
-    } catch {
-      toast.show('Failed to save investment. Try again.', 'error')
-    }
+    } catch { toast.show('Failed to save. Try again.', 'error') }
     setInvSaving(false)
   }
 
   /* ─── SMS Import ─── */
   const handleParseSMS = () => {
-    if (!pastedSms.trim()) { toast.show('Paste a bank SMS first', 'warning'); return }
-    const result = parseBankSMS(pastedSms)
-    if (result) setParsedResult(result)
-    else toast.show('Could not parse this SMS. Try a debit/credit message.', 'error')
+    const r = parseBankSMS(pastedSms)
+    if (r) setParsedResult(r)
+    else toast.show('Could not parse. Try a bank debit/credit SMS.', 'error')
   }
 
   const confirmParsedTransaction = async () => {
@@ -471,60 +409,52 @@ export default function BankConnect() {
     try {
       if (parsedResult.isIncome) await api.addIncome(phone, parsedResult.amount, parsedResult.category)
       else await api.addExpense(phone, parsedResult.amount, parsedResult.category, parsedResult.merchant)
-      setRecentImports(prev => [{ ...parsedResult, time: new Date().toLocaleTimeString() }, ...prev.slice(0, 4)])
+      setRecentImports(p => [{ ...parsedResult, time: new Date().toLocaleTimeString() }, ...p.slice(0, 4)])
       toast.show(`₹${parsedResult.amount.toLocaleString('en-IN')} ${parsedResult.isIncome ? 'income' : 'expense'} added!`, 'success')
-      setParsedResult(null)
-      setPastedSms('')
-    } catch {
-      toast.show('Failed to save. Try again.', 'error')
-    }
+      setParsedResult(null); setPastedSms('')
+    } catch { toast.show('Failed. Try again.', 'error') }
     setSaving(false)
   }
 
   /* ─── CSV Upload ─── */
   const handleCSVUpload = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const text = await file.text()
-    const lines = text.split('\n').filter(l => l.trim())
-    if (lines.length < 2) { toast.show('CSV file is empty or invalid', 'error'); return }
-    let imported = 0, skipped = 0
+    const file = e.target.files?.[0]; if (!file) return
+    const lines = (await file.text()).split('\n').filter(l => l.trim())
+    if (lines.length < 2) { toast.show('CSV empty or invalid', 'error'); return }
+    let ok = 0, skip = 0
     for (let i = 1; i < lines.length; i++) {
       const cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''))
-      if (cols.length < 3) { skipped++; continue }
-      const amount = parseFloat(cols.find(c => /^\d+\.?\d*$/.test(c.replace(/,/g, '')))?.replace(/,/g, '') || '0')
-      if (!amount || amount <= 0) { skipped++; continue }
-      const desc = cols.find(c => c.length > 5 && !/^\d/.test(c)) || 'CSV Import'
+      if (cols.length < 3) { skip++; continue }
+      const amt = parseFloat(cols.find(c => /^\d+\.?\d*$/.test(c.replace(/,/g, '')))?.replace(/,/g, '') || '0')
+      if (!amt) { skip++; continue }
+      const desc = cols.find(c => c.length > 5 && !/^\d/.test(c)) || 'CSV'
       const isDebit = /debit|dr|spent|paid|withdraw/i.test(lines[i])
-      try {
-        if (isDebit) await api.addExpense(phone, amount, '💳 Other', desc.slice(0, 100))
-        else await api.addIncome(phone, amount, '💼 Salary')
-        imported++
-      } catch { skipped++ }
+      try { isDebit ? await api.addExpense(phone, amt, '💳 Other', desc.slice(0, 100)) : await api.addIncome(phone, amt, '💼 Salary'); ok++ } catch { skip++ }
     }
-    toast.show(`Imported ${imported} transactions, ${skipped} skipped`, imported > 0 ? 'success' : 'warning')
+    toast.show(`Imported ${ok} transactions, ${skip} skipped`, ok > 0 ? 'success' : 'warning')
     e.target.value = ''
   }
 
   const visibleBanks = showAllBanks ? ALL_BANKS : TOP_BANKS
+  const activeUpiCount = Object.values(upiApps).filter(Boolean).length
 
   return (
     <div className="page page-padded">
       <input type="file" ref={fileRef} accept=".csv,.txt" className="sr-hidden" onChange={handleCSVUpload} />
 
-      {/* Bank setup modal */}
+      {/* Modals */}
       <AnimatePresence>
         {bankModal && (
-          <BankSetupModal
-            bank={bankModal}
-            phone={phone}
-            onClose={() => setBankModal(null)}
-            onConnected={handleBankConnected}
-            toast={toast}
-          />
+          <BankSetupModal bank={bankModal} phone={phone}
+            onClose={() => setBankModal(null)} onConnected={handleBankConnected} toast={toast} />
+        )}
+        {upiDrawer && (
+          <UpiImportDrawer app={upiDrawer} phone={phone} toast={toast}
+            onClose={() => setUpiDrawer(null)} />
         )}
       </AnimatePresence>
 
+      {/* Header */}
       <div className="page-header">
         <div className="header-left">
           <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20} /></button>
@@ -532,243 +462,234 @@ export default function BankConnect() {
         </div>
       </div>
 
-      <motion.div {...anim(0)} className="bc-hero">
-        <h2>Auto-track every rupee</h2>
-        <p>Connect bank SMS, UPI apps, add investments, or import statements — all saved to your account.</p>
+      {/* Hero */}
+      <motion.div {...anim(0)} className="bc2-hero">
+        <div className="bc2-hero-text">
+          <h2>Auto-track every rupee</h2>
+          <p>Select banks, enable UPI apps, add investments — all synced to your account in real time.</p>
+        </div>
+        <div className="bc2-hero-stats">
+          <div className="bc2-stat">
+            <span className="bc2-stat-val">{connectedBanks.length}</span>
+            <span className="bc2-stat-lbl">Banks</span>
+          </div>
+          <div className="bc2-stat">
+            <span className="bc2-stat-val">{activeUpiCount}</span>
+            <span className="bc2-stat-lbl">UPI Apps</span>
+          </div>
+          <div className="bc2-stat">
+            <span className="bc2-stat-val">{smsEnabled ? 'ON' : 'OFF'}</span>
+            <span className="bc2-stat-lbl">SMS Track</span>
+          </div>
+        </div>
       </motion.div>
 
-      {/* ═══════ Section 1: SMS Auto-Track ═══════ */}
-      <motion.div {...anim(0.08)} className="card bc-section">
-        <div className="bc-row">
-          <div className="info-icon green"><Smartphone size={20} /></div>
-          <div className="bc-row-body">
-            <div className="bc-row-title">SMS Auto-Track</div>
-            <div className="bc-row-sub">
-              {smsEnabled ? <span className="bc-status-dot green" /> : null}
-              {smsEnabled ? 'Active — monitoring bank SMS' : 'Auto-detect bank transactions from SMS'}
+      {/* ═══ Section 1: SMS Auto-Track ═══ */}
+      <motion.div {...anim(0.06)} className="card bc2-card">
+        <div className="bc2-row">
+          <div className="bc2-row-icon" style={{ background: 'rgba(0,229,176,0.1)', color: 'var(--primary)' }}>
+            <Smartphone size={18} />
+          </div>
+          <div className="bc2-row-body">
+            <div className="bc2-row-title">SMS Auto-Track</div>
+            <div className="bc2-row-sub">
+              {smsEnabled
+                ? <><span className="bc2-dot bc2-dot--on" />Monitoring bank SMS</>
+                : 'Auto-detect bank transactions from SMS'}
             </div>
           </div>
           <Toggle on={smsEnabled} onToggle={smsSaving ? undefined : toggleSms} />
         </div>
-
         <AnimatePresence>
           {smsEnabled && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-              className="bc-sms-active"
-            >
-              <div className="bc-sms-tip">
-                <Wifi size={14} />
-                On Android app: SMS are auto-detected. On web: paste SMS below to import transactions.
-              </div>
-              <button
-                className="btn-secondary"
-                style={{ width: '100%', marginTop: 10 }}
-                onClick={() => { setPasteOpen(true); document.getElementById('bc-import-section')?.scrollIntoView({ behavior: 'smooth' }) }}
-              >
-                Paste Bank SMS to Import
-              </button>
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+              className="bc2-sms-note">
+              <Smartphone size={12} style={{ flexShrink: 0 }} />
+              <span>
+                <strong>Native Android app</strong> auto-reads SMS.&nbsp;
+                On web, use <button className="bc2-inline-btn" onClick={() => { setPasteOpen(true); document.getElementById('bc2-import')?.scrollIntoView({ behavior: 'smooth' }) }}>Paste Import ↓</button> below.
+              </span>
             </motion.div>
           )}
         </AnimatePresence>
-
-        <div className="bc-trust-row">
-          <span className="bc-trust"><Shield size={11} /> RBI regulated</span>
-          <span className="bc-trust"><Lock size={11} /> Read-only</span>
-          <span className="bc-trust"><RefreshCw size={11} /> Revoke anytime</span>
+        <div className="bc2-trust">
+          <span><Shield size={10} /> RBI regulated</span>
+          <span><Lock size={10} /> Read-only</span>
+          <span><RefreshCw size={10} /> Revoke anytime</span>
         </div>
       </motion.div>
 
-      {/* ═══════ Section 2: Select Banks ═══════ */}
-      <motion.div {...anim(0.12)} className="card bc-section">
-        <div className="bc-section-hdr">
-          <div className="info-icon violet"><Building2 size={20} /></div>
+      {/* ═══ Section 2: Select Banks ═══ */}
+      <motion.div {...anim(0.1)} className="card bc2-card">
+        <div className="bc2-section-hdr">
+          <div className="bc2-row-icon" style={{ background: 'rgba(85,20,255,0.1)', color: 'var(--violet)' }}>
+            <Building2 size={18} />
+          </div>
           <div>
-            <div className="bc-row-title">Select Your Banks</div>
-            <div className="bc-row-sub">
+            <div className="bc2-row-title">Select Your Banks</div>
+            <div className="bc2-row-sub">
               {connectedBanks.length > 0
                 ? `${connectedBanks.length} bank${connectedBanks.length > 1 ? 's' : ''} connected`
-                : 'Tap banks you use — we\'ll track their SMS'}
+                : 'Tap to connect — enables SMS tracking & balance'}
             </div>
           </div>
         </div>
 
-        <div className="bank-grid" style={{ maxHeight: showAllBanks ? 'none' : 284, overflow: 'hidden', transition: 'max-height 0.4s ease' }}>
+        <div className="bc2-bank-grid" style={{ maxHeight: showAllBanks ? 'none' : 210, overflow: 'hidden', transition: 'max-height 0.4s ease' }}>
           {visibleBanks.map(b => {
-            const connected = connectedBanks.includes(b.name)
-            const bal = bankBalances[b.name]
+            const on = connectedBanks.includes(b.name)
             return (
-              <button
-                key={b.name}
-                className={`bank-card ${connected ? 'bank-card--connected' : ''}`}
-                onClick={() => handleBankClick(b)}
-              >
-                <span className="bank-icon">{b.icon}</span>
-                <span className="bank-name">{b.name}</span>
-                {connected
-                  ? <>
-                      <Check size={12} className="bank-check" />
-                      {bal && <span className="bank-bal">₹{Number(bal).toLocaleString('en-IN')}</span>}
-                    </>
-                  : <Plus size={12} style={{ color: 'var(--text3)', opacity: 0.6 }} />
-                }
+              <button key={b.name} className={`bc2-bank-card ${on ? 'bc2-bank-card--on' : ''}`} onClick={() => handleBankClick(b)}>
+                <span className="bc2-bank-icon">{b.icon}</span>
+                <span className="bc2-bank-name">{b.name}</span>
+                {on ? <Check size={10} style={{ color: 'var(--primary)', marginTop: 1 }} /> : null}
+                {on && bankBalances[b.name] ? (
+                  <span className="bc2-bank-bal">₹{Number(bankBalances[b.name]).toLocaleString('en-IN')}</span>
+                ) : null}
               </button>
             )
           })}
         </div>
 
-        <button className="bc-show-more" onClick={() => setShowAllBanks(!showAllBanks)}>
-          {showAllBanks ? <><ChevronUp size={15} /> Show less</> : <><ChevronDown size={15} /> Show all {ALL_BANKS.length} banks</>}
+        <button className="bc2-show-more" onClick={() => setShowAllBanks(!showAllBanks)}>
+          {showAllBanks ? <><ChevronUp size={13} /> Show less</> : <><ChevronDown size={13} /> Show all {ALL_BANKS.length} banks</>}
         </button>
       </motion.div>
 
-      {/* ═══════ Section 3: UPI Auto-Track ═══════ */}
-      <motion.div {...anim(0.16)} className="card bc-section">
-        <div className="bc-section-hdr">
-          <div className="info-icon cyan"><Smartphone size={20} /></div>
+      {/* ═══ Section 3: UPI Apps ═══ */}
+      <motion.div {...anim(0.14)} className="card bc2-card">
+        <div className="bc2-section-hdr">
+          <div className="bc2-row-icon" style={{ background: 'rgba(34,211,238,0.1)', color: '#22D3EE' }}>
+            <Zap size={18} />
+          </div>
           <div>
-            <div className="bc-row-title">UPI Auto-Track</div>
-            <div className="bc-row-sub">70%+ of Indian transactions are UPI — track them all</div>
+            <div className="bc2-row-title">UPI Apps</div>
+            <div className="bc2-row-sub">
+              {activeUpiCount > 0 ? `${activeUpiCount} app${activeUpiCount > 1 ? 's' : ''} tracking enabled` : '70%+ of India\'s transactions are UPI'}
+            </div>
           </div>
         </div>
 
-        <div className="bc-upi-list">
+        <div className="bc2-upi-list">
           {UPI_APPS.map(app => {
             const on = !!upiApps[app.id]
             return (
-              <div key={app.id} className={`bc-upi-item ${on ? 'bc-upi-item--on' : ''}`}>
-                <div className="bc-upi-main">
-                  <span className="bc-upi-icon">{app.icon}</span>
-                  <div className="bc-upi-info">
-                    <div className="bc-upi-name">{app.name}</div>
-                    <div className="bc-upi-desc">{app.desc}</div>
+              <div key={app.id} className={`bc2-upi-row ${on ? 'bc2-upi-row--on' : ''}`}>
+                <div className="bc2-upi-left">
+                  <span className="bc2-upi-icon">{app.icon}</span>
+                  <div>
+                    <div className="bc2-upi-name">{app.name}</div>
+                    <div className="bc2-upi-meta">
+                      {on
+                        ? <><span className="bc2-dot bc2-dot--on" />Tracking active</>
+                        : app.txns}
+                    </div>
                   </div>
-                  <Toggle on={on} onToggle={() => !upiSaving[app.id] && toggleUpiApp(app.id)} />
                 </div>
-
-                <AnimatePresence>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {on && (
-                    <UpiPasteSection app={app} phone={phone} toast={toast} />
+                    <button className="bc2-import-btn" onClick={() => setUpiDrawer(app)}>
+                      <MessageSquare size={12} /> Import SMS
+                    </button>
                   )}
-                </AnimatePresence>
+                  <Toggle on={on} onToggle={() => toggleUpiApp(app.id)} />
+                </div>
               </div>
             )
           })}
         </div>
-
-        {Object.values(upiApps).some(Boolean) && (
-          <div className="bc-upi-count">
-            {Object.values(upiApps).filter(Boolean).length} UPI app{Object.values(upiApps).filter(Boolean).length > 1 ? 's' : ''} being tracked
-          </div>
-        )}
       </motion.div>
 
-      {/* ═══════ Section 4: Add Investment ═══════ */}
-      <motion.div {...anim(0.2)} className="card bc-section">
-        <div className="bc-section-hdr">
-          <div className="info-icon gold"><TrendingUp size={20} /></div>
+      {/* ═══ Section 4: Account Aggregator ═══ */}
+      <motion.div {...anim(0.18)} className="card bc2-card bc2-aa-card">
+        <div className="bc2-aa-badge">RBI REGULATED</div>
+        <div className="bc2-section-hdr" style={{ marginBottom: 10 }}>
+          <div className="bc2-row-icon" style={{ background: 'rgba(255,184,0,0.12)', color: '#FFB800' }}>
+            <Link2 size={18} />
+          </div>
           <div>
-            <div className="bc-row-title">Add Investment</div>
-            <div className="bc-row-sub">Track stocks, mutual funds, FDs and more</div>
+            <div className="bc2-row-title">Account Aggregator</div>
+            <div className="bc2-row-sub">Fetch live bank data — no SMS needed</div>
+          </div>
+        </div>
+        <p className="bc2-aa-desc">
+          Account Aggregator (AA) is RBI's official open-banking framework. Apps like CRED and Jupiter use it to securely fetch your real bank data with one-time consent.
+        </p>
+        <div className="bc2-aa-steps">
+          <div className="bc2-aa-step"><span className="bc2-aa-num">1</span><span>Select your bank</span></div>
+          <div className="bc2-aa-step-arrow">→</div>
+          <div className="bc2-aa-step"><span className="bc2-aa-num">2</span><span>Give consent via bank OTP</span></div>
+          <div className="bc2-aa-step-arrow">→</div>
+          <div className="bc2-aa-step"><span className="bc2-aa-num">3</span><span>Live data fetched automatically</span></div>
+        </div>
+        <button className="bc2-aa-btn" onClick={() => toast.show('AA integration coming soon — add SETU_AA_KEY to environment', 'info')}>
+          <Clock size={14} /> Coming Soon — AA Integration
+        </button>
+      </motion.div>
+
+      {/* ═══ Section 5: Add Investment ═══ */}
+      <motion.div {...anim(0.22)} className="card bc2-card">
+        <div className="bc2-section-hdr">
+          <div className="bc2-row-icon" style={{ background: 'rgba(255,184,0,0.12)', color: '#FFB800' }}>
+            <TrendingUp size={18} />
+          </div>
+          <div>
+            <div className="bc2-row-title">Add Investment</div>
+            <div className="bc2-row-sub">Track stocks, MFs, FDs and more</div>
           </div>
         </div>
 
-        <div className="bc-inv-form">
-          <input
-            type="text"
-            className="input-field"
-            placeholder="Investment name (e.g. Axis Bluechip Fund)"
-            value={invForm.name}
-            onChange={e => setInvForm({ ...invForm, name: e.target.value })}
-          />
-
-          <select
-            className="input-field"
-            value={invForm.investment_type}
-            onChange={e => setInvForm({ ...invForm, investment_type: e.target.value })}
-          >
-            {INVESTMENT_TYPES.map(t => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
+        <div className="bc2-inv-form">
+          <input className="input-field" type="text" placeholder="Investment name (e.g. Axis Bluechip Fund)"
+            value={invForm.name} onChange={e => setInvForm({ ...invForm, name: e.target.value })} />
+          <select className="input-field" value={invForm.investment_type}
+            onChange={e => setInvForm({ ...invForm, investment_type: e.target.value })}>
+            {INVESTMENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
-
-          <div className="bc-inv-row2">
-            <div className="bc-amount-wrap">
+          <div className="bc2-two-col">
+            <div style={{ position: 'relative' }}>
               <span className="bc-rupee">₹</span>
-              <input
-                type="number"
-                className="input-field"
-                placeholder="Invested amount"
-                value={invForm.invested_amount}
-                onChange={e => setInvForm({ ...invForm, invested_amount: e.target.value })}
-                style={{ paddingLeft: 26 }}
-              />
+              <input className="input-field" type="number" placeholder="Invested" style={{ paddingLeft: 26 }}
+                value={invForm.invested_amount} onChange={e => setInvForm({ ...invForm, invested_amount: e.target.value })} />
             </div>
-            <div className="bc-amount-wrap">
+            <div style={{ position: 'relative' }}>
               <span className="bc-rupee">₹</span>
-              <input
-                type="number"
-                className="input-field"
-                placeholder="Current value"
-                value={invForm.current_value}
-                onChange={e => setInvForm({ ...invForm, current_value: e.target.value })}
-                style={{ paddingLeft: 26 }}
-              />
+              <input className="input-field" type="number" placeholder="Current value" style={{ paddingLeft: 26 }}
+                value={invForm.current_value} onChange={e => setInvForm({ ...invForm, current_value: e.target.value })} />
             </div>
           </div>
-
-          <div className="bc-sip-toggle-row">
-            <span className="bc-sip-label">Is this a SIP?</span>
+          <div className="bc2-sip-row">
+            <span className="bc2-sip-label">SIP?</span>
             <Toggle on={invForm.is_sip} onToggle={() => setInvForm({ ...invForm, is_sip: !invForm.is_sip })} />
           </div>
-
           <AnimatePresence>
             {invForm.is_sip && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
-                <div className="bc-inv-row2" style={{ marginTop: 8 }}>
-                  <div className="bc-amount-wrap">
+                <div className="bc2-two-col" style={{ marginTop: 8 }}>
+                  <div style={{ position: 'relative' }}>
                     <span className="bc-rupee">₹</span>
-                    <input
-                      type="number"
-                      className="input-field"
-                      placeholder="SIP/month"
-                      value={invForm.sip_amount}
-                      onChange={e => setInvForm({ ...invForm, sip_amount: e.target.value })}
-                      style={{ paddingLeft: 26 }}
-                    />
+                    <input className="input-field" type="number" placeholder="Amount/month" style={{ paddingLeft: 26 }}
+                      value={invForm.sip_amount} onChange={e => setInvForm({ ...invForm, sip_amount: e.target.value })} />
                   </div>
-                  <input
-                    type="number"
-                    className="input-field"
-                    min="1" max="28"
-                    placeholder="SIP date (1-28)"
-                    value={invForm.sip_date}
-                    onChange={e => setInvForm({ ...invForm, sip_date: e.target.value })}
-                  />
+                  <input className="input-field" type="number" min="1" max="28" placeholder="SIP date (1-28)"
+                    value={invForm.sip_date} onChange={e => setInvForm({ ...invForm, sip_date: e.target.value })} />
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
-
           <button className="btn-primary full" onClick={handleAddInvestment} disabled={invSaving}>
             {invSaving ? 'Saving…' : <><Plus size={14} /> Save Investment</>}
           </button>
         </div>
 
         {recentInvestments.length > 0 && (
-          <div className="bc-recent">
-            <div className="bc-recent-title">Recently Added</div>
+          <div className="bc2-recent">
             {recentInvestments.map((inv, i) => (
               <div key={i} className="info-row" style={{ marginBottom: 4 }}>
-                <span style={{ fontSize: 18 }}>
-                  {INVESTMENT_TYPES.find(t => t.value === inv.investment_type)?.label?.[0] || '📈'}
-                </span>
+                <span style={{ fontSize: 18 }}>{INVESTMENT_TYPES.find(t => t.value === inv.investment_type)?.label?.[0] || '📈'}</span>
                 <div className="info-body">
                   <div className="info-title">{inv.name}</div>
-                  <div className="info-sub">
-                    {INVESTMENT_TYPES.find(t => t.value === inv.investment_type)?.label}
-                    {inv.is_sip ? ` · SIP ₹${Number(inv.sip_amount).toLocaleString('en-IN')}/mo` : ''}
-                  </div>
+                  <div className="info-sub">{INVESTMENT_TYPES.find(t => t.value === inv.investment_type)?.label}</div>
                 </div>
                 <div className="info-value">₹{Number(inv.invested_amount).toLocaleString('en-IN')}</div>
               </div>
@@ -777,60 +698,48 @@ export default function BankConnect() {
         )}
       </motion.div>
 
-      {/* ═══════ Section 5: Import Transactions ═══════ */}
-      <motion.div {...anim(0.24)} className="card bc-section" id="bc-import-section">
-        <div className="bc-section-hdr">
-          <div className="info-icon cyan"><FileText size={20} /></div>
+      {/* ═══ Section 6: Import Transactions ═══ */}
+      <motion.div {...anim(0.26)} className="card bc2-card" id="bc2-import">
+        <div className="bc2-section-hdr">
+          <div className="bc2-row-icon" style={{ background: 'rgba(34,211,238,0.1)', color: '#22D3EE' }}>
+            <FileText size={18} />
+          </div>
           <div>
-            <div className="bc-row-title">Import Transactions</div>
-            <div className="bc-row-sub">Upload bank statement CSV or paste bank SMS</div>
+            <div className="bc2-row-title">Import Transactions</div>
+            <div className="bc2-row-sub">Bank CSV · Paste SMS · Auto-parse</div>
           </div>
         </div>
 
-        <div className="bc-import-btns">
-          <button className="btn-secondary" onClick={() => fileRef.current?.click()} style={{ flex: 1, gap: 6 }}>
-            <Upload size={14} /> Upload CSV
+        <div className="bc2-import-row">
+          <button className="btn-secondary" style={{ flex: 1, gap: 6, fontSize: 13 }} onClick={() => fileRef.current?.click()}>
+            <Upload size={13} /> Upload CSV
           </button>
-          <button
-            className={`btn-secondary ${pasteOpen ? 'btn-secondary--active' : ''}`}
-            onClick={() => { setPasteOpen(!pasteOpen); setParsedResult(null) }}
-            style={{ flex: 1, gap: 6 }}
-          >
-            <Smartphone size={14} /> Paste SMS
+          <button className={`btn-secondary ${pasteOpen ? 'bc2-active-btn' : ''}`}
+            style={{ flex: 1, gap: 6, fontSize: 13 }}
+            onClick={() => { setPasteOpen(!pasteOpen); setParsedResult(null) }}>
+            <MessageSquare size={13} /> Paste SMS
           </button>
         </div>
 
         <AnimatePresence>
           {pasteOpen && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
-              <textarea
-                value={pastedSms}
-                onChange={e => { setPastedSms(e.target.value); setParsedResult(null) }}
-                placeholder="Paste bank SMS here, e.g.:&#10;&#10;Rs.450 debited from A/c XX1234 on 21-06-26 for UPI/Swiggy"
-                className="form-input"
-                style={{ minHeight: 80, resize: 'vertical', fontSize: 13, lineHeight: 1.6, marginTop: 10 }}
-              />
-              <button className="btn-primary full" onClick={handleParseSMS} style={{ marginTop: 10 }}>
-                Parse & Detect Transaction
+              <textarea className="form-input" style={{ minHeight: 76, resize: 'vertical', fontSize: 13, marginTop: 10 }}
+                value={pastedSms} onChange={e => { setPastedSms(e.target.value); setParsedResult(null) }}
+                placeholder="Paste bank SMS here&#10;e.g. Rs.450 debited from A/c XX1234 for UPI/Swiggy" />
+              <button className="btn-primary full" onClick={handleParseSMS} style={{ marginTop: 8 }}>
+                Parse & Import
               </button>
-
               <AnimatePresence>
                 {parsedResult && (
-                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bc-parsed-card" style={{ marginTop: 14 }}>
-                    <div className="bc-parsed-title">Transaction Detected!</div>
-                    <div className="bc-parsed-grid">
-                      <div><span>Type</span><strong>{parsedResult.isIncome ? 'Income' : 'Expense'}</strong></div>
-                      <div><span>Amount</span><strong>₹{parsedResult.amount.toLocaleString('en-IN')}</strong></div>
-                      <div><span>Category</span><strong>{parsedResult.category}</strong></div>
-                      {parsedResult.merchant && <div><span>Merchant</span><strong>{parsedResult.merchant}</strong></div>}
-                    </div>
-                    <div className="bc-parsed-actions">
+                  <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="bc2-parsed" style={{ marginTop: 12 }}>
+                    <div className="bc2-parsed-type">{parsedResult.isIncome ? '💚' : '🔴'} {parsedResult.isIncome ? 'Income' : 'Expense'} · ₹{parsedResult.amount.toLocaleString('en-IN')}</div>
+                    <div className="bc2-parsed-meta">{parsedResult.category}{parsedResult.merchant ? ` · ${parsedResult.merchant}` : ''}</div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                       <button className="btn-primary" onClick={confirmParsedTransaction} disabled={saving} style={{ flex: 1 }}>
-                        {saving ? 'Saving…' : <><Check size={14} /> Add Transaction</>}
+                        {saving ? 'Saving…' : <><Check size={13} /> Add</>}
                       </button>
-                      <button className="btn-secondary" onClick={() => setParsedResult(null)} style={{ padding: '10px 16px' }}>
-                        <X size={14} />
-                      </button>
+                      <button className="btn-secondary" onClick={() => setParsedResult(null)} style={{ padding: '10px 14px' }}><X size={14} /></button>
                     </div>
                   </motion.div>
                 )}
@@ -840,10 +749,9 @@ export default function BankConnect() {
         </AnimatePresence>
       </motion.div>
 
-      {/* Recently Imported */}
       {recentImports.length > 0 && (
-        <motion.div {...anim(0.28)} className="card bc-section">
-          <div className="bc-recent-title">Recently Added</div>
+        <motion.div {...anim(0.3)} className="card bc2-card">
+          <div className="bc2-row-title" style={{ marginBottom: 10 }}>Recently Imported</div>
           {recentImports.map((item, i) => (
             <div key={i} className="info-row" style={{ marginBottom: 4 }}>
               <span style={{ fontSize: 18 }}>{item.category.split(' ')[0]}</span>
@@ -859,9 +767,9 @@ export default function BankConnect() {
         </motion.div>
       )}
 
-      <motion.div {...anim(0.32)} className="bc-footer">
-        <p>Your financial data is encrypted and never shared.</p>
-        <p>We only read bank transaction SMS — personal messages are never accessed.</p>
+      <motion.div {...anim(0.34)} style={{ textAlign: 'center', padding: '16px 0 24px', fontSize: 12, color: 'var(--text3)', lineHeight: 1.6 }}>
+        <p>Your financial data is encrypted and never shared with third parties.</p>
+        <p>Bank SMS are read only for transaction amounts — personal messages are never accessed.</p>
       </motion.div>
     </div>
   )
