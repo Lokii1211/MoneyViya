@@ -127,6 +127,7 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
 .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
 .header-left { display:flex; align-items:center; gap:12px; }
 .header-left h2 { font-size:22px; font-weight:800; letter-spacing:-0.5px; }
+.display-m { font-size:22px; font-weight:800; letter-spacing:-0.5px; margin:0; }
 .header-name { font-size:18px; font-weight:800; letter-spacing:-0.3px; }
 .header-sub { font-size:12px; color:var(--primary); font-weight:600; letter-spacing:0.5px; }
 .avatar {
@@ -550,6 +551,7 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
 
 /* SETTINGS */
 .settings-list { display:flex; flex-direction:column; gap:4px; margin-bottom:20px; }
+.settings-group { display:flex; flex-direction:column; gap:8px; }
 .settings-item {
   display:flex; align-items:center; gap:14px; padding:15px;
   background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);

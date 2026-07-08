@@ -7,6 +7,28 @@ import { formatINR } from '../lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TrendingUp, TrendingDown, PiggyBank, Plus, BarChart3, Shield, X, ChevronRight, Smartphone, Target, Calendar } from 'lucide-react'
 
+/* ─── Premium toggle (matches BankConnect/Reminders) ─── */
+function Toggle({ on, onToggle }) {
+  return (
+    <button
+      onClick={onToggle}
+      style={{
+        width: 40, height: 22, borderRadius: 11, border: 'none', cursor: 'pointer',
+        background: on ? 'var(--primary)' : 'var(--surface3, #2a2a2a)',
+        position: 'relative', transition: 'background 0.25s cubic-bezier(.4,0,.2,1)',
+        flexShrink: 0, boxShadow: on ? '0 0 8px rgba(0,229,176,0.35)' : 'none',
+      }}
+    >
+      <span style={{
+        position: 'absolute', top: 3, left: on ? 21 : 3,
+        width: 16, height: 16, borderRadius: '50%', background: '#fff',
+        transition: 'left 0.25s cubic-bezier(.4,0,.2,1)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+      }} />
+    </button>
+  )
+}
+
 const typeConfig = {
   mutual_fund: { emoji: '📈', color: 'var(--primary)', label: 'Mutual Fund' },
   stock: { emoji: '📊', color: 'var(--violet)', label: 'Stock' },
@@ -254,35 +276,30 @@ export default function Wealth() {
             onChange={e => setAddForm({ ...addForm, investment_type: e.target.value })}>
             {INVESTMENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
-          <div className="bc-inv-row2">
-            <div className="bc-amount-wrap">
+          <div className="bc2-two-col">
+            <div style={{ position: 'relative' }}>
               <span className="bc-rupee">₹</span>
               <input type="number" className="input-field" placeholder="Invested amount"
                 value={addForm.invested_amount} onChange={e => setAddForm({ ...addForm, invested_amount: e.target.value })}
                 style={{ paddingLeft: 26 }} />
             </div>
-            <div className="bc-amount-wrap">
+            <div style={{ position: 'relative' }}>
               <span className="bc-rupee">₹</span>
               <input type="number" className="input-field" placeholder="Current value"
                 value={addForm.current_value} onChange={e => setAddForm({ ...addForm, current_value: e.target.value })}
                 style={{ paddingLeft: 26 }} />
             </div>
           </div>
-          <div className="bc-sip-toggle-row">
-            <span className="bc-sip-label">Is this a SIP?</span>
-            <button
-              className={`bc-toggle ${addForm.is_sip ? 'bc-toggle--on' : ''}`}
-              onClick={() => setAddForm({ ...addForm, is_sip: !addForm.is_sip })}
-            >
-              <span className="bc-toggle-thumb" />
-            </button>
+          <div className="bc2-sip-row">
+            <span className="bc2-sip-label">Is this a SIP?</span>
+            <Toggle on={addForm.is_sip} onToggle={() => setAddForm({ ...addForm, is_sip: !addForm.is_sip })} />
           </div>
           <AnimatePresence>
             {addForm.is_sip && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
-                <div className="bc-inv-row2" style={{ marginTop: 8 }}>
-                  <div className="bc-amount-wrap">
+                <div className="bc2-two-col" style={{ marginTop: 8 }}>
+                  <div style={{ position: 'relative' }}>
                     <span className="bc-rupee">₹</span>
                     <input type="number" className="input-field" placeholder="SIP/month"
                       value={addForm.sip_amount} onChange={e => setAddForm({ ...addForm, sip_amount: e.target.value })}
@@ -330,7 +347,7 @@ export default function Wealth() {
           </div>
           <input type="text" className="input-field" placeholder="Goal name (e.g. Emergency Fund)"
             value={goalForm.name} onChange={e => setGoalForm({ ...goalForm, name: e.target.value })} />
-          <div className="bc-amount-wrap">
+          <div style={{ position: 'relative' }}>
             <span className="bc-rupee">₹</span>
             <input type="number" className="input-field" placeholder="Target amount"
               value={goalForm.target_amount} onChange={e => setGoalForm({ ...goalForm, target_amount: e.target.value })}
