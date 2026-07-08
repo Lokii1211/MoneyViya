@@ -7,8 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft, Smartphone, Building2, TrendingUp, FileText,
   Shield, Lock, RefreshCw, Check, Upload, Plus, X,
-  ChevronDown, ChevronUp, Zap, Link2, MessageSquare,
-  AlertCircle, CheckCircle2, Clock,
+  ChevronDown, ChevronUp, Zap, Link2, MessageSquare, Clock,
 } from 'lucide-react'
 
 /* ─── Data ─── */
@@ -124,111 +123,6 @@ function Toggle({ on, onToggle, size = 'sm' }) {
   )
 }
 
-/* ─── Bank setup modal ─── */
-function BankSetupModal({ bank, phone, onClose, onConnected, toast }) {
-  const [balance, setBalance] = useState('')
-  const [smsText, setSmsText]  = useState('')
-  const [parsed, setParsed]    = useState(null)
-  const [saving, setSaving]    = useState(false)
-  const [done, setDone]        = useState(false)
-
-  const handleParse = () => {
-    const r = parseBankSMS(smsText)
-    if (r) setParsed(r)
-    else toast.show('Could not parse SMS. Try a bank debit/credit message.', 'error')
-  }
-
-  const handleSave = async () => {
-    setSaving(true)
-    try {
-      const connected = JSON.parse(localStorage.getItem('mv_connected_banks') || '[]')
-      if (!connected.includes(bank.name)) connected.push(bank.name)
-      const balances = JSON.parse(localStorage.getItem('mv_bank_balances') || '{}')
-      if (balance) balances[bank.name] = Number(balance)
-
-      await api.updateUser(phone, {
-        connected_banks: JSON.stringify(connected),
-        bank_balances: JSON.stringify(balances),
-        sms_enabled: true,
-      })
-      localStorage.setItem('mv_connected_banks', JSON.stringify(connected))
-      localStorage.setItem('mv_bank_balances', JSON.stringify(balances))
-
-      if (parsed) {
-        if (parsed.isIncome) await api.addIncome(phone, parsed.amount, parsed.category)
-        else await api.addExpense(phone, parsed.amount, parsed.category, parsed.merchant)
-      }
-      onConnected(bank.name, balances)
-      setDone(true)
-      setTimeout(onClose, 1400)
-    } catch {
-      toast.show('Failed to save. Check connection.', 'error')
-    }
-    setSaving(false)
-  }
-
-  return (
-    <motion.div className="modal-overlay" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <motion.div className="bc2-modal" onClick={e => e.stopPropagation()}
-        initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
-        transition={{ type: 'spring', damping: 26, stiffness: 280 }}>
-        <AnimatePresence mode="wait">
-          {done ? (
-            <motion.div key="done" initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} className="bc2-modal-done">
-              <div style={{ fontSize: 52, marginBottom: 10 }}>✅</div>
-              <div className="bc2-modal-done-title">{bank.name} connected</div>
-              <div className="bc2-modal-done-sub">SMS from this bank will be tracked</div>
-            </motion.div>
-          ) : (
-            <motion.div key="form">
-              <div className="bc2-modal-hdr">
-                <div style={{ fontSize: 32 }}>{bank.icon}</div>
-                <div>
-                  <div className="bc2-modal-title">Set up {bank.name}</div>
-                  <div className="bc2-modal-sub">Add balance · import via SMS</div>
-                </div>
-                <button className="modal-close" onClick={onClose}><X size={18} /></button>
-              </div>
-              <div className="bc2-modal-body">
-                <div className="bc2-field-label">Current Balance (optional)</div>
-                <div style={{ position: 'relative' }}>
-                  <span className="bc-rupee">₹</span>
-                  <input className="input-field" type="number" placeholder="e.g. 45000"
-                    value={balance} onChange={e => setBalance(e.target.value)} style={{ paddingLeft: 26 }} />
-                </div>
-
-                <div className="bc2-field-label" style={{ marginTop: 12 }}>Paste a recent SMS to import transaction</div>
-                <textarea className="form-input" style={{ minHeight: 70, resize: 'vertical', fontSize: 13 }}
-                  placeholder={`e.g. Rs.500 debited from ${bank.name} A/c XX1234 for UPI/Swiggy`}
-                  value={smsText} onChange={e => { setSmsText(e.target.value); setParsed(null) }} />
-
-                {!parsed && smsText.trim() && (
-                  <button className="btn-secondary" style={{ width: '100%', marginTop: 6 }} onClick={handleParse}>
-                    Detect Transaction
-                  </button>
-                )}
-
-                <AnimatePresence>
-                  {parsed && (
-                    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="bc2-parsed">
-                      <div className="bc2-parsed-type">{parsed.isIncome ? '💚 Income' : '🔴 Expense'} · ₹{parsed.amount.toLocaleString('en-IN')}</div>
-                      <div className="bc2-parsed-meta">{parsed.category}{parsed.merchant ? ` · ${parsed.merchant}` : ''}</div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <button className="btn-primary full" onClick={handleSave} disabled={saving} style={{ marginTop: 12 }}>
-                  {saving ? 'Connecting…' : <><CheckCircle2 size={14} /> Connect {bank.name}</>}
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-    </motion.div>
-  )
-}
-
 /* ─── UPI SMS Import Drawer ─── */
 function UpiImportDrawer({ app, phone, toast, onClose }) {
   const [sms, setSms]         = useState('')
@@ -303,19 +197,14 @@ export default function BankConnect() {
   const fileRef = useRef(null)
 
   const [loading, setLoading]           = useState(true)
-  const [smsEnabled, setSmsEnabled]     = useState(false)
-  const [smsSaving, setSmsSaving]       = useState(false)
-  const [connectedBanks, setConnectedBanks] = useState([])
-  const [bankBalances, setBankBalances] = useState({})
   const [showAllBanks, setShowAllBanks] = useState(false)
-  const [bankModal, setBankModal]       = useState(null)
-  const [upiApps, setUpiApps]           = useState({})
   const [upiDrawer, setUpiDrawer]       = useState(null) // app object | null
 
   // Investment form
   const [invForm, setInvForm]           = useState({ name: '', investment_type: 'mutual_fund', invested_amount: '', current_value: '', is_sip: false, sip_amount: '', sip_date: '' })
   const [invSaving, setInvSaving]       = useState(false)
   const [recentInvestments, setRecentInvestments] = useState([])
+  const [investmentsCount, setInvestmentsCount] = useState(0)
 
   // Import
   const [pasteOpen, setPasteOpen]       = useState(false)
@@ -327,57 +216,18 @@ export default function BankConnect() {
   /* ─── Load from Supabase ─── */
   useEffect(() => {
     if (!phone) { setLoading(false); return }
-    api.getUser(phone).then(user => {
-      if (user) {
-        setSmsEnabled(!!user.sms_enabled)
-        try { setConnectedBanks(JSON.parse(user.connected_banks || '[]')) } catch { setConnectedBanks([]) }
-        try { setBankBalances(JSON.parse(user.bank_balances || '{}')) } catch { setBankBalances({}) }
-        try { setUpiApps(JSON.parse(user.upi_apps || '{}')) } catch { setUpiApps({}) }
-      }
-      setLoading(false)
-    }).catch(() => setLoading(false))
+    api.getInvestments(phone).then(inv => setInvestmentsCount(inv?.length || 0)).catch(() => {})
+    setLoading(false)
   }, [phone])
 
-  /* ─── SMS Toggle ─── */
-  const toggleSms = async () => {
-    const next = !smsEnabled
-    setSmsEnabled(next)
-    setSmsSaving(true)
-    try {
-      await api.updateUser(phone, { sms_enabled: next })
-      toast.show(next ? 'SMS tracking enabled' : 'SMS tracking disabled', next ? 'success' : 'info')
-    } catch { setSmsEnabled(!next); toast.show('Failed to save', 'error') }
-    setSmsSaving(false)
-  }
-
-  /* ─── Bank connect ─── */
-  const handleBankClick = bank => {
-    if (connectedBanks.includes(bank.name)) {
-      const updated = connectedBanks.filter(b => b !== bank.name)
-      const updBal  = { ...bankBalances }; delete updBal[bank.name]
-      setConnectedBanks(updated); setBankBalances(updBal)
-      api.updateUser(phone, { connected_banks: JSON.stringify(updated), bank_balances: JSON.stringify(updBal) })
-      toast.show(`${bank.name} disconnected`, 'info')
-    } else {
-      setBankModal(bank)
-    }
-  }
-
-  const handleBankConnected = (name, newBal) => {
-    setConnectedBanks(prev => prev.includes(name) ? prev : [...prev, name])
-    setBankBalances(newBal)
-  }
-
-  /* ─── UPI Toggle ─── */
-  const toggleUpiApp = async (appId) => {
-    const next = !upiApps[appId]
-    const updated = { ...upiApps, [appId]: next }
-    setUpiApps(updated)
-    try {
-      await api.updateUser(phone, { upi_apps: JSON.stringify(updated) })
-      const app = UPI_APPS.find(a => a.id === appId)
-      toast.show(next ? `${app.name} tracking enabled` : `${app.name} disabled`, next ? 'success' : 'info')
-    } catch { setUpiApps(prev => ({ ...prev, [appId]: !next })); toast.show('Failed', 'error') }
+  /* ─── Coming Soon — direct bank/UPI/SMS auto-connect isn't live yet.
+     SMS permissions were removed from the Android manifest (Play Protect
+     blocks sideloaded APKs requesting READ_SMS) and there's no AA/bank
+     API wired up. Real, working paths below: paste-SMS import, CSV
+     upload, and manual investment entry — all write directly to Supabase. ─── */
+  const comingSoon = (what) => {
+    toast.show(`${what} is coming soon! Use "Import Transactions" below to add data right now.`, 'info')
+    document.getElementById('bc2-import')?.scrollIntoView({ behavior: 'smooth' })
   }
 
   /* ─── Investment ─── */
@@ -436,7 +286,6 @@ export default function BankConnect() {
   }
 
   const visibleBanks = showAllBanks ? ALL_BANKS : TOP_BANKS
-  const activeUpiCount = Object.values(upiApps).filter(Boolean).length
 
   return (
     <div className="page page-padded">
@@ -444,10 +293,6 @@ export default function BankConnect() {
 
       {/* Modals */}
       <AnimatePresence>
-        {bankModal && (
-          <BankSetupModal bank={bankModal} phone={phone}
-            onClose={() => setBankModal(null)} onConnected={handleBankConnected} toast={toast} />
-        )}
         {upiDrawer && (
           <UpiImportDrawer app={upiDrawer} phone={phone} toast={toast}
             onClose={() => setUpiDrawer(null)} />
@@ -465,21 +310,21 @@ export default function BankConnect() {
       {/* Hero */}
       <motion.div {...anim(0)} className="bc2-hero">
         <div className="bc2-hero-text">
-          <h2>Auto-track every rupee</h2>
-          <p>Select banks, enable UPI apps, add investments — all synced to your account in real time.</p>
+          <h2>Track every rupee</h2>
+          <p>Import via SMS or CSV, add investments manually — direct bank/UPI auto-sync is coming soon.</p>
         </div>
         <div className="bc2-hero-stats">
           <div className="bc2-stat">
-            <span className="bc2-stat-val">{connectedBanks.length}</span>
-            <span className="bc2-stat-lbl">Banks</span>
+            <span className="bc2-stat-val">{investmentsCount}</span>
+            <span className="bc2-stat-lbl">Investments</span>
           </div>
           <div className="bc2-stat">
-            <span className="bc2-stat-val">{activeUpiCount}</span>
-            <span className="bc2-stat-lbl">UPI Apps</span>
+            <span className="bc2-stat-val">{recentImports.length}</span>
+            <span className="bc2-stat-lbl">Imported</span>
           </div>
           <div className="bc2-stat">
-            <span className="bc2-stat-val">{smsEnabled ? 'ON' : 'OFF'}</span>
-            <span className="bc2-stat-lbl">SMS Track</span>
+            <span className="bc2-stat-val">Soon</span>
+            <span className="bc2-stat-lbl">Bank Sync</span>
           </div>
         </div>
       </motion.div>
@@ -492,26 +337,17 @@ export default function BankConnect() {
           </div>
           <div className="bc2-row-body">
             <div className="bc2-row-title">SMS Auto-Track</div>
-            <div className="bc2-row-sub">
-              {smsEnabled
-                ? <><span className="bc2-dot bc2-dot--on" />Monitoring bank SMS</>
-                : 'Auto-detect bank transactions from SMS'}
-            </div>
+            <div className="bc2-row-sub">Automatic background reading isn't live yet</div>
           </div>
-          <Toggle on={smsEnabled} onToggle={smsSaving ? undefined : toggleSms} />
+          <span className="bc2-soon-badge"><Clock size={11} /> Soon</span>
         </div>
-        <AnimatePresence>
-          {smsEnabled && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-              className="bc2-sms-note">
-              <Smartphone size={12} style={{ flexShrink: 0 }} />
-              <span>
-                <strong>Native Android app</strong> auto-reads SMS.&nbsp;
-                On web, use <button className="bc2-inline-btn" onClick={() => { setPasteOpen(true); document.getElementById('bc2-import')?.scrollIntoView({ behavior: 'smooth' }) }}>Paste Import ↓</button> below.
-              </span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <div className="bc2-sms-note">
+          <Smartphone size={12} style={{ flexShrink: 0 }} />
+          <span>
+            Real-time auto-read needs Play Store SMS approval (in progress).
+            For now, use <button className="bc2-inline-btn" onClick={() => { setPasteOpen(true); document.getElementById('bc2-import')?.scrollIntoView({ behavior: 'smooth' }) }}>Paste Import ↓</button> below — it works instantly.
+          </span>
+        </div>
         <div className="bc2-trust">
           <span><Shield size={10} /> RBI regulated</span>
           <span><Lock size={10} /> Read-only</span>
@@ -525,30 +361,20 @@ export default function BankConnect() {
           <div className="bc2-row-icon" style={{ background: 'rgba(85,20,255,0.1)', color: 'var(--violet)' }}>
             <Building2 size={18} />
           </div>
-          <div>
+          <div style={{ flex: 1 }}>
             <div className="bc2-row-title">Select Your Banks</div>
-            <div className="bc2-row-sub">
-              {connectedBanks.length > 0
-                ? `${connectedBanks.length} bank${connectedBanks.length > 1 ? 's' : ''} connected`
-                : 'Tap to connect — enables SMS tracking & balance'}
-            </div>
+            <div className="bc2-row-sub">Direct bank connection — coming soon</div>
           </div>
+          <span className="bc2-soon-badge"><Clock size={11} /> Soon</span>
         </div>
 
         <div className="bc2-bank-grid" style={{ maxHeight: showAllBanks ? 'none' : 210, overflow: 'hidden', transition: 'max-height 0.4s ease' }}>
-          {visibleBanks.map(b => {
-            const on = connectedBanks.includes(b.name)
-            return (
-              <button key={b.name} className={`bc2-bank-card ${on ? 'bc2-bank-card--on' : ''}`} onClick={() => handleBankClick(b)}>
-                <span className="bc2-bank-icon">{b.icon}</span>
-                <span className="bc2-bank-name">{b.name}</span>
-                {on ? <Check size={10} style={{ color: 'var(--primary)', marginTop: 1 }} /> : null}
-                {on && bankBalances[b.name] ? (
-                  <span className="bc2-bank-bal">₹{Number(bankBalances[b.name]).toLocaleString('en-IN')}</span>
-                ) : null}
-              </button>
-            )
-          })}
+          {visibleBanks.map(b => (
+            <button key={b.name} className="bc2-bank-card bc2-bank-card--soon" onClick={() => comingSoon(`${b.name} connection`)}>
+              <span className="bc2-bank-icon">{b.icon}</span>
+              <span className="bc2-bank-name">{b.name}</span>
+            </button>
+          ))}
         </div>
 
         <button className="bc2-show-more" onClick={() => setShowAllBanks(!showAllBanks)}>
@@ -562,41 +388,28 @@ export default function BankConnect() {
           <div className="bc2-row-icon" style={{ background: 'rgba(34,211,238,0.1)', color: '#22D3EE' }}>
             <Zap size={18} />
           </div>
-          <div>
+          <div style={{ flex: 1 }}>
             <div className="bc2-row-title">UPI Apps</div>
-            <div className="bc2-row-sub">
-              {activeUpiCount > 0 ? `${activeUpiCount} app${activeUpiCount > 1 ? 's' : ''} tracking enabled` : '70%+ of India\'s transactions are UPI'}
-            </div>
+            <div className="bc2-row-sub">Auto-detect — coming soon. Import manually for now.</div>
           </div>
+          <span className="bc2-soon-badge"><Clock size={11} /> Soon</span>
         </div>
 
         <div className="bc2-upi-list">
-          {UPI_APPS.map(app => {
-            const on = !!upiApps[app.id]
-            return (
-              <div key={app.id} className={`bc2-upi-row ${on ? 'bc2-upi-row--on' : ''}`}>
-                <div className="bc2-upi-left">
-                  <span className="bc2-upi-icon">{app.icon}</span>
-                  <div>
-                    <div className="bc2-upi-name">{app.name}</div>
-                    <div className="bc2-upi-meta">
-                      {on
-                        ? <><span className="bc2-dot bc2-dot--on" />Tracking active</>
-                        : app.txns}
-                    </div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {on && (
-                    <button className="bc2-import-btn" onClick={() => setUpiDrawer(app)}>
-                      <MessageSquare size={12} /> Import SMS
-                    </button>
-                  )}
-                  <Toggle on={on} onToggle={() => toggleUpiApp(app.id)} />
+          {UPI_APPS.map(app => (
+            <div key={app.id} className="bc2-upi-row">
+              <div className="bc2-upi-left">
+                <span className="bc2-upi-icon">{app.icon}</span>
+                <div>
+                  <div className="bc2-upi-name">{app.name}</div>
+                  <div className="bc2-upi-meta">{app.txns}</div>
                 </div>
               </div>
-            )
-          })}
+              <button className="bc2-import-btn" onClick={() => setUpiDrawer(app)}>
+                <MessageSquare size={12} /> Import SMS
+              </button>
+            </div>
+          ))}
         </div>
       </motion.div>
 
@@ -622,7 +435,7 @@ export default function BankConnect() {
           <div className="bc2-aa-step-arrow">→</div>
           <div className="bc2-aa-step"><span className="bc2-aa-num">3</span><span>Live data fetched automatically</span></div>
         </div>
-        <button className="bc2-aa-btn" onClick={() => toast.show('AA integration coming soon — add SETU_AA_KEY to environment', 'info')}>
+        <button className="bc2-aa-btn" onClick={() => toast.show('AA integration coming soon — requires Setu FIU registration', 'info')}>
           <Clock size={14} /> Coming Soon — AA Integration
         </button>
       </motion.div>

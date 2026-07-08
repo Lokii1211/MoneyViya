@@ -279,6 +279,25 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
 }
 .form-input:focus { border-color:var(--primary); }
 .big-input { font-family:var(--mono); font-size:32px; font-weight:800; text-align:center; padding:24px; letter-spacing:-1px; }
+
+/* ── Premium text input, used app-wide (Reminders, Health, Wealth, BankConnect, Habits) ── */
+.input-field {
+  width: 100%; background: var(--surface2); border: 1.5px solid var(--border2);
+  border-radius: 12px; padding: 13px 15px; color: var(--text);
+  font-size: 14.5px; font-family: inherit; outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.input-field::placeholder { color: var(--text3); font-weight: 400; }
+.input-field:focus {
+  border-color: var(--primary); background: var(--surface);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+.input-field:disabled { opacity: 0.5; cursor: not-allowed; }
+.input-field[type="number"] { font-variant-numeric: tabular-nums; }
+.input-field[type="date"],
+.input-field[type="time"] { color-scheme: light; cursor: pointer; }
+[data-theme="dark"] .input-field[type="date"],
+[data-theme="dark"] .input-field[type="time"] { color-scheme: dark; }
 .form-actions { display:flex; gap:10px; margin-top:12px; }
 .form-actions button { flex:1; }
 .cat-grid { display:flex; flex-wrap:wrap; gap:8px; }
@@ -886,7 +905,7 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
   padding:14px; border:none; border-radius:var(--radius-xs);
   background:linear-gradient(135deg,var(--primary),var(--primary-light)); color:#000;
   font-size:14px; font-weight:800; cursor:pointer; transition:all 0.25s var(--ease);
-  display:flex; align-items:center; justify-content:center; gap:8px;
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
 }
 .btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 20px var(--primary-glow); }
 .btn-primary:disabled { opacity:0.5; cursor:wait; transform:none; }
@@ -2847,7 +2866,7 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
   background: #00E5B0; border: 2px solid var(--bg);
 }
 .chat-hdr-info { flex: 1; }
-.chat-hdr-name { font-weight: 700; font-size: 15px; color: var(--text1); }
+.chat-hdr-name { font-weight: 700; font-size: 15px; color: var(--text); }
 .chat-hdr-sub {
   font-size: 11px; color: var(--text3);
   display: flex; align-items: center; gap: 4px;
@@ -2888,7 +2907,7 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
   cursor: pointer; transition: all 0.18s;
   text-align: left;
 }
-.chat-suggestion-chip:hover { border-color: var(--primary); color: var(--text1); background: var(--surface2); }
+.chat-suggestion-chip:hover { border-color: var(--primary); color: var(--text); background: var(--surface2); }
 
 /* Message row */
 .chat-row {
@@ -2910,7 +2929,7 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
   background: var(--surface);
   border: 1px solid var(--border);
   border-bottom-left-radius: 4px;
-  color: var(--text1);
+  color: var(--text);
 }
 .chat-bubble.user {
   background: linear-gradient(135deg, #5514FF, #7C6AF9);
@@ -3004,7 +3023,7 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
   animation: slideUp 0.2s ease;
 }
 .chat-qa-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.chat-qa-title { font-size: 13px; font-weight: 700; color: var(--text1); }
+.chat-qa-title { font-size: 13px; font-weight: 700; color: var(--text); }
 .chat-qa-close { background: none; border: none; color: var(--text3); cursor: pointer; padding: 4px; }
 .chat-qa-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .chat-qa-btn {
@@ -3032,7 +3051,7 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
 }
 .chat-attach-opt:hover { background: rgba(85,20,255,0.1); }
 .chat-attach-emoji { font-size: 22px; }
-.chat-attach-label { font-size: 13px; font-weight: 600; color: var(--text1); display: block; }
+.chat-attach-label { font-size: 13px; font-weight: 600; color: var(--text); display: block; }
 .chat-attach-desc { font-size: 11px; color: var(--text3); }
 .chat-attach-close {
   background: none; border: none; color: var(--text3);
@@ -3063,7 +3082,7 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
 .chat-bar-input {
   width: 100%; padding: 8px 10px;
   background: none; border: none; outline: none;
-  color: var(--text1); font-size: 14px; resize: none;
+  color: var(--text); font-size: 14px; resize: none;
   font-family: inherit; line-height: 1.5;
   max-height: 120px; overflow-y: auto;
 }
@@ -3230,7 +3249,7 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
   color: var(--text2); font-size: 13px; cursor: pointer;
   margin-bottom: 16px; text-align: left; transition: all 0.2s;
 }
-.hb-viya-bar:hover { background: rgba(0,229,176,0.12); color: var(--text1); }
+.hb-viya-bar:hover { background: rgba(0,229,176,0.12); color: var(--text); }
 .hb-viya-arrow { margin-left: auto; color: #00E5B0; }
 
 /* Add trigger */
@@ -3265,7 +3284,7 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
 
 /* Item body */
 .hb-item-body { flex: 1; }
-.hb-item-name { font-size: 14px; font-weight: 600; color: var(--text1); margin-bottom: 4px; }
+.hb-item-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
 .hb-item-meta { display: flex; flex-wrap: wrap; gap: 5px; }
 .hb-streak-pill {
   display: inline-flex; align-items: center; gap: 3px;
@@ -3305,7 +3324,7 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
   border: 1px dashed var(--border);
 }
 .hb-empty-icon { font-size: 48px; margin-bottom: 12px; }
-.hb-empty-title { font-size: 17px; font-weight: 700; margin-bottom: 6px; color: var(--text1); }
+.hb-empty-title { font-size: 17px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
 .hb-empty-sub { font-size: 14px; color: var(--text3); }
 
 /* Milestones row */
@@ -3315,7 +3334,7 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
 }
 .hb-milestones-title {
   display: flex; align-items: center; gap: 6px;
-  font-size: 13px; font-weight: 700; color: var(--text1); margin-bottom: 12px;
+  font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 12px;
 }
 .hb-milestones-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
 .hb-milestones-row::-webkit-scrollbar { height: 0; }
@@ -3335,7 +3354,7 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
   position: absolute; bottom: 0; left: 0; right: 0;
 }
 .hb-add-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.hb-add-title { font-size: 16px; font-weight: 700; color: var(--text1); }
+.hb-add-title { font-size: 16px; font-weight: 700; color: var(--text); }
 .hb-custom-row { display: flex; gap: 8px; margin-bottom: 16px; }
 .hb-custom-add { flex-shrink: 0; padding: 10px 18px; }
 .hb-presets-label { font-size: 12px; color: var(--text3); font-weight: 600; margin-bottom: 10px; }
@@ -3344,7 +3363,7 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 12px; border-radius: 12px;
   background: var(--surface2); border: 1px solid var(--border);
-  font-size: 13px; color: var(--text1); cursor: pointer;
+  font-size: 13px; color: var(--text); cursor: pointer;
   transition: all 0.15s; text-align: left;
 }
 .hb-preset-btn:hover { border-color: var(--primary); background: rgba(85,20,255,0.08); }
@@ -3377,7 +3396,7 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
 @keyframes celebBounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.2)} }
 .hb-celeb-title { font-size: 22px; font-weight: 800; color: #FFB800; margin-bottom: 8px; }
 .hb-celeb-habit { font-size: 15px; color: var(--text2); margin-bottom: 6px; }
-.hb-celeb-msg { font-size: 14px; color: var(--text1); line-height: 1.5; }
+.hb-celeb-msg { font-size: 14px; color: var(--text); line-height: 1.5; }
 
 /* ═══════════════════════════════════════════════════════════
    SHARED UTILITIES v9
@@ -3491,12 +3510,21 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
   background: var(--surface2, rgba(255,255,255,0.04));
   border: 1.5px solid rgba(255,255,255,0.07);
   cursor: pointer; transition: all 0.18s ease;
-  font-family: inherit; color: var(--text1); position: relative;
+  font-family: inherit; color: var(--text); position: relative;
 }
 .bc2-bank-card:hover { border-color: rgba(0,229,176,0.35); transform: translateY(-1px); }
 .bc2-bank-card--on { border-color: var(--primary) !important; background: rgba(0,229,176,0.07) !important; }
+.bc2-bank-card--soon { opacity: 0.7; }
+.bc2-bank-card--soon:hover { border-color: rgba(255,255,255,0.14); transform: none; opacity: 0.9; }
 .bc2-bank-icon { font-size: 20px; }
 .bc2-bank-name { font-size: 10px; font-weight: 600; text-align: center; color: var(--text2); }
+
+/* Coming-soon badge, used inline in section headers */
+.bc2-soon-badge {
+  display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
+  background: rgba(255,184,0,0.12); color: #FFB800;
+  font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 20px;
+}
 .bc2-bank-bal { font-size: 9px; color: var(--primary); font-weight: 700; font-family: var(--mono); }
 
 .bc2-show-more {
@@ -3650,12 +3678,12 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
   display: flex; align-items: center; gap: 18px;
 }
 .hl-hero-right { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.hl-hero-label { font-size: 16px; font-weight: 800; color: var(--text1); }
+.hl-hero-label { font-size: 16px; font-weight: 800; color: var(--text); }
 .hl-hero-sub { font-size: 12px; color: var(--text3); margin-bottom: 4px; }
 .hl-hero-vitals { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
 .hl-vital {
   display: flex; align-items: center; gap: 4px;
-  font-size: 12px; font-weight: 700; color: var(--text1);
+  font-size: 12px; font-weight: 700; color: var(--text);
   background: rgba(255,255,255,0.06); border-radius: 20px; padding: 4px 10px;
 }
 .hl-vital-btn {
@@ -3783,7 +3811,7 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
   text-align: center; padding: 24px 16px; margin-bottom: 16px;
   background: var(--surface2, rgba(255,255,255,0.04)); border-radius: 18px;
 }
-.hl-weight-current { font-size: 34px; font-weight: 900; font-family: var(--mono); color: var(--text1); line-height: 1; }
+.hl-weight-current { font-size: 34px; font-weight: 900; font-family: var(--mono); color: var(--text); line-height: 1; }
 .hl-weight-sub { font-size: 12px; color: var(--text3); margin-top: 6px; font-weight: 600; }
 .hl-weight-change {
   display: inline-flex; align-items: center; gap: 4px;
@@ -3889,7 +3917,7 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
   background: transparent; color: var(--text3); display: flex; align-items: center; justify-content: center;
   transition: all 0.15s;
 }
-.rm-smart-dismiss:hover { background: rgba(255,255,255,0.08); color: var(--text1); }
+.rm-smart-dismiss:hover { background: rgba(255,255,255,0.08); color: var(--text); }
 
 /* Notification permission banner */
 .rm-notif-banner {
@@ -4042,7 +4070,7 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
 .rm-daygrid-hint {
   font-size: 11.5px; color: var(--text3); margin-top: 8px; line-height: 1.4;
 }
-.rm-daygrid-hint strong { color: var(--text1); font-weight: 700; }
+.rm-daygrid-hint strong { color: var(--text); font-weight: 700; }
 
 /* Time row */
 .rm-time-row { display: flex; align-items: center; gap: 8px; }
