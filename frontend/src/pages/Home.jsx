@@ -5,7 +5,7 @@ import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useCountUp, getCurrentFestival, formatINR, getGreeting, getGreetingEmoji, getGreetingKey } from '../lib/utils'
 import { t } from '../lib/i18n'
-import { TrendingUp, TrendingDown, Plus, Flame, Target, BarChart3, Zap, Activity, CreditCard, MessageCircle, Link2 } from 'lucide-react'
+import { TrendingUp, TrendingDown, Plus, Flame, Target, BarChart3, Zap, Activity, CreditCard, MessageCircle, Link2, Bell, PieChart } from 'lucide-react'
 
 const BRIEF_ITEMS_POOL = {
   morning: [
@@ -95,12 +95,14 @@ export default function Home() {
   while (briefItems.length < 3) { briefItems.push(poolItems[briefItems.length % poolItems.length]); if (briefItems.length >= 3) break }
 
   const actions = [
-    { icon: <Plus size={18}/>, label: 'Add Expense', to: '/expenses', color: 'var(--viya-success)' },
-    { icon: <Target size={18}/>, label: 'Goals', to: '/goals', color: 'var(--viya-error)' },
-    { icon: <Flame size={18}/>, label: 'Habits', to: '/habits', color: 'var(--viya-gold-500)' },
-    { icon: <Activity size={18}/>, label: 'Health', to: '/health', color: '#FF7062' },
-    { icon: <CreditCard size={18}/>, label: 'Bills', to: '/bills', color: 'var(--viya-warning)' },
-    { icon: <BarChart3 size={18}/>, label: 'Report', to: '/report', color: 'var(--viya-primary-400)' },
+    { icon: <Plus size={18}/>,        label: 'Add Expense', to: '/expenses',  color: 'var(--viya-success)' },
+    { icon: <Target size={18}/>,      label: 'Goals',       to: '/goals',     color: 'var(--viya-error)' },
+    { icon: <Flame size={18}/>,       label: 'Habits',      to: '/habits',    color: 'var(--viya-gold-500)' },
+    { icon: <Bell size={18}/>,        label: 'Reminders',   to: '/reminders', color: 'var(--primary)' },
+    { icon: <CreditCard size={18}/>,  label: 'Bills',       to: '/bills',     color: 'var(--viya-warning)' },
+    { icon: <PieChart size={18}/>,    label: 'Budget',      to: '/budget',    color: '#22D3EE' },
+    { icon: <Activity size={18}/>,    label: 'Health',      to: '/health',    color: '#FF7062' },
+    { icon: <BarChart3 size={18}/>,   label: 'Report',      to: '/report',    color: 'var(--viya-primary-400)' },
   ]
   const unpaidBills = bills.filter(b => b.status !== 'paid')
   const anim = (d) => ({ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { delay: d } })
@@ -122,7 +124,7 @@ export default function Home() {
             <motion.div {...anim(0.2)} className="skeleton" style={{ height: 100, borderRadius: 16 }} />
             <motion.div {...anim(0.25)} className="skeleton" style={{ height: 100, borderRadius: 16 }} />
           </div>
-          <div className="qa-grid-3 mb-16">
+          <div className="qa-grid-4 mb-16">
             {[0,1,2,3,4,5].map(i => (
               <motion.div key={i} {...anim(0.3 + i * 0.04)} className="skeleton" style={{ height: 64, borderRadius: 12 }} />
             ))}
@@ -280,7 +282,7 @@ export default function Home() {
           {/* Quick Actions */}
           <div className="stagger-children home-section">
             <div className="title-m title-m-14 mb-8">{'⚡'} Quick Actions</div>
-            <div className="qa-grid-3">
+            <div className="qa-grid-4">
               {actions.map((a, i) => (
                 <button key={i} onClick={() => nav(a.to)} className={`qa-btn ripple ${i === 0 ? 'highlight' : 'normal'}`}>
                   <div className="qa-icon-wrap" style={i !== 0 ? { background: a.color + '15', color: a.color } : undefined}>

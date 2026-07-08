@@ -658,7 +658,8 @@ export default function Wealth() {
                                       placeholder="Amount to add"
                                       value={addMoneyAmount}
                                       onChange={e => setAddMoneyAmount(e.target.value)}
-                                      style={{ ...inputStyle, paddingLeft: 28 }}
+                                      className="input-field"
+                                      style={{ paddingLeft: 28 }}
                                       autoFocus
                                     />
                                   </div>

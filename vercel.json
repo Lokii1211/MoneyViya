@@ -20,8 +20,34 @@
     "api/bank-connect.py": {
       "runtime": "@vercel/python@4.5.0",
       "maxDuration": 30
+    },
+    "api/cron/check-reminders.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 60
+    },
+    "api/cron/morning-brief.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 60
+    },
+    "api/cron/weekly-summary.py": {
+      "runtime": "@vercel/python@4.5.0",
+      "maxDuration": 60
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/check-reminders",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/morning-brief",
+      "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-summary",
+      "schedule": "0 4 * * 0"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",

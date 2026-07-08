@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
-import { Home, Mail, Wallet, Heart, User, Bell, Search } from 'lucide-react'
+import { Home, AlarmClock, Wallet, Heart, User, Bell, Search } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNotificationStore } from '../stores'
 import { useHaptics } from '../hooks/useHaptics'
@@ -9,7 +9,7 @@ import { t } from '../lib/i18n'
 function getNavItems() {
   return [
     { to: '/', icon: Home, label: t('home'), end: true },
-    { to: '/email', icon: Mail, label: 'Inbox' },
+    { to: '/reminders', icon: AlarmClock, label: 'Reminders' },
     { to: '/wealth', icon: Wallet, label: 'Wealth', center: true },
     { to: '/health', icon: Heart, label: 'Health' },
     { to: '/profile', icon: User, label: t('profile') },
