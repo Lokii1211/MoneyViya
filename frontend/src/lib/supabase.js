@@ -98,6 +98,32 @@ export const api = {
   },
   async updateUser(phone, data) { return update('users', `phone=eq.${phone}`, data) },
 
+  async deleteAccount(phone) {
+    if (!REST) return { success: false }
+    const clean = phone.replace(/[^\d]/g, '').replace(/^91/, '').slice(-10)
+    const long = '91' + clean
+    const byPhone = [
+      'transactions', 'goals', 'habits', 'habit_checkins', 'notifications',
+      'chat_history', 'user_reminders', 'health_logs', 'meals', 'medicines',
+      'medicine_checkins', 'bills_and_dues', 'investments', 'emails',
+      'calendar_events', 'viya_memory', 'reviews',
+    ]
+    for (const table of byPhone) {
+      await remove(table, `phone=in.(${clean},${long})`)
+    }
+    await remove('lending', `user_phone=in.(${clean},${long})`)
+    await remove('family_connections', `owner_phone=in.(${clean},${long})`)
+    await remove('family_connections', `member_phone=in.(${clean},${long})`)
+
+    // Verify the users row is actually gone before telling the caller it succeeded
+    try {
+      const r = await fetch(`${REST}/users?phone=in.(${clean},${long})`, { method: 'DELETE', headers: hdrs() })
+      if (!r.ok) return { success: false }
+      const remaining = await query('users', `?phone=in.(${clean},${long})&select=phone`)
+      return { success: remaining.length === 0 }
+    } catch { return { success: false } }
+  },
+
   async getTransactions(phone, limit = 50) {
     return query('transactions', `?${phoneFilter(phone)}&select=*&order=created_at.desc&limit=${limit}`)
   },

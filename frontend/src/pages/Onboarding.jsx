@@ -94,17 +94,10 @@ export default function Onboarding() {
   async function finish() {
     setSaving(true)
     try {
-      const selectedGoalLabels = form.goals
-        .map(id => GOALS.find(g => g.id === id)?.label)
-        .filter(Boolean)
-
       await api.updateUser(phone, {
         name: form.name.trim() || 'User',
         age: Number(form.age) || null,
         monthly_income: Number(form.income) || 0,
-        goals: selectedGoalLabels,
-        sms_access: form.smsAccess,
-        whatsapp_connected: form.whatsappConnected,
         onboarding_complete: true,
       })
 

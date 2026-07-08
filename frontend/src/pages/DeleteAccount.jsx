@@ -20,7 +20,8 @@ export default function DeleteAccount() {
     setStep(STEPS.PROCESSING)
 
     try {
-      await api.updateUser(phone, { status: 'deleted' })
+      const result = await api.deleteAccount(phone)
+      if (!result.success) throw new Error('Deletion did not complete')
 
       setStep(STEPS.DONE)
 
@@ -31,7 +32,7 @@ export default function DeleteAccount() {
       }, 3000)
     } catch (err) {
       console.error('Delete account error:', err)
-      toast.show('Something went wrong. Please try again.', 'error')
+      toast.show('Something went wrong deleting your account. Please try again or email lokesh@viya.app.', 'error')
       setStep(STEPS.CONFIRM)
     }
   }
