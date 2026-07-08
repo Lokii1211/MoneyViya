@@ -5,7 +5,7 @@ import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useCountUp, getCurrentFestival, formatINR, getGreeting, getGreetingEmoji, getGreetingKey } from '../lib/utils'
 import { t } from '../lib/i18n'
-import { TrendingUp, TrendingDown, Plus, Flame, Target, BarChart3, Zap, Activity, CreditCard, MessageCircle, Link2, Bell, PieChart } from 'lucide-react'
+import { TrendingUp, TrendingDown, Plus, Flame, Target, BarChart3, Zap, Activity, CreditCard, MessageCircle, Link2, Bell, PieChart, ChevronRight } from 'lucide-react'
 
 const BRIEF_ITEMS_POOL = {
   morning: [
@@ -84,15 +84,20 @@ export default function Home() {
   const animatedExpense = useCountUp(expense, 700)
 
   const briefItems = []
-  if (moneyLeft < 200 && moneyLeft > 0) briefItems.push({ icon: '⚠️', text: `Only ₹${moneyLeft} left today — spend wisely!` })
-  if (moneyLeft < 0) briefItems.push({ icon: '\u{1F534}', text: `Over budget by ₹${Math.abs(moneyLeft)} — review expenses` })
-  if (maxStreak > 0) briefItems.push({ icon: '\u{1F525}', text: `${maxStreak}-day streak — don't break it!` })
+  if (moneyLeft < 0) briefItems.push({ icon: '\u{1F534}', text: `Over budget by ₹${Math.abs(moneyLeft)} — review expenses`, to: '/expenses' })
+  else if (moneyLeft < 200) briefItems.push({ icon: '⚠️', text: `Only ₹${moneyLeft} left today — spend wisely!`, to: '/expenses' })
+  const overdueBills = bills.filter(b => b.status !== 'paid' && b.due_date && new Date(b.due_date) < Date.now())
+  const dueSoonBills = bills.filter(b => b.status !== 'paid' && b.due_date && !overdueBills.includes(b) && (new Date(b.due_date) - Date.now()) / 86400000 <= 2)
+  if (overdueBills.length) briefItems.push({ icon: '\u{1F9FE}', text: `${overdueBills.length} bill${overdueBills.length > 1 ? 's' : ''} overdue — pay now`, to: '/bills' })
+  else if (dueSoonBills.length) briefItems.push({ icon: '\u{1F9FE}', text: `${dueSoonBills.map(b => b.name).slice(0, 2).join(', ')} due soon`, to: '/bills' })
+  if (totalHabits > 0 && todayDone < totalHabits) briefItems.push({ icon: '\u{1F525}', text: `${totalHabits - todayDone} habit${totalHabits - todayDone > 1 ? 's' : ''} left today${maxStreak > 0 ? ` — keep your ${maxStreak}-day streak!` : ''}`, to: '/habits' })
+  else if (maxStreak > 0) briefItems.push({ icon: '\u{1F525}', text: `${maxStreak}-day streak — don't break it!`, to: '/habits' })
   if (goals.length > 0) {
     const g = goals.find(g => g.current_amount < g.target_amount)
-    if (g) briefItems.push({ icon: '\u{1F3AF}', text: `${g.name}: ₹${Number(g.current_amount)} of ₹${Number(g.target_amount)}` })
+    if (g) briefItems.push({ icon: '\u{1F3AF}', text: `${g.name}: ₹${Number(g.current_amount)} of ₹${Number(g.target_amount)}`, to: '/goals' })
   }
   const poolItems = BRIEF_ITEMS_POOL[period]
-  while (briefItems.length < 3) { briefItems.push(poolItems[briefItems.length % poolItems.length]); if (briefItems.length >= 3) break }
+  while (briefItems.length < 3) { briefItems.push({ ...poolItems[briefItems.length % poolItems.length], to: '/chat?q=' + encodeURIComponent(poolItems[briefItems.length % poolItems.length].text) }); if (briefItems.length >= 3) break }
 
   const actions = [
     { icon: <Plus size={18}/>,        label: 'Add Expense', to: '/expenses',  color: 'var(--viya-success)' },
@@ -176,17 +181,24 @@ export default function Home() {
           )}
 
           {/* Daily Brief */}
-          <div onClick={() => nav('/chat?q=daily+briefing')} className="daily-brief" style={{ borderRadius: 20 }}>
+          <div className="daily-brief" style={{ borderRadius: 20 }}>
             <div className="brief-top">
               <span className="brief-label">
                 {period === 'morning' ? '☀️' : period === 'evening' ? '\u{1F305}' : period === 'night' ? '\u{1F319}' : '\u{1F324}️'} Daily Brief
               </span>
+              <button className="brief-viewall" onClick={() => nav('/reminders')}>Reminders {'→'}</button>
             </div>
             <div className="brief-headline">{briefItems.length} things need you today</div>
             <div className="brief-list stagger">
               {briefItems.slice(0, 3).map((item, i) => (
-                <div key={i} className="brief-item animate-slideUp" style={{ animationDelay: `${i * 0.08}s`, animationFillMode: 'backwards' }}>
+                <div
+                  key={i}
+                  className="brief-item brief-item-clickable animate-slideUp"
+                  style={{ animationDelay: `${i * 0.08}s`, animationFillMode: 'backwards' }}
+                  onClick={() => nav(item.to || '/chat?q=daily+briefing')}
+                >
                   <span className="brief-item-icon">{item.icon}</span><span>{item.text}</span>
+                  <ChevronRight size={14} className="brief-item-chevron" />
                 </div>
               ))}
             </div>

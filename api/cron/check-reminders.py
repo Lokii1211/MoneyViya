@@ -42,6 +42,9 @@ class handler(BaseHTTPRequestHandler):
             current_weekday = ist_now.strftime("%A")
             current_date = ist_now.day
             current_date_str = ist_now.strftime("%Y-%m-%d")
+            # Last day of the current month (handles 28/29/30/31-day months)
+            next_month = ist_now.replace(day=28) + timedelta(days=4)
+            last_day_of_month = (next_month - timedelta(days=next_month.day)).day
             
             results = {
                 "time_ist": ist_now.isoformat(),
@@ -77,7 +80,10 @@ class handler(BaseHTTPRequestHandler):
                             if rem.get("weekday", "") == current_weekday:
                                 should_fire = True
                         elif freq == "monthly":
-                            if rem.get("month_date", 1) == current_date:
+                            target_day = rem.get("month_date", 1) or 1
+                            # Clamp to the last real day so 29/30/31 still fire in shorter months
+                            effective_day = min(target_day, last_day_of_month)
+                            if effective_day == current_date:
                                 should_fire = True
                         elif freq == "once":
                             # One-time reminder: check if date matches

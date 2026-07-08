@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Bell, Plus, Clock, Calendar, Trash2, Repeat, Sun,
   X, Smartphone, MessageCircle, AlarmClock, ChevronRight,
+  AlertTriangle, Flame, CreditCard, Target, Sparkles,
 } from 'lucide-react'
 
 /* ─── Constants ──────────────────────────────────────────────── */
@@ -82,6 +84,85 @@ function freqBadgeClass(freq) {
   return 'rm-badge'
 }
 
+/* ─── Smart Alerts — system-detected nudges, not manual reminders ──
+   Computed live from budget / habits / bills data, distinct from the
+   user-scheduled reminders above. Dismissed per-day via localStorage. */
+
+function todayKey() { return new Date().toISOString().split('T')[0] }
+
+function getDismissed() {
+  try { return JSON.parse(localStorage.getItem(`mv_alerts_dismissed_${todayKey()}`) || '[]') }
+  catch { return [] }
+}
+
+function dismissAlert(id) {
+  const list = getDismissed()
+  if (!list.includes(id)) list.push(id)
+  localStorage.setItem(`mv_alerts_dismissed_${todayKey()}`, JSON.stringify(list))
+}
+
+function computeSmartAlerts({ userData, habits, checkins, bills }) {
+  const alerts = []
+  const dismissed = getDismissed()
+  const hour = new Date().getHours()
+
+  /* Over-budget today */
+  const txns = userData?.recent_transactions || []
+  const todaySpent = txns
+    .filter(t => t.type === 'expense' && new Date(t.created_at).toDateString() === new Date().toDateString())
+    .reduce((s, t) => s + Number(t.amount), 0)
+  const dailyBudget = userData?.daily_budget || 1000
+  if (todaySpent > dailyBudget) {
+    alerts.push({
+      id: 'over-budget',
+      icon: <AlertTriangle size={17} />,
+      color: '#ff5050',
+      title: `Over budget by ₹${Math.round(todaySpent - dailyBudget)}`,
+      desc: `You've spent ₹${Math.round(todaySpent)} of your ₹${Math.round(dailyBudget)} daily budget today.`,
+      cta: 'Review expenses', to: '/expenses',
+    })
+  }
+
+  /* Incomplete habits — only nudge in the evening (after 6pm) */
+  if (hour >= 18 && habits?.length) {
+    const doneIds = new Set((checkins || []).map(c => c.habit_id))
+    const pending = habits.filter(h => !doneIds.has(h.id))
+    if (pending.length) {
+      const atRisk = pending.filter(h => (h.current_streak || 0) >= 3)
+      alerts.push({
+        id: 'habits-pending',
+        icon: <Flame size={17} />,
+        color: '#FF9500',
+        title: `${pending.length} habit${pending.length > 1 ? 's' : ''} not done today`,
+        desc: atRisk.length
+          ? `${atRisk.map(h => h.name).slice(0, 2).join(', ')} — don't break your streak!`
+          : pending.map(h => h.name).slice(0, 3).join(', '),
+        cta: 'Check in now', to: '/habits',
+      })
+    }
+  }
+
+  /* Bills due within 2 days or overdue */
+  const now = Date.now()
+  const dueSoon = (bills || []).filter(b => b.status !== 'paid' && b.due_date &&
+    (new Date(b.due_date) - now) / 86400000 <= 2)
+  if (dueSoon.length) {
+    const overdue = dueSoon.filter(b => new Date(b.due_date) < now)
+    alerts.push({
+      id: 'bills-due',
+      icon: <CreditCard size={17} />,
+      color: overdue.length ? '#ff5050' : '#f59e0b',
+      title: overdue.length
+        ? `${overdue.length} bill${overdue.length > 1 ? 's' : ''} overdue`
+        : `${dueSoon.length} bill${dueSoon.length > 1 ? 's' : ''} due soon`,
+      desc: dueSoon.map(b => b.name).slice(0, 3).join(', '),
+      cta: 'Pay now', to: '/bills',
+    })
+  }
+
+  return alerts.filter(a => !dismissed.includes(a.id))
+}
+
 /* ─── Toggle ─────────────────────────────────────────────────── */
 
 function Toggle({ on, onToggle }) {
@@ -102,18 +183,20 @@ function Toggle({ on, onToggle }) {
 
 export default function Reminders() {
   const { phone } = useApp()
+  const nav = useNavigate()
   const [reminders, setReminders] = useState([])
   const [loading, setLoading]     = useState(true)
   const [showAdd, setShowAdd]     = useState(false)
   const [form, setForm]           = useState(EMPTY_FORM)
   const [saving, setSaving]       = useState(false)
+  const [smartAlerts, setSmartAlerts] = useState([])
   const [notifPerm, setNotifPerm] = useState(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   )
   const timersRef = useRef({})
 
   /* Load on mount */
-  useEffect(() => { if (phone) load() }, [phone])
+  useEffect(() => { if (phone) { load(); loadSmartAlerts() } }, [phone])
 
   /* 30-second poll for due in-app notifications */
   useEffect(() => {
@@ -142,6 +225,20 @@ export default function Reminders() {
     const data = await api.getUserReminders(phone)
     setReminders(data || [])
     setLoading(false)
+  }
+
+  const loadSmartAlerts = async () => {
+    try {
+      const [userData, habits, checkins, bills] = await Promise.all([
+        api.getUser(phone), api.getHabits(phone), api.getCheckins(phone), api.getBills(phone),
+      ])
+      setSmartAlerts(computeSmartAlerts({ userData, habits, checkins, bills }))
+    } catch { setSmartAlerts([]) }
+  }
+
+  const handleDismissAlert = (id) => {
+    dismissAlert(id)
+    setSmartAlerts(prev => prev.filter(a => a.id !== id))
   }
 
   const scheduleLocalNotif = (r) => {
@@ -327,16 +424,20 @@ export default function Reminders() {
                 {form.freq === 'monthly' && (
                   <>
                     <div className="rm-section-label" style={{ marginTop: 12 }}>Day of month</div>
-                    <div className="rm-day-row">
-                      {[1, 2, 3, 5, 7, 10, 14, 15, 20, 21, 25, 28].map(d => (
+                    <div className="rm-daygrid">
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
                         <button
                           key={d}
-                          className={`rm-day-btn ${form.month_date === d ? 'rm-day-btn--active rm-day-btn--violet' : ''}`}
+                          className={`rm-daygrid-btn ${form.month_date === d ? 'rm-daygrid-btn--active' : ''}`}
                           onClick={() => setForm({ ...form, month_date: d })}
                         >
-                          {ordinal(d)}
+                          {d}
                         </button>
                       ))}
+                    </div>
+                    <div className="rm-daygrid-hint">
+                      Selected: <strong>{ordinal(form.month_date)}</strong> of every month
+                      {form.month_date >= 29 && ' (shorter months fire on the last day)'}
                     </div>
                   </>
                 )}
@@ -451,6 +552,43 @@ export default function Reminders() {
           Reminders fire on WhatsApp to the exact minute — even when the app is closed.
         </p>
       </motion.div>
+
+      {/* ── Smart Alerts — auto-detected, not manually scheduled ── */}
+      {smartAlerts.length > 0 && (
+        <div className="rm-smart-section">
+          <div className="rm-smart-hdr">
+            <Sparkles size={13} style={{ color: 'var(--primary)' }} />
+            <span>Smart Alerts</span>
+          </div>
+          <AnimatePresence>
+            {smartAlerts.map(a => (
+              <motion.div
+                key={a.id}
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                className="rm-smart-card"
+                style={{ borderColor: a.color + '40' }}
+              >
+                <div className="rm-smart-icon" style={{ color: a.color, background: a.color + '18' }}>
+                  {a.icon}
+                </div>
+                <div className="rm-smart-body">
+                  <div className="rm-smart-title">{a.title}</div>
+                  <div className="rm-smart-desc">{a.desc}</div>
+                </div>
+                <div className="rm-smart-actions">
+                  <button className="rm-smart-cta" style={{ color: a.color }} onClick={() => nav(a.to)}>
+                    {a.cta} <ChevronRight size={12} />
+                  </button>
+                  <button className="rm-smart-dismiss" onClick={() => handleDismissAlert(a.id)}>
+                    <X size={13} />
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
 
       {/* ── Notification Permission Banner ── */}
       {typeof Notification !== 'undefined' && notifPerm === 'default' && (
