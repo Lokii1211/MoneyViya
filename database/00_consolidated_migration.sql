@@ -225,18 +225,32 @@ ALTER TABLE chat_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE family_connections ENABLE ROW LEVEL SECURITY;
 
 -- Allow anon access (your API uses anon key)
+-- DROP first so this file is safe to re-run (Postgres has no CREATE POLICY IF NOT EXISTS)
+DROP POLICY IF EXISTS "Allow all for anon" ON users;
 CREATE POLICY "Allow all for anon" ON users FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON transactions;
 CREATE POLICY "Allow all for anon" ON transactions FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON goals;
 CREATE POLICY "Allow all for anon" ON goals FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON habits;
 CREATE POLICY "Allow all for anon" ON habits FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON habit_logs;
 CREATE POLICY "Allow all for anon" ON habit_logs FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON subscriptions;
 CREATE POLICY "Allow all for anon" ON subscriptions FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON reminders;
 CREATE POLICY "Allow all for anon" ON reminders FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON user_reminders;
 CREATE POLICY "Allow all for anon" ON user_reminders FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON couples;
 CREATE POLICY "Allow all for anon" ON couples FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON reviews;
 CREATE POLICY "Allow all for anon" ON reviews FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON notifications;
 CREATE POLICY "Allow all for anon" ON notifications FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON chat_history;
 CREATE POLICY "Allow all for anon" ON chat_history FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON family_connections;
 CREATE POLICY "Allow all for anon" ON family_connections FOR ALL USING (true) WITH CHECK (true);
 
 -- ══ 2/6: supabase/v2_migration.sql ══
