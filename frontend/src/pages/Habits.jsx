@@ -115,7 +115,11 @@ export default function Habits() {
     if (habits.some(h => h.name.toLowerCase().trim() === name.toLowerCase().trim())) {
       showT('⚠️ Habit already exists!', 'warn'); return
     }
-    await api.addHabit(phone, name.trim(), icon)
+    const created = await api.addHabit(phone, name.trim(), icon)
+    if (!created) {
+      showT('❌ Could not save — check your connection and try again', 'warn')
+      return
+    }
     setCustom(''); setShowAdd(false)
     showT('🔥 Habit added! Start your streak today!')
     loadData()

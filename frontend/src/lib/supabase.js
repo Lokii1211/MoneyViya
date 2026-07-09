@@ -25,14 +25,18 @@ function generateToken() {
 
 async function query(table, params = '') {
   if (!REST) return []
-  try { const r = await fetch(`${REST}/${table}${params}`, { headers: hdrs() }); return r.ok ? await r.json() : [] } catch { return [] }
+  try {
+    const r = await fetch(`${REST}/${table}${params}`, { headers: hdrs() })
+    if (!r.ok) { console.error(`QUERY ${table} failed: ${r.status} ${await r.text().catch(() => '')}`); return [] }
+    return await r.json()
+  } catch (e) { console.error(`QUERY ${table} error:`, e); return [] }
 }
 
 async function insert(table, data) {
   if (!REST) return null
   try {
     const r = await fetch(`${REST}/${table}`, { method: 'POST', headers: { ...hdrs(), 'Prefer': 'return=representation' }, body: JSON.stringify(data) })
-    if (!r.ok) { console.error(`INSERT ${table} failed:`, r.status); return null }
+    if (!r.ok) { console.error(`INSERT ${table} failed: ${r.status} ${await r.text().catch(() => '')}`); return null }
     const res = await r.json(); return Array.isArray(res) ? res[0] : res
   } catch (e) { console.error(`INSERT ${table} error:`, e); return null }
 }
@@ -41,22 +45,27 @@ async function update(table, filter, data) {
   if (!REST) return null
   try {
     const r = await fetch(`${REST}/${table}?${filter}`, { method: 'PATCH', headers: { ...hdrs(), 'Prefer': 'return=representation' }, body: JSON.stringify(data) })
-    if (!r.ok) return null
+    if (!r.ok) { console.error(`UPDATE ${table} failed: ${r.status} ${await r.text().catch(() => '')}`); return null }
     const res = await r.json(); return Array.isArray(res) ? res[0] : res
-  } catch { return null }
+  } catch (e) { console.error(`UPDATE ${table} error:`, e); return null }
 }
 
 async function remove(table, filter) {
   if (!REST) return false
-  try { await fetch(`${REST}/${table}?${filter}`, { method: 'DELETE', headers: hdrs() }); return true } catch { return false }
+  try {
+    const r = await fetch(`${REST}/${table}?${filter}`, { method: 'DELETE', headers: hdrs() })
+    if (!r.ok) { console.error(`DELETE ${table} failed: ${r.status} ${await r.text().catch(() => '')}`); return false }
+    return true
+  } catch (e) { console.error(`DELETE ${table} error:`, e); return false }
 }
 
 async function upsert(table, data) {
   if (!REST) return null
   try {
     const r = await fetch(`${REST}/${table}`, { method: 'POST', headers: { ...hdrs(), 'Prefer': 'return=representation,resolution=merge-duplicates' }, body: JSON.stringify(data) })
+    if (!r.ok) { console.error(`UPSERT ${table} failed: ${r.status} ${await r.text().catch(() => '')}`); return null }
     const res = await r.json(); return Array.isArray(res) ? res[0] : res
-  } catch { return null }
+  } catch (e) { console.error(`UPSERT ${table} error:`, e); return null }
 }
 
 export const api = {
