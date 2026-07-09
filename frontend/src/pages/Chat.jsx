@@ -109,12 +109,15 @@ export default function Chat() {
   const [voiceOpen, setVoiceOpen] = useState(false)
   const [recording, setRecording] = useState(false)
   const [recTime, setRecTime] = useState(0)
+  const [voiceTranscript, setVoiceTranscript] = useState('')
+  const [voiceSupported] = useState(() => typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition))
   const [showScrollBtn, setShowScrollBtn] = useState(false)
   const endRef = useRef(null)
   const inputRef = useRef(null)
   const fileRef = useRef(null)
   const scrollAreaRef = useRef(null)
   const recTimerRef = useRef(null)
+  const recognitionRef = useRef(null)
 
   const name = user?.name || 'there'
   const hour = new Date().getHours()
@@ -149,6 +152,32 @@ export default function Chat() {
   }, [])
 
   const scrollToBottom = () => endRef.current?.scrollIntoView({ behavior: 'smooth' })
+
+  const startRecording = () => {
+    setRecording(true); setRecTime(0); setVoiceTranscript('')
+    recTimerRef.current = setInterval(() => setRecTime(t => t + 1), 1000)
+    if (!voiceSupported) return
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    const rec = new SR()
+    rec.lang = 'en-IN'
+    rec.continuous = true
+    rec.interimResults = true
+    rec.onresult = (e) => {
+      let text = ''
+      for (let i = 0; i < e.results.length; i++) text += e.results[i][0].transcript
+      setVoiceTranscript(text)
+    }
+    rec.onerror = () => {}
+    rec.start()
+    recognitionRef.current = rec
+  }
+
+  const stopRecording = () => {
+    setRecording(false)
+    clearInterval(recTimerRef.current)
+    recognitionRef.current?.stop()
+    recognitionRef.current = null
+  }
 
   const sendMsg = async (text) => {
     const msg = (text || input).trim()
@@ -187,11 +216,25 @@ export default function Chat() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg() }
   }
 
-  const handleFile = (e) => {
+  const TEXT_FILE_TYPES = ['text/plain', 'text/csv', 'application/json']
+  const handleFile = async (e) => {
     const file = e.target.files?.[0]
-    if (!file) return
-    sendMsg(`📎 Attached: ${file.name} (${(file.size / 1024).toFixed(0)} KB)`)
     e.target.value = ''
+    if (!file) return
+
+    const isTextFile = TEXT_FILE_TYPES.includes(file.type) || /\.(txt|csv|json)$/i.test(file.name)
+    if (isTextFile && file.size < 200_000) {
+      const content = await file.text()
+      sendMsg(`I'm sharing a file called "${file.name}". Here's its content:\n\n${content.slice(0, 4000)}`)
+      return
+    }
+
+    // Images/PDFs/Word docs aren't parsed yet — say so instead of pretending it worked
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: `I can't read ${file.name.split('.').pop().toUpperCase()} files yet — only plain text, CSV, and JSON for now. Paste the text directly, or describe what's in it and I'll help.`,
+      time: new Date().toISOString(),
+    }])
   }
 
   const lastAI = [...messages].reverse().find(m => m.role === 'assistant')
@@ -378,6 +421,17 @@ export default function Chat() {
             rows={1}
             onChange={e => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px' }}
             onKeyDown={handleKey}
+            onPaste={e => {
+              const imgItem = Array.from(e.clipboardData?.items || []).find(i => i.type.startsWith('image/'))
+              if (imgItem) {
+                e.preventDefault()
+                setMessages(prev => [...prev, {
+                  role: 'assistant',
+                  content: "I can see you pasted an image — I can't read image content yet, but you can describe what's in it and I'll help from there.",
+                  time: new Date().toISOString(),
+                }])
+              }
+            }}
           />
         </div>
 
@@ -395,7 +449,7 @@ export default function Chat() {
       {/* Voice overlay */}
       {voiceOpen && (
         <div className="voice-overlay">
-          <button className="voice-close" onClick={() => { setVoiceOpen(false); setRecording(false); setRecTime(0); clearInterval(recTimerRef.current) }}>
+          <button className="voice-close" onClick={() => { setVoiceOpen(false); stopRecording(); setRecTime(0) }}>
             <X size={22} />
           </button>
 
@@ -411,7 +465,10 @@ export default function Chat() {
           <div className="voice-timer">
             {String(Math.floor(recTime/60)).padStart(2,'0')}:{String(recTime%60).padStart(2,'0')}
           </div>
-          <div className="voice-hint">{recording ? 'Listening... speak clearly' : 'Tap to start'}</div>
+          <div className="voice-hint">
+            {!voiceSupported ? "Your browser can't transcribe speech — type instead" : recording ? 'Listening... speak clearly' : 'Tap to start'}
+          </div>
+          {recording && voiceTranscript && <div className="voice-transcript">{voiceTranscript}</div>}
 
           {recording && (
             <div className="voice-wave">
@@ -424,21 +481,19 @@ export default function Chat() {
           <div className="voice-controls">
             {recording ? (
               <>
-                <button className="voice-cancel" onClick={() => { setRecording(false); clearInterval(recTimerRef.current); setRecTime(0); setVoiceOpen(false) }}>
+                <button className="voice-cancel" onClick={() => { stopRecording(); setRecTime(0); setVoiceOpen(false); setVoiceTranscript('') }}>
                   <X size={20}/> Cancel
                 </button>
                 <button className="voice-send-btn" onClick={() => {
-                  setRecording(false); clearInterval(recTimerRef.current); setVoiceOpen(false); setRecTime(0)
-                  sendMsg('🎤 Voice message — please help me with my request')
+                  const text = voiceTranscript.trim()
+                  stopRecording(); setVoiceOpen(false); setRecTime(0); setVoiceTranscript('')
+                  sendMsg(text || "I tried to send a voice message but nothing was transcribed — could you type that instead?")
                 }}>
                   <Send size={20}/> Send
                 </button>
               </>
             ) : (
-              <button className="voice-start" onClick={() => {
-                setRecording(true); setRecTime(0)
-                recTimerRef.current = setInterval(() => setRecTime(t => t + 1), 1000)
-              }}>
+              <button className="voice-start" onClick={startRecording} disabled={!voiceSupported}>
                 Start Recording
               </button>
             )}
