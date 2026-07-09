@@ -1048,15 +1048,25 @@ ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE insights ENABLE ROW LEVEL SECURITY;
 
 -- RLS policies — users see only their own data
-CREATE POLICY IF NOT EXISTS sms_own ON sms_messages FOR ALL USING (true);
-CREATE POLICY IF NOT EXISTS bank_own ON bank_accounts FOR ALL USING (true);
-CREATE POLICY IF NOT EXISTS rules_own ON transaction_rules FOR ALL USING (true);
-CREATE POLICY IF NOT EXISTS patterns_own ON recurring_patterns FOR ALL USING (true);
-CREATE POLICY IF NOT EXISTS inv_own ON investment_accounts FOR ALL USING (true);
-CREATE POLICY IF NOT EXISTS hold_own ON holdings FOR ALL USING (true);
-CREATE POLICY IF NOT EXISTS ptxn_own ON portfolio_transactions FOR ALL USING (true);
-CREATE POLICY IF NOT EXISTS audit_own ON audit_logs FOR ALL USING (true);
-CREATE POLICY IF NOT EXISTS insights_own ON insights FOR ALL USING (true);
+-- (Postgres has no "CREATE POLICY IF NOT EXISTS" — DROP+CREATE is the safe re-runnable idiom)
+DROP POLICY IF EXISTS sms_own ON sms_messages;
+CREATE POLICY sms_own ON sms_messages FOR ALL USING (true);
+DROP POLICY IF EXISTS bank_own ON bank_accounts;
+CREATE POLICY bank_own ON bank_accounts FOR ALL USING (true);
+DROP POLICY IF EXISTS rules_own ON transaction_rules;
+CREATE POLICY rules_own ON transaction_rules FOR ALL USING (true);
+DROP POLICY IF EXISTS patterns_own ON recurring_patterns;
+CREATE POLICY patterns_own ON recurring_patterns FOR ALL USING (true);
+DROP POLICY IF EXISTS inv_own ON investment_accounts;
+CREATE POLICY inv_own ON investment_accounts FOR ALL USING (true);
+DROP POLICY IF EXISTS hold_own ON holdings;
+CREATE POLICY hold_own ON holdings FOR ALL USING (true);
+DROP POLICY IF EXISTS ptxn_own ON portfolio_transactions;
+CREATE POLICY ptxn_own ON portfolio_transactions FOR ALL USING (true);
+DROP POLICY IF EXISTS audit_own ON audit_logs;
+CREATE POLICY audit_own ON audit_logs FOR ALL USING (true);
+DROP POLICY IF EXISTS insights_own ON insights;
+CREATE POLICY insights_own ON insights FOR ALL USING (true);
 
 -- ═══════════════════════════════════════════════════════════
 -- MIGRATION COMPLETE
@@ -1090,11 +1100,14 @@ CREATE TABLE IF NOT EXISTS lending (
 CREATE INDEX IF NOT EXISTS idx_lending_user ON lending(user_phone);
 CREATE INDEX IF NOT EXISTS idx_lending_status ON lending(user_phone, status);
 
--- RLS
+-- RLS — the app has no Supabase Auth session (custom phone+password auth
+-- against the anon key, same as every other table here), so a policy keyed
+-- off current_setting('app.user_phone') would always evaluate to NULL and
+-- block every request from the app itself. Matches the permissive pattern
+-- used everywhere else in this schema.
 ALTER TABLE lending ENABLE ROW LEVEL SECURITY;
-CREATE POLICY lending_user_policy ON lending
-  FOR ALL USING (user_phone = current_setting('app.user_phone', true))
-  WITH CHECK (user_phone = current_setting('app.user_phone', true));
+DROP POLICY IF EXISTS lending_user_policy ON lending;
+CREATE POLICY lending_user_policy ON lending FOR ALL USING (true) WITH CHECK (true);
 
 -- ══ 6/6: supabase/gmail_migration.sql ══
 -- Gmail OAuth columns for users table

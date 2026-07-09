@@ -22,8 +22,11 @@ CREATE TABLE IF NOT EXISTS lending (
 CREATE INDEX IF NOT EXISTS idx_lending_user ON lending(user_phone);
 CREATE INDEX IF NOT EXISTS idx_lending_status ON lending(user_phone, status);
 
--- RLS
+-- RLS — the app has no Supabase Auth session (custom phone+password auth
+-- against the anon key, same as every other table here), so a policy keyed
+-- off current_setting('app.user_phone') would always evaluate to NULL and
+-- block every request from the app itself. Matches the permissive pattern
+-- used everywhere else in this schema.
 ALTER TABLE lending ENABLE ROW LEVEL SECURITY;
-CREATE POLICY lending_user_policy ON lending
-  FOR ALL USING (user_phone = current_setting('app.user_phone', true))
-  WITH CHECK (user_phone = current_setting('app.user_phone', true));
+DROP POLICY IF EXISTS lending_user_policy ON lending;
+CREATE POLICY lending_user_policy ON lending FOR ALL USING (true) WITH CHECK (true);
