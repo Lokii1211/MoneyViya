@@ -20,7 +20,16 @@ class handler(BaseHTTPRequestHandler):
         """Check and fire due reminders every minute"""
         try:
             import httpx
-            
+
+            # This runs on an external scheduler (cron-job.org, not Vercel's
+            # native cron — Hobby plan can't do per-minute), so it's a public
+            # URL. Verify the secret if one is configured.
+            auth = self.headers.get("Authorization", "")
+            cron_secret = os.getenv("CRON_SECRET", "")
+            if cron_secret and auth != f"Bearer {cron_secret}":
+                self._respond(401, {"error": "Unauthorized"})
+                return
+
             SUPABASE_URL = os.getenv("VITE_SUPABASE_URL", os.getenv("SUPABASE_URL", ""))
             SUPABASE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY", ""))
             
