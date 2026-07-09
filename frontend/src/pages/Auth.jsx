@@ -5,7 +5,7 @@ import { api } from '../lib/supabase'
 import { Phone, Lock, Sparkles, MessageCircle, ArrowRight, Shield, Eye, EyeOff, User } from 'lucide-react'
 
 export default function Auth() {
-  const [mode, setMode] = useState('otp') // 'otp' or 'password'
+  const [mode, setMode] = useState('password') // 'otp' or 'password' — password is the working path; OTP needs WHATSAPP_ACCESS_TOKEN configured
   const [step, setStep] = useState('phone') // 'phone', 'otp', 'done'
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
@@ -104,11 +104,11 @@ export default function Auth() {
 
         {/* Mode Toggle */}
         <div className="auth-mode-toggle">
-          <button className={`mode-btn${mode==='otp'?' active':''}`} onClick={() => { setMode('otp'); setStep('phone'); setErr(''); setInfo('') }}>
-            <MessageCircle size={14}/> WhatsApp OTP
-          </button>
           <button className={`mode-btn${mode==='password'?' active':''}`} onClick={() => { setMode('password'); setErr(''); setInfo('') }}>
             <Lock size={14}/> Password
+          </button>
+          <button className={`mode-btn${mode==='otp'?' active':''}`} onClick={() => { setMode('otp'); setStep('phone'); setErr(''); setInfo('') }}>
+            <MessageCircle size={14}/> WhatsApp OTP <span style={{ opacity: 0.6, fontSize: 10 }}>(soon)</span>
           </button>
         </div>
 

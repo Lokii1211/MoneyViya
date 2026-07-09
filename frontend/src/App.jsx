@@ -9,6 +9,7 @@ import OfflineBanner from './components/OfflineBanner'
 import './index.css'
 
 // Core pages
+const Landing = lazy(() => import('./pages/Landing'))
 const Auth = lazy(() => import('./pages/Auth'))
 const Home = lazy(() => import('./pages/Home'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
@@ -75,6 +76,15 @@ function Protected({ children }) {
   return isLoggedIn ? children : <Navigate to="/auth" />
 }
 
+// Root path is public: logged-out visitors see the marketing page (also
+// what Google's OAuth verification crawls), logged-in visitors see the app.
+// Every other nested route under "/" still only renders once Layout does,
+// so they stay equivalently gated without needing a Protected wrapper each.
+function RootRoute() {
+  const { isLoggedIn } = useApp()
+  return isLoggedIn ? <Layout /> : <Landing />
+}
+
 function AppContent() {
   const [showSplash, setShowSplash] = useState(true)
   const { theme } = useApp()
@@ -94,8 +104,11 @@ function AppContent() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/auth" element={<Auth />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/help" element={<Help />} />
           <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
-          <Route path="/" element={<Protected><Layout /></Protected>}>
+          <Route path="/" element={<RootRoute />}>
             <Route index element={<Home />} />
             {/* Money */}
             <Route path="expenses" element={<Expenses />} />
@@ -140,10 +153,6 @@ function AppContent() {
             <Route path="search" element={<Search />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="delete-account" element={<DeleteAccount />} />
-            {/* Static */}
-            <Route path="privacy" element={<Privacy />} />
-            <Route path="help" element={<Help />} />
-            <Route path="terms" element={<Terms />} />
           </Route>
         </Routes>
       </Suspense>
