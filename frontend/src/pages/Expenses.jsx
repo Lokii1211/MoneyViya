@@ -256,19 +256,10 @@ export default function Expenses() {
                   ))}
                 </div>
               </div>
-              <div className="form-group"><label>Category {amount && '(tap to auto-save)'}</label>
+              <div className="form-group"><label>Category</label>
                 <div className="cat-grid">
                   {(type === 'expense' ? CATEGORIES : INCOME_CATS).map(c => (
-                    <button key={c} className={`cat-chip${category === c ? ' active' : ''}`} onClick={() => {
-                      setCategory(c)
-                      if (amount && Number(amount) > 0) {
-                        const fn = type === 'expense' ? api.addExpense : api.addIncome
-                        fn(phone, Number(amount), c, note).then(() => {
-                          setAmount(''); setNote(''); setShowAdd(false)
-                          toast.show(`₹${amount} ${c.split(' ')[1]} added!`, 'success'); load()
-                        })
-                      }
-                    }}>{c}</button>
+                    <button key={c} className={`cat-chip${category === c ? ' active' : ''}`} onClick={() => setCategory(c)}>{c}</button>
                   ))}
                 </div>
               </div>
@@ -277,9 +268,9 @@ export default function Expenses() {
               </div>
               <div className="form-actions">
                 <button className="btn-secondary" onClick={() => setShowAdd(false)}>Cancel</button>
-                {amount && Number(amount) > 0
-                  ? <div style={{ flex: 2, textAlign: 'center', fontSize: 12, color: 'var(--text3)', fontWeight: 600 }}>👆 Tap a category above to save</div>
-                  : <div style={{ flex: 2, textAlign: 'center', fontSize: 12, color: 'var(--text3)' }}>Enter amount, then tap category</div>}
+                <button className="btn-primary" style={{ flex: 2 }} onClick={submit} disabled={!amount || Number(amount) <= 0}>
+                  <Check size={16} /> {type === 'expense' ? 'Add Expense' : 'Add Income'}
+                </button>
               </div>
             </div>
           )}

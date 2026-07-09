@@ -336,12 +336,16 @@ def call_groq(messages):
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=22) as r:
+        with urllib.request.urlopen(req, timeout=15) as r:
             data = json.loads(r.read())
             return data["choices"][0]["message"]["content"], None
     except urllib.error.HTTPError as e:
         body = e.read().decode()[:200]
+        if e.code == 429:
+            return None, "I'm getting a lot of messages right now — give me a few seconds and try again!"
         return None, f"Groq error {e.code}: {body}"
+    except urllib.error.URLError as e:
+        return None, f"Couldn't reach the AI service: {str(e.reason)[:100]}"
     except Exception as e:
         return None, f"AI unavailable: {str(e)[:120]}"
 
@@ -408,7 +412,11 @@ class handler(BaseHTTPRequestHandler):
             reply, executed = process_message(phone, message, history)
             self._respond(200, {"reply": reply, "actions_executed": executed, "success": True})
         except Exception as e:
-            self._respond(500, {"error": str(e)})
+            print(f"[CHAT] do_POST failed: {e}")
+            # Respond 200 with a real message instead of a bare 500 — the
+            # frontend treats any non-2xx as "connection issues" and drops
+            # the actual error, which made every failure look identical.
+            self._respond(200, {"reply": "Something went wrong on my end — try that again in a moment.", "actions_executed": [], "success": False})
 
     def do_OPTIONS(self):
         self._respond(200, {})

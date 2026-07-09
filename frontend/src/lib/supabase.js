@@ -213,18 +213,26 @@ export const api = {
   },
 
   async chat(phone, message, history = []) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 25000)
     try {
       const r = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, message, history: history.slice(-8) })
+        body: JSON.stringify({ phone, message, history: history.slice(-8) }),
+        signal: controller.signal,
       })
+      clearTimeout(timeout)
       if (r.ok) {
         const data = await r.json()
         return { reply: data.reply || "I couldn't process that. Try again!", actions_executed: data.actions_executed || [] }
       }
-    } catch {}
-    return { reply: "I'm having connection issues. Please try again!", actions_executed: [] }
+      return { reply: `Something went wrong (${r.status}). Please try again.`, actions_executed: [] }
+    } catch (e) {
+      clearTimeout(timeout)
+      if (e.name === 'AbortError') return { reply: "That took too long to answer — try a shorter message or ask again.", actions_executed: [] }
+      return { reply: "I'm having connection issues. Please try again!", actions_executed: [] }
+    }
   },
   async getChatHistory(phone, limit = 30) {
     return query('chat_history', `?${phoneFilter(phone)}&select=*&order=created_at.desc&limit=${limit}`)
