@@ -4,10 +4,31 @@ import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { formatINR } from '../lib/utils'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown, Clock, FileText, Lock, Smartphone, Mail } from 'lucide-react'
+import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown, Clock, FileText, Lock, Smartphone, Mail, ImageUp } from 'lucide-react'
 import { LANGUAGES, setLang, t, getLang } from '../lib/i18n'
 
 const AVATARS = ['😎','🦊','🐱','🐶','🦁','🐼','🐨','🦄','🐸','🐵','🦋','🌺','🌈','⭐','🔥','💎','🎯','🚀','🎓','💼']
+
+// Downscale + compress an uploaded image so it stays small in a TEXT column
+function resizeImageToDataUrl(file, maxDim = 160, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const reader = new FileReader()
+    reader.onload = () => { img.src = reader.result }
+    reader.onerror = reject
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(img.width * scale)
+      canvas.height = Math.round(img.height * scale)
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      resolve(canvas.toDataURL('image/jpeg', quality))
+    }
+    img.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
 
 export default function Profile() {
   const { user, phone, logout, setUser, theme, toggleTheme } = useApp()
@@ -18,7 +39,13 @@ export default function Profile() {
   const [saving, setSaving] = useState(false)
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [selectedAvatar, setSelectedAvatar] = useState(localStorage.getItem('mv_avatar') || '')
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [toast, setToast] = useState('')
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [pwMode, setPwMode] = useState('current') // 'current' or 'otp'
+  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' })
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwError, setPwError] = useState('')
   const [editForm, setEditForm] = useState({
     name: '', age: '', city: '', occupation: '', monthly_income: '', daily_budget: ''
   })
@@ -50,14 +77,60 @@ export default function Profile() {
       monthly_income: user?.monthly_income || '',
       daily_budget: user?.daily_budget || ''
     })
+    // Supabase is the source of truth across devices; local cache is just for instant paint
+    if (user?.avatar) {
+      setSelectedAvatar(user.avatar)
+      localStorage.setItem('mv_avatar', user.avatar)
+    }
   }, [user])
 
   function handleLogout() { localStorage.clear(); logout(); nav('/auth') }
 
-  function pickAvatar(emoji) {
+  async function pickAvatar(emoji) {
     setSelectedAvatar(emoji)
     localStorage.setItem('mv_avatar', emoji)
     setShowAvatarPicker(false)
+    setUser(prev => ({ ...prev, avatar: emoji }))
+    await api.updateUser(phone, { avatar: emoji })
+  }
+
+  async function handleAvatarUpload(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) { setToast('Please choose an image file'); setTimeout(() => setToast(''), 2000); return }
+    setUploadingAvatar(true)
+    try {
+      const dataUrl = await resizeImageToDataUrl(file)
+      setSelectedAvatar(dataUrl)
+      localStorage.setItem('mv_avatar', dataUrl)
+      setShowAvatarPicker(false)
+      setUser(prev => ({ ...prev, avatar: dataUrl }))
+      await api.updateUser(phone, { avatar: dataUrl })
+      setToast('Profile photo updated!')
+    } catch {
+      setToast('Could not process that image')
+    }
+    setUploadingAvatar(false)
+    setTimeout(() => setToast(''), 2000)
+  }
+
+  async function submitPasswordChange() {
+    setPwError('')
+    if (!pwForm.current) { setPwError('Enter your current password'); return }
+    if (pwForm.next.length < 6) { setPwError('New password must be at least 6 characters'); return }
+    if (pwForm.next !== pwForm.confirm) { setPwError('New passwords do not match'); return }
+    setPwSaving(true)
+    const result = await api.changePassword(phone, pwForm.current, pwForm.next)
+    setPwSaving(false)
+    if (result.success) {
+      setShowPasswordModal(false)
+      setPwForm({ current: '', next: '', confirm: '' })
+      setToast('Password updated!')
+      setTimeout(() => setToast(''), 2000)
+    } else {
+      setPwError(result.message || 'Failed to update password')
+    }
   }
 
   async function saveProfile() {
@@ -170,7 +243,9 @@ export default function Profile() {
           {/* Profile Hero */}
           <div className="profile-hero">
             <div className="profile-avatar-lg" onClick={() => setShowAvatarPicker(!showAvatarPicker)} style={{cursor:'pointer', position:'relative'}}>
-              {selectedAvatar ? (
+              {selectedAvatar?.startsWith?.('data:image') ? (
+                <img src={selectedAvatar} alt={name} />
+              ) : selectedAvatar ? (
                 <span style={{fontSize:36}}>{selectedAvatar}</span>
               ) : (
                 <span>{name.charAt(0).toUpperCase()}</span>
@@ -190,14 +265,22 @@ export default function Profile() {
           {/* Avatar Picker */}
           {showAvatarPicker && (
             <div className="avatar-picker-card animate-slideUp">
-              <div className="avatar-picker-title">Choose Your Avatar</div>
+              <label className="avatar-upload-btn">
+                <input type="file" accept="image/*" className="sr-hidden" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
+                <ImageUp size={14} /> {uploadingAvatar ? 'Uploading…' : 'Upload from Gallery'}
+              </label>
+              <div className="avatar-picker-title" style={{ marginTop: 14 }}>Or pick an avatar</div>
               <div className="avatar-picker-grid">
                 {AVATARS.map((a, i) => (
                   <button key={i} onClick={() => pickAvatar(a)}
                     className={`avatar-option${selectedAvatar === a ? ' selected' : ''}`}>{a}</button>
                 ))}
               </div>
-              <button className="avatar-reset-btn" onClick={() => { setSelectedAvatar(''); localStorage.removeItem('mv_avatar'); setShowAvatarPicker(false) }}>
+              <button className="avatar-reset-btn" onClick={async () => {
+                setSelectedAvatar(''); localStorage.removeItem('mv_avatar'); setShowAvatarPicker(false)
+                setUser(prev => ({ ...prev, avatar: '' }))
+                await api.updateUser(phone, { avatar: '' })
+              }}>
                 Use Letter Initial
               </button>
             </div>
@@ -462,21 +545,51 @@ export default function Profile() {
               <div className="si-info"><div className="si-label">Terms of Service</div><div className="si-sub">Usage policies & guidelines</div></div>
               <ChevronRight size={16} className="si-arrow"/>
             </button>
-            <button className="settings-item" onClick={async () => {
-              const newPass = prompt('Enter new password (min 6 chars):')
-              if (newPass && newPass.length >= 6) {
-                const encoder = new TextEncoder()
-                const data = encoder.encode(phone + newPass)
-                const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-                const hashed = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('')
-                api.updateUser(phone, { password_hash: hashed }).then(() => alert('Password updated!')).catch(() => alert('Failed to update'))
-              } else if (newPass) { alert('Password must be at least 6 characters') }
-            }}>
+            <button className="settings-item" onClick={() => { setPwError(''); setPwForm({ current: '', next: '', confirm: '' }); setShowPasswordModal(true) }}>
               <div className="si-icon"><Lock size={18}/></div>
               <div className="si-info"><div className="si-label">Change Password</div><div className="si-sub">Update your login password</div></div>
               <ChevronRight size={16} className="si-arrow"/>
             </button>
           </div>
+
+          {showPasswordModal && (
+            <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
+              <div className="avatar-picker-card" style={{ width: '100%', maxWidth: 420, margin: 16 }} onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                  <div className="avatar-picker-title" style={{ margin: 0 }}>Change Password</div>
+                  <button className="modal-close" onClick={() => setShowPasswordModal(false)}><X size={18} /></button>
+                </div>
+
+                <div className="auth-mode-toggle" style={{ marginBottom: 14 }}>
+                  <button className={`mode-btn${pwMode === 'current' ? ' active' : ''}`} onClick={() => { setPwMode('current'); setPwError('') }}>
+                    <Lock size={14} /> Current Password
+                  </button>
+                  <button className={`mode-btn${pwMode === 'otp' ? ' active' : ''}`} onClick={() => { setPwMode('otp'); setPwError('') }}>
+                    <Smartphone size={14} /> WhatsApp OTP <span style={{ opacity: 0.6, fontSize: 10 }}>(soon)</span>
+                  </button>
+                </div>
+
+                {pwMode === 'current' ? (
+                  <>
+                    <input type="password" className="input-field" placeholder="Current password"
+                      value={pwForm.current} onChange={e => setPwForm(f => ({ ...f, current: e.target.value }))} style={{ marginBottom: 8 }} />
+                    <input type="password" className="input-field" placeholder="New password (min 6 chars)"
+                      value={pwForm.next} onChange={e => setPwForm(f => ({ ...f, next: e.target.value }))} style={{ marginBottom: 8 }} />
+                    <input type="password" className="input-field" placeholder="Confirm new password"
+                      value={pwForm.confirm} onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))} />
+                    {pwError && <p className="auth-err">{pwError}</p>}
+                    <button className="btn-primary full" style={{ marginTop: 12 }} onClick={submitPasswordChange} disabled={pwSaving}>
+                      {pwSaving ? 'Updating…' : 'Update Password'}
+                    </button>
+                  </>
+                ) : (
+                  <div className="callout--note" style={{ background: 'var(--surface2)', borderRadius: 10, padding: 14, fontSize: 13, color: 'var(--text2)', lineHeight: 1.6 }}>
+                    Verifying via WhatsApp OTP needs the WhatsApp Business API connected first. Use "Current Password" for now — this option unlocks automatically once that's set up.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <button className="logout-btn" onClick={handleLogout}><LogOut size={18}/> Sign Out</button>
 

@@ -4,6 +4,13 @@ import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { ArrowLeft, Users, Trophy, Share2, UserPlus, Award } from 'lucide-react'
 
+function Avatar({ value, size = 18 }) {
+  if (value?.startsWith?.('data:image')) {
+    return <img src={value} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+  }
+  return <span style={{ fontSize: size }}>{value}</span>
+}
+
 // Achievement Badges System — derived entirely from real Supabase data
 const BADGES = [
   { id: 'first_expense', emoji: '🎯', label: 'First Step', desc: 'Logged your first expense', check: (d) => d.totalTxns > 0 },
@@ -134,7 +141,7 @@ export default function Community() {
             return (
               <div key={p.phone || 'me'} style={{ background: 'var(--surface)', border: p.isMe ? '1.5px solid var(--primary)' : '1px solid var(--border2)', borderRadius: 14, padding: 14, marginBottom: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--primary-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{p.avatar}</div>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--primary-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><Avatar value={p.avatar} /></div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 700 }}>{p.isMe ? 'You' : p.name}</div>
                     <div style={{ fontSize: 10, color: 'var(--text3)' }}>{earned.length} of {BADGES.length} badges earned</div>
@@ -172,7 +179,7 @@ export default function Community() {
               <div style={{ width: 28, textAlign: 'center', fontSize: l.rank <= 3 ? 20 : 14, fontWeight: 800, color: l.rank === 1 ? '#FFD700' : l.rank === 2 ? '#C0C0C0' : l.rank === 3 ? '#CD7F32' : 'var(--text3)' }}>
                 {l.rank <= 3 ? ['🥇', '🥈', '🥉'][l.rank - 1] : `#${l.rank}`}
               </div>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{l.avatar}</div>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><Avatar value={l.avatar} /></div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 700 }}>{l.isMe ? 'You' : l.name} {l.isMe && <span style={{ fontSize: 10, color: 'var(--primary)', fontWeight: 800 }}>YOU</span>}</div>
                 <div style={{ fontSize: 10, color: 'var(--text3)' }}>{l.badgeData.maxStreak || 0}🔥 streak</div>

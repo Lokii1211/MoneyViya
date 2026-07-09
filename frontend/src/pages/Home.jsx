@@ -141,7 +141,11 @@ export default function Home() {
         <>
           {/* Greeting */}
           <div className="home-greeting">
-            <div className="avatar">{localStorage.getItem('mv_avatar') || name.charAt(0).toUpperCase()}</div>
+            <div className="avatar">
+              {localStorage.getItem('mv_avatar')?.startsWith('data:image')
+                ? <img src={localStorage.getItem('mv_avatar')} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                : localStorage.getItem('mv_avatar') || name.charAt(0).toUpperCase()}
+            </div>
             <div>
               <div className="home-greeting-name">{t(getGreetingKey())}, {name.split(' ')[0]}! {getGreetingEmoji()}</div>
               <div className="body-s text-secondary">{formatDateLine()}</div>

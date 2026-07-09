@@ -128,7 +128,11 @@ export default function Family() {
       {tab === 'members' && <>
         <div className="card" style={{borderColor:'var(--primary)',marginBottom:10}}>
           <div className="info-row" style={{border:0,padding:0,background:'none'}}>
-            <span className="info-icon">{localStorage.getItem('mv_avatar') || '😎'}</span>
+            <span className="info-icon">
+              {localStorage.getItem('mv_avatar')?.startsWith('data:image')
+                ? <img src={localStorage.getItem('mv_avatar')} alt="" style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: '50%' }} />
+                : localStorage.getItem('mv_avatar') || '😎'}
+            </span>
             <div className="info-body"><div className="info-title">You ({user?.name || 'Me'})</div><div className="info-sub">Owner</div></div>
             <div className="info-value green">{formatINR(Number(user?.monthly_income || 0))}</div>
           </div>

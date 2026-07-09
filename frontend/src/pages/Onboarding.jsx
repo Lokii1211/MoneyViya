@@ -25,11 +25,12 @@ const stepVariants = {
 }
 
 export default function Onboarding() {
-  const { phone } = useApp()
+  const { phone, user } = useApp()
   const nav = useNavigate()
   const [step, setStep] = useState(0)
   const [form, setForm] = useState({
-    name: '',
+    // Registration already asked for a name — don't make people retype it.
+    name: user?.name && user.name !== 'User' ? user.name : '',
     age: '',
     income: '',
     goals: [],

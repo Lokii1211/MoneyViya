@@ -89,6 +89,20 @@ export const api = {
     } catch { return { success: false, message: 'Connection error.' } }
   },
 
+  async changePassword(phone, currentPassword, newPassword) {
+    try {
+      const cleanPhone = phone.replace(/[^\d]/g, '').replace(/^91/, '').slice(-10)
+      const users = await query('users', `?${phoneFilter(phone)}&select=password_hash`)
+      const user = users[0]
+      if (!user) return { success: false, message: 'Account not found.' }
+      const currentHashed = await hashPassword(currentPassword, cleanPhone)
+      if (user.password_hash !== currentHashed) return { success: false, message: 'Current password is incorrect.' }
+      const newHashed = await hashPassword(newPassword, cleanPhone)
+      await update('users', `phone=eq.${phone}`, { password_hash: newHashed })
+      return { success: true }
+    } catch { return { success: false, message: 'Connection error.' } }
+  },
+
   async getUser(phone) {
     const users = await query('users', `?${phoneFilter(phone)}&select=*`)
     const user = users[0]
