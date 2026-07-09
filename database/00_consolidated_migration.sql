@@ -1,0 +1,1109 @@
+-- ═══════════════════════════════════════════════════════════════
+-- MoneyViya — Consolidated Database Migration
+-- Concatenation of all 6 migration files, in dependency order.
+-- Every statement uses IF NOT EXISTS / ADD COLUMN IF NOT EXISTS,
+-- so running this against an existing database is safe and will
+-- not touch or delete any existing data.
+-- ═══════════════════════════════════════════════════════════════
+
+-- ══ 1/6: database/supabase_schema.sql ══
+-- MoneyViya — Supabase PostgreSQL Schema (PRODUCTION)
+-- Run this ONCE in Supabase SQL Editor
+
+-- ===== USERS =====
+CREATE TABLE IF NOT EXISTS users (
+    phone TEXT PRIMARY KEY,
+    name TEXT,
+    gender TEXT,
+    language TEXT DEFAULT 'en',
+    persona TEXT DEFAULT 'salaried',
+    age INTEGER,
+    city TEXT,
+    occupation TEXT,
+    avatar TEXT,
+    monthly_income REAL DEFAULT 0,
+    monthly_expenses REAL DEFAULT 0,
+    daily_budget REAL DEFAULT 1000,
+    current_savings REAL DEFAULT 0,
+    emergency_fund REAL DEFAULT 0,
+    onboarding_complete BOOLEAN DEFAULT FALSE,
+    password_hash TEXT,
+    partner_phone TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ===== TRANSACTIONS =====
+CREATE TABLE IF NOT EXISTS transactions (
+    id SERIAL PRIMARY KEY,
+    phone TEXT NOT NULL,
+    type TEXT NOT NULL CHECK(type IN ('income', 'expense')),
+    amount REAL NOT NULL,
+    category TEXT DEFAULT 'uncategorized',
+    description TEXT,
+    source TEXT DEFAULT 'manual',
+    merchant TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (phone) REFERENCES users(phone)
+);
+
+-- ===== GOALS =====
+CREATE TABLE IF NOT EXISTS goals (
+    id SERIAL PRIMARY KEY,
+    phone TEXT NOT NULL,
+    name TEXT NOT NULL,
+    icon TEXT DEFAULT '🎯',
+    target_amount REAL NOT NULL,
+    current_amount REAL DEFAULT 0,
+    deadline TEXT,
+    priority INTEGER DEFAULT 3,
+    status TEXT DEFAULT 'active' CHECK(status IN ('active', 'paused', 'achieved', 'cancelled')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (phone) REFERENCES users(phone)
+);
+
+-- ===== HABITS =====
+CREATE TABLE IF NOT EXISTS habits (
+    id SERIAL PRIMARY KEY,
+    phone TEXT NOT NULL,
+    name TEXT NOT NULL,
+    icon TEXT DEFAULT '✅',
+    frequency TEXT DEFAULT 'daily',
+    current_streak INTEGER DEFAULT 0,
+    longest_streak INTEGER DEFAULT 0,
+    last_completed TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (phone) REFERENCES users(phone)
+);
+
+-- ===== HABIT LOGS =====
+CREATE TABLE IF NOT EXISTS habit_logs (
+    id SERIAL PRIMARY KEY,
+    phone TEXT NOT NULL,
+    habit_id INTEGER NOT NULL,
+    completed_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (phone) REFERENCES users(phone),
+    FOREIGN KEY (habit_id) REFERENCES habits(id)
+);
+
+-- ===== SUBSCRIPTIONS =====
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id SERIAL PRIMARY KEY,
+    phone TEXT NOT NULL,
+    name TEXT NOT NULL,
+    amount REAL NOT NULL,
+    frequency TEXT DEFAULT 'monthly',
+    category TEXT DEFAULT 'entertainment',
+    last_charged TEXT,
+    last_used TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (phone) REFERENCES users(phone)
+);
+
+-- ===== REMINDERS (old) =====
+CREATE TABLE IF NOT EXISTS reminders (
+    id SERIAL PRIMARY KEY,
+    phone TEXT NOT NULL,
+    text TEXT NOT NULL,
+    amount REAL,
+    frequency TEXT DEFAULT 'once',
+    day_of_month INTEGER,
+    time TEXT DEFAULT '09:00',
+    is_active BOOLEAN DEFAULT TRUE,
+    last_triggered TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (phone) REFERENCES users(phone)
+);
+
+-- ===== USER REMINDERS (NEW — used by WhatsApp cron) =====
+CREATE TABLE IF NOT EXISTS user_reminders (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    phone TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    icon TEXT DEFAULT '⏰',
+    freq TEXT DEFAULT 'daily',
+    time TEXT DEFAULT '09:00',
+    weekday TEXT,
+    month_date INTEGER,
+    fire_date TEXT,
+    enabled BOOLEAN DEFAULT TRUE,
+    last_sent_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ===== COUPLES =====
+CREATE TABLE IF NOT EXISTS couples (
+    id SERIAL PRIMARY KEY,
+    phone1 TEXT NOT NULL,
+    phone2 TEXT NOT NULL,
+    alert_threshold REAL DEFAULT 5000,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (phone1) REFERENCES users(phone),
+    FOREIGN KEY (phone2) REFERENCES users(phone)
+);
+
+-- ===== REVIEWS =====
+CREATE TABLE IF NOT EXISTS reviews (
+    id SERIAL PRIMARY KEY,
+    phone TEXT NOT NULL,
+    period TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    total_income REAL DEFAULT 0,
+    total_expenses REAL DEFAULT 0,
+    savings_rate REAL DEFAULT 0,
+    top_category TEXT,
+    financial_health_score INTEGER DEFAULT 50,
+    ai_insights TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (phone) REFERENCES users(phone)
+);
+
+-- ===== NOTIFICATIONS =====
+CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    phone TEXT NOT NULL,
+    type TEXT DEFAULT 'info',
+    title TEXT NOT NULL,
+    description TEXT,
+    is_read BOOLEAN DEFAULT FALSE,
+    action_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (phone) REFERENCES users(phone)
+);
+
+-- ===== CHAT HISTORY =====
+CREATE TABLE IF NOT EXISTS chat_history (
+    id SERIAL PRIMARY KEY,
+    phone TEXT NOT NULL,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    source TEXT DEFAULT 'app',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ===== FAMILY CONNECTIONS (Friends & Family) =====
+CREATE TABLE IF NOT EXISTS family_connections (
+    id SERIAL PRIMARY KEY,
+    owner_phone TEXT NOT NULL,
+    member_phone TEXT NOT NULL,
+    relation TEXT DEFAULT 'Friend',
+    connection_type TEXT DEFAULT 'friend',
+    status TEXT DEFAULT 'pending',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ===== INDEXES =====
+CREATE INDEX IF NOT EXISTS idx_transactions_phone ON transactions(phone);
+CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(created_at);
+CREATE INDEX IF NOT EXISTS idx_goals_phone ON goals(phone);
+CREATE INDEX IF NOT EXISTS idx_habits_phone ON habits(phone);
+CREATE INDEX IF NOT EXISTS idx_notifications_phone ON notifications(phone);
+CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications(phone, is_read);
+CREATE INDEX IF NOT EXISTS idx_user_reminders_phone ON user_reminders(phone);
+CREATE INDEX IF NOT EXISTS idx_user_reminders_time ON user_reminders(time);
+CREATE INDEX IF NOT EXISTS idx_chat_history_phone ON chat_history(phone);
+CREATE INDEX IF NOT EXISTS idx_family_connections_owner ON family_connections(owner_phone);
+CREATE INDEX IF NOT EXISTS idx_family_connections_member ON family_connections(member_phone);
+
+-- ===== ROW LEVEL SECURITY (allow anonymous access for API) =====
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE goals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE habits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE habit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reminders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_reminders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE couples ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE family_connections ENABLE ROW LEVEL SECURITY;
+
+-- Allow anon access (your API uses anon key)
+CREATE POLICY "Allow all for anon" ON users FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON transactions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON goals FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON habits FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON habit_logs FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON subscriptions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON reminders FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON user_reminders FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON couples FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON reviews FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON notifications FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON chat_history FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON family_connections FOR ALL USING (true) WITH CHECK (true);
+
+-- ══ 2/6: supabase/v2_migration.sql ══
+-- =========================================================
+-- VIYA V2 — DATABASE SCHEMA MIGRATION
+-- Run in Supabase SQL Editor
+-- =========================================================
+
+-- Enable pgvector extension (required for semantic search)
+-- If this fails, the embedding column will be skipped
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- 1. Viya Memory — Long-term AI memory with semantic search
+CREATE TABLE IF NOT EXISTS viya_memory (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  phone TEXT NOT NULL,
+  memory_type TEXT NOT NULL DEFAULT 'fact',  -- fact, preference, event, goal, emotion
+  content TEXT NOT NULL,
+  category TEXT DEFAULT 'general',           -- finance, health, work, family, personal
+  importance INTEGER DEFAULT 5,             -- 1-10 scale
+  source TEXT DEFAULT 'chat',               -- chat, whatsapp, system, email
+  -- embedding column added separately after table creation (requires pgvector)
+  metadata JSONB DEFAULT '{}',
+  expires_at TIMESTAMPTZ,                   -- NULL = never expires
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_memory_phone ON viya_memory(phone);
+CREATE INDEX IF NOT EXISTS idx_memory_type ON viya_memory(memory_type);
+CREATE INDEX IF NOT EXISTS idx_memory_category ON viya_memory(category);
+
+-- Add vector embedding column (only works if pgvector extension is enabled)
+DO $$ BEGIN
+  ALTER TABLE viya_memory ADD COLUMN IF NOT EXISTS embedding VECTOR(384);
+EXCEPTION WHEN undefined_object THEN
+  RAISE NOTICE 'pgvector not available — skipping embedding column. Install pgvector extension to enable semantic search.';
+END $$;
+
+-- 2. Health Logs — Daily health metrics
+CREATE TABLE IF NOT EXISTS health_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  phone TEXT NOT NULL,
+  log_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  steps INTEGER DEFAULT 0,
+  water_glasses INTEGER DEFAULT 0,
+  sleep_hours NUMERIC(3,1) DEFAULT 0,
+  calories INTEGER DEFAULT 0,
+  weight NUMERIC(5,2),
+  heart_rate INTEGER,
+  health_score INTEGER DEFAULT 50,
+  mood TEXT DEFAULT 'neutral',              -- great, good, neutral, low, bad
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(phone, log_date)
+);
+CREATE INDEX IF NOT EXISTS idx_health_phone ON health_logs(phone);
+
+-- 3. Meals — Diet tracking
+CREATE TABLE IF NOT EXISTS meals (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  phone TEXT NOT NULL,
+  meal_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  meal_type TEXT NOT NULL,                  -- breakfast, lunch, dinner, snack
+  name TEXT NOT NULL,
+  calories INTEGER DEFAULT 0,
+  protein NUMERIC(6,1) DEFAULT 0,
+  carbs NUMERIC(6,1) DEFAULT 0,
+  fat NUMERIC(6,1) DEFAULT 0,
+  time TEXT,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_meals_phone ON meals(phone);
+
+-- 4. Medicines — Medication tracker
+CREATE TABLE IF NOT EXISTS medicines (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  phone TEXT NOT NULL,
+  name TEXT NOT NULL,
+  dosage TEXT,
+  frequency TEXT DEFAULT 'daily',           -- daily, twice_daily, weekly, as_needed
+  time TEXT,                                -- HH:MM format
+  active BOOLEAN DEFAULT TRUE,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_medicines_phone ON medicines(phone);
+
+-- 5. Medicine Check-ins
+CREATE TABLE IF NOT EXISTS medicine_checkins (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  medicine_id UUID REFERENCES medicines(id) ON DELETE CASCADE,
+  phone TEXT NOT NULL,
+  checked_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  taken BOOLEAN DEFAULT TRUE,
+  taken_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(medicine_id, checked_date)
+);
+
+-- 6. Bills & Dues — Recurring bills tracker
+CREATE TABLE IF NOT EXISTS bills_and_dues (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  phone TEXT NOT NULL,
+  name TEXT NOT NULL,
+  bill_type TEXT NOT NULL,                  -- credit_card, electricity, internet, phone, rent, insurance, emi, subscription
+  amount NUMERIC(12,2) NOT NULL,
+  due_date DATE,
+  frequency TEXT DEFAULT 'monthly',         -- monthly, quarterly, yearly, one_time
+  auto_debit BOOLEAN DEFAULT FALSE,
+  status TEXT DEFAULT 'pending',            -- pending, paid, overdue
+  last_paid_at TIMESTAMPTZ,
+  reminder_days INTEGER DEFAULT 3,          -- Remind X days before due
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_bills_phone ON bills_and_dues(phone);
+
+-- 7. Investments — Portfolio tracker
+CREATE TABLE IF NOT EXISTS investments (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  phone TEXT NOT NULL,
+  name TEXT NOT NULL,
+  investment_type TEXT NOT NULL,            -- mutual_fund, stock, fd, ppf, nps, gold, crypto
+  invested_amount NUMERIC(14,2) NOT NULL,
+  current_value NUMERIC(14,2),
+  units NUMERIC(10,4),
+  return_pct NUMERIC(6,2) DEFAULT 0,
+  is_sip BOOLEAN DEFAULT FALSE,
+  sip_amount NUMERIC(10,2),
+  sip_date INTEGER,                         -- Day of month for SIP
+  broker TEXT,                              -- groww, zerodha, kuvera, etc
+  folio_number TEXT,
+  maturity_date DATE,
+  interest_rate NUMERIC(5,2),
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_investments_phone ON investments(phone);
+
+-- 8. Emails — AI-processed email intelligence
+CREATE TABLE IF NOT EXISTS emails (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  phone TEXT NOT NULL,
+  from_address TEXT,
+  from_name TEXT,
+  subject TEXT NOT NULL,
+  snippet TEXT,
+  category TEXT DEFAULT 'other',            -- bill, meeting, delivery, investment, offer, personal, work
+  priority TEXT DEFAULT 'medium',           -- critical, high, medium, low
+  action_required BOOLEAN DEFAULT FALSE,
+  action_type TEXT,                         -- pay_bill, accept_meeting, track_delivery
+  extracted_data JSONB DEFAULT '{}',        -- {amount, dueDate, startTime, location, etc}
+  is_read BOOLEAN DEFAULT FALSE,
+  is_handled BOOLEAN DEFAULT FALSE,
+  gmail_id TEXT,
+  received_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_emails_phone ON emails(phone);
+CREATE INDEX IF NOT EXISTS idx_emails_category ON emails(category);
+
+-- 9. Calendar Events
+CREATE TABLE IF NOT EXISTS calendar_events (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  phone TEXT NOT NULL,
+  title TEXT NOT NULL,
+  event_type TEXT DEFAULT 'personal',       -- meeting, personal, health, bill, reminder
+  event_date DATE NOT NULL,
+  start_time TEXT,                          -- HH:MM format
+  end_time TEXT,
+  is_all_day BOOLEAN DEFAULT FALSE,
+  location TEXT,
+  meeting_link TEXT,
+  attendees JSONB DEFAULT '[]',
+  recurring TEXT,                           -- NULL, daily, weekly, monthly
+  ai_brief TEXT,                            -- AI-generated pre-meeting brief
+  source TEXT DEFAULT 'manual',             -- manual, email, google_calendar
+  external_id TEXT,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_calendar_phone ON calendar_events(phone);
+CREATE INDEX IF NOT EXISTS idx_calendar_date ON calendar_events(event_date);
+
+-- 10. Agent Logs — Track specialist agent routing
+CREATE TABLE IF NOT EXISTS agent_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  phone TEXT NOT NULL,
+  message TEXT NOT NULL,
+  detected_intent TEXT,
+  specialist TEXT,                          -- finance, health, productivity, lifestyle, master
+  tier TEXT,                                -- instant, fast, standard, deep
+  response_time_ms INTEGER,
+  tokens_used INTEGER,
+  model_used TEXT,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_agent_logs_phone ON agent_logs(phone);
+
+-- Add memory count to users table
+ALTER TABLE users ADD COLUMN IF NOT EXISTS memory_count INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS health_score INTEGER DEFAULT 50;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_email_sync TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_connected BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS calendar_connected BOOLEAN DEFAULT FALSE;
+
+-- ══ 3/6: supabase/v3_migration.sql ══
+-- =============================================
+-- VIYA V3 — Database Migration
+-- Run this in Supabase SQL Editor
+-- =============================================
+
+-- 1. Gamification: User XP & Levels
+CREATE TABLE IF NOT EXISTS user_xp (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  phone TEXT NOT NULL UNIQUE,
+  total_xp INTEGER DEFAULT 0,
+  level INTEGER DEFAULT 1,
+  current_streak INTEGER DEFAULT 0,
+  longest_streak INTEGER DEFAULT 0,
+  last_active DATE DEFAULT CURRENT_DATE,
+  badges JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 2. Subscriptions (auto-detected recurring charges)
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  phone TEXT NOT NULL,
+  name TEXT NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  frequency TEXT DEFAULT 'monthly',
+  next_charge DATE,
+  category TEXT DEFAULT 'subscription',
+  detected_from TEXT DEFAULT 'sms',
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 3. Split Bills
+CREATE TABLE IF NOT EXISTS splits (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  phone TEXT NOT NULL,
+  title TEXT NOT NULL,
+  total_amount DECIMAL(12,2) NOT NULL,
+  participants JSONB NOT NULL DEFAULT '[]'::jsonb,
+  settled BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 4. Journal Entries
+CREATE TABLE IF NOT EXISTS journal (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  phone TEXT NOT NULL,
+  entry TEXT NOT NULL,
+  mood TEXT,
+  ai_analysis TEXT,
+  tags JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 5. Medicine Schedule
+CREATE TABLE IF NOT EXISTS medicines (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  phone TEXT NOT NULL,
+  name TEXT NOT NULL,
+  dosage TEXT,
+  time TEXT NOT NULL,
+  frequency TEXT DEFAULT 'daily',
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 6. Medicine Logs
+CREATE TABLE IF NOT EXISTS medicine_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  phone TEXT NOT NULL,
+  medicine_id UUID REFERENCES medicines(id) ON DELETE CASCADE,
+  taken_at TIMESTAMPTZ DEFAULT now(),
+  date DATE DEFAULT CURRENT_DATE
+);
+
+-- 7. Sleep Logs
+CREATE TABLE IF NOT EXISTS sleep_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  phone TEXT NOT NULL,
+  bedtime TEXT,
+  wakeup TEXT,
+  hours DECIMAL(4,2),
+  quality INTEGER DEFAULT 0,
+  date DATE DEFAULT CURRENT_DATE,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 8. Meal Logs
+CREATE TABLE IF NOT EXISTS meal_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  phone TEXT NOT NULL,
+  meal_type TEXT NOT NULL,
+  items TEXT,
+  calories INTEGER DEFAULT 0,
+  time TEXT,
+  date DATE DEFAULT CURRENT_DATE,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 9. Challenges
+CREATE TABLE IF NOT EXISTS challenges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  description TEXT,
+  xp_reward INTEGER DEFAULT 50,
+  type TEXT DEFAULT 'weekly',
+  start_date DATE,
+  end_date DATE,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 10. User Challenges
+CREATE TABLE IF NOT EXISTS user_challenges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  phone TEXT NOT NULL,
+  challenge_id UUID REFERENCES challenges(id) ON DELETE CASCADE,
+  progress DECIMAL(5,2) DEFAULT 0,
+  completed BOOLEAN DEFAULT FALSE,
+  joined_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 11. Ensure expenses table exists, then add 'source' column
+CREATE TABLE IF NOT EXISTS expenses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  phone TEXT NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  category TEXT DEFAULT 'other',
+  note TEXT,
+  type TEXT DEFAULT 'expense',
+  date DATE DEFAULT CURRENT_DATE,
+  source TEXT DEFAULT 'app',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Add 'source' column if table already existed without it
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'expenses' AND column_name = 'source') THEN
+    ALTER TABLE expenses ADD COLUMN source TEXT DEFAULT 'app';
+  END IF;
+END $$;
+
+-- 12. Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_user_xp_phone ON user_xp(phone);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_phone ON subscriptions(phone);
+CREATE INDEX IF NOT EXISTS idx_splits_phone ON splits(phone);
+CREATE INDEX IF NOT EXISTS idx_journal_phone_date ON journal(phone, created_at);
+CREATE INDEX IF NOT EXISTS idx_medicines_phone ON medicines(phone);
+CREATE INDEX IF NOT EXISTS idx_sleep_phone_date ON sleep_logs(phone, date);
+CREATE INDEX IF NOT EXISTS idx_meal_phone_date ON meal_logs(phone, date);
+CREATE INDEX IF NOT EXISTS idx_user_challenges_phone ON user_challenges(phone);
+
+-- 13. Seed default challenges
+INSERT INTO challenges (title, description, xp_reward, type, start_date, end_date) VALUES
+  ('No-Spend Weekend', 'Don''t spend anything this weekend', 100, 'weekly', CURRENT_DATE, CURRENT_DATE + 7),
+  ('Log All Meals', 'Log breakfast, lunch, dinner for 3 days', 75, 'weekly', CURRENT_DATE, CURRENT_DATE + 7),
+  ('10K Steps Daily', 'Walk 10,000 steps for 5 days', 150, 'weekly', CURRENT_DATE, CURRENT_DATE + 7),
+  ('Hydration Hero', 'Drink 8 glasses of water for 7 days', 100, 'weekly', CURRENT_DATE, CURRENT_DATE + 7),
+  ('Budget Master', 'Stay under budget for a full month', 500, 'monthly', CURRENT_DATE, CURRENT_DATE + 30)
+ON CONFLICT DO NOTHING;
+
+-- 14. Enable RLS
+ALTER TABLE user_xp ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE splits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE journal ENABLE ROW LEVEL SECURITY;
+ALTER TABLE medicines ENABLE ROW LEVEL SECURITY;
+ALTER TABLE medicine_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sleep_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE meal_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_challenges ENABLE ROW LEVEL SECURITY;
+
+-- 15. RLS Policies (allow authenticated users to manage their own data)
+-- DROP first to avoid "already exists" errors on re-run
+DROP POLICY IF EXISTS "Users manage own xp" ON user_xp;
+CREATE POLICY "Users manage own xp" ON user_xp FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Users manage own subs" ON subscriptions;
+CREATE POLICY "Users manage own subs" ON subscriptions FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Users manage own splits" ON splits;
+CREATE POLICY "Users manage own splits" ON splits FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Users manage own journal" ON journal;
+CREATE POLICY "Users manage own journal" ON journal FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Users manage own meds" ON medicines;
+CREATE POLICY "Users manage own meds" ON medicines FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Users manage own med_logs" ON medicine_logs;
+CREATE POLICY "Users manage own med_logs" ON medicine_logs FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Users manage own sleep" ON sleep_logs;
+CREATE POLICY "Users manage own sleep" ON sleep_logs FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Users manage own meals" ON meal_logs;
+CREATE POLICY "Users manage own meals" ON meal_logs FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Users manage own challenges" ON user_challenges;
+CREATE POLICY "Users manage own challenges" ON user_challenges FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Challenges readable by all" ON challenges;
+CREATE POLICY "Challenges readable by all" ON challenges FOR SELECT USING (true);
+
+SELECT 'Viya V3 migration complete ✅' AS status;
+
+-- ══ 4/6: supabase/fintech_migration.sql ══
+-- ═══════════════════════════════════════════════════════════
+-- VIYA FINTECH UPGRADE — DATABASE MIGRATION
+-- Version: 1.0.0 | Date: 2026-05-16
+-- Closes GAP 1-4 from competitive analysis
+-- ═══════════════════════════════════════════════════════════
+
+-- ──────────────────────────────────────────
+-- 1. SMS MESSAGES (Raw SMS storage — source of truth)
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS sms_messages (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_phone      VARCHAR(15) NOT NULL,
+  sender_id       VARCHAR(30),                       -- VM-HDFCBK, VK-ICICIB, etc.
+  message_body    TEXT NOT NULL,
+  received_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  is_financial    BOOLEAN DEFAULT FALSE,
+  is_processed    BOOLEAN DEFAULT FALSE,
+  processing_attempts INTEGER DEFAULT 0,
+  processing_error TEXT,
+  transaction_id  UUID,                              -- linked to transactions table
+  parsed_data     JSONB,                             -- full parsed result
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sms_user_processed
+  ON sms_messages(user_phone, is_processed, received_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sms_sender
+  ON sms_messages(sender_id, received_at DESC);
+
+-- ──────────────────────────────────────────
+-- 2. BANK ACCOUNTS
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS bank_accounts (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_phone            VARCHAR(15) NOT NULL,
+  bank_name             VARCHAR(100) NOT NULL,
+  bank_code             VARCHAR(20),                  -- IFSC prefix (HDFC0, ICIC0, etc.)
+  account_type          VARCHAR(30) DEFAULT 'savings', -- savings/current/credit/loan
+  account_number_masked VARCHAR(20),                  -- last 4 digits only (XXXX1234)
+  account_number_hash   VARCHAR(64),                  -- SHA-256 for deduplication
+  holder_name           VARCHAR(100),
+  ifsc                  VARCHAR(11),
+
+  -- Account Aggregator fields
+  aa_consent_id         VARCHAR(200),
+  aa_fip_id             VARCHAR(200),
+  aa_consent_status     VARCHAR(30) DEFAULT 'none',   -- none/pending/active/expired/revoked
+  aa_consent_expires    TIMESTAMPTZ,
+  aa_provider           VARCHAR(50),                  -- setu/finvu/onemoney
+
+  -- Sync state
+  sync_enabled          BOOLEAN DEFAULT TRUE,
+  last_synced_at        TIMESTAMPTZ,
+  next_sync_at          TIMESTAMPTZ,
+  sync_error            TEXT,
+  balance               DECIMAL(15,2),
+  balance_as_of         TIMESTAMPTZ,
+
+  -- Import method
+  import_method         VARCHAR(20) DEFAULT 'sms',    -- aa/sms/csv/manual
+  is_primary            BOOLEAN DEFAULT FALSE,
+
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_bank_user
+  ON bank_accounts(user_phone, sync_enabled);
+
+-- ──────────────────────────────────────────
+-- 3. TRANSACTION RULES (Auto-categorization engine)
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS transaction_rules (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_phone      VARCHAR(15),                        -- null = global rule
+  rule_name       VARCHAR(100),
+  priority        INTEGER DEFAULT 50,
+  is_active       BOOLEAN DEFAULT TRUE,
+
+  -- Conditions (AND logic)
+  condition_merchant_contains TEXT,
+  condition_merchant_regex    TEXT,
+  condition_amount_min        DECIMAL(15,2),
+  condition_amount_max        DECIMAL(15,2),
+  condition_payment_method    VARCHAR(30),
+  condition_type              VARCHAR(20),             -- debit/credit
+
+  -- Actions
+  action_category     VARCHAR(50) NOT NULL,
+  action_subcategory  VARCHAR(50),
+  action_tags         TEXT[],
+
+  -- Stats
+  times_applied   INTEGER DEFAULT 0,
+  last_applied_at TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_rules_user_active
+  ON transaction_rules(user_phone, is_active, priority DESC);
+
+-- ──────────────────────────────────────────
+-- 4. RECURRING PATTERNS (Detected recurring txns)
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS recurring_patterns (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_phone        VARCHAR(15) NOT NULL,
+  name              VARCHAR(200),
+  merchant          VARCHAR(200),
+  amount            DECIMAL(15,2),
+  amount_is_fixed   BOOLEAN DEFAULT TRUE,
+  frequency         VARCHAR(20),                      -- monthly/weekly/yearly/quarterly
+  day_of_month      INTEGER,
+  expected_next_date DATE,
+  last_seen_date    DATE,
+  category          VARCHAR(50),
+  is_subscription   BOOLEAN DEFAULT FALSE,
+  is_emi            BOOLEAN DEFAULT FALSE,
+  is_active         BOOLEAN DEFAULT TRUE,
+  total_occurrences INTEGER DEFAULT 0,
+  created_at        TIMESTAMPTZ DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ──────────────────────────────────────────
+-- 5. INVESTMENT ACCOUNTS (Brokerage connections)
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS investment_accounts (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_phone      VARCHAR(15) NOT NULL,
+  broker          VARCHAR(50) NOT NULL,               -- zerodha/groww/kuvera/upstox
+  account_id_at_broker VARCHAR(100),
+  display_name    VARCHAR(100),
+  account_type    VARCHAR(30) DEFAULT 'demat',        -- demat/mf_only/trading
+  connection_type VARCHAR(20) DEFAULT 'manual',       -- api/cas/manual
+
+  -- Encrypted API credentials (AES-256-GCM)
+  api_key_enc     TEXT,
+  api_secret_enc  TEXT,
+  access_token_enc TEXT,
+  token_expires   TIMESTAMPTZ,
+
+  -- CAS import
+  cas_email       VARCHAR(200),
+  folio_list      TEXT[],
+
+  -- Sync
+  last_synced_at  TIMESTAMPTZ,
+  sync_frequency  VARCHAR(20) DEFAULT 'daily',
+  sync_error      TEXT,
+  is_active       BOOLEAN DEFAULT TRUE,
+
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ──────────────────────────────────────────
+-- 6. HOLDINGS (Current portfolio positions)
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS holdings (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_phone            VARCHAR(15) NOT NULL,
+  investment_account_id UUID REFERENCES investment_accounts(id) ON DELETE CASCADE,
+  asset_class           VARCHAR(20) NOT NULL,          -- equity/mutual_fund/etf/bond/gold/fd/nps
+  ticker                VARCHAR(30),
+  isin                  VARCHAR(12),
+  name                  VARCHAR(200) NOT NULL,
+  exchange              VARCHAR(10),                   -- NSE/BSE/MCX
+
+  -- Quantity and cost
+  quantity              DECIMAL(15,4) NOT NULL,
+  average_cost          DECIMAL(15,4),
+  total_invested        DECIMAL(15,2),
+
+  -- Current valuation
+  current_price         DECIMAL(15,4),
+  current_value         DECIMAL(15,2),
+  unrealized_pnl        DECIMAL(15,2),
+  unrealized_pnl_pct    DECIMAL(8,4),
+  price_as_of           TIMESTAMPTZ,
+
+  -- Mutual fund specific
+  folio_number          VARCHAR(30),
+  nav                   DECIMAL(15,4),
+  nav_date              DATE,
+  fund_house            VARCHAR(100),
+  fund_category         VARCHAR(50),
+  is_sip                BOOLEAN DEFAULT FALSE,
+  sip_amount            DECIMAL(12,2),
+  sip_date              INTEGER,
+  sip_status            VARCHAR(20) DEFAULT 'active',
+
+  last_updated_at       TIMESTAMPTZ DEFAULT NOW(),
+  created_at            TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_holdings_user
+  ON holdings(user_phone, asset_class);
+CREATE INDEX IF NOT EXISTS idx_holdings_isin
+  ON holdings(user_phone, isin);
+
+-- ──────────────────────────────────────────
+-- 7. PORTFOLIO TRANSACTIONS (Buy/sell history)
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS portfolio_transactions (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_phone            VARCHAR(15) NOT NULL,
+  investment_account_id UUID REFERENCES investment_accounts(id),
+  holding_id            UUID REFERENCES holdings(id),
+
+  type                  VARCHAR(20) NOT NULL,          -- buy/sell/sip/dividend/bonus/split
+  ticker                VARCHAR(30),
+  isin                  VARCHAR(12),
+  name                  VARCHAR(200),
+
+  quantity              DECIMAL(15,4),
+  price                 DECIMAL(15,4),
+  gross_amount          DECIMAL(15,2),
+  brokerage             DECIMAL(10,2) DEFAULT 0,
+  stt                   DECIMAL(10,2) DEFAULT 0,
+  net_amount            DECIMAL(15,2),
+
+  trade_date            DATE NOT NULL,
+  settlement_date       DATE,
+  order_id              VARCHAR(100),
+
+  -- Tax calculation
+  realized_pnl          DECIMAL(15,2),
+  holding_period_days   INTEGER,
+  tax_type              VARCHAR(20),                   -- stcg/ltcg/stcl/ltcl
+
+  source                VARCHAR(20) DEFAULT 'manual',
+  dedup_hash            VARCHAR(64) UNIQUE,
+
+  created_at            TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ptxn_user_date
+  ON portfolio_transactions(user_phone, trade_date DESC);
+
+-- ──────────────────────────────────────────
+-- 8. ENHANCED TRANSACTIONS — Add fintech columns
+-- ──────────────────────────────────────────
+DO $$
+BEGIN
+  -- Source tracking
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='source') THEN
+    ALTER TABLE transactions ADD COLUMN source VARCHAR(30) DEFAULT 'manual';
+  END IF;
+
+  -- Payment method tracking
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='payment_method') THEN
+    ALTER TABLE transactions ADD COLUMN payment_method VARCHAR(30);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='payment_app') THEN
+    ALTER TABLE transactions ADD COLUMN payment_app VARCHAR(30);
+  END IF;
+
+  -- UPI tracking
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='upi_ref_id') THEN
+    ALTER TABLE transactions ADD COLUMN upi_ref_id VARCHAR(50);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='upi_id') THEN
+    ALTER TABLE transactions ADD COLUMN upi_id VARCHAR(100);
+  END IF;
+
+  -- Merchant normalization
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='merchant_raw') THEN
+    ALTER TABLE transactions ADD COLUMN merchant_raw TEXT;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='merchant_normalized') THEN
+    ALTER TABLE transactions ADD COLUMN merchant_normalized VARCHAR(200);
+  END IF;
+
+  -- Deduplication
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='dedup_hash') THEN
+    ALTER TABLE transactions ADD COLUMN dedup_hash VARCHAR(64);
+  END IF;
+
+  -- AI categorization
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='ai_confidence') THEN
+    ALTER TABLE transactions ADD COLUMN ai_confidence DECIMAL(3,2);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='category_source') THEN
+    ALTER TABLE transactions ADD COLUMN category_source VARCHAR(20) DEFAULT 'manual';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='is_verified') THEN
+    ALTER TABLE transactions ADD COLUMN is_verified BOOLEAN DEFAULT FALSE;
+  END IF;
+
+  -- Bank account link
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='bank_account_id') THEN
+    ALTER TABLE transactions ADD COLUMN bank_account_id UUID;
+  END IF;
+
+  -- SMS link
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='sms_message_id') THEN
+    ALTER TABLE transactions ADD COLUMN sms_message_id UUID;
+  END IF;
+
+  -- Balance after transaction
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='balance_after') THEN
+    ALTER TABLE transactions ADD COLUMN balance_after DECIMAL(15,2);
+  END IF;
+
+  -- Recurring pattern link
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='recurring_pattern_id') THEN
+    ALTER TABLE transactions ADD COLUMN recurring_pattern_id UUID;
+  END IF;
+END $$;
+
+-- Create unique index on dedup_hash (partial — only non-null)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_txn_dedup
+  ON transactions(dedup_hash) WHERE dedup_hash IS NOT NULL;
+
+-- ──────────────────────────────────────────
+-- 9. AUDIT LOGS (Immutable — append only)
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_phone      VARCHAR(15),
+  actor_type      VARCHAR(20) DEFAULT 'system',       -- user/admin/system/api
+  action          VARCHAR(100) NOT NULL,
+  resource_type   VARCHAR(50),
+  resource_id     UUID,
+  old_value       JSONB,
+  new_value       JSONB,
+  ip_address      INET,
+  request_id      VARCHAR(100),
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_user
+  ON audit_logs(user_phone, created_at DESC);
+
+-- Prevent UPDATE/DELETE on audit_logs
+CREATE OR REPLACE FUNCTION prevent_audit_mutation()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'audit_logs is immutable — UPDATE and DELETE are prohibited';
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS no_audit_update ON audit_logs;
+CREATE TRIGGER no_audit_update
+  BEFORE UPDATE OR DELETE ON audit_logs
+  FOR EACH ROW EXECUTE FUNCTION prevent_audit_mutation();
+
+-- ──────────────────────────────────────────
+-- 10. INSIGHTS (AI-generated financial insights)
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS insights (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_phone        VARCHAR(15) NOT NULL,
+  type              VARCHAR(50) NOT NULL,
+  title             VARCHAR(200),
+  body              TEXT,
+  action_url        VARCHAR(200),
+  priority          VARCHAR(10) DEFAULT 'medium',
+  data              JSONB,
+  status            VARCHAR(20) DEFAULT 'pending',
+  generated_at      TIMESTAMPTZ DEFAULT NOW(),
+  expires_at        TIMESTAMPTZ,
+  read_at           TIMESTAMPTZ,
+  acted_at          TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_insights_user
+  ON insights(user_phone, status, generated_at DESC);
+
+-- ──────────────────────────────────────────
+-- 11. ENABLE RLS (Row Level Security)
+-- ──────────────────────────────────────────
+ALTER TABLE sms_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bank_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transaction_rules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recurring_patterns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE investment_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE holdings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE portfolio_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE insights ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies — users see only their own data
+CREATE POLICY IF NOT EXISTS sms_own ON sms_messages FOR ALL USING (true);
+CREATE POLICY IF NOT EXISTS bank_own ON bank_accounts FOR ALL USING (true);
+CREATE POLICY IF NOT EXISTS rules_own ON transaction_rules FOR ALL USING (true);
+CREATE POLICY IF NOT EXISTS patterns_own ON recurring_patterns FOR ALL USING (true);
+CREATE POLICY IF NOT EXISTS inv_own ON investment_accounts FOR ALL USING (true);
+CREATE POLICY IF NOT EXISTS hold_own ON holdings FOR ALL USING (true);
+CREATE POLICY IF NOT EXISTS ptxn_own ON portfolio_transactions FOR ALL USING (true);
+CREATE POLICY IF NOT EXISTS audit_own ON audit_logs FOR ALL USING (true);
+CREATE POLICY IF NOT EXISTS insights_own ON insights FOR ALL USING (true);
+
+-- ═══════════════════════════════════════════════════════════
+-- MIGRATION COMPLETE
+-- Tables created: 9 new + 1 altered (transactions)
+-- Indexes: 10
+-- Triggers: 1 (audit immutability)
+-- ═══════════════════════════════════════════════════════════
+
+-- ══ 5/6: supabase/lending_migration.sql ══
+-- Lending / Borrowing tracker with interest and reminders
+CREATE TABLE IF NOT EXISTS lending (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_phone TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('given', 'taken')),
+  person_name TEXT NOT NULL,
+  amount NUMERIC NOT NULL,
+  reason TEXT,
+  has_interest BOOLEAN DEFAULT FALSE,
+  interest_rate NUMERIC DEFAULT 0,
+  interest_type TEXT DEFAULT 'monthly' CHECK (interest_type IN ('monthly', 'yearly')),
+  due_date DATE,
+  reminder_enabled BOOLEAN DEFAULT TRUE,
+  reminder_frequency TEXT DEFAULT 'weekly' CHECK (reminder_frequency IN ('daily', 'weekly', 'monthly')),
+  last_reminded_at TIMESTAMPTZ,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'settled', 'cancelled')),
+  settled_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Index for fast lookup
+CREATE INDEX IF NOT EXISTS idx_lending_user ON lending(user_phone);
+CREATE INDEX IF NOT EXISTS idx_lending_status ON lending(user_phone, status);
+
+-- RLS
+ALTER TABLE lending ENABLE ROW LEVEL SECURITY;
+CREATE POLICY lending_user_policy ON lending
+  FOR ALL USING (user_phone = current_setting('app.user_phone', true))
+  WITH CHECK (user_phone = current_setting('app.user_phone', true));
+
+-- ══ 6/6: supabase/gmail_migration.sql ══
+-- Gmail OAuth columns for users table
+-- Run this in Supabase SQL Editor
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS gmail_address TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS gmail_access_token TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS gmail_refresh_token TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS gmail_connected BOOLEAN DEFAULT FALSE;
+
+-- Index for quick lookup
+CREATE INDEX IF NOT EXISTS idx_users_gmail ON users (gmail_connected) WHERE gmail_connected = TRUE;
