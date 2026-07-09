@@ -204,3 +204,45 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS health_score INTEGER DEFAULT 50;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS last_email_sync TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_connected BOOLEAN DEFAULT FALSE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS calendar_connected BOOLEAN DEFAULT FALSE;
+
+-- ──────────────────────────────────────────
+-- 11. ROW LEVEL SECURITY — this file never had any.
+-- Supabase's dashboard/Table Editor auto-enables RLS on new tables but
+-- doesn't add a policy, which leaves a table locked with literally no way
+-- in — including for this app's own anon-key REST calls (confirmed live:
+-- "new row violates row-level security policy for table health_logs",
+-- Postgres 42501). The app has no Supabase Auth session anywhere (custom
+-- phone+password auth against the anon key), so a permissive policy here
+-- matches every other table in this schema, not a security regression.
+-- ──────────────────────────────────────────
+ALTER TABLE viya_memory ENABLE ROW LEVEL SECURITY;
+ALTER TABLE health_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE meals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE medicines ENABLE ROW LEVEL SECURITY;
+ALTER TABLE medicine_checkins ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bills_and_dues ENABLE ROW LEVEL SECURITY;
+ALTER TABLE investments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE emails ENABLE ROW LEVEL SECURITY;
+ALTER TABLE calendar_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all for anon" ON viya_memory;
+CREATE POLICY "Allow all for anon" ON viya_memory FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON health_logs;
+CREATE POLICY "Allow all for anon" ON health_logs FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON meals;
+CREATE POLICY "Allow all for anon" ON meals FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON medicines;
+CREATE POLICY "Allow all for anon" ON medicines FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON medicine_checkins;
+CREATE POLICY "Allow all for anon" ON medicine_checkins FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON bills_and_dues;
+CREATE POLICY "Allow all for anon" ON bills_and_dues FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON investments;
+CREATE POLICY "Allow all for anon" ON investments FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON emails;
+CREATE POLICY "Allow all for anon" ON emails FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON calendar_events;
+CREATE POLICY "Allow all for anon" ON calendar_events FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for anon" ON agent_logs;
+CREATE POLICY "Allow all for anon" ON agent_logs FOR ALL USING (true) WITH CHECK (true);
