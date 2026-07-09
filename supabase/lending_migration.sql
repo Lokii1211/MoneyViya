@@ -19,8 +19,20 @@ CREATE TABLE IF NOT EXISTS lending (
 );
 
 -- Index for fast lookup
-CREATE INDEX IF NOT EXISTS idx_lending_user ON lending(user_phone);
-CREATE INDEX IF NOT EXISTS idx_lending_status ON lending(user_phone, status);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='lending' AND column_name='user_phone') THEN
+    CREATE INDEX IF NOT EXISTS idx_lending_user ON lending(user_phone);
+  ELSE
+    RAISE NOTICE 'Skipping idx_lending_user — lending.user_phone not found (table may pre-exist with a different schema)';
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='lending' AND column_name='user_phone') THEN
+    CREATE INDEX IF NOT EXISTS idx_lending_status ON lending(user_phone, status);
+  ELSE
+    RAISE NOTICE 'Skipping idx_lending_status — lending.user_phone not found (table may pre-exist with a different schema)';
+  END IF;
+END $$;
 
 -- RLS — the app has no Supabase Auth session (custom phone+password auth
 -- against the anon key, same as every other table here), so a policy keyed

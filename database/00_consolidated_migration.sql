@@ -695,8 +695,13 @@ CREATE TABLE IF NOT EXISTS sms_messages (
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_sms_user_processed
-  ON sms_messages(user_phone, is_processed, received_at DESC);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sms_messages' AND column_name='user_phone') THEN
+    CREATE INDEX IF NOT EXISTS idx_sms_user_processed ON sms_messages(user_phone, is_processed, received_at DESC);
+  ELSE
+    RAISE NOTICE 'Skipping idx_sms_user_processed — sms_messages.user_phone not found (table may pre-exist with a different schema)';
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_sms_sender
   ON sms_messages(sender_id, received_at DESC);
 
@@ -737,8 +742,13 @@ CREATE TABLE IF NOT EXISTS bank_accounts (
   updated_at            TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_bank_user
-  ON bank_accounts(user_phone, sync_enabled);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bank_accounts' AND column_name='user_phone') THEN
+    CREATE INDEX IF NOT EXISTS idx_bank_user ON bank_accounts(user_phone, sync_enabled);
+  ELSE
+    RAISE NOTICE 'Skipping idx_bank_user — bank_accounts.user_phone not found (table may pre-exist with a different schema)';
+  END IF;
+END $$;
 
 -- ──────────────────────────────────────────
 -- 3. TRANSACTION RULES (Auto-categorization engine)
@@ -770,8 +780,13 @@ CREATE TABLE IF NOT EXISTS transaction_rules (
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_rules_user_active
-  ON transaction_rules(user_phone, is_active, priority DESC);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transaction_rules' AND column_name='user_phone') THEN
+    CREATE INDEX IF NOT EXISTS idx_rules_user_active ON transaction_rules(user_phone, is_active, priority DESC);
+  ELSE
+    RAISE NOTICE 'Skipping idx_rules_user_active — transaction_rules.user_phone not found (table may pre-exist with a different schema)';
+  END IF;
+END $$;
 
 -- ──────────────────────────────────────────
 -- 4. RECURRING PATTERNS (Detected recurring txns)
@@ -868,10 +883,20 @@ CREATE TABLE IF NOT EXISTS holdings (
   created_at            TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_holdings_user
-  ON holdings(user_phone, asset_class);
-CREATE INDEX IF NOT EXISTS idx_holdings_isin
-  ON holdings(user_phone, isin);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='holdings' AND column_name='user_phone') THEN
+    CREATE INDEX IF NOT EXISTS idx_holdings_user ON holdings(user_phone, asset_class);
+  ELSE
+    RAISE NOTICE 'Skipping idx_holdings_user — holdings.user_phone not found (table may pre-exist with a different schema)';
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='holdings' AND column_name='user_phone') THEN
+    CREATE INDEX IF NOT EXISTS idx_holdings_isin ON holdings(user_phone, isin);
+  ELSE
+    RAISE NOTICE 'Skipping idx_holdings_isin — holdings.user_phone not found (table may pre-exist with a different schema)';
+  END IF;
+END $$;
 
 -- ──────────────────────────────────────────
 -- 7. PORTFOLIO TRANSACTIONS (Buy/sell history)
@@ -909,8 +934,13 @@ CREATE TABLE IF NOT EXISTS portfolio_transactions (
   created_at            TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_ptxn_user_date
-  ON portfolio_transactions(user_phone, trade_date DESC);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='portfolio_transactions' AND column_name='user_phone') THEN
+    CREATE INDEX IF NOT EXISTS idx_ptxn_user_date ON portfolio_transactions(user_phone, trade_date DESC);
+  ELSE
+    RAISE NOTICE 'Skipping idx_ptxn_user_date — portfolio_transactions.user_phone not found (table may pre-exist with a different schema)';
+  END IF;
+END $$;
 
 -- ──────────────────────────────────────────
 -- 8. ENHANCED TRANSACTIONS — Add fintech columns
@@ -1009,8 +1039,13 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_audit_user
-  ON audit_logs(user_phone, created_at DESC);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='audit_logs' AND column_name='user_phone') THEN
+    CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_phone, created_at DESC);
+  ELSE
+    RAISE NOTICE 'Skipping idx_audit_user — audit_logs.user_phone not found (table may pre-exist with a different schema)';
+  END IF;
+END $$;
 
 -- Prevent UPDATE/DELETE on audit_logs
 CREATE OR REPLACE FUNCTION prevent_audit_mutation()
@@ -1045,8 +1080,13 @@ CREATE TABLE IF NOT EXISTS insights (
   acted_at          TIMESTAMPTZ
 );
 
-CREATE INDEX IF NOT EXISTS idx_insights_user
-  ON insights(user_phone, status, generated_at DESC);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='insights' AND column_name='user_phone') THEN
+    CREATE INDEX IF NOT EXISTS idx_insights_user ON insights(user_phone, status, generated_at DESC);
+  ELSE
+    RAISE NOTICE 'Skipping idx_insights_user — insights.user_phone not found (table may pre-exist with a different schema)';
+  END IF;
+END $$;
 
 -- ──────────────────────────────────────────
 -- 11. ENABLE RLS (Row Level Security)
@@ -1111,8 +1151,20 @@ CREATE TABLE IF NOT EXISTS lending (
 );
 
 -- Index for fast lookup
-CREATE INDEX IF NOT EXISTS idx_lending_user ON lending(user_phone);
-CREATE INDEX IF NOT EXISTS idx_lending_status ON lending(user_phone, status);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='lending' AND column_name='user_phone') THEN
+    CREATE INDEX IF NOT EXISTS idx_lending_user ON lending(user_phone);
+  ELSE
+    RAISE NOTICE 'Skipping idx_lending_user — lending.user_phone not found (table may pre-exist with a different schema)';
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='lending' AND column_name='user_phone') THEN
+    CREATE INDEX IF NOT EXISTS idx_lending_status ON lending(user_phone, status);
+  ELSE
+    RAISE NOTICE 'Skipping idx_lending_status — lending.user_phone not found (table may pre-exist with a different schema)';
+  END IF;
+END $$;
 
 -- RLS — the app has no Supabase Auth session (custom phone+password auth
 -- against the anon key, same as every other table here), so a policy keyed
