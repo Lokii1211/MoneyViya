@@ -370,12 +370,33 @@ def save_wa_message(phone, role, content):
         sb_post("chat_history", {"phone": short, "role": role, "content": content, "source": "whatsapp"})
 
 
+# ── OTP login (WhatsApp-delivered) ─────────────────────────────────────────────
+# Reuses this function's existing WhatsApp send capability instead of adding
+# a new serverless function — Vercel Hobby caps deployments at 12 functions.
+
+import random
+
+
+def _generate_otp():
+    return f"{random.randint(0, 999999):06d}"
+
+
 # ── HTTP handler ──────────────────────────────────────────────────────────────
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)
+        action = params.get("action", [None])[0]
+
+        if action == "send_otp":
+            self._handle_send_otp(params.get("phone", [""])[0])
+            return
+        if action == "verify_otp":
+            self._handle_verify_otp(params.get("phone", [""])[0], params.get("otp", [""])[0])
+            return
+
+        # Meta webhook verification handshake
         mode = params.get("hub.mode", [None])[0]
         token = params.get("hub.verify_token", [None])[0]
         challenge = params.get("hub.challenge", [None])[0]
@@ -386,6 +407,55 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(str(challenge).encode())
         else:
             self._respond(403, {"error": "Verification failed"})
+
+    def _handle_send_otp(self, phone):
+        short = norm_phone(phone)
+        if not short:
+            self._respond(200, {"success": False, "message": "Enter a valid 10-digit number"})
+            return
+        if not WHATSAPP_TOKEN or not PHONE_ID:
+            self._respond(200, {"success": False, "message": "WhatsApp isn't configured yet — use password login instead"})
+            return
+        code = _generate_otp()
+        expires = (datetime.now() + timedelta(minutes=5)).isoformat()
+        # Upsert: OTP can be requested by a brand-new phone that has no user row yet
+        existing = sb_get(f"users?phone=eq.{short}&select=phone")
+        if existing:
+            sb_patch("users", f"phone=eq.{short}", {"otp_code": code, "otp_expires_at": expires})
+        else:
+            sb_post("users", {"phone": short, "otp_code": code, "otp_expires_at": expires})
+        sent = self._send_wa_message(short, f"🔐 Your Viya login code: *{code}*\n\nExpires in 5 minutes. Don't share this with anyone.")
+        if sent:
+            self._respond(200, {"success": True})
+        else:
+            self._respond(200, {"success": False, "message": "Couldn't send WhatsApp message — message us on WhatsApp first, then retry"})
+
+    def _handle_verify_otp(self, phone, otp):
+        short = norm_phone(phone)
+        if not short or not otp:
+            self._respond(200, {"success": False, "message": "Missing phone or code"})
+            return
+        rows = sb_get(f"users?phone=eq.{short}&select=otp_code,otp_expires_at")
+        if not rows:
+            self._respond(200, {"success": False, "message": "No OTP requested for this number"})
+            return
+        user = rows[0]
+        stored_code = user.get("otp_code") or ""
+        expires_at = user.get("otp_expires_at") or ""
+        if not stored_code or stored_code != otp.strip():
+            self._respond(200, {"success": False, "message": "Invalid code"})
+            return
+        try:
+            expiry = datetime.fromisoformat(expires_at.replace("Z", "+00:00")) if expires_at else None
+            now = datetime.now(expiry.tzinfo) if expiry and expiry.tzinfo else datetime.now()
+            if expiry and now > expiry:
+                self._respond(200, {"success": False, "message": "Code expired — request a new one"})
+                return
+        except Exception:
+            pass  # if the timestamp is unparseable, don't block on it
+        # Single-use — clear it once verified
+        sb_patch("users", f"phone=eq.{short}", {"otp_code": None, "otp_expires_at": None})
+        self._respond(200, {"success": True})
 
     def do_POST(self):
         try:

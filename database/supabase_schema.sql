@@ -20,9 +20,14 @@ CREATE TABLE IF NOT EXISTS users (
     onboarding_complete BOOLEAN DEFAULT FALSE,
     password_hash TEXT,
     partner_phone TEXT,
+    otp_code TEXT,
+    otp_expires_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- For an existing live table, CREATE TABLE IF NOT EXISTS above is a no-op
+ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_code TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_expires_at TIMESTAMPTZ;
 
 -- ===== TRANSACTIONS =====
 CREATE TABLE IF NOT EXISTS transactions (

@@ -29,7 +29,7 @@ export default function Auth() {
     e?.preventDefault(); setErr(''); setLoading(true)
     if (phone.length < 10) { setErr('Enter valid 10-digit number'); setLoading(false); return }
     try {
-      const r = await fetch(`/api/webhook?action=send_otp&phone=${phone}`)
+      const r = await fetch(`/api/whatsapp?action=send_otp&phone=${phone}`)
       const d = await r.json()
       if (d.success) { setStep('otp'); setInfo('OTP sent to your WhatsApp! 📱') }
       else setErr(d.message || 'Failed to send OTP')
@@ -40,7 +40,7 @@ export default function Auth() {
   async function verifyOTP(e) {
     e.preventDefault(); setErr(''); setLoading(true)
     try {
-      const r = await fetch(`/api/webhook?action=verify_otp&phone=${phone}&otp=${otp}`)
+      const r = await fetch(`/api/whatsapp?action=verify_otp&phone=${phone}&otp=${otp}`)
       const d = await r.json()
       if (d.success) {
         const user = await api.getUser(phone)
@@ -108,7 +108,7 @@ export default function Auth() {
             <Lock size={14}/> Password
           </button>
           <button className={`mode-btn${mode==='otp'?' active':''}`} onClick={() => { setMode('otp'); setStep('phone'); setErr(''); setInfo('') }}>
-            <MessageCircle size={14}/> WhatsApp OTP <span style={{ opacity: 0.6, fontSize: 10 }}>(soon)</span>
+            <MessageCircle size={14}/> WhatsApp OTP
           </button>
         </div>
 
