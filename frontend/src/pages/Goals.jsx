@@ -26,6 +26,7 @@ export default function Goals() {
   const [form, setForm] = useState({ name: '', icon: '🎯', target: '', deadline: '' })
   const [toast, setToast] = useState('')
   const [celebration, setCelebration] = useState(null)
+  const [editingDeadline, setEditingDeadline] = useState(null) // goal id currently being edited
 
   const load = async () => {
     const g = await api.getGoals(phone)
@@ -64,7 +65,18 @@ export default function Goals() {
     load()
   }
 
-  const removeGoal = async (id) => { await api.deleteGoal(id); showToast('Goal removed'); load() }
+  const removeGoal = async (id) => {
+    const ok = await api.deleteGoal(id)
+    if (ok) { showToast('Goal removed'); load() }
+    else showToast('Could not delete — check your connection and try again')
+  }
+
+  const saveDeadline = async (id, deadline) => {
+    setEditingDeadline(null)
+    const ok = await api.updateGoal(id, { deadline })
+    if (ok) { showToast('Due date updated'); load() }
+    else showToast('Could not update due date')
+  }
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(''), 2000) }
 
   const totalSaved = goals.reduce((s, g) => s + Number(g.current_amount || 0), 0)
@@ -212,7 +224,21 @@ export default function Goals() {
                     <div className="goal-icon">{g.icon || '🎯'}</div>
                     <div className="goal-info">
                       <div className="goal-name">{g.name}</div>
-                      <div className="goal-deadline">{g.deadline ? `By ${g.deadline}` : 'No deadline'}</div>
+                      {editingDeadline === g.id ? (
+                        <input
+                          type="date"
+                          className="goal-deadline-input"
+                          autoFocus
+                          defaultValue={g.deadline || ''}
+                          onBlur={e => saveDeadline(g.id, e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
+                          onClick={e => e.stopPropagation()}
+                        />
+                      ) : (
+                        <div className="goal-deadline goal-deadline-editable" onClick={() => setEditingDeadline(g.id)}>
+                          {g.deadline ? `By ${g.deadline}` : 'Set a due date'}
+                        </div>
+                      )}
                     </div>
                     <div style={{display:'flex', alignItems:'center', gap:6}}>
                       <button style={{background:'none', border:'none', cursor:'pointer', padding:4, color:'var(--text3)'}} onClick={() => shareGoal(g)}><Share2 size={14}/></button>

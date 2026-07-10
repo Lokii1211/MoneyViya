@@ -120,7 +120,8 @@ export default function Onboarding() {
         onboarding_complete: true,
       })
 
-      // Create goal entries
+      // Create goal entries — each with a real, distinct default due date
+      // based on how far out that kind of goal realistically is, not left blank
       const targets = {
         emergency: 100000,
         home: 2000000,
@@ -131,14 +132,23 @@ export default function Onboarding() {
         education: 300000,
         retirement: 5000000,
       }
+      const monthsOut = {
+        emergency: 6, home: 60, car: 24, wedding: 18,
+        travel: 8, business: 36, education: 24, retirement: 240,
+      }
+      const deadlineIn = (months) => {
+        const d = new Date()
+        d.setMonth(d.getMonth() + months)
+        return d.toISOString().split('T')[0]
+      }
       for (const goalId of form.goals) {
         const g = GOALS.find(x => x.id === goalId)
         if (g) {
-          await api.addGoal(phone, g.label, g.emoji, targets[goalId] || 100000)
+          await api.addGoal(phone, g.label, g.emoji, targets[goalId] || 100000, deadlineIn(monthsOut[goalId] || 12))
         }
       }
       for (const cg of form.customGoals) {
-        await api.addGoal(phone, cg.label, cg.emoji, cg.target)
+        await api.addGoal(phone, cg.label, cg.emoji, cg.target, deadlineIn(12))
       }
     } catch (e) {
       console.error('Onboarding save error:', e)

@@ -346,6 +346,12 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
 .goal-info { flex:1; }
 .goal-name { font-size:15px; font-weight:800; }
 .goal-deadline { font-size:12px; color:var(--text3); margin-top:2px; }
+.goal-deadline-editable { cursor:pointer; text-decoration:underline dotted; text-underline-offset:2px; width:fit-content; }
+.goal-deadline-editable:hover { color:var(--primary); }
+.goal-deadline-input {
+  font-size:12px; color:var(--text); margin-top:2px; background:var(--surface2);
+  border:1px solid var(--primary); border-radius:6px; padding:2px 6px; font-family:inherit;
+}
 .goal-pct { font-family:var(--mono); font-size:18px; font-weight:800; color:var(--primary); }
 .progress-bar { height:6px; background:var(--bg2); border-radius:3px; overflow:hidden; margin-bottom:10px; }
 .progress-fill { height:100%; background:linear-gradient(90deg,var(--primary),var(--primary-light)); border-radius:3px; transition:width 0.6s var(--ease); }
@@ -538,16 +544,16 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
 
 /* THEME TOGGLE PILL */
 .theme-toggle-pill {
-  width:44px; height:24px; border-radius:12px; padding:2px;
+  width:40px; height:22px; border-radius:11px; padding:3px;
   background:var(--surface3); cursor:pointer; transition:all 0.3s var(--ease);
   flex-shrink:0;
 }
 .theme-toggle-pill.dark { background:var(--primary); }
 .theme-toggle-dot {
-  width:20px; height:20px; border-radius:50%; background:#fff;
+  width:16px; height:16px; border-radius:50%; background:#fff;
   transition:all 0.3s var(--ease); box-shadow:0 1px 4px rgba(0,0,0,0.2);
 }
-.theme-toggle-pill.dark .theme-toggle-dot { transform:translateX(20px); }
+.theme-toggle-pill.dark .theme-toggle-dot { transform:translateX(18px); }
 
 /* SETTINGS */
 .settings-list { display:flex; flex-direction:column; gap:4px; margin-bottom:20px; }
@@ -1000,14 +1006,15 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
 .ob-perm-desc { font-size:11px; color:var(--text2); }
 .ob-toggle {
   width:40px; height:22px; border-radius:11px; background:var(--border); position:relative;
-  flex-shrink:0; transition:all 0.3s; margin-left:auto;
+  flex-shrink:0; transition:all 0.25s cubic-bezier(.4,0,.2,1); margin-left:auto;
 }
-.ob-toggle.on { background:var(--primary); }
+.ob-toggle.on { background:var(--primary); box-shadow: 0 0 8px rgba(0,229,176,0.35); }
 .ob-toggle-dot {
-  width:18px; height:18px; border-radius:50%; background:#fff; position:absolute;
-  top:2px; left:2px; transition:all 0.3s;
+  width:16px; height:16px; border-radius:50%; background:#fff; position:absolute;
+  top:3px; left:3px; transition:left 0.25s cubic-bezier(.4,0,.2,1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
 }
-.ob-toggle.on .ob-toggle-dot { left:20px; }
+.ob-toggle.on .ob-toggle-dot { left:21px; }
 .ob-perm-info {
   font-size:11px; color:var(--text2); padding:10px 14px; display:flex; align-items:center; gap:6px;
   background:rgba(139,92,246,0.08); border-radius:var(--radius-sm); border:1px dashed rgba(139,92,246,0.2);
@@ -2707,16 +2714,17 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
 
 /* Toggle switch */
 .toggle-switch {
-  width:44px; height:24px; border-radius:12px; border:none; cursor:pointer;
-  position:relative; transition:background 0.2s;
+  width:40px; height:22px; border-radius:11px; border:none; cursor:pointer;
+  position:relative; transition:background 0.25s cubic-bezier(.4,0,.2,1);
 }
-.toggle-switch.on { background:var(--viya-primary-500); }
-.toggle-switch.off { background:var(--border-light); }
+.toggle-switch.on { background:var(--primary); box-shadow: 0 0 8px rgba(0,229,176,0.35); }
+.toggle-switch.off { background:var(--surface3, var(--border-light)); }
 .toggle-dot {
-  width:18px; height:18px; border-radius:9px; background:#fff;
-  position:absolute; top:3px; transition:left 0.2s;
+  width:16px; height:16px; border-radius:50%; background:#fff;
+  position:absolute; top:3px; transition:left 0.25s cubic-bezier(.4,0,.2,1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
 }
-.toggle-dot.on { left:23px; }
+.toggle-dot.on { left:21px; }
 .toggle-dot.off { left:3px; }
 
 /* Interest rate row */
