@@ -104,7 +104,7 @@ function Toggle({ on, onToggle, size = 'sm' }) {
     <button
       onClick={onToggle}
       style={{
-        width: s.w, height: s.h, borderRadius: s.r, border: 'none',
+        width: s.w, height: s.h, minHeight: s.h, minWidth: s.w, borderRadius: s.r, border: 'none',
         cursor: onToggle ? 'pointer' : 'default',
         background: on ? 'var(--primary, #00E5B0)' : 'var(--surface3, #2a2a2a)',
         position: 'relative', transition: 'background 0.25s cubic-bezier(.4,0,.2,1)',

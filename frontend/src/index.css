@@ -1558,6 +1558,15 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
 .inline-link, .text-link { min-height:auto; }
 /* Primary CTA targets */
 .btn-primary, .btn-secondary { min-height:48px; }
+/* Exception: toggle switches — the 44px minimum silently doubled every
+   toggle in the app (they all declare a small `height` but none declared
+   `min-height`, so the global rule above won on that property alone).
+   24px still clears the WCAG 2.5.8 AA minimum (24×24 CSS px) even though
+   it's below the 2.5.5 AAA guideline the comment above references. */
+.theme-toggle-pill, .ob-toggle, .feature-flag-toggle, .toggle-switch,
+.reminder-toggle, .rm-toggle, .toggle-pill {
+  min-height: 22px;
+}
 
 /* ═══ PRD 3.3: Color Independence ═══ */
 /* "Never convey info with color alone — always pair Color + Icon + Label" */
@@ -2075,15 +2084,9 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
 /* Txn description row */
 .txn-desc { font-size:14px; font-weight:500; }
 
-/* Swipe-to-delete background */
-.swipe-delete-bg {
-  position:absolute; right:0; top:0; bottom:0; width:80px;
-  background:var(--red); display:flex; align-items:center; justify-content:center;
-  border-radius:0 12px 12px 0; z-index:-1;
-}
-
 /* Delete button ghost style */
-.delete-ghost { opacity:0.4; padding:4px; }
+.delete-ghost { opacity:0.4; padding:4px; min-height:32px; min-width:32px; justify-content:center; }
+.delete-ghost:hover { opacity:0.8; }
 
 /* Header button small */
 .btn-sm { padding:8px 12px; font-size:13px; border-radius:10px; }
@@ -3978,7 +3981,7 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
 
 /* Delete button */
 .rm-delete-btn {
-  width: 30px; height: 30px; border-radius: 8px; border: none; cursor: pointer;
+  width: 30px; height: 30px; min-height: 30px; min-width: 30px; border-radius: 8px; border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   background: transparent; color: var(--text3); transition: all 0.2s;
 }

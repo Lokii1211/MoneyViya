@@ -13,7 +13,7 @@ function Toggle({ on, onToggle }) {
     <button
       onClick={onToggle}
       style={{
-        width: 40, height: 22, borderRadius: 11, border: 'none', cursor: 'pointer',
+        width: 40, height: 22, minHeight: 22, minWidth: 40, borderRadius: 11, border: 'none', cursor: 'pointer',
         background: on ? 'var(--primary)' : 'var(--surface3, #2a2a2a)',
         position: 'relative', transition: 'background 0.25s cubic-bezier(.4,0,.2,1)',
         flexShrink: 0, boxShadow: on ? '0 0 8px rgba(0,229,176,0.35)' : 'none',
