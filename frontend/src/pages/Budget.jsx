@@ -4,7 +4,21 @@ import { api } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { formatINR } from '../lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle, TrendingDown, TrendingUp, Wallet, PieChart, Edit3, Check, X, RefreshCw } from 'lucide-react'
+import { AlertTriangle, TrendingDown, TrendingUp, Wallet, PieChart, Edit3, Check, X, RefreshCw, Sparkles, Sliders } from 'lucide-react'
+
+// Suggests a daily spending budget from real inputs — a deterministic
+// calculation, not an LLM guess, so the number is actually trustworthy.
+function suggestDailyBudget({ income, investments, fixedExpenses, familySize, age }) {
+  const savingsPct = age < 30 ? 0.20 : age < 45 ? 0.25 : 0.30
+  const targetSavings = income * savingsPct
+  const familyBuffer = Math.max(0, (familySize - 1)) * 2000 // rough per-dependent monthly floor
+  const availableForSpending = Math.max(0, income - targetSavings - investments - fixedExpenses - familyBuffer)
+  const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()
+  return {
+    daily: Math.round(availableForSpending / daysInMonth),
+    breakdown: { targetSavings, familyBuffer, availableForSpending, savingsPct },
+  }
+}
 
 // ── Category definitions with emojis, default budget allocations & colors ──
 const CATEGORIES = [
@@ -73,6 +87,17 @@ export default function Budget() {
   const [editValue, setEditValue] = useState('')
   const [refreshing, setRefreshing] = useState(false)
 
+  // ── Daily budget state ──
+  const [dailyBudget, setDailyBudget] = useState(1000)
+  const [todaySpent, setTodaySpent] = useState(0)
+  const [userAge, setUserAge] = useState(30)
+  const [showBudgetModal, setShowBudgetModal] = useState(false)
+  const [budgetMode, setBudgetMode] = useState('manual') // 'manual' | 'suggest'
+  const [manualInput, setManualInput] = useState('')
+  const [suggestForm, setSuggestForm] = useState({ investments: '', fixedExpenses: '', familySize: '1', age: '' })
+  const [suggestion, setSuggestion] = useState(null)
+  const [savingBudget, setSavingBudget] = useState(false)
+
   // ── Fetch data from Supabase ──
   const fetchData = useCallback(async () => {
     if (!phone) return
@@ -84,6 +109,23 @@ export default function Budget() {
         api.getUser(phone),
         api.getTransactions(phone, 500),
       ])
+
+      if (user?.daily_budget) setDailyBudget(Number(user.daily_budget))
+      if (user?.age) setUserAge(Number(user.age))
+      const todayStr = new Date().toDateString()
+      const spentToday = (user?.recent_transactions || [])
+        .filter(t => t.type === 'expense' && new Date(t.created_at).toDateString() === todayStr)
+        .reduce((s, t) => s + Number(t.amount), 0)
+      setTodaySpent(spentToday)
+
+      // Real over-budget notification — once per day, not just a passive banner
+      if (user?.daily_budget && spentToday > Number(user.daily_budget)) {
+        const dedupKey = `mv_overbudget_notified_${todayStr}`
+        if (!localStorage.getItem(dedupKey)) {
+          localStorage.setItem(dedupKey, '1')
+          api.addNotification(phone, `You've gone over your daily budget — spent ₹${Math.round(spentToday)} of ₹${Math.round(Number(user.daily_budget))}`, 'budget')
+        }
+      }
 
       // Set monthly income from user profile
       if (user?.monthly_income && Number(user.monthly_income) > 0) {
@@ -127,6 +169,40 @@ export default function Budget() {
   const handleRefresh = () => {
     setRefreshing(true)
     fetchData()
+  }
+
+  // ── Daily budget: open/save ──
+  function openBudgetModal() {
+    setManualInput(String(dailyBudget))
+    setSuggestForm(f => ({ ...f, age: f.age || String(userAge) }))
+    setSuggestion(null)
+    setBudgetMode('manual')
+    setShowBudgetModal(true)
+  }
+
+  function computeSuggestion() {
+    const result = suggestDailyBudget({
+      income: monthlyIncome,
+      investments: Number(suggestForm.investments) || 0,
+      fixedExpenses: Number(suggestForm.fixedExpenses) || 0,
+      familySize: Number(suggestForm.familySize) || 1,
+      age: Number(suggestForm.age) || 30,
+    })
+    setSuggestion(result)
+  }
+
+  async function saveDailyBudget(amount) {
+    if (!amount || amount <= 0) { toast.show('Enter a valid amount', 'error'); return }
+    setSavingBudget(true)
+    const ok = await api.updateUser(phone, { daily_budget: amount })
+    setSavingBudget(false)
+    if (ok) {
+      setDailyBudget(amount)
+      setShowBudgetModal(false)
+      toast.show('Daily budget updated', 'success')
+    } else {
+      toast.show('Could not save — check your connection', 'error')
+    }
   }
 
   // ── Budget calculations ──
@@ -253,6 +329,119 @@ export default function Budget() {
           <RefreshCw size={18} className={refreshing ? 'spin' : ''} />
         </button>
       </header>
+
+      {/* ── Daily budget card ── */}
+      <motion.div className="daily-budget-card" {...fadeUp} transition={{ duration: 0.35 }}>
+        <div className="dbc-left">
+          <div className="dbc-label">Daily Budget</div>
+          <div className="dbc-amount">{formatINR(dailyBudget)}</div>
+          <div className={`dbc-today ${todaySpent > dailyBudget ? 'over' : ''}`}>
+            {todaySpent > dailyBudget
+              ? <><AlertTriangle size={12} /> ₹{Math.round(todaySpent - dailyBudget)} over today</>
+              : `₹${Math.round(dailyBudget - todaySpent)} left today`}
+          </div>
+        </div>
+        <button className="dbc-edit-btn" onClick={openBudgetModal}>
+          <Sliders size={14} /> Set Budget
+        </button>
+      </motion.div>
+
+      {/* ── Daily budget modal ── */}
+      <AnimatePresence>
+        {showBudgetModal && (
+          <div className="modal-overlay" onClick={() => setShowBudgetModal(false)}>
+            <motion.div
+              className="rm-modal"
+              onClick={e => e.stopPropagation()}
+              initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 280 }}
+            >
+              <div className="rm-modal-hdr">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Wallet size={18} style={{ color: 'var(--primary)' }} />
+                  <span className="rm-modal-title">Set Daily Budget</span>
+                </div>
+                <button className="modal-close" onClick={() => setShowBudgetModal(false)}><X size={16} /></button>
+              </div>
+              <div className="rm-modal-body">
+                <div className="rm-freq-row" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                  <button className={`rm-freq-btn ${budgetMode === 'manual' ? 'rm-freq-btn--active' : ''}`} onClick={() => setBudgetMode('manual')}>
+                    Set it myself
+                  </button>
+                  <button className={`rm-freq-btn ${budgetMode === 'suggest' ? 'rm-freq-btn--active' : ''}`} onClick={() => setBudgetMode('suggest')}>
+                    <Sparkles size={12} /> Let Viya suggest
+                  </button>
+                </div>
+
+                {budgetMode === 'manual' ? (
+                  <>
+                    <div className="rm-section-label" style={{ marginTop: 16 }}>Daily budget (₹)</div>
+                    <input
+                      type="number"
+                      className="input-field"
+                      placeholder="1000"
+                      value={manualInput}
+                      onChange={e => setManualInput(e.target.value)}
+                    />
+                    <button
+                      className="btn-primary full"
+                      style={{ marginTop: 14 }}
+                      disabled={savingBudget}
+                      onClick={() => saveDailyBudget(Number(manualInput))}
+                    >
+                      {savingBudget ? 'Saving…' : 'Save Budget'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="dbc-suggest-intro">
+                      Based on your ₹{monthlyIncome.toLocaleString('en-IN')}/mo income, tell Viya a bit more and it'll work out a realistic daily number.
+                    </p>
+                    <div className="rm-section-label" style={{ marginTop: 10 }}>Your age</div>
+                    <input type="number" className="input-field" placeholder="30" value={suggestForm.age}
+                      onChange={e => setSuggestForm(f => ({ ...f, age: e.target.value }))} />
+
+                    <div className="rm-section-label" style={{ marginTop: 10 }}>Family size (incl. you)</div>
+                    <input type="number" className="input-field" placeholder="1" min="1" value={suggestForm.familySize}
+                      onChange={e => setSuggestForm(f => ({ ...f, familySize: e.target.value }))} />
+
+                    <div className="rm-section-label" style={{ marginTop: 10 }}>Existing monthly investments/SIPs (₹)</div>
+                    <input type="number" className="input-field" placeholder="0" value={suggestForm.investments}
+                      onChange={e => setSuggestForm(f => ({ ...f, investments: e.target.value }))} />
+
+                    <div className="rm-section-label" style={{ marginTop: 10 }}>Fixed monthly expenses — rent, EMI, etc. (₹)</div>
+                    <input type="number" className="input-field" placeholder="0" value={suggestForm.fixedExpenses}
+                      onChange={e => setSuggestForm(f => ({ ...f, fixedExpenses: e.target.value }))} />
+
+                    <button className="btn-secondary full" style={{ marginTop: 14 }} onClick={computeSuggestion}>
+                      <Sparkles size={14} /> Calculate Suggestion
+                    </button>
+
+                    {suggestion && (
+                      <div className="dbc-suggestion-result">
+                        <div className="dbc-suggestion-amount">{formatINR(suggestion.daily)}<span>/day</span></div>
+                        <div className="dbc-suggestion-breakdown">
+                          <div>Target savings ({Math.round(suggestion.breakdown.savingsPct * 100)}% for your age): ₹{Math.round(suggestion.breakdown.targetSavings).toLocaleString('en-IN')}/mo</div>
+                          {suggestion.breakdown.familyBuffer > 0 && <div>Family buffer: ₹{suggestion.breakdown.familyBuffer.toLocaleString('en-IN')}/mo</div>}
+                          <div>Available for spending: ₹{Math.round(suggestion.breakdown.availableForSpending).toLocaleString('en-IN')}/mo</div>
+                        </div>
+                        <button
+                          className="btn-primary full"
+                          style={{ marginTop: 12 }}
+                          disabled={savingBudget}
+                          onClick={() => saveDailyBudget(suggestion.daily)}
+                        >
+                          {savingBudget ? 'Saving…' : 'Use This Budget'}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ── Overview ring + summary ── */}
       <motion.div className="budget-overview" {...fadeUp} transition={{ duration: 0.4 }}>
