@@ -34,11 +34,13 @@ export default function Onboarding() {
     age: '',
     income: '',
     goals: [],
+    customGoals: [], // [{ label, emoji, target }]
     smsAccess: false,
     whatsappConnected: false,
   })
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
+  const [customGoalInput, setCustomGoalInput] = useState('')
 
   function set(key, val) {
     setForm(f => ({ ...f, [key]: val }))
@@ -54,6 +56,22 @@ export default function Onboarding() {
     }))
   }
 
+  function addCustomGoal() {
+    const label = customGoalInput.trim()
+    if (!label) return
+    if (form.customGoals.some(g => g.label.toLowerCase() === label.toLowerCase())) {
+      setCustomGoalInput('')
+      return
+    }
+    setForm(f => ({ ...f, customGoals: [...f.customGoals, { label, emoji: '🎯', target: 100000 }] }))
+    setCustomGoalInput('')
+    setErrors(e => ({ ...e, goals: undefined }))
+  }
+
+  function removeCustomGoal(label) {
+    setForm(f => ({ ...f, customGoals: f.customGoals.filter(g => g.label !== label) }))
+  }
+
   function validate() {
     const errs = {}
     if (step === 1) {
@@ -66,7 +84,7 @@ export default function Onboarding() {
       else if (Number(form.income) <= 0) errs.income = 'Enter a valid income'
     }
     if (step === 3) {
-      if (form.goals.length === 0) errs.goals = 'Select at least one goal'
+      if (form.goals.length === 0 && form.customGoals.length === 0) errs.goals = 'Select or add at least one goal'
     }
     // Steps 4 (SMS) and 5 (WhatsApp) are optional — no validation needed
     setErrors(errs)
@@ -118,6 +136,9 @@ export default function Onboarding() {
         if (g) {
           await api.addGoal(phone, g.label, g.emoji, targets[goalId] || 100000)
         }
+      }
+      for (const cg of form.customGoals) {
+        await api.addGoal(phone, cg.label, cg.emoji, cg.target)
       }
     } catch (e) {
       console.error('Onboarding save error:', e)
@@ -260,7 +281,32 @@ export default function Onboarding() {
                   <span>{g.label}</span>
                 </button>
               ))}
+              {form.customGoals.map(cg => (
+                <button
+                  key={cg.label}
+                  className="ob-goal active"
+                  onClick={() => removeCustomGoal(cg.label)}
+                >
+                  <span>{cg.emoji}</span>
+                  <span>{cg.label}</span>
+                </button>
+              ))}
             </div>
+
+            <div className="ob-custom-goal-row">
+              <input
+                type="text"
+                className="input-field"
+                placeholder="Add your own goal (e.g. New laptop)"
+                value={customGoalInput}
+                onChange={e => setCustomGoalInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomGoal() } }}
+              />
+              <button type="button" className="ob-custom-goal-add" onClick={addCustomGoal} disabled={!customGoalInput.trim()}>
+                Add
+              </button>
+            </div>
+
             {errors.goals && <p className="ob-error">{errors.goals}</p>}
           </motion.div>
         )}
@@ -397,10 +443,10 @@ export default function Onboarding() {
               <div className="ob-sum-row">
                 <span>Goals</span>
                 <span>
-                  {form.goals
-                    .map(id => GOALS.find(g => g.id === id)?.label)
-                    .filter(Boolean)
-                    .join(', ') || '-'}
+                  {[
+                    ...form.goals.map(id => GOALS.find(g => g.id === id)?.label).filter(Boolean),
+                    ...form.customGoals.map(g => g.label),
+                  ].join(', ') || '-'}
                 </span>
               </div>
               <div className="ob-sum-row">

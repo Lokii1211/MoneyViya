@@ -672,6 +672,14 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
   font-size:13px; font-weight:600;
 }
 .ob-goal.active { border-color:var(--primary); background:var(--primary-dim); transform:scale(1.02); }
+.ob-custom-goal-row { display:flex; gap:8px; margin-top:14px; }
+.ob-custom-goal-row .input-field { flex:1; }
+.ob-custom-goal-add {
+  padding:0 18px; border-radius:var(--radius-sm); border:none;
+  background:var(--primary); color:#04231b; font-weight:700; font-size:13px;
+  cursor:pointer; font-family:inherit; flex-shrink:0;
+}
+.ob-custom-goal-add:disabled { opacity:0.4; cursor:not-allowed; }
 .ob-amount-wrap {
   display:flex; align-items:center; gap:4px;
   background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-sm);
@@ -1175,6 +1183,10 @@ input:focus, textarea:focus {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
 }
+/* Chat manages its own full-height layout (.chat-root already sizes
+   itself around the header + bottom-nav), so the padding meant for
+   normally-scrolling pages just shows up as dead space below the input bar */
+.app-main:has(.chat-root) { padding-bottom: 0; }
 
 /* Momentum scroll for all scrollable areas */
 .app-main,
