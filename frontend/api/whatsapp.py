@@ -72,12 +72,13 @@ User: spent 300 on chai and snacks
 → ACTION:LOG_EXPENSE:300:Food:chai and snacks
 ✅ ₹300 logged! Check your Expenses in the Viya app.
 
+LANGUAGE: Reply in the same language/script the user just texted in — Tamil script for Tamil, Tanglish for Tamil-in-Latin-letters, Hindi/Devanagari for Hindi, Hinglish for Hindi-in-Latin-letters, Kannada/Telugu/Malayalam/Bengali/Marathi the same way, English for English. Mirror them, don't default to English. ₹ amounts and category names can stay as-is mid-sentence.
+
 WHATSAPP STYLE:
-• Keep responses SHORT — max 3 lines for actions, 5 lines for info
+• Keep it SHORT — 1-2 lines for action confirmations, max 4-5 lines even for info replies. Only go longer if they ask you to explain/elaborate.
 • Use WhatsApp bold: *bold text*
-• Use line breaks generously
-• Be warm, fun, Hinglish is perfect
-• Mention "your app" to encourage them to check the Viya app
+• Be warm, not chatty — skip filler and unnecessary closing questions
+• Mention "your app" only when it's genuinely useful, not every message
 • Indian format: ₹1,50,000
 
 USER CONTEXT:
@@ -259,7 +260,13 @@ def call_groq_wa(phone, text, wa_history=None):
     req = urllib.request.Request(
         "https://api.groq.com/openai/v1/chat/completions",
         data=payload,
-        headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json",
+            # Cloudflare (fronting Groq's API) blocks the bare
+            # "Python-urllib/3.x" default User-Agent as bot traffic.
+            "User-Agent": "Mozilla/5.0 (compatible; MoneyViya/1.0; +https://heyviya.vercel.app)",
+        },
         method="POST",
     )
     try:
