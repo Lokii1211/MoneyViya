@@ -4,7 +4,7 @@ import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { formatINR, getCategoryIcon, getCategoryColor } from '../lib/utils'
-import { ArrowLeft, ChevronLeft, ChevronRight, Share2, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Share2, TrendingUp, TrendingDown, BarChart3, ArrowUpRight, ArrowDownRight, Target } from 'lucide-react'
 
 export default function Report() {
   const { phone, user } = useApp()
@@ -36,10 +36,22 @@ export default function Report() {
     return transactions.filter(t => t.created_at?.startsWith(prefix))
   }, [transactions, targetMonth])
 
+  const prevMonthFiltered = useMemo(() => {
+    const prev = new Date(targetMonth)
+    prev.setMonth(prev.getMonth() - 1)
+    const prefix = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`
+    return transactions.filter(t => t.created_at?.startsWith(prefix))
+  }, [transactions, targetMonth])
+
   const income = filtered.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
   const expenses = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
   const savings = income - expenses
   const savingsRate = income > 0 ? Math.round((savings / income) * 100) : 0
+
+  const prevExpenses = prevMonthFiltered.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
+  const prevIncome = prevMonthFiltered.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
+  const expenseChangePct = prevExpenses > 0 ? Math.round(((expenses - prevExpenses) / prevExpenses) * 100) : null
+  const incomeChangePct = prevIncome > 0 ? Math.round(((income - prevIncome) / prevIncome) * 100) : null
 
   const categoryBreakdown = useMemo(() => {
     const map = {}
@@ -69,6 +81,20 @@ export default function Report() {
   }, [filtered, targetMonth])
 
   const maxDailySpend = Math.max(...dailySpend.map(d => d.amount), 1)
+
+  const isCurrentMonth = monthOffset === 0
+  const daysElapsed = isCurrentMonth ? new Date().getDate() : dailySpend.length
+  const avgDailySpend = daysElapsed > 0 ? Math.round(expenses / daysElapsed) : 0
+  const highestDay = dailySpend.reduce((max, d) => d.amount > max.amount ? d : max, { day: 0, amount: 0 })
+
+  const dailyBudget = Number(user?.daily_budget) || 0
+  const budgetStats = useMemo(() => {
+    if (!dailyBudget) return null
+    const relevantDays = isCurrentMonth ? dailySpend.filter(d => d.day <= daysElapsed) : dailySpend
+    const overBudgetDays = relevantDays.filter(d => d.amount > dailyBudget).length
+    const budgetedTotal = dailyBudget * relevantDays.length
+    return { overBudgetDays, totalDays: relevantDays.length, budgetedTotal, actualTotal: expenses }
+  }, [dailyBudget, dailySpend, isCurrentMonth, daysElapsed, expenses])
 
   const shareReport = () => {
     const name = user?.name || 'User'
@@ -151,6 +177,52 @@ export default function Report() {
                 {savingsRate >= 30 ? ' -- Excellent!' : savingsRate >= 15 ? ' -- Good' : ' -- Needs work'}
               </div>
             )}
+          </div>
+
+          {/* vs Last Month */}
+          {(expenseChangePct !== null || incomeChangePct !== null) && (
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+              {incomeChangePct !== null && (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: 12 }}>
+                  {incomeChangePct >= 0 ? <ArrowUpRight size={16} color="var(--primary)" /> : <ArrowDownRight size={16} color="var(--cosmos-400)" />}
+                  <span style={{ fontSize: 12, color: 'var(--text2)' }}>Income <strong style={{ color: incomeChangePct >= 0 ? 'var(--primary)' : 'var(--cosmos-400)' }}>{incomeChangePct >= 0 ? '+' : ''}{incomeChangePct}%</strong> vs last month</span>
+                </div>
+              )}
+              {expenseChangePct !== null && (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: 12 }}>
+                  {expenseChangePct <= 0 ? <ArrowDownRight size={16} color="var(--primary)" /> : <ArrowUpRight size={16} color="var(--cosmos-400)" />}
+                  <span style={{ fontSize: 12, color: 'var(--text2)' }}>Spend <strong style={{ color: expenseChangePct <= 0 ? 'var(--primary)' : 'var(--cosmos-400)' }}>{expenseChangePct >= 0 ? '+' : ''}{expenseChangePct}%</strong> vs last month</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Budget Adherence */}
+          {budgetStats && (
+            <div style={{ marginBottom: 16, padding: 16, background: 'var(--bg-secondary)', borderRadius: 14, border: '1px solid var(--border, var(--border-light))' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <Target size={14} color="var(--primary)" />
+                <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 700, letterSpacing: 1 }}>BUDGET ADHERENCE</span>
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+                Spent <strong style={{ color: 'var(--text)' }}>{formatINR(budgetStats.actualTotal)}</strong> of a <strong style={{ color: 'var(--text)' }}>{formatINR(budgetStats.budgetedTotal)}</strong> budget over {budgetStats.totalDays} day{budgetStats.totalDays === 1 ? '' : 's'}.
+              </div>
+              <div style={{ fontSize: 13, marginTop: 4, color: budgetStats.overBudgetDays === 0 ? 'var(--primary)' : 'var(--cosmos-400)' }}>
+                {budgetStats.overBudgetDays === 0 ? 'Stayed within budget every day' : `Went over budget on ${budgetStats.overBudgetDays} day${budgetStats.overBudgetDays === 1 ? '' : 's'}`}
+              </div>
+            </div>
+          )}
+
+          {/* Quick Stats */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+            <div style={{ padding: '12px 14px', background: 'var(--bg-secondary)', borderRadius: 12 }}>
+              <div style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 700, marginBottom: 4 }}>AVG DAILY SPEND</div>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 15, fontWeight: 800 }}>{formatINR(avgDailySpend)}</div>
+            </div>
+            <div style={{ padding: '12px 14px', background: 'var(--bg-secondary)', borderRadius: 12 }}>
+              <div style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 700, marginBottom: 4 }}>HIGHEST SPEND DAY</div>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 15, fontWeight: 800 }}>{highestDay.amount > 0 ? `${formatINR(highestDay.amount)} on ${highestDay.day}` : '—'}</div>
+            </div>
           </div>
 
           {/* Category Breakdown */}
