@@ -15,6 +15,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from http.server import BaseHTTPRequestHandler
 
 
+def ordinal(n):
+    if 11 <= (n % 100) <= 13:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         """Check and fire due reminders every minute"""
@@ -81,7 +89,7 @@ class handler(BaseHTTPRequestHandler):
                     try:
                         freq = rem.get("freq", "daily")
                         should_fire = False
-                        
+
                         # Check frequency
                         if freq == "daily":
                             should_fire = True
@@ -98,53 +106,133 @@ class handler(BaseHTTPRequestHandler):
                             # One-time reminder: check if date matches
                             if rem.get("fire_date", "") == current_date_str:
                                 should_fire = True
-                        
+
                         # Check if already sent today (prevent duplicates)
                         last_sent = rem.get("last_sent_at", "")
                         if last_sent and last_sent.startswith(current_date_str):
                             should_fire = False  # Already sent today
-                        
+
                         if not should_fire:
                             continue
-                        
+
                         phone = rem.get("phone", "")
                         title = rem.get("title", "Reminder")
                         desc = rem.get("description", "")
                         icon = rem.get("icon", "⏰")
-                        
+
                         # Send SHORT WhatsApp message
                         msg = f"{icon} *{title}*"
                         if desc:
                             msg += f"\n{desc}"
-                        
+
                         wa_sent = self._send_whatsapp(phone, msg)
-                        
+
                         if wa_sent:
                             results["sent"] += 1
-                            
+
                             # Mark as sent (update last_sent_at)
                             update_url = f"{SUPABASE_URL}/rest/v1/user_reminders?id=eq.{rem['id']}"
                             update_data = {"last_sent_at": ist_now.isoformat()}
-                            
+
                             # If one-time, disable after sending
                             if freq == "once":
                                 update_data["enabled"] = False
-                            
+
                             client.patch(update_url, json=update_data, headers={**headers, "Prefer": "return=minimal"})
                         else:
                             results["errors"].append(f"WhatsApp send failed for {phone}")
-                    
+
                     except Exception as e:
                         results["errors"].append(f"Reminder {rem.get('id')}: {str(e)}")
-            
-            # Also check for morning/evening briefings
-            if current_time == "08:00":
-                results["briefing"] = "morning"
-                self._send_briefings("morning")
-            elif current_time == "21:00":
+
+                # ── 5-minute advance nudge ──
+                # Same query shape as the main fire, but for reminders whose
+                # time is exactly 5 minutes from now. Runs once/minute via
+                # cron-job.org so this can't double-fire within the window;
+                # dedup keys off last_advance_sent_at rather than
+                # last_sent_at so it doesn't clash with the real fire.
+                advance_dt = ist_now + timedelta(minutes=5)
+                advance_time = advance_dt.strftime("%H:%M")
+                advance_weekday = advance_dt.strftime("%A")
+                advance_date = advance_dt.day
+                results["advance_checked"] = 0
+                results["advance_sent"] = 0
+                try:
+                    adv_url = f"{SUPABASE_URL}/rest/v1/user_reminders?enabled=eq.true&time=eq.{advance_time}&select=*"
+                    adv_resp = client.get(adv_url, headers=headers)
+                    if adv_resp.status_code == 200:
+                        adv_reminders = adv_resp.json()
+                        results["advance_checked"] = len(adv_reminders)
+                        for rem in adv_reminders:
+                            try:
+                                freq = rem.get("freq", "daily")
+                                due = False
+                                if freq == "daily":
+                                    due = True
+                                elif freq == "weekly" and rem.get("weekday", "") == advance_weekday:
+                                    due = True
+                                elif freq == "monthly":
+                                    target_day = min(rem.get("month_date", 1) or 1, last_day_of_month)
+                                    due = target_day == advance_date
+                                elif freq == "once" and rem.get("fire_date", "") == advance_dt.strftime("%Y-%m-%d"):
+                                    due = True
+
+                                last_adv = rem.get("last_advance_sent_at", "") or ""
+                                if last_adv.startswith(current_date_str):
+                                    due = False  # already nudged today
+
+                                if not due:
+                                    continue
+
+                                title = rem.get("title", "Reminder")
+                                icon = rem.get("icon", "⏰")
+                                msg = f"⏳ *5 min to go* — {icon} {title}"
+                                if self._send_whatsapp(rem.get("phone", ""), msg):
+                                    results["advance_sent"] += 1
+                                    upd_url = f"{SUPABASE_URL}/rest/v1/user_reminders?id=eq.{rem['id']}"
+                                    client.patch(upd_url, json={"last_advance_sent_at": ist_now.isoformat()}, headers={**headers, "Prefer": "return=minimal"})
+                            except Exception as e:
+                                results["errors"].append(f"Advance {rem.get('id')}: {str(e)}")
+                except Exception as e:
+                    results["errors"].append(f"Advance fetch: {str(e)}")
+
+                # ── Monthly reminders: 3-day advance heads-up ──
+                # Fires once, at the reminder's own set time, 3 days before
+                # the target day-of-month — so a bill reminder on the 5th
+                # gives you a nudge on the 2nd at the same hour.
+                results["monthly_advance_sent"] = 0
+                try:
+                    monthly_url = f"{SUPABASE_URL}/rest/v1/user_reminders?enabled=eq.true&freq=eq.monthly&time=eq.{current_time}&select=*"
+                    monthly_resp = client.get(monthly_url, headers=headers)
+                    if monthly_resp.status_code == 200:
+                        for rem in monthly_resp.json():
+                            try:
+                                target_day = min(rem.get("month_date", 1) or 1, last_day_of_month)
+                                days_until = target_day - current_date
+                                if days_until != 3:
+                                    continue
+                                last_madv = rem.get("last_monthly_advance_at", "") or ""
+                                if last_madv.startswith(current_date_str):
+                                    continue
+                                title = rem.get("title", "Reminder")
+                                icon = rem.get("icon", "⏰")
+                                msg = f"📅 *In 3 days* — {icon} {title} (due {ordinal(target_day)})"
+                                if self._send_whatsapp(rem.get("phone", ""), msg):
+                                    results["monthly_advance_sent"] += 1
+                                    upd_url = f"{SUPABASE_URL}/rest/v1/user_reminders?id=eq.{rem['id']}"
+                                    client.patch(upd_url, json={"last_monthly_advance_at": ist_now.isoformat()}, headers={**headers, "Prefer": "return=minimal"})
+                            except Exception as e:
+                                results["errors"].append(f"Monthly advance {rem.get('id')}: {str(e)}")
+                except Exception as e:
+                    results["errors"].append(f"Monthly advance fetch: {str(e)}")
+
+            # Evening log reminder — the morning brief is handled by the
+            # separate cron/morning-brief.py Vercel-native cron (scheduled
+            # for the same IST time), so only the evening side lives here.
+            if current_time == "21:00":
                 results["briefing"] = "evening"
                 self._send_briefings("evening")
-            
+
             self._respond(200, results)
             
         except Exception as e:

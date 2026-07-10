@@ -61,55 +61,96 @@ class handler(BaseHTTPRequestHandler):
             self._respond(500, {"error": str(e)})
 
     def _build_brief(self, user):
-        """Build personalized morning brief"""
+        """Build personalized morning brief from real per-user data"""
         name = user.get("name", "Friend")
         today = datetime.now()
         day_name = today.strftime("%A")
         date_str = today.strftime("%d %B %Y")
-        
+
         brief = f"🌅 *Good Morning, {name}!*\n"
         brief += f"📅 {day_name}, {date_str}\n\n"
-        
+
         # Today's agenda
         brief += "📋 *Today's Agenda:*\n"
-        
-        # Check bills due today
+
         bills_due = user.get("_bills_due", [])
         if bills_due:
             for bill in bills_due:
-                brief += f"  💳 {bill['name']}: ₹{bill['amount']:,} due today\n"
+                brief += f"  💳 {bill['name']}: ₹{int(bill.get('amount', 0)):,} due today\n"
         else:
             brief += "  ✅ No bills due today\n"
-        
-        # Streak info
+
         streak = user.get("_streak", 0)
         if streak > 0:
             brief += f"\n🔥 *Streak: Day {streak}* — Don't break it!\n"
-        
-        # Budget status
-        spent = user.get("_month_spent", 0)
-        budget = user.get("monthly_budget", 30000)
-        if budget > 0:
-            remaining = budget - spent
-            pct = int((spent / budget) * 100)
-            brief += f"\n💰 Budget: ₹{remaining:,} left ({pct}% used)\n"
-        
+
+        pending_habits = user.get("_pending_habits", 0)
+        if pending_habits > 0:
+            brief += f"✅ {pending_habits} habit(s) waiting for you today\n"
+
+        spent_today = user.get("_spent_today", 0)
+        budget = user.get("daily_budget", 1000) or 1000
+        remaining = budget - spent_today
+        if spent_today > 0:
+            brief += f"\n💰 Already spent ₹{int(spent_today):,} today — ₹{int(remaining):,} left of your ₹{int(budget):,} budget\n"
+        else:
+            brief += f"\n💰 ₹{int(budget):,} daily budget, nothing logged yet\n"
+
         brief += "\n💬 Reply anything to start your day with Viya!"
         return brief
 
     def _get_active_users(self):
-        """Get users who have WhatsApp notifications enabled"""
+        """Get users, enriched with real bills/streak/spend data for the brief"""
         if not SUPABASE_URL or not SUPABASE_KEY:
             return []
         try:
             import httpx
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
             with httpx.Client(timeout=10) as client:
                 resp = client.get(
-                    f"{SUPABASE_URL}/rest/v1/users?select=*&limit=100",
-                    headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
+                    f"{SUPABASE_URL}/rest/v1/users?select=phone,name,daily_budget&limit=100",
+                    headers=headers,
                 )
-                if resp.status_code == 200:
-                    return resp.json()
+                if resp.status_code != 200:
+                    return []
+                users = resp.json()
+
+                for user in users:
+                    phone = user.get("phone", "")
+                    if not phone:
+                        continue
+                    try:
+                        bills = client.get(
+                            f"{SUPABASE_URL}/rest/v1/bills_and_dues?phone=eq.{phone}&status=neq.paid&due_date=eq.{today_str}&select=name,amount",
+                            headers=headers,
+                        )
+                        user["_bills_due"] = bills.json() if bills.status_code == 200 else []
+
+                        habits = client.get(
+                            f"{SUPABASE_URL}/rest/v1/habits?phone=eq.{phone}&select=id,current_streak",
+                            headers=headers,
+                        )
+                        habit_rows = habits.json() if habits.status_code == 200 else []
+                        user["_streak"] = max((h.get("current_streak", 0) or 0) for h in habit_rows) if habit_rows else 0
+
+                        checkins = client.get(
+                            f"{SUPABASE_URL}/rest/v1/habit_checkins?phone=eq.{phone}&checked_date=eq.{today_str}&select=habit_id",
+                            headers=headers,
+                        )
+                        done_ids = {c.get("habit_id") for c in (checkins.json() if checkins.status_code == 200 else [])}
+                        user["_pending_habits"] = max(len(habit_rows) - len(done_ids), 0)
+
+                        txns = client.get(
+                            f"{SUPABASE_URL}/rest/v1/transactions?phone=eq.{phone}&type=eq.expense&created_at=gte.{today_str}&select=amount",
+                            headers=headers,
+                        )
+                        txn_rows = txns.json() if txns.status_code == 200 else []
+                        user["_spent_today"] = sum(float(t.get("amount", 0) or 0) for t in txn_rows)
+                    except Exception as e:
+                        print(f"[Morning Brief] per-user fetch failed for {phone}: {e}")
+
+                return users
         except Exception as e:
             print(f"[Morning Brief] DB error: {e}")
         return []

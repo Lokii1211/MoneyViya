@@ -132,6 +132,10 @@ CREATE TABLE IF NOT EXISTS user_reminders (
     last_sent_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- Separate dedup timestamps for the 5-min-advance and monthly 3-day-advance
+-- nudges so they don't clash with last_sent_at's own dedup for the real fire
+ALTER TABLE user_reminders ADD COLUMN IF NOT EXISTS last_advance_sent_at TIMESTAMPTZ;
+ALTER TABLE user_reminders ADD COLUMN IF NOT EXISTS last_monthly_advance_at TIMESTAMPTZ;
 
 -- ===== COUPLES =====
 CREATE TABLE IF NOT EXISTS couples (
