@@ -59,10 +59,16 @@ async function remove(table, filter) {
   } catch (e) { console.error(`DELETE ${table} error:`, e); return false }
 }
 
-async function upsert(table, data) {
+async function upsert(table, data, onConflict) {
   if (!REST) return null
   try {
-    const r = await fetch(`${REST}/${table}`, { method: 'POST', headers: { ...hdrs(), 'Prefer': 'return=representation,resolution=merge-duplicates' }, body: JSON.stringify(data) })
+    // Without on_conflict, PostgREST's merge-duplicates only targets the
+    // primary key — for tables like health_logs/medicine_checkins the PK
+    // is a fresh random UUID every insert, so it never matches, and the
+    // real UNIQUE(phone, log_date)-style constraint still rejects the
+    // insert as a plain duplicate (409) instead of merging into it.
+    const qs = onConflict ? `?on_conflict=${onConflict}` : ''
+    const r = await fetch(`${REST}/${table}${qs}`, { method: 'POST', headers: { ...hdrs(), 'Prefer': 'return=representation,resolution=merge-duplicates' }, body: JSON.stringify(data) })
     if (!r.ok) { console.error(`UPSERT ${table} failed: ${r.status} ${await r.text().catch(() => '')}`); return null }
     const res = await r.json(); return Array.isArray(res) ? res[0] : res
   } catch (e) { console.error(`UPSERT ${table} error:`, e); return null }
@@ -279,7 +285,7 @@ export const api = {
     const logs = await query('health_logs', `?${phoneFilter(phone)}&log_date=eq.${d}&select=*`)
     return logs[0] || null
   },
-  async upsertHealthLog(phone, data) { return upsert('health_logs', { phone, log_date: new Date().toISOString().split('T')[0], ...data }) },
+  async upsertHealthLog(phone, data) { return upsert('health_logs', { phone, log_date: new Date().toISOString().split('T')[0], ...data }, 'phone,log_date') },
   async getHealthHistory(phone, days = 30) {
     const since = new Date(Date.now() - days * 86400000).toISOString().split('T')[0]
     return query('health_logs', `?${phoneFilter(phone)}&log_date=gte.${since}&select=*&order=log_date.desc`)
@@ -301,7 +307,7 @@ export const api = {
   },
   async checkinMedicine(medicineId, phone) {
     const today = new Date().toISOString().split('T')[0]
-    return upsert('medicine_checkins', { medicine_id: medicineId, phone, checked_date: today, taken: true })
+    return upsert('medicine_checkins', { medicine_id: medicineId, phone, checked_date: today, taken: true }, 'medicine_id,checked_date')
   },
 
   async getBills(phone) { return query('bills_and_dues', `?${phoneFilter(phone)}&select=*&order=due_date.asc`) },
