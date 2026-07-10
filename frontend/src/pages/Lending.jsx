@@ -26,6 +26,7 @@ export default function Lending() {
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [toast, setToast] = useState('')
+  const [contacts, setContacts] = useState([]) // real friends + family, [{name, phone}]
   const [form, setForm] = useState({
     person: '', amount: '', reason: '', hasInterest: false,
     interestRate: '', interestType: 'monthly', dueDate: '',
@@ -39,7 +40,29 @@ export default function Lending() {
     setLoading(false)
   }
 
-  useEffect(() => { loadEntries() }, [phone])
+  const loadContacts = async () => {
+    if (!phone) return
+    try {
+      const [sent, received] = await Promise.all([
+        api.getFamilyConnections(phone),
+        api.getFamilyInvitesReceived(phone),
+      ])
+      const accepted = [
+        ...(sent || []).filter(c => c.status === 'accepted'),
+        ...(received || []).filter(c => c.status === 'accepted'),
+      ]
+      const withNames = await Promise.all(accepted.map(async c => {
+        const otherPhone = c.member_phone === phone ? c.owner_phone : c.member_phone
+        const u = await api.getUser(otherPhone)
+        return { name: u?.name || otherPhone, phone: otherPhone, relation: c.relation }
+      }))
+      // De-dupe (a connection can appear from both directions)
+      const seen = new Set()
+      setContacts(withNames.filter(c => (seen.has(c.phone) ? false : (seen.add(c.phone), true))))
+    } catch { setContacts([]) }
+  }
+
+  useEffect(() => { loadEntries(); loadContacts() }, [phone])
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 2500) }
 
@@ -262,8 +285,25 @@ export default function Lending() {
                 <div className="sheet-form">
                   <div>
                     <label className="form-label">Person Name *</label>
-                    <input className="form-input" placeholder="e.g. Rahul, Mom" value={form.person}
+                    {contacts.length > 0 && (
+                      <div className="lending-contact-chips">
+                        {contacts.map(c => (
+                          <button
+                            key={c.phone}
+                            type="button"
+                            className={`lending-contact-chip${form.person === c.name ? ' active' : ''}`}
+                            onClick={() => setForm(p => ({ ...p, person: c.name }))}
+                          >
+                            {c.name}{c.relation ? ` · ${c.relation}` : ''}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <input className="form-input" placeholder="e.g. Rahul, Mom — or pick a friend above" value={form.person}
                       onChange={e => setForm(p => ({ ...p, person: e.target.value }))} />
+                    {contacts.length === 0 && (
+                      <p className="lending-contact-hint">Add friends/family to pick them here instead of typing names each time.</p>
+                    )}
                   </div>
 
                   <div>

@@ -2700,6 +2700,16 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
 .form-label {
   font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:4px; display:block;
 }
+.lending-contact-chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+.lending-contact-chip {
+  padding:6px 12px; border-radius:20px; border:1.5px solid var(--border);
+  background:var(--surface2); color:var(--text2); font-size:12px; font-weight:600;
+  cursor:pointer; font-family:inherit; transition:all 0.18s;
+}
+.lending-contact-chip.active, .lending-contact-chip:hover {
+  border-color:var(--primary); background:var(--primary-dim); color:var(--primary);
+}
+.lending-contact-hint { font-size:11px; color:var(--text3); margin-top:6px; }
 .form-label-sm {
   font-size:11px; font-weight:700; color:var(--text-tertiary); margin-bottom:4px; display:block;
 }
