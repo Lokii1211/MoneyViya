@@ -170,6 +170,9 @@ def get_context(phone, message=None):
             related_txns = _rag.format_matches("transactions", _rag.hybrid_search(short, message, "transactions", limit=2, exclude_ids=recent_ids))
             if related_txns:
                 ctx.append("Relevant past: " + " | ".join(related_txns))
+            related_news = _rag.format_news(_rag.news_search(message, limit=1))
+            if related_news:
+                ctx.append("News: " + " | ".join(related_news))
     except Exception as e:
         ctx.append(f"(error: {e})")
     return "\n".join(ctx) or "No data."

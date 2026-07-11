@@ -1359,3 +1359,27 @@ GRANT EXECUTE ON FUNCTION match_goals(vector, text, int) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION match_bills(vector, text, int) TO anon, authenticated;
 
 SELECT 'Phase 1 — hybrid retriever schema ready ✅' AS status;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- PHASE 2 — Market Analyst (news ingestion)
+-- news_articles table already exists from Phase 0. This adds the one thing
+-- Phase 0 couldn't: a vector match function (news is global, not per-user,
+-- so unlike match_transactions/goals/bills there's no match_phone filter).
+-- Populated by frontend/api/cron/market-news.py, needs ALPHA_VANTAGE_API_KEY
+-- and OPENAI_API_KEY set in Vercel to actually fetch + embed anything.
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE OR REPLACE FUNCTION match_news(query_embedding vector(1536), match_count int DEFAULT 5)
+RETURNS TABLE(id uuid, title text, summary text, published_at timestamptz, tags text[], similarity float)
+LANGUAGE sql STABLE AS $$
+  SELECT id, title, summary, published_at, tags,
+         1 - (embedding <=> query_embedding) AS similarity
+  FROM news_articles
+  WHERE embedding IS NOT NULL
+  ORDER BY embedding <=> query_embedding
+  LIMIT match_count;
+$$;
+
+GRANT EXECUTE ON FUNCTION match_news(vector, int) TO anon, authenticated;
+
+SELECT 'Phase 2 — Market Analyst schema ready ✅' AS status;

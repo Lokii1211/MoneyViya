@@ -16,6 +16,7 @@ import os
 import json
 import urllib.request
 import urllib.error
+from typing import Callable, NamedTuple
 from urllib.parse import quote
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -89,27 +90,34 @@ def embed(text):
         return None
 
 
+class _TableConfig(NamedTuple):
+    select: str
+    text_fn: Callable[[dict], str]
+    match_fn: str
+    format_fn: Callable[[dict], str]
+
+
 # Per-table retrieval config: how to build the embeddable text, which columns
 # to fetch, and which SQL match function (see migration) to call for vector search.
-TABLE_CONFIG = {
-    "transactions": {
-        "select": "id,type,amount,category,description,merchant,created_at",
-        "text_fn": lambda r: f"{r.get('type','')} {r.get('category','')} {r.get('description') or ''} {r.get('merchant') or ''} amount {r.get('amount','')}",
-        "match_fn": "match_transactions",
-        "format_fn": lambda r: f"{r.get('type','')}: ₹{r.get('amount',0)} ({r.get('category','')}) {r.get('description') or r.get('merchant') or ''}".strip(),
-    },
-    "goals": {
-        "select": "id,name,current_amount,target_amount,deadline",
-        "text_fn": lambda r: f"goal {r.get('name','')}",
-        "match_fn": "match_goals",
-        "format_fn": lambda r: f"Goal '{r.get('name','')}': ₹{r.get('current_amount',0)}/₹{r.get('target_amount',0)}" + (f" by {r.get('deadline')}" if r.get('deadline') else ""),
-    },
-    "bills_and_dues": {
-        "select": "id,name,bill_type,amount,due_date,status",
-        "text_fn": lambda r: f"bill {r.get('name','')} {r.get('bill_type','')}",
-        "match_fn": "match_bills",
-        "format_fn": lambda r: f"Bill '{r.get('name','')}' ({r.get('bill_type','')}): ₹{r.get('amount',0)}, due {r.get('due_date','?')}, {r.get('status','')}",
-    },
+TABLE_CONFIG: dict[str, _TableConfig] = {
+    "transactions": _TableConfig(
+        select="id,type,amount,category,description,merchant,created_at",
+        text_fn=lambda r: f"{r.get('type','')} {r.get('category','')} {r.get('description') or ''} {r.get('merchant') or ''} amount {r.get('amount','')}",
+        match_fn="match_transactions",
+        format_fn=lambda r: f"{r.get('type','')}: ₹{r.get('amount',0)} ({r.get('category','')}) {r.get('description') or r.get('merchant') or ''}".strip(),
+    ),
+    "goals": _TableConfig(
+        select="id,name,current_amount,target_amount,deadline",
+        text_fn=lambda r: f"goal {r.get('name','')}",
+        match_fn="match_goals",
+        format_fn=lambda r: f"Goal '{r.get('name','')}': ₹{r.get('current_amount',0)}/₹{r.get('target_amount',0)}" + (f" by {r.get('deadline')}" if r.get('deadline') else ""),
+    ),
+    "bills_and_dues": _TableConfig(
+        select="id,name,bill_type,amount,due_date,status",
+        text_fn=lambda r: f"bill {r.get('name','')} {r.get('bill_type','')}",
+        match_fn="match_bills",
+        format_fn=lambda r: f"Bill '{r.get('name','')}' ({r.get('bill_type','')}): ₹{r.get('amount',0)}, due {r.get('due_date','?')}, {r.get('status','')}",
+    ),
 }
 
 
@@ -118,28 +126,29 @@ def backfill_embeddings(phone, table, limit=8):
     cfg = TABLE_CONFIG.get(table)
     if not cfg or not OPENAI_API_KEY:
         return
-    rows = _sb_get(f"{table}?phone=eq.{phone}&embedding=is.null&select={cfg['select']}&order=created_at.desc&limit={limit}")
+    rows = _sb_get(f"{table}?phone=eq.{phone}&embedding=is.null&select={cfg.select}&order=created_at.desc&limit={limit}")
     for row in rows:
-        vec = embed(cfg["text_fn"](row))
+        vec = embed(cfg.text_fn(row))
         if vec:
             _sb_patch(table, f"id=eq.{row['id']}", {"embedding": vec})
 
 
 def _lexical_search(phone, table, query, limit):
     cfg = TABLE_CONFIG[table]
-    return _sb_get(f"{table}?phone=eq.{phone}&fts=plfts.{quote(query)}&select={cfg['select']}&limit={limit}")
+    return _sb_get(f"{table}?phone=eq.{phone}&fts=plfts.{quote(query)}&select={cfg.select}&limit={limit}")
 
 
 def _vector_search(phone, table, query_embedding, limit):
     if not query_embedding:
         return []
     cfg = TABLE_CONFIG[table]
-    return _sb_rpc(cfg["match_fn"], {"query_embedding": query_embedding, "match_phone": phone, "match_count": limit})
+    return _sb_rpc(cfg.match_fn, {"query_embedding": query_embedding, "match_phone": phone, "match_count": limit})
 
 
 def _fuse(lexical, vector, k=60):
     """Reciprocal Rank Fusion — merges two ranked lists into one, deduped by id."""
-    scores, rows_by_id = {}, {}
+    scores: dict = {}
+    rows_by_id: dict = {}
     for rank, row in enumerate(lexical):
         rid = row.get("id")
         scores[rid] = scores.get(rid, 0) + 1 / (k + rank + 1)
@@ -148,7 +157,8 @@ def _fuse(lexical, vector, k=60):
         rid = row.get("id")
         scores[rid] = scores.get(rid, 0) + 1 / (k + rank + 1)
         rows_by_id.setdefault(rid, row)
-    return [rows_by_id[rid] for rid in sorted(scores, key=scores.get, reverse=True)]
+    ranked_ids = sorted(scores.keys(), key=lambda rid: scores[rid], reverse=True)
+    return [rows_by_id[rid] for rid in ranked_ids]
 
 
 def hybrid_search(phone, query, table, limit=4, exclude_ids=None):
@@ -177,4 +187,31 @@ def format_matches(table, rows):
     cfg = TABLE_CONFIG.get(table)
     if not cfg or not rows:
         return []
-    return [cfg["format_fn"](r) for r in rows]
+    return [cfg.format_fn(r) for r in rows]
+
+
+# ── News (Phase 2) — global, not scoped to one user, so it's a separate path
+# from the per-user hybrid_search() above rather than reusing TABLE_CONFIG. ──
+
+def news_search(query, limit=3):
+    """Hybrid BM25 + vector search over news_articles (ingested by cron/market-news.py)."""
+    if not query or not query.strip():
+        return []
+    try:
+        query_vec = embed(query)
+        lexical = _sb_get(f"news_articles?fts=plfts.{quote(query)}&select=id,title,summary,published_at,tags&order=published_at.desc&limit={limit*2}")
+        vector = _vector_search_news(query_vec, limit * 2) if query_vec else []
+        return _fuse(lexical, vector)[:limit]
+    except Exception as e:
+        print(f"[RAG news_search] {e}")
+        return []
+
+
+def _vector_search_news(query_embedding, limit):
+    if not query_embedding:
+        return []
+    return _sb_rpc("match_news", {"query_embedding": query_embedding, "match_count": limit})
+
+
+def format_news(rows):
+    return [f"{r.get('title','')} — {r.get('summary','')}" for r in rows if r.get("title") or r.get("summary")]

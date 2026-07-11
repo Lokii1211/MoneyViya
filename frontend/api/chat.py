@@ -226,6 +226,9 @@ def get_context(phone, message=None):
             related_bills = _rag.format_matches("bills_and_dues", _rag.hybrid_search(short, message, "bills_and_dues", limit=2))
             if related_bills:
                 ctx_parts.append("Relevant bills:\n  " + "\n  ".join(related_bills))
+            related_news = _rag.format_news(_rag.news_search(message, limit=2))
+            if related_news:
+                ctx_parts.append("Relevant market news (cite naturally if it's actually useful here, don't force it):\n  " + "\n  ".join(related_news))
 
         habits = sb_get(f"habits?phone=eq.{short}&select=name,icon,current_streak&order=current_streak.desc&limit=8")
         if habits:
