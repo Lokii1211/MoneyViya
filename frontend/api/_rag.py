@@ -1,0 +1,180 @@
+"""
+Viya — Hybrid RAG retriever (BM25 + Vector, Reciprocal Rank Fusion)
+=====================================================================
+Shared helper module for chat.py and whatsapp.py. Not a route itself —
+the leading underscore excludes it from Vercel's function routing while
+still letting sibling files `import _rag`. See docs/AI_AGENTS_RAG_PRD.md
+for the full design (this is Phase 1: retrieval over the user's own
+transactions/goals/bills; Phase 2 adds news, Phase 3 adds the knowledge
+graph walk).
+
+Degrades gracefully: if OPENAI_API_KEY isn't set, hybrid_search() still
+returns lexical (full-text search) matches — it just skips the vector half.
+"""
+
+import os
+import json
+import urllib.request
+import urllib.error
+from urllib.parse import quote
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("VITE_SUPABASE_URL", ""))
+SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY", os.getenv("VITE_SUPABASE_ANON_KEY", ""))
+
+EMBED_MODEL = "text-embedding-3-small"
+EMBED_DIMENSIONS = 1536
+
+
+def _sb_headers():
+    return {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
+
+
+def _sb_get(path):
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return []
+    try:
+        req = urllib.request.Request(f"{SUPABASE_URL}/rest/v1/{path}", headers=_sb_headers())
+        with urllib.request.urlopen(req, timeout=6) as r:
+            return json.loads(r.read()) or []
+    except Exception as e:
+        print(f"[RAG sb_get] {path[:60]}: {e}")
+        return []
+
+
+def _sb_patch(table, filt, data):
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return None
+    try:
+        req = urllib.request.Request(
+            f"{SUPABASE_URL}/rest/v1/{table}?{filt}",
+            data=json.dumps(data).encode(), headers=_sb_headers(), method="PATCH",
+        )
+        with urllib.request.urlopen(req, timeout=6) as r:
+            return json.loads(r.read())
+    except Exception as e:
+        print(f"[RAG sb_patch] {table}: {e}")
+        return None
+
+
+def _sb_rpc(fn_name, payload):
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return []
+    try:
+        req = urllib.request.Request(
+            f"{SUPABASE_URL}/rest/v1/rpc/{fn_name}",
+            data=json.dumps(payload).encode(), headers=_sb_headers(), method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=6) as r:
+            return json.loads(r.read()) or []
+    except Exception as e:
+        print(f"[RAG rpc] {fn_name}: {e}")
+        return []
+
+
+def embed(text):
+    """Returns a 1536-dim embedding for `text`, or None if OPENAI_API_KEY is unset or the call fails."""
+    if not OPENAI_API_KEY or not text or not text.strip():
+        return None
+    try:
+        body = json.dumps({"model": EMBED_MODEL, "input": text[:8000]}).encode()
+        req = urllib.request.Request(
+            "https://api.openai.com/v1/embeddings", data=body, method="POST",
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=8) as r:
+            return json.loads(r.read())["data"][0]["embedding"]
+    except Exception as e:
+        print(f"[RAG embed] {e}")
+        return None
+
+
+# Per-table retrieval config: how to build the embeddable text, which columns
+# to fetch, and which SQL match function (see migration) to call for vector search.
+TABLE_CONFIG = {
+    "transactions": {
+        "select": "id,type,amount,category,description,merchant,created_at",
+        "text_fn": lambda r: f"{r.get('type','')} {r.get('category','')} {r.get('description') or ''} {r.get('merchant') or ''} amount {r.get('amount','')}",
+        "match_fn": "match_transactions",
+        "format_fn": lambda r: f"{r.get('type','')}: ₹{r.get('amount',0)} ({r.get('category','')}) {r.get('description') or r.get('merchant') or ''}".strip(),
+    },
+    "goals": {
+        "select": "id,name,current_amount,target_amount,deadline",
+        "text_fn": lambda r: f"goal {r.get('name','')}",
+        "match_fn": "match_goals",
+        "format_fn": lambda r: f"Goal '{r.get('name','')}': ₹{r.get('current_amount',0)}/₹{r.get('target_amount',0)}" + (f" by {r.get('deadline')}" if r.get('deadline') else ""),
+    },
+    "bills_and_dues": {
+        "select": "id,name,bill_type,amount,due_date,status",
+        "text_fn": lambda r: f"bill {r.get('name','')} {r.get('bill_type','')}",
+        "match_fn": "match_bills",
+        "format_fn": lambda r: f"Bill '{r.get('name','')}' ({r.get('bill_type','')}): ₹{r.get('amount',0)}, due {r.get('due_date','?')}, {r.get('status','')}",
+    },
+}
+
+
+def backfill_embeddings(phone, table, limit=8):
+    """Embeds up to `limit` of this user's rows that don't have one yet. Bounded and cheap enough to call on every chat turn."""
+    cfg = TABLE_CONFIG.get(table)
+    if not cfg or not OPENAI_API_KEY:
+        return
+    rows = _sb_get(f"{table}?phone=eq.{phone}&embedding=is.null&select={cfg['select']}&order=created_at.desc&limit={limit}")
+    for row in rows:
+        vec = embed(cfg["text_fn"](row))
+        if vec:
+            _sb_patch(table, f"id=eq.{row['id']}", {"embedding": vec})
+
+
+def _lexical_search(phone, table, query, limit):
+    cfg = TABLE_CONFIG[table]
+    return _sb_get(f"{table}?phone=eq.{phone}&fts=plfts.{quote(query)}&select={cfg['select']}&limit={limit}")
+
+
+def _vector_search(phone, table, query_embedding, limit):
+    if not query_embedding:
+        return []
+    cfg = TABLE_CONFIG[table]
+    return _sb_rpc(cfg["match_fn"], {"query_embedding": query_embedding, "match_phone": phone, "match_count": limit})
+
+
+def _fuse(lexical, vector, k=60):
+    """Reciprocal Rank Fusion — merges two ranked lists into one, deduped by id."""
+    scores, rows_by_id = {}, {}
+    for rank, row in enumerate(lexical):
+        rid = row.get("id")
+        scores[rid] = scores.get(rid, 0) + 1 / (k + rank + 1)
+        rows_by_id[rid] = row
+    for rank, row in enumerate(vector):
+        rid = row.get("id")
+        scores[rid] = scores.get(rid, 0) + 1 / (k + rank + 1)
+        rows_by_id.setdefault(rid, row)
+    return [rows_by_id[rid] for rid in sorted(scores, key=scores.get, reverse=True)]
+
+
+def hybrid_search(phone, query, table, limit=4, exclude_ids=None):
+    """
+    Hybrid BM25 + vector retrieval for one table, scoped to a single user.
+    Returns a list of raw rows (dicts), ranked by fused relevance.
+    """
+    if not phone or not query or not query.strip() or table not in TABLE_CONFIG:
+        return []
+    try:
+        backfill_embeddings(phone, table)
+        query_vec = embed(query)
+        lexical = _lexical_search(phone, table, query, limit * 2)
+        vector = _vector_search(phone, table, query_vec, limit * 2)
+        fused = _fuse(lexical, vector)
+        if exclude_ids:
+            fused = [r for r in fused if r.get("id") not in exclude_ids]
+        return fused[:limit]
+    except Exception as e:
+        print(f"[RAG hybrid_search] {table}: {e}")
+        return []
+
+
+def format_matches(table, rows):
+    """Formats retrieved rows into short human-readable lines for the LLM prompt."""
+    cfg = TABLE_CONFIG.get(table)
+    if not cfg or not rows:
+        return []
+    return [cfg["format_fn"](r) for r in rows]

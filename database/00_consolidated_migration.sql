@@ -1306,3 +1306,56 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_bills_fts ON bills_and_dues USING gin (fts);
 
 SELECT 'Phase 0 — RAG foundation ready ✅' AS status;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- PHASE 1 — Hybrid retriever (BM25 + vector) over the user's own data
+-- Needs OPENAI_API_KEY set in Vercel to actually populate embeddings/do
+-- vector search — the match_* functions and columns below are inert until
+-- then, and frontend/api/_rag.py degrades to lexical-only search without it.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE goals ADD COLUMN IF NOT EXISTS embedding vector(1536);
+ALTER TABLE bills_and_dues ADD COLUMN IF NOT EXISTS embedding vector(1536);
+CREATE INDEX IF NOT EXISTS idx_goals_embedding ON goals USING ivfflat (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_bills_embedding ON bills_and_dues USING ivfflat (embedding vector_cosine_ops);
+
+-- Vector similarity search functions — called via PostgREST RPC
+-- (POST /rest/v1/rpc/match_transactions etc.) from frontend/api/_rag.py.
+CREATE OR REPLACE FUNCTION match_transactions(query_embedding vector(1536), match_phone text, match_count int DEFAULT 5)
+RETURNS TABLE(id int, type text, amount real, category text, description text, merchant text, created_at timestamptz, similarity float)
+LANGUAGE sql STABLE AS $$
+  SELECT id, type, amount, category, description, merchant, created_at,
+         1 - (embedding <=> query_embedding) AS similarity
+  FROM transactions
+  WHERE phone = match_phone AND embedding IS NOT NULL
+  ORDER BY embedding <=> query_embedding
+  LIMIT match_count;
+$$;
+
+CREATE OR REPLACE FUNCTION match_goals(query_embedding vector(1536), match_phone text, match_count int DEFAULT 5)
+RETURNS TABLE(id int, name text, current_amount real, target_amount real, deadline text, similarity float)
+LANGUAGE sql STABLE AS $$
+  SELECT id, name, current_amount, target_amount, deadline,
+         1 - (embedding <=> query_embedding) AS similarity
+  FROM goals
+  WHERE phone = match_phone AND embedding IS NOT NULL
+  ORDER BY embedding <=> query_embedding
+  LIMIT match_count;
+$$;
+
+CREATE OR REPLACE FUNCTION match_bills(query_embedding vector(1536), match_phone text, match_count int DEFAULT 5)
+RETURNS TABLE(id uuid, name text, bill_type text, amount numeric, due_date date, status text, similarity float)
+LANGUAGE sql STABLE AS $$
+  SELECT id, name, bill_type, amount, due_date, status,
+         1 - (embedding <=> query_embedding) AS similarity
+  FROM bills_and_dues
+  WHERE phone = match_phone AND embedding IS NOT NULL
+  ORDER BY embedding <=> query_embedding
+  LIMIT match_count;
+$$;
+
+GRANT EXECUTE ON FUNCTION match_transactions(vector, text, int) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION match_goals(vector, text, int) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION match_bills(vector, text, int) TO anon, authenticated;
+
+SELECT 'Phase 1 — hybrid retriever schema ready ✅' AS status;

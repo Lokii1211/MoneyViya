@@ -21,6 +21,8 @@ from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
+import _rag
+
 VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "viya_verify_2026")
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
 PHONE_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
@@ -136,7 +138,7 @@ def norm_phone(phone):
 
 # ── Context builder ───────────────────────────────────────────────────────────
 
-def get_context(phone):
+def get_context(phone, message=None):
     short = norm_phone(phone)
     if not short: return "New user."
     ctx = []
@@ -151,7 +153,7 @@ def get_context(phone):
         checkins = sb_get(f"habit_checkins?phone=eq.{short}&checked_date=eq.{TODAY}&select=habit_id")
         if habits:
             ctx.append(f"Done today: {len(checkins)}/{len(habits)}")
-        txns = sb_get(f"transactions?phone=eq.{short}&select=type,amount,category&order=created_at.desc&limit=3")
+        txns = sb_get(f"transactions?phone=eq.{short}&select=id,type,amount,category&order=created_at.desc&limit=3")
         if txns:
             ctx.append("Recent: " + ", ".join(f"₹{t.get('amount',0)} {t.get('category','')}" for t in txns))
         goals = sb_get(f"goals?phone=eq.{short}&status=eq.active&select=name,current_amount,target_amount&limit=3")
@@ -160,6 +162,14 @@ def get_context(phone):
         memories = sb_get(f"viya_memory?phone=eq.{short}&select=content&order=importance.desc&limit=3")
         if memories:
             ctx.append("Know: " + " | ".join(m.get('content','') for m in memories))
+
+        # Hybrid retrieval (BM25 + vector) — same retriever chat.py uses, see
+        # docs/AI_AGENTS_RAG_PRD.md. Degrades to lexical-only without OPENAI_API_KEY.
+        if message:
+            recent_ids = {t.get("id") for t in txns}
+            related_txns = _rag.format_matches("transactions", _rag.hybrid_search(short, message, "transactions", limit=2, exclude_ids=recent_ids))
+            if related_txns:
+                ctx.append("Relevant past: " + " | ".join(related_txns))
     except Exception as e:
         ctx.append(f"(error: {e})")
     return "\n".join(ctx) or "No data."
@@ -250,7 +260,7 @@ def call_groq_wa(phone, text, wa_history=None):
     if not GROQ_API_KEY:
         return "Hi! I'm Viya. I need my AI key to respond fully. Please ask your admin to add GROQ_API_KEY. Meanwhile, try /bal /goals /bills /help"
 
-    context = get_context(phone)
+    context = get_context(phone, text)
     system = WA_SYSTEM_PROMPT.replace("{context}", context)
 
     msgs = [{"role": "system", "content": system}]

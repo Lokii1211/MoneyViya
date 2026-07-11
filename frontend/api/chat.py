@@ -17,6 +17,8 @@ from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
+import _rag
+
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("VITE_SUPABASE_URL", ""))
 SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY", os.getenv("VITE_SUPABASE_ANON_KEY", ""))
@@ -187,7 +189,7 @@ def norm_phone(phone):
 
 # ── Context builder ───────────────────────────────────────────────────────────
 
-def get_context(phone):
+def get_context(phone, message=None):
     short = norm_phone(phone)
     if not short:
         return "New user — no data yet."
@@ -204,10 +206,26 @@ def get_context(phone):
         if today_spent:
             ctx_parts.append(f"Spent today: ₹{today_spent:,.0f}")
 
-        txns = sb_get(f"transactions?phone=eq.{short}&select=type,amount,category,description&order=created_at.desc&limit=5")
+        txns = sb_get(f"transactions?phone=eq.{short}&select=id,type,amount,category,description&order=created_at.desc&limit=5")
         if txns:
             lines = [f"  {t.get('type','')}: ₹{t.get('amount',0)} ({t.get('category','')}) {t.get('description','')}" for t in txns]
             ctx_parts.append("Recent txns:\n" + "\n".join(lines))
+
+        # Hybrid retrieval (BM25 + vector, see docs/AI_AGENTS_RAG_PRD.md) — pulls
+        # in older/less-recent rows genuinely relevant to what the user just asked,
+        # beyond the "last 5" window above. Degrades to lexical-only without an
+        # OPENAI_API_KEY, and no-ops entirely if `message` isn't passed.
+        if message:
+            recent_ids = {t.get("id") for t in txns}
+            related_txns = _rag.format_matches("transactions", _rag.hybrid_search(short, message, "transactions", limit=3, exclude_ids=recent_ids))
+            if related_txns:
+                ctx_parts.append("Relevant past transactions (matched to this question):\n  " + "\n  ".join(related_txns))
+            related_goals = _rag.format_matches("goals", _rag.hybrid_search(short, message, "goals", limit=2))
+            if related_goals:
+                ctx_parts.append("Relevant goals:\n  " + "\n  ".join(related_goals))
+            related_bills = _rag.format_matches("bills_and_dues", _rag.hybrid_search(short, message, "bills_and_dues", limit=2))
+            if related_bills:
+                ctx_parts.append("Relevant bills:\n  " + "\n  ".join(related_bills))
 
         habits = sb_get(f"habits?phone=eq.{short}&select=name,icon,current_streak&order=current_streak.desc&limit=8")
         if habits:
@@ -384,7 +402,7 @@ def call_groq(messages):
 # ── Main processor ────────────────────────────────────────────────────────────
 
 def process_message(phone, message, history=None):
-    context = get_context(phone)
+    context = get_context(phone, message)
     system = SYSTEM_PROMPT.replace("{context}", context)
 
     msgs = [{"role": "system", "content": system}]
