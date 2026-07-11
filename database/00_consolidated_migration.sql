@@ -1225,3 +1225,84 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS gmail_connected BOOLEAN DEFAULT FALSE
 
 -- Index for quick lookup
 CREATE INDEX IF NOT EXISTS idx_users_gmail ON users (gmail_connected) WHERE gmail_connected = TRUE;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- PHASE 0 — AI Agents & Hybrid RAG foundation
+-- See docs/AI_AGENTS_RAG_PRD.md. This phase needs no new API keys — it only
+-- adds pgvector, the news/knowledge-graph tables (populated in later phases),
+-- and Postgres full-text search (our BM25-equivalent) on data that already
+-- exists, so lexical retrieval ("that Swiggy order last week") works today.
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- News ingested by the Market Analyst agent (Phase 2 populates this)
+CREATE TABLE IF NOT EXISTS news_articles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  source TEXT,
+  url TEXT UNIQUE,
+  title TEXT,
+  summary TEXT,
+  published_at TIMESTAMPTZ,
+  tags TEXT[],
+  embedding vector(1536),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='news_articles' AND column_name='fts') THEN
+    ALTER TABLE news_articles ADD COLUMN fts tsvector
+      GENERATED ALWAYS AS (to_tsvector('english', coalesce(title,'') || ' ' || coalesce(summary,''))) STORED;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_news_articles_fts ON news_articles USING gin (fts);
+CREATE INDEX IF NOT EXISTS idx_news_articles_embedding ON news_articles USING ivfflat (embedding vector_cosine_ops);
+
+-- Personal knowledge graph edges, per user (Phase 3 populates this nightly)
+CREATE TABLE IF NOT EXISTS kg_edges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_phone TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  relation TEXT NOT NULL,
+  object TEXT NOT NULL,
+  weight REAL DEFAULT 1.0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_kg_edges_user_subject ON kg_edges (user_phone, subject);
+ALTER TABLE kg_edges ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users manage own kg edges" ON kg_edges;
+CREATE POLICY "Users manage own kg edges" ON kg_edges FOR ALL USING (true);
+ALTER TABLE news_articles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "News readable by all" ON news_articles;
+CREATE POLICY "News readable by all" ON news_articles FOR SELECT USING (true);
+
+-- Semantic search over the user's own transactions (Phase 1 populates this on write)
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS embedding vector(1536);
+
+-- Full-text search (BM25-equivalent) on transactions, goals, bills — works
+-- immediately, no embeddings or external API needed.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='fts') THEN
+    ALTER TABLE transactions ADD COLUMN fts tsvector
+      GENERATED ALWAYS AS (to_tsvector('english',
+        coalesce(description,'') || ' ' || coalesce(category,'') || ' ' || coalesce(merchant,''))) STORED;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_transactions_fts ON transactions USING gin (fts);
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='goals' AND column_name='fts') THEN
+    ALTER TABLE goals ADD COLUMN fts tsvector GENERATED ALWAYS AS (to_tsvector('english', coalesce(name,''))) STORED;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_goals_fts ON goals USING gin (fts);
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bills_and_dues' AND column_name='fts') THEN
+    ALTER TABLE bills_and_dues ADD COLUMN fts tsvector
+      GENERATED ALWAYS AS (to_tsvector('english',
+        coalesce(name,'') || ' ' || coalesce(bill_type,'') || ' ' || coalesce(notes,''))) STORED;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_bills_fts ON bills_and_dues USING gin (fts);
+
+SELECT 'Phase 0 — RAG foundation ready ✅' AS status;

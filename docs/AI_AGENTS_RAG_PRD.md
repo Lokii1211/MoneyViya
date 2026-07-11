@@ -1,8 +1,8 @@
 # Viya AI Agents & Hybrid RAG — PRD
 
-**Status:** Draft for review. Nothing in this doc is built yet except what Phase 0/1 explicitly says is already live.
+**Status:** Phase 0 shipped (schema + pgvector + FTS indexes added to `database/00_consolidated_migration.sql` — run it in Supabase SQL Editor to apply). Phase 1 next, needs an OpenAI key.
 **Owner:** Kishan (solo founder)
-**Last updated:** 2026-07-11
+**Last updated:** 2026-07-12
 
 ---
 
