@@ -102,8 +102,10 @@ def parse_av_time(t):
 
 
 def upsert_news(row):
+    """Returns (ok: bool, error_detail: str|None) — error_detail is the raw
+    PostgREST response body on failure, useful for live diagnosis."""
     if not SUPABASE_URL or not SUPABASE_KEY:
-        return False
+        return False, "Supabase env vars not set"
     try:
         req = urllib.request.Request(
             f"{SUPABASE_URL}/rest/v1/news_articles?on_conflict=url",
@@ -116,10 +118,14 @@ def upsert_news(row):
             },
         )
         with urllib.request.urlopen(req, timeout=8) as r:
-            return r.status in (200, 201, 204)
+            return r.status in (200, 201, 204), None
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        print(f"[MarketNews] upsert HTTP error {e.code}: {body}")
+        return False, f"HTTP {e.code}: {body}"
     except Exception as e:
         print(f"[MarketNews] upsert error: {e}")
-        return False
+        return False, str(e)
 
 
 class handler(BaseHTTPRequestHandler):
@@ -142,6 +148,7 @@ class handler(BaseHTTPRequestHandler):
             summaries = summarize_batch(raw_articles)
 
             saved, skipped = 0, 0
+            first_error = None
             for article, summary in zip(raw_articles, summaries):
                 url = article.get("url", "")
                 if not url or not summary:
@@ -160,12 +167,15 @@ class handler(BaseHTTPRequestHandler):
                 embedding = _rag.embed(f"{title} {summary}")
                 if embedding:
                     row["embedding"] = embedding
-                if upsert_news(row):
+                ok, err = upsert_news(row)
+                if ok:
                     saved += 1
                 else:
                     skipped += 1
+                    if first_error is None:
+                        first_error = err
 
-            self._respond(200, {"status": "ok", "fetched": len(raw_articles), "saved": saved, "skipped": skipped})
+            self._respond(200, {"status": "ok", "fetched": len(raw_articles), "saved": saved, "skipped": skipped, "first_error": first_error})
         except Exception as e:
             print(f"[MarketNews] {e}")
             self._respond(200, {"status": "error", "error": str(e)})
