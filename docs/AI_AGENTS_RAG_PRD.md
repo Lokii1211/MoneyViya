@@ -1,6 +1,8 @@
 # Viya AI Agents & Hybrid RAG — PRD
 
-**Status:** Phase 0-4 shipped. Run `python3 tests/eval_rag.py` (needs Supabase env vars) for real intent-accuracy/grounding-rate numbers. Phase 5 (full life-OS coverage) is next.
+**Status:** All 6 phases (0-5) shipped and live-verified. Run `python3 tests/eval_rag.py` for real intent-accuracy/grounding-rate numbers.
+
+**Incident during Phase 5:** live-testing caught `/api/chat` and `/api/whatsapp` crashing on every request — the plain `import _rag` added in Phase 1 doesn't reliably resolve under Vercel's Python bundler for top-level files (cron/*.py already worked around this with an explicit `sys.path.insert()`; chat.py/whatsapp.py hadn't). This means chat and WhatsApp were very likely broken since the Phase 1 deploy. Fixed and verified live end-to-end (expense logging, health queries, WhatsApp webhook) before this phase was called done. Recommend a real end-to-end pass on your own devices too.
 **Owner:** Kishan (solo founder)
 **Last updated:** 2026-07-12
 
