@@ -111,7 +111,8 @@ export default function Meals() {
 
   const handleDeleteMeal = async (id) => {
     try {
-      await api.deleteMeal(id)
+      const ok = await api.deleteMeal(id)
+      if (!ok) { toast.show('Failed to remove meal', 'error'); return }
       setMeals(prev => prev.filter(m => m.id !== id))
       toast.show('Meal removed', 'success')
     } catch (e) {

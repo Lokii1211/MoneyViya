@@ -49,7 +49,8 @@ export default function Subscriptions() {
 
   const handleDelete = async (id) => {
     try {
-      await api.deleteBill(id)
+      const ok = await api.deleteBill(id)
+      if (!ok) { toast.show('Failed to remove subscription', 'error'); return }
       setSubs(prev => prev.filter(s => s.id !== id))
       toast.show('Subscription removed', 'success')
     } catch (e) {

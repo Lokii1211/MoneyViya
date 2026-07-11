@@ -106,8 +106,8 @@ export default function Profile() {
       localStorage.setItem('mv_avatar', dataUrl)
       setShowAvatarPicker(false)
       setUser(prev => ({ ...prev, avatar: dataUrl }))
-      await api.updateUser(phone, { avatar: dataUrl })
-      setToast('Profile photo updated!')
+      const ok = await api.updateUser(phone, { avatar: dataUrl })
+      setToast(ok ? 'Profile photo updated!' : 'Saved on this device — sync failed, check your connection')
     } catch {
       setToast('Could not process that image')
     }

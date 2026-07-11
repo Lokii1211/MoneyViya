@@ -36,20 +36,23 @@ export default function Medicine() {
   async function handleAdd(e) {
     e.preventDefault()
     if (!name.trim()) return
-    await api.addMedicine(phone, { name: name.trim(), dosage, time, active: true })
+    const ok = await api.addMedicine(phone, { name: name.trim(), dosage, time, active: true })
+    if (!ok) { toast.show('Failed to add medicine', 'error'); return }
     setName(''); setDosage(''); setTime('Morning'); setShowAdd(false)
     toast.show('Medicine added', 'success')
     loadData()
   }
 
   async function handleCheckin(medId) {
-    await api.checkinMedicine(medId, phone)
+    const ok = await api.checkinMedicine(medId, phone)
+    if (!ok) { toast.show('Failed to save — try again', 'error'); return }
     toast.show('Medicine taken!', 'success')
     loadData()
   }
 
   async function handleDelete(id) {
-    await api.deleteMedicine(id)
+    const ok = await api.deleteMedicine(id)
+    if (!ok) { toast.show('Failed to remove medicine', 'error'); return }
     toast.show('Medicine removed', 'info')
     loadData()
   }

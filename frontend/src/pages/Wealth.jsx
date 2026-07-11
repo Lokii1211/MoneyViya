@@ -157,7 +157,8 @@ export default function Wealth() {
         data.sip_amount = Number(addForm.sip_amount || 0)
         data.sip_date = addForm.sip_date || ''
       }
-      await api.addInvestment(phone, data)
+      const ok = await api.addInvestment(phone, data)
+      if (!ok) { toast.show('Failed to add investment', 'error'); setAddSaving(false); return }
       toast.show('Investment added!', 'success')
       setAddForm({ name: '', investment_type: 'mutual_fund', invested_amount: '', current_value: '', is_sip: false, sip_amount: '', sip_date: '' })
       setShowAddForm(false)
@@ -181,13 +182,14 @@ export default function Wealth() {
     }
     setGoalSaving(true)
     try {
-      await api.addGoal(
+      const ok = await api.addGoal(
         phone,
         goalForm.name.trim(),
         goalForm.emoji,
         Number(goalForm.target_amount),
         goalForm.deadline || null
       )
+      if (!ok) { toast.show('Failed to create goal', 'error'); setGoalSaving(false); return }
       toast.show('Goal created!', 'success')
       setGoalForm({ name: '', emoji: '🎯', target_amount: '', deadline: '' })
       setShowGoalForm(false)
@@ -207,7 +209,8 @@ export default function Wealth() {
     }
     setAddMoneySaving(true)
     try {
-      await api.addToGoal(goalId, Number(addMoneyAmount))
+      const ok = await api.addToGoal(goalId, Number(addMoneyAmount))
+      if (!ok) { toast.show('Failed to add money', 'error'); setAddMoneySaving(false); return }
       toast.show(`₹${Number(addMoneyAmount).toLocaleString('en-IN')} added to goal!`, 'success')
       setAddMoneyGoalId(null)
       setAddMoneyAmount('')
