@@ -139,8 +139,8 @@ function UpiImportDrawer({ app, phone, toast, onClose }) {
     if (!parsed) return
     setSaving(true)
     try {
-      if (parsed.isIncome) await api.addIncome(phone, parsed.amount, parsed.category)
-      else await api.addExpense(phone, parsed.amount, parsed.category, parsed.merchant)
+      const ok = parsed.isIncome ? await api.addIncome(phone, parsed.amount, parsed.category) : await api.addExpense(phone, parsed.amount, parsed.category, parsed.merchant)
+      if (!ok) { toast.show('Failed to save', 'error'); setSaving(false); return }
       toast.show(`₹${parsed.amount.toLocaleString('en-IN')} from ${app.name} imported!`, 'success')
       setSms(''); setParsed(null); onClose()
     } catch { toast.show('Failed to save', 'error') }
@@ -238,7 +238,8 @@ export default function BankConnect() {
     try {
       const data = { name: invForm.name.trim(), investment_type: invForm.investment_type, invested_amount: Number(invForm.invested_amount), current_value: Number(invForm.current_value || invForm.invested_amount), is_sip: invForm.is_sip }
       if (invForm.is_sip) { data.sip_amount = Number(invForm.sip_amount || 0); data.sip_date = invForm.sip_date || '' }
-      await api.addInvestment(phone, data)
+      const ok = await api.addInvestment(phone, data)
+      if (!ok) { toast.show('Failed to save. Try again.', 'error'); setInvSaving(false); return }
       setRecentInvestments(p => [{ ...data, time: new Date().toLocaleTimeString() }, ...p.slice(0, 4)])
       toast.show(`${data.name} added!`, 'success')
       setInvForm({ name: '', investment_type: 'mutual_fund', invested_amount: '', current_value: '', is_sip: false, sip_amount: '', sip_date: '' })
@@ -257,8 +258,8 @@ export default function BankConnect() {
     if (!parsedResult || !phone) return
     setSaving(true)
     try {
-      if (parsedResult.isIncome) await api.addIncome(phone, parsedResult.amount, parsedResult.category)
-      else await api.addExpense(phone, parsedResult.amount, parsedResult.category, parsedResult.merchant)
+      const ok = parsedResult.isIncome ? await api.addIncome(phone, parsedResult.amount, parsedResult.category) : await api.addExpense(phone, parsedResult.amount, parsedResult.category, parsedResult.merchant)
+      if (!ok) { toast.show('Failed. Try again.', 'error'); setSaving(false); return }
       setRecentImports(p => [{ ...parsedResult, time: new Date().toLocaleTimeString() }, ...p.slice(0, 4)])
       toast.show(`₹${parsedResult.amount.toLocaleString('en-IN')} ${parsedResult.isIncome ? 'income' : 'expense'} added!`, 'success')
       setParsedResult(null); setPastedSms('')
@@ -279,7 +280,10 @@ export default function BankConnect() {
       if (!amt) { skip++; continue }
       const desc = cols.find(c => c.length > 5 && !/^\d/.test(c)) || 'CSV'
       const isDebit = /debit|dr|spent|paid|withdraw/i.test(lines[i])
-      try { isDebit ? await api.addExpense(phone, amt, '💳 Other', desc.slice(0, 100)) : await api.addIncome(phone, amt, '💼 Salary'); ok++ } catch { skip++ }
+      try {
+        const saved = isDebit ? await api.addExpense(phone, amt, '💳 Other', desc.slice(0, 100)) : await api.addIncome(phone, amt, '💼 Salary')
+        saved ? ok++ : skip++
+      } catch { skip++ }
     }
     toast.show(`Imported ${ok} transactions, ${skip} skipped`, ok > 0 ? 'success' : 'warning')
     e.target.value = ''

@@ -92,7 +92,8 @@ export default function Bills() {
 
   const handleMarkPaid = async (bill) => {
     try {
-      await api.markBillPaid(bill.id)
+      const ok = await api.markBillPaid(bill.id)
+      if (!ok) { toast.show('Failed to mark paid', 'error'); return }
       setBills(prev => prev.map(b => b.id === bill.id ? { ...b, status: 'paid' } : b))
       toast.show(`${bill.name} marked as paid!`, 'success')
     } catch { toast.show('Failed to mark paid', 'error') }
@@ -100,7 +101,8 @@ export default function Bills() {
 
   const handleDelete = async (bill) => {
     try {
-      await api.deleteBill(bill.id)
+      const ok = await api.deleteBill(bill.id)
+      if (!ok) { toast.show('Failed to delete bill', 'error'); return }
       setBills(prev => prev.filter(b => b.id !== bill.id))
       toast.show(`${bill.name} deleted`, 'info')
     } catch { toast.show('Failed to delete bill', 'error') }
@@ -109,7 +111,7 @@ export default function Bills() {
   const handleAdd = async () => {
     if (!form.name || !form.amount) return toast.show('Name and amount are required', 'error')
     try {
-      await api.addBill(phone, {
+      const ok = await api.addBill(phone, {
         name: form.name,
         amount: parseFloat(form.amount),
         due_date: form.due_date || null,
@@ -117,6 +119,7 @@ export default function Bills() {
         auto_debit: form.auto_debit,
         status: 'pending',
       })
+      if (!ok) { toast.show('Failed to add bill', 'error'); return }
       toast.show(`${form.name} added!`, 'success')
       setForm({ name: '', amount: '', due_date: '', bill_type: 'credit_card', auto_debit: false })
       setShowForm(false)

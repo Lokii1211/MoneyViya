@@ -63,21 +63,29 @@ export default function Friends() {
     if ([...(existing || []), ...(received || [])].some(c => c.connection_type === 'friend' && (c.member_phone === clean || c.owner_phone === clean))) {
       showToast('❌ Already connected!'); return
     }
-    await api.sendFriendRequest(phone, clean)
+    const ok = await api.sendFriendRequest(phone, clean)
+    if (!ok) { showToast('❌ Could not send request — try again'); return }
     await api.addNotification(clean, `🤝 ${user?.name || phone} sent you a friend request!`, 'friend_request')
     showToast(`✅ Request sent to ${target.name || clean}!`)
     setFriendPhone(''); setShowAdd(false); loadAll()
   }
 
   const accept = async (inv) => {
-    await api.respondFamilyInvite(inv.id, 'accepted')
+    const ok = await api.respondFamilyInvite(inv.id, 'accepted')
+    if (!ok) { showToast('Could not accept — try again'); return }
     await api.addNotification(inv.owner_phone, `✅ ${user?.name || phone} accepted your friend request!`, 'friend_accepted')
     showToast(`✅ Now friends with ${inv.name}! 🤝`); loadAll()
   }
-  const reject = async (inv) => { await api.respondFamilyInvite(inv.id, 'rejected'); showToast('Declined'); loadAll() }
+  const reject = async (inv) => {
+    const ok = await api.respondFamilyInvite(inv.id, 'rejected')
+    if (!ok) { showToast('Could not decline — try again'); return }
+    showToast('Declined'); loadAll()
+  }
   const removeFriend = async (f) => {
     if (!confirm(`Remove ${f.name}?`)) return
-    await api.removeFamilyConnection(f.id); showToast('Removed'); loadAll()
+    const ok = await api.removeFamilyConnection(f.id)
+    if (!ok) { showToast('Could not remove — try again'); return }
+    showToast('Removed'); loadAll()
   }
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(''), 3000) }
 

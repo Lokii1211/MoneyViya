@@ -122,7 +122,8 @@ export default function Health() {
     setData(updated)
     setModal(null)
     try {
-      await api.upsertHealthLog(phone, { [field]: value })
+      const ok = await api.upsertHealthLog(phone, { [field]: value })
+      if (!ok) { toast.show('Save failed', 'error'); return }
       // Recalculate health score
       const score = calcScore({ ...data, [field]: value })
       await api.upsertHealthLog(phone, { health_score: score })
@@ -135,14 +136,20 @@ export default function Health() {
   const addWater = async () => {
     const next = (data.water_glasses || 0) + 1
     setData(d => ({ ...d, water_glasses: next }))
-    await api.upsertHealthLog(phone, { water_glasses: next })
-    toast.show(`💧 +1 glass (${next} total)`, 'success')
+    try {
+      const ok = await api.upsertHealthLog(phone, { water_glasses: next })
+      if (!ok) { toast.show('Save failed', 'error'); return }
+      toast.show(`💧 +1 glass (${next} total)`, 'success')
+    } catch { toast.show('Save failed', 'error') }
   }
 
   const saveMood = async (m) => {
     setData(d => ({ ...d, mood: m.value }))
-    await api.upsertHealthLog(phone, { mood: m.value })
-    toast.show(`${m.emoji} Mood logged: ${m.label}`, 'success')
+    try {
+      const ok = await api.upsertHealthLog(phone, { mood: m.value })
+      if (!ok) { toast.show('Save failed', 'error'); return }
+      toast.show(`${m.emoji} Mood logged: ${m.label}`, 'success')
+    } catch { toast.show('Save failed', 'error') }
   }
 
   function calcScore(d) {

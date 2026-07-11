@@ -55,16 +55,27 @@ export default function Family() {
     if (!target) return flash('This number is not on Viya yet')
     const existing = await api.getFamilyConnections(phone)
     if ((existing || []).some(c => c.member_phone === clean)) return flash('Already connected or invited!')
-    await api.sendFamilyInvite(phone, clean, inviteRelation)
+    const ok = await api.sendFamilyInvite(phone, clean, inviteRelation)
+    if (!ok) return flash('Could not send invite — check your connection and try again')
     flash(`Invitation sent to ${target.name || clean}!`)
     setInvitePhone(''); setShowInvite(false); loadAll()
   }
 
-  const acceptInvite = async (inv) => { await api.respondFamilyInvite(inv.id, 'accepted'); flash(`Connected with ${inv.owner_phone}!`); loadAll() }
-  const rejectInvite = async (inv) => { await api.respondFamilyInvite(inv.id, 'rejected'); flash('Invitation declined'); loadAll() }
+  const acceptInvite = async (inv) => {
+    const ok = await api.respondFamilyInvite(inv.id, 'accepted')
+    if (!ok) return flash('Could not accept invite — try again')
+    flash(`Connected with ${inv.owner_phone}!`); loadAll()
+  }
+  const rejectInvite = async (inv) => {
+    const ok = await api.respondFamilyInvite(inv.id, 'rejected')
+    if (!ok) return flash('Could not decline invite — try again')
+    flash('Invitation declined'); loadAll()
+  }
   const removeMember = async (c) => {
     if (!confirm(`Remove ${c.name} from family?`)) return
-    await api.removeFamilyConnection(c.id); flash('Member removed'); setSel(null); setSelData(null); loadAll()
+    const ok = await api.removeFamilyConnection(c.id)
+    if (!ok) return flash('Could not remove member — try again')
+    flash('Member removed'); setSel(null); setSelData(null); loadAll()
   }
   const viewMember = async (m) => {
     setSel(m)

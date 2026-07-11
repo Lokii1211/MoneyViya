@@ -48,7 +48,8 @@ export default function Expenses() {
 
   const submit = async () => {
     if (!amount || Number(amount) <= 0) return
-    type === 'expense' ? await api.addExpense(phone, Number(amount), category, note) : await api.addIncome(phone, Number(amount), category || 'Salary')
+    const ok = type === 'expense' ? await api.addExpense(phone, Number(amount), category, note) : await api.addIncome(phone, Number(amount), category || 'Salary')
+    if (!ok) { toast.show('Could not save — check your connection and try again', 'error'); return }
     setAmount(''); setNote(''); setShowAdd(false)
     toast.show(type === 'expense' ? 'Expense added!' : 'Income recorded!', 'success'); load()
   }
@@ -70,12 +71,17 @@ export default function Expenses() {
 
   const confirmOCR = async () => {
     if (!ocrResult) return
-    ocrResult.type === 'income' ? await api.addIncome(phone, ocrResult.amount, ocrResult.category, ocrResult.description) : await api.addExpense(phone, ocrResult.amount, ocrResult.category, ocrResult.description)
+    const ok = ocrResult.type === 'income' ? await api.addIncome(phone, ocrResult.amount, ocrResult.category, ocrResult.description) : await api.addExpense(phone, ocrResult.amount, ocrResult.category, ocrResult.description)
+    if (!ok) { toast.show('Could not save — check your connection and try again', 'error'); return }
     toast.show(`₹${ocrResult.amount} added from bill!`, 'success')
     setOcrResult(null); setShowOCR(false); load()
   }
 
-  const removeTxn = async (id) => { await api.deleteTransaction(id); toast.show('Deleted', 'info'); load() }
+  const removeTxn = async (id) => {
+    const ok = await api.deleteTransaction(id)
+    if (!ok) { toast.show('Could not delete — check your connection and try again', 'error'); return }
+    toast.show('Deleted', 'info'); load()
+  }
 
   const parseBankSMS = (text) => {
     const patterns = [/(?:INR|Rs\.?|₹)\s*([\d,]+\.?\d*)\s*(?:debited|spent|withdrawn)/i, /(?:Rs\.?|₹|INR)\s*([\d,]+\.?\d*)\s*(?:has been|was)?\s*(?:debited|charged|spent)/i, /(?:debited|charged|spent|withdrawn).*?(?:Rs\.?|₹|INR)\s*([\d,]+\.?\d*)/i, /(?:Rs\.?|₹|INR)\s*([\d,]+\.?\d*)/i]
@@ -99,7 +105,8 @@ export default function Expenses() {
   const handleSMSParse = () => { const r = parseBankSMS(smsText); r ? setSmsResult(r) : toast.show('Could not parse. Try a bank debit SMS.', 'error') }
   const confirmSMS = async () => {
     if (!smsResult) return
-    smsResult.isIncome ? await api.addIncome(phone, smsResult.amount, '🏦 Bank Transfer') : await api.addExpense(phone, smsResult.amount, smsResult.category, smsResult.merchant)
+    const ok = smsResult.isIncome ? await api.addIncome(phone, smsResult.amount, '🏦 Bank Transfer') : await api.addExpense(phone, smsResult.amount, smsResult.category, smsResult.merchant)
+    if (!ok) { toast.show('Could not save — check your connection and try again', 'error'); return }
     toast.show(`₹${smsResult.amount} auto-detected from SMS!`, 'success')
     setSmsResult(null); setShowSMS(false); setSmsText(''); load()
   }
