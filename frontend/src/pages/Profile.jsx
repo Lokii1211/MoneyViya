@@ -420,6 +420,7 @@ export default function Profile() {
                 { path: '/health', emoji: '❤️', label: 'Health', gradient: 'linear-gradient(145deg, #B83815, #D4451A)' },
                 { path: '/bills', emoji: '📋', label: 'Bills', gradient: 'linear-gradient(145deg, #0F172A, #1E293B)' },
                 { path: '/wealth', emoji: '📈', label: 'Wealth', gradient: 'linear-gradient(145deg, #0A6E4E, #0D9B6A)' },
+                { path: '/lending', emoji: '🤝', label: 'Lending', gradient: 'linear-gradient(145deg, #6D28D9, #A78BFA)' },
                 { path: '/email', emoji: '📧', label: 'Email AI', gradient: 'linear-gradient(145deg, #0052CC, #0066FF)' },
                 { path: '/calendar', emoji: '📅', label: 'Calendar', gradient: 'linear-gradient(145deg, #3308A0, #5514FF)' },
                 { path: '/chat', emoji: '🧠', label: 'Viya AI', gradient: 'linear-gradient(145deg, #0A6E4E, #5514FF)' },

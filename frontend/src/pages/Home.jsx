@@ -5,7 +5,7 @@ import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useCountUp, getCurrentFestival, formatINR, getGreeting, getGreetingEmoji, getGreetingKey } from '../lib/utils'
 import { t } from '../lib/i18n'
-import { TrendingUp, TrendingDown, Plus, Flame, Target, BarChart3, Zap, Activity, CreditCard, MessageCircle, Link2, Bell, PieChart, ChevronRight } from 'lucide-react'
+import { TrendingUp, TrendingDown, Plus, Flame, Target, BarChart3, Zap, Activity, CreditCard, MessageCircle, Link2, Bell, PieChart, ChevronRight, HandCoins } from 'lucide-react'
 
 const BRIEF_ITEMS_POOL = {
   morning: [
@@ -106,6 +106,7 @@ export default function Home() {
     { icon: <Bell size={18}/>,        label: 'Reminders',   to: '/reminders', color: 'var(--primary)' },
     { icon: <CreditCard size={18}/>,  label: 'Bills',       to: '/bills',     color: 'var(--viya-warning)' },
     { icon: <PieChart size={18}/>,    label: 'Budget',      to: '/budget',    color: '#22D3EE' },
+    { icon: <HandCoins size={18}/>,   label: 'Lending',     to: '/lending',   color: '#A78BFA' },
     { icon: <Activity size={18}/>,    label: 'Health',      to: '/health',    color: '#FF7062' },
     { icon: <BarChart3 size={18}/>,   label: 'Report',      to: '/report',    color: 'var(--viya-primary-400)' },
   ]
