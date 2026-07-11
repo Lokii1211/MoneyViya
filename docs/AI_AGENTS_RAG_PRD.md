@@ -1,6 +1,6 @@
 # Viya AI Agents & Hybrid RAG — PRD
 
-**Status:** Phase 0 + Phase 1 shipped. Run `database/00_consolidated_migration.sql` in Supabase SQL Editor and add `OPENAI_API_KEY` to Vercel to fully activate hybrid retrieval (`frontend/api/_rag.py`, wired into `chat.py`/`whatsapp.py`). Phase 2 (Market Analyst) is next — needs an Alpha Vantage key.
+**Status:** Phase 0-2 shipped. Run `database/00_consolidated_migration.sql`, add `OPENAI_API_KEY` + `ALPHA_VANTAGE_API_KEY` to Vercel, and schedule `frontend/api/cron/market-news.py` on cron-job.org (see section 6) to fully activate. Phase 3 (personal knowledge graph) is next — no new keys needed.
 **Owner:** Kishan (solo founder)
 **Last updated:** 2026-07-12
 
