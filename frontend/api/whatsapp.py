@@ -12,6 +12,7 @@ Examples:
   "remind me at 10am to call mom" → creates reminder (shows in Reminders page)
 """
 
+import sys
 import os
 import json
 import re
@@ -21,6 +22,9 @@ from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
+# See chat.py — Vercel's Python bundler doesn't reliably put this file's own
+# directory on sys.path for a plain sibling import.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _rag
 
 VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "viya_verify_2026").strip()

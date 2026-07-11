@@ -8,6 +8,7 @@ Real AI second brain that EXECUTES REAL ACTIONS in Supabase:
   "create goal Goa"   → inserts goal
 """
 
+import sys
 import os
 import json
 import re
@@ -17,6 +18,11 @@ from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
+# Vercel's Python bundler doesn't reliably put this file's own directory on
+# sys.path for a plain sibling import — cron/*.py already had to work around
+# this the same way. Without this, `import _rag` crashes the whole function
+# at import time (confirmed live: this took down every /api/chat request).
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _rag
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
