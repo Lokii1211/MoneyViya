@@ -11,10 +11,10 @@ import json
 from http.server import BaseHTTPRequestHandler
 from datetime import datetime
 
-SUPABASE_URL = os.getenv("VITE_SUPABASE_URL", os.getenv("SUPABASE_URL", ""))
-SUPABASE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY", ""))
-WA_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
-WA_PHONE_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+SUPABASE_URL = os.getenv("VITE_SUPABASE_URL", os.getenv("SUPABASE_URL", "")).strip()
+SUPABASE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY", "")).strip()
+WA_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "").strip()
+WA_PHONE_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "").strip()
 
 
 class handler(BaseHTTPRequestHandler):

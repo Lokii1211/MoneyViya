@@ -19,9 +19,9 @@ from urllib.parse import parse_qs, urlparse
 
 import _rag
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("VITE_SUPABASE_URL", ""))
-SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY", os.getenv("VITE_SUPABASE_ANON_KEY", ""))
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("VITE_SUPABASE_URL", "")).strip()
+SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY", os.getenv("VITE_SUPABASE_ANON_KEY", "")).strip()
 
 _NOW = datetime.now()
 TODAY = _NOW.strftime("%Y-%m-%d")

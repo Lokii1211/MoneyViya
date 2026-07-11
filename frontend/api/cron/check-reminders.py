@@ -38,8 +38,8 @@ class handler(BaseHTTPRequestHandler):
                 self._respond(401, {"error": "Unauthorized"})
                 return
 
-            SUPABASE_URL = os.getenv("VITE_SUPABASE_URL", os.getenv("SUPABASE_URL", ""))
-            SUPABASE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY", ""))
+            SUPABASE_URL = os.getenv("VITE_SUPABASE_URL", os.getenv("SUPABASE_URL", "")).strip()
+            SUPABASE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY", "")).strip()
             
             if not SUPABASE_URL or not SUPABASE_KEY:
                 self._respond(500, {"error": "Supabase not configured"})
@@ -275,8 +275,8 @@ class handler(BaseHTTPRequestHandler):
         try:
             import httpx
             
-            SUPABASE_URL = os.getenv("VITE_SUPABASE_URL", os.getenv("SUPABASE_URL", ""))
-            SUPABASE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY", ""))
+            SUPABASE_URL = os.getenv("VITE_SUPABASE_URL", os.getenv("SUPABASE_URL", "")).strip()
+            SUPABASE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY", "")).strip()
             
             headers = {
                 "apikey": SUPABASE_KEY,

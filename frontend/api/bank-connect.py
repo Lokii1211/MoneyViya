@@ -21,8 +21,8 @@ SETU_BASE = os.getenv("SETU_BASE_URL", "https://fiu-sandbox.setu.co")
 SETU_CLIENT_ID = os.getenv("SETU_CLIENT_ID", "")
 SETU_CLIENT_SECRET = os.getenv("SETU_CLIENT_SECRET", "")
 SETU_PRODUCT_ID = os.getenv("SETU_PRODUCT_INSTANCE_ID", "")
-SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("VITE_SUPABASE_URL", ""))
-SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY", os.getenv("VITE_SUPABASE_ANON_KEY", ""))
+SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("VITE_SUPABASE_URL", "")).strip()
+SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY", os.getenv("VITE_SUPABASE_ANON_KEY", "")).strip()
 
 
 def setu_request(method, path, body=None):

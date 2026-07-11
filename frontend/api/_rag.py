@@ -19,9 +19,9 @@ import urllib.error
 from typing import Callable, NamedTuple
 from urllib.parse import quote
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("VITE_SUPABASE_URL", ""))
-SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY", os.getenv("VITE_SUPABASE_ANON_KEY", ""))
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("VITE_SUPABASE_URL", "")).strip()
+SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY", os.getenv("VITE_SUPABASE_ANON_KEY", "")).strip()
 
 EMBED_MODEL = "text-embedding-3-small"
 EMBED_DIMENSIONS = 1536

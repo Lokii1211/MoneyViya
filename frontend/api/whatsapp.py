@@ -23,12 +23,12 @@ from urllib.parse import urlparse, parse_qs
 
 import _rag
 
-VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "viya_verify_2026")
-WHATSAPP_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
-PHONE_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("VITE_SUPABASE_URL", ""))
-SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY", os.getenv("VITE_SUPABASE_ANON_KEY", ""))
+VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "viya_verify_2026").strip()
+WHATSAPP_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "").strip()
+PHONE_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "").strip()
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("VITE_SUPABASE_URL", "")).strip()
+SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY", os.getenv("VITE_SUPABASE_ANON_KEY", "")).strip()
 
 _NOW = datetime.now()
 TODAY = _NOW.strftime("%Y-%m-%d")
