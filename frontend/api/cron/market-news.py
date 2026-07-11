@@ -175,7 +175,10 @@ class handler(BaseHTTPRequestHandler):
                     if first_error is None:
                         first_error = err
 
-            self._respond(200, {"status": "ok", "fetched": len(raw_articles), "saved": saved, "skipped": skipped, "first_error": first_error})
+            result = {"status": "ok", "fetched": len(raw_articles), "saved": saved, "skipped": skipped}
+            if first_error:
+                result["first_error"] = first_error
+            self._respond(200, result)
         except Exception as e:
             print(f"[MarketNews] {e}")
             self._respond(200, {"status": "error", "error": str(e)})
