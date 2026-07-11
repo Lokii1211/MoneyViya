@@ -118,6 +118,18 @@ TABLE_CONFIG: dict[str, _TableConfig] = {
         match_fn="match_bills",
         format_fn=lambda r: f"Bill '{r.get('name','')}' ({r.get('bill_type','')}): ₹{r.get('amount',0)}, due {r.get('due_date','?')}, {r.get('status','')}",
     ),
+    "health_logs": _TableConfig(
+        select="id,log_date,steps,water_glasses,sleep_hours,mood,notes",
+        text_fn=lambda r: f"mood {r.get('mood','')} {r.get('notes') or ''}",
+        match_fn="match_health_logs",
+        format_fn=lambda r: f"{r.get('log_date','')}: mood {r.get('mood','')}, {r.get('steps',0)} steps, {r.get('sleep_hours',0)}h sleep" + (f" — {r.get('notes')}" if r.get('notes') else ""),
+    ),
+    "habits": _TableConfig(
+        select="id,name,icon,current_streak,frequency",
+        text_fn=lambda r: f"habit {r.get('name','')} {r.get('frequency','')}",
+        match_fn="match_habits",
+        format_fn=lambda r: f"{r.get('icon','')} '{r.get('name','')}' — {r.get('current_streak',0)}-day streak ({r.get('frequency','daily')})",
+    ),
 }
 
 

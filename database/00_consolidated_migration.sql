@@ -1391,3 +1391,59 @@ $$;
 GRANT EXECUTE ON FUNCTION match_news(vector, int) TO anon, authenticated;
 
 SELECT 'Phase 2 — Market Analyst schema ready ✅' AS status;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- PHASE 5 — Full life-OS coverage (Health, Habits)
+-- Same hybrid-retrieval pattern as Phase 1, extended past money — this is
+-- what makes chat/WhatsApp a whole-life assistant, not just a finance bot.
+-- Needs OPENAI_API_KEY (already set from Phase 1) for the vector half;
+-- degrades to lexical-only without it, same as everywhere else.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE health_logs ADD COLUMN IF NOT EXISTS embedding vector(1536);
+ALTER TABLE habits ADD COLUMN IF NOT EXISTS embedding vector(1536);
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='health_logs' AND column_name='fts') THEN
+    ALTER TABLE health_logs ADD COLUMN fts tsvector
+      GENERATED ALWAYS AS (to_tsvector('english', coalesce(mood,'') || ' ' || coalesce(notes,''))) STORED;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_health_logs_fts ON health_logs USING gin (fts);
+CREATE INDEX IF NOT EXISTS idx_health_logs_embedding ON health_logs USING ivfflat (embedding vector_cosine_ops);
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='habits' AND column_name='fts') THEN
+    ALTER TABLE habits ADD COLUMN fts tsvector
+      GENERATED ALWAYS AS (to_tsvector('english', coalesce(name,'') || ' ' || coalesce(frequency,''))) STORED;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_habits_fts ON habits USING gin (fts);
+CREATE INDEX IF NOT EXISTS idx_habits_embedding ON habits USING ivfflat (embedding vector_cosine_ops);
+
+CREATE OR REPLACE FUNCTION match_health_logs(query_embedding vector(1536), match_phone text, match_count int DEFAULT 5)
+RETURNS TABLE(id uuid, log_date date, steps int, water_glasses int, sleep_hours numeric, mood text, notes text, similarity float)
+LANGUAGE sql STABLE AS $$
+  SELECT id, log_date, steps, water_glasses, sleep_hours, mood, notes,
+         1 - (embedding <=> query_embedding) AS similarity
+  FROM health_logs
+  WHERE phone = match_phone AND embedding IS NOT NULL
+  ORDER BY embedding <=> query_embedding
+  LIMIT match_count;
+$$;
+
+CREATE OR REPLACE FUNCTION match_habits(query_embedding vector(1536), match_phone text, match_count int DEFAULT 5)
+RETURNS TABLE(id int, name text, icon text, current_streak int, frequency text, similarity float)
+LANGUAGE sql STABLE AS $$
+  SELECT id, name, icon, current_streak, frequency,
+         1 - (embedding <=> query_embedding) AS similarity
+  FROM habits
+  WHERE phone = match_phone AND embedding IS NOT NULL
+  ORDER BY embedding <=> query_embedding
+  LIMIT match_count;
+$$;
+
+GRANT EXECUTE ON FUNCTION match_health_logs(vector, text, int) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION match_habits(vector, text, int) TO anon, authenticated;
+
+SELECT 'Phase 5 — full life-OS retrieval schema ready ✅' AS status;

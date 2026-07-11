@@ -153,6 +153,10 @@ def get_context(phone, message=None):
         checkins = sb_get(f"habit_checkins?phone=eq.{short}&checked_date=eq.{TODAY}&select=habit_id")
         if habits:
             ctx.append(f"Done today: {len(checkins)}/{len(habits)}")
+        recent_health = sb_get(f"health_logs?phone=eq.{short}&select=log_date,steps,water_glasses,sleep_hours,mood&order=log_date.desc&limit=1")
+        if recent_health:
+            h = recent_health[0]
+            ctx.append(f"Latest health: {h.get('steps',0)} steps, {h.get('water_glasses',0)} glasses water, {h.get('sleep_hours',0)}h sleep, mood {h.get('mood','')}")
         txns = sb_get(f"transactions?phone=eq.{short}&select=id,type,amount,category&order=created_at.desc&limit=3")
         if txns:
             ctx.append("Recent: " + ", ".join(f"₹{t.get('amount',0)} {t.get('category','')}" for t in txns))

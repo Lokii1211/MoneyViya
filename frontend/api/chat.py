@@ -234,6 +234,12 @@ def get_context(phone, message=None):
             related_news = _rag.format_news(_rag.news_search(message, limit=2))
             if related_news:
                 ctx_parts.append("Relevant market news (cite naturally if it's actually useful here, don't force it):\n  " + "\n  ".join(related_news))
+            related_habits = _rag.format_matches("habits", _rag.hybrid_search(short, message, "habits", limit=2))
+            if related_habits:
+                ctx_parts.append("Relevant habits:\n  " + "\n  ".join(related_habits))
+            related_health = _rag.format_matches("health_logs", _rag.hybrid_search(short, message, "health_logs", limit=2))
+            if related_health:
+                ctx_parts.append("Relevant past health logs (matched to this question):\n  " + "\n  ".join(related_health))
 
         habits = sb_get(f"habits?phone=eq.{short}&select=name,icon,current_streak&order=current_streak.desc&limit=8")
         if habits:
@@ -242,6 +248,17 @@ def get_context(phone, message=None):
         checkins = sb_get(f"habit_checkins?phone=eq.{short}&checked_date=eq.{TODAY}&select=habit_id")
         if habits:
             ctx_parts.append(f"Today habits done: {len(checkins)}/{len(habits)}")
+
+        # Real logged vitals — was completely absent before Phase 5, so any
+        # health advice was ungrounded. Last log plus a short recent trend.
+        recent_health = sb_get(f"health_logs?phone=eq.{short}&select=log_date,steps,water_glasses,sleep_hours,mood,weight&order=log_date.desc&limit=5")
+        if recent_health:
+            latest = recent_health[0]
+            ctx_parts.append(f"Latest health log ({latest.get('log_date','')}): {latest.get('steps',0)} steps, {latest.get('water_glasses',0)} glasses water, {latest.get('sleep_hours',0)}h sleep, mood {latest.get('mood','')}" + (f", weight {latest.get('weight')}kg" if latest.get('weight') else ""))
+            if len(recent_health) > 1:
+                avg_sleep = sum(float(h.get('sleep_hours') or 0) for h in recent_health) / len(recent_health)
+                avg_water = sum(float(h.get('water_glasses') or 0) for h in recent_health) / len(recent_health)
+                ctx_parts.append(f"Last {len(recent_health)} days avg: {avg_sleep:.1f}h sleep, {avg_water:.1f} glasses water/day")
 
         goals = sb_get(f"goals?phone=eq.{short}&status=eq.active&select=name,current_amount,target_amount&limit=4")
         if goals:
