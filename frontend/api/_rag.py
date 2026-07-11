@@ -99,7 +99,7 @@ class _TableConfig(NamedTuple):
 
 # Per-table retrieval config: how to build the embeddable text, which columns
 # to fetch, and which SQL match function (see migration) to call for vector search.
-TABLE_CONFIG: dict[str, _TableConfig] = {
+TABLE_CONFIG = {
     "transactions": _TableConfig(
         select="id,type,amount,category,description,merchant,created_at",
         text_fn=lambda r: f"{r.get('type','')} {r.get('category','')} {r.get('description') or ''} {r.get('merchant') or ''} amount {r.get('amount','')}",
