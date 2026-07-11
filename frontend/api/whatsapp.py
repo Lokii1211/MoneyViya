@@ -156,9 +156,12 @@ def get_context(phone, message=None):
         txns = sb_get(f"transactions?phone=eq.{short}&select=id,type,amount,category&order=created_at.desc&limit=3")
         if txns:
             ctx.append("Recent: " + ", ".join(f"₹{t.get('amount',0)} {t.get('category','')}" for t in txns))
-        goals = sb_get(f"goals?phone=eq.{short}&status=eq.active&select=name,current_amount,target_amount&limit=3")
+        goals = sb_get(f"goals?phone=eq.{short}&status=eq.active&select=id,name,current_amount,target_amount&limit=3")
         if goals:
             ctx.append("Goals: " + ", ".join(f"{g.get('name','')} ₹{g.get('current_amount',0)}/₹{g.get('target_amount',0)}" for g in goals))
+            kg = _rag.format_kg(_rag.kg_walk(short, f"goal:{goals[0].get('id')}", limit=1))
+            if kg:
+                ctx.append(f"Why '{goals[0].get('name','')}' may be stuck: " + "; ".join(kg))
         memories = sb_get(f"viya_memory?phone=eq.{short}&select=content&order=importance.desc&limit=3")
         if memories:
             ctx.append("Know: " + " | ".join(m.get('content','') for m in memories))

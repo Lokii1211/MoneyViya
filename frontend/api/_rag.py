@@ -215,3 +215,37 @@ def _vector_search_news(query_embedding, limit):
 
 def format_news(rows):
     return [f"{r.get('title','')} — {r.get('summary','')}" for r in rows if r.get("title") or r.get("summary")]
+
+
+# ── Knowledge graph (Phase 3) — 1-hop walk over kg_edges, built nightly by
+# cron/knowledge-graph.py from the user's own goals/bills/investments. This
+# is what lets the agent explain *why*, not just report numbers — e.g. a
+# goal stalling because of a competing EMI. ──
+
+def _kg_label(entity):
+    """'bill:3f2c...:Home Loan EMI' -> 'Home Loan EMI' (falls back to the raw entity if unlabeled)."""
+    parts = entity.split(":", 2)
+    return parts[2] if len(parts) == 3 and parts[2] else entity
+
+
+def kg_walk(phone, entity_prefix, limit=3):
+    """1-hop lookup: edges touching `entity_prefix` (e.g. 'goal:123') as either
+    subject or object, ranked by weight. Returns (relation, label, weight) tuples."""
+    if not phone or not entity_prefix:
+        return []
+    try:
+        pattern = quote(f"{entity_prefix}:*")
+        rows = _sb_get(f"kg_edges?user_phone=eq.{phone}&or=(subject.ilike.{pattern},object.ilike.{pattern})&order=weight.desc&limit={limit}")
+        out = []
+        for r in rows:
+            subj, rel, obj = r.get("subject", ""), r.get("relation", ""), r.get("object", "")
+            other = obj if subj.startswith(entity_prefix + ":") else subj
+            out.append((rel, _kg_label(other), float(r.get("weight") or 0)))
+        return out
+    except Exception as e:
+        print(f"[RAG kg_walk] {e}")
+        return []
+
+
+def format_kg(edges):
+    return [f"{rel.replace('_', ' ')} '{label}' (₹{weight:,.0f}/mo)" for rel, label, weight in edges]

@@ -220,9 +220,14 @@ def get_context(phone, message=None):
             related_txns = _rag.format_matches("transactions", _rag.hybrid_search(short, message, "transactions", limit=3, exclude_ids=recent_ids))
             if related_txns:
                 ctx_parts.append("Relevant past transactions (matched to this question):\n  " + "\n  ".join(related_txns))
-            related_goals = _rag.format_matches("goals", _rag.hybrid_search(short, message, "goals", limit=2))
+            related_goal_rows = _rag.hybrid_search(short, message, "goals", limit=2)
+            related_goals = _rag.format_matches("goals", related_goal_rows)
             if related_goals:
                 ctx_parts.append("Relevant goals:\n  " + "\n  ".join(related_goals))
+                for g in related_goal_rows:
+                    kg = _rag.format_kg(_rag.kg_walk(short, f"goal:{g.get('id')}"))
+                    if kg:
+                        ctx_parts.append(f"Why '{g.get('name','')}' may be stuck: " + "; ".join(kg))
             related_bills = _rag.format_matches("bills_and_dues", _rag.hybrid_search(short, message, "bills_and_dues", limit=2))
             if related_bills:
                 ctx_parts.append("Relevant bills:\n  " + "\n  ".join(related_bills))
