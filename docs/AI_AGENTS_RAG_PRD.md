@@ -1,6 +1,6 @@
 # Viya AI Agents & Hybrid RAG — PRD
 
-**Status:** Phase 0-3 shipped. Schedule `frontend/api/cron/knowledge-graph.py` on cron-job.org (see section 6) — it'll build real edges once users have bills/investments logged (0 of either exist right now, confirmed live). Phase 4 (eval harness) is next — no new keys needed.
+**Status:** Phase 0-4 shipped. Run `python3 tests/eval_rag.py` (needs Supabase env vars) for real intent-accuracy/grounding-rate numbers. Phase 5 (full life-OS coverage) is next.
 **Owner:** Kishan (solo founder)
 **Last updated:** 2026-07-12
 
