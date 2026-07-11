@@ -1274,6 +1274,14 @@ CREATE POLICY "Users manage own kg edges" ON kg_edges FOR ALL USING (true);
 ALTER TABLE news_articles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "News readable by all" ON news_articles;
 CREATE POLICY "News readable by all" ON news_articles FOR SELECT USING (true);
+-- The Market Analyst cron (cron/market-news.py) writes with the anon key,
+-- same as every other write path in this app (no Supabase Auth session) —
+-- without this, RLS silently rejects every insert/upsert (bug found live:
+-- ingestion ran, fetched real articles, saved 0 — this was why).
+DROP POLICY IF EXISTS "News insertable by all" ON news_articles;
+CREATE POLICY "News insertable by all" ON news_articles FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "News updatable by all" ON news_articles;
+CREATE POLICY "News updatable by all" ON news_articles FOR UPDATE USING (true) WITH CHECK (true);
 
 -- Semantic search over the user's own transactions (Phase 1 populates this on write)
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS embedding vector(1536);
