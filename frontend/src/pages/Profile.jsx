@@ -4,7 +4,7 @@ import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { formatINR } from '../lib/utils'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown, Clock, FileText, Lock, Smartphone, Mail, ImageUp } from 'lucide-react'
+import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown, Clock, FileText, Lock, Smartphone, Mail, ImageUp, Settings } from 'lucide-react'
 import { LANGUAGES, setLang, t, getLang } from '../lib/i18n'
 
 const AVATARS = ['😎','🦊','🐱','🐶','🦁','🐼','🐨','🦄','🐸','🐵','🦋','🌺','🌈','⭐','🔥','💎','🎯','🚀','🎓','💼']
@@ -433,6 +433,32 @@ export default function Profile() {
             </div>
           </div>
 
+          {/* More Tools */}
+          <div className="mb-16">
+            <div className="section-label" style={{ marginBottom: 10, paddingLeft: 2 }}>More Tools</div>
+            <div className="life-modules-grid">
+              {[
+                { path: '/journal', emoji: '📓', label: 'Journal', gradient: 'linear-gradient(145deg, #5B21B6, #8B5CF6)' },
+                { path: '/medicine', emoji: '💊', label: 'Medicine', gradient: 'linear-gradient(145deg, #B91C1C, #EF4444)' },
+                { path: '/sleep', emoji: '😴', label: 'Sleep', gradient: 'linear-gradient(145deg, #1E3A8A, #3B82F6)' },
+                { path: '/meals', emoji: '🍽️', label: 'Meals', gradient: 'linear-gradient(145deg, #B45309, #F59E0B)' },
+                { path: '/subscriptions', emoji: '🔁', label: 'Subscriptions', gradient: 'linear-gradient(145deg, #0F172A, #334155)' },
+                { path: '/splits', emoji: '🧾', label: 'Splits', gradient: 'linear-gradient(145deg, #0369A1, #0EA5E9)' },
+                { path: '/portfolio', emoji: '💹', label: 'Portfolio', gradient: 'linear-gradient(145deg, #065F46, #10B981)' },
+                { path: '/predictions', emoji: '🔮', label: 'Predictions', gradient: 'linear-gradient(145deg, #4C1D95, #7C3AED)' },
+                { path: '/community', emoji: '👥', label: 'Community', gradient: 'linear-gradient(145deg, #9D174D, #EC4899)' },
+                { path: '/review', emoji: '⭐', label: 'Year in Review', gradient: 'linear-gradient(145deg, #78350F, #D97706)' },
+                { path: '/morning-brief', emoji: '☀️', label: 'Morning Brief', gradient: 'linear-gradient(145deg, #92400E, #FBBF24)' },
+                { path: '/weekly-report', emoji: '📊', label: 'Weekly Report', gradient: 'linear-gradient(145deg, #164E63, #06B6D4)' },
+              ].map((mod, i) => (
+                <button key={i} onClick={() => nav(mod.path)} className="life-module-btn" style={{ background: mod.gradient }}>
+                  <div className="life-module-emoji">{mod.emoji}</div>
+                  <div className="life-module-label">{mod.label}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Connected Accounts */}
           <div style={{ marginBottom: 16 }}>
             <div className="section-label" style={{ marginBottom: 10 }}>CONNECTED ACCOUNTS</div>
@@ -492,6 +518,11 @@ export default function Profile() {
             <button className="settings-item" onClick={() => nav('/help')}>
               <div className="si-icon"><HelpCircle size={18}/></div>
               <div className="si-info"><div className="si-label">Help & Support</div><div className="si-sub">FAQs, contact us</div></div>
+              <ChevronRight size={16} className="si-arrow"/>
+            </button>
+            <button className="settings-item" onClick={() => nav('/settings')}>
+              <div className="si-icon"><Settings size={18}/></div>
+              <div className="si-info"><div className="si-label">All Settings</div><div className="si-sub">Premium, referrals, notifications, delete account</div></div>
               <ChevronRight size={16} className="si-arrow"/>
             </button>
           </div>

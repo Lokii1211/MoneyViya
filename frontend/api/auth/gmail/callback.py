@@ -162,24 +162,7 @@ class handler(BaseHTTPRequestHandler):
                     from_name = from_match.group(1).strip() if from_match else from_raw
                     from_address = from_match.group(2).strip() if from_match else from_raw
 
-                    # Process through AEIE
-                    try:
-                        import sys
-                        from pathlib import Path
-                        sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-                        from agents.aeie import AIExpenseIntelligenceEngine
-                        aeie = AIExpenseIntelligenceEngine()
-                        aeie.process_email(phone, {
-                            "from": from_address,
-                            "from_name": from_name,
-                            "subject": subject,
-                            "snippet": snippet,
-                            "gmail_id": gmail_id,
-                        })
-                    except Exception as aeie_err:
-                        # Fallback: save raw email
-                        print(f"[Gmail Sync] AEIE error: {aeie_err}")
-                        self._save_email_raw(phone, from_name, from_address, subject, snippet, gmail_id)
+                    self._save_email_raw(phone, from_name, from_address, subject, snippet, gmail_id)
 
                 except Exception as msg_err:
                     print(f"[Gmail Sync] Message error: {msg_err}")

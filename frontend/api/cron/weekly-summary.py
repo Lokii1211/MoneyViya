@@ -81,7 +81,7 @@ class handler(BaseHTTPRequestHandler):
             week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
             with httpx.Client(timeout=10) as client:
                 resp = client.get(
-                    f"{SUPABASE_URL}/rest/v1/expenses?phone=eq.{phone}&date=gte.{week_ago}&select=amount,category",
+                    f"{SUPABASE_URL}/rest/v1/transactions?phone=eq.{phone}&type=eq.expense&created_at=gte.{week_ago}&select=amount,category",
                     headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
                 )
                 return resp.json() if resp.status_code == 200 else []

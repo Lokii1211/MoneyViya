@@ -131,11 +131,12 @@ class handler(BaseHTTPRequestHandler):
             import httpx
             with httpx.Client(timeout=5) as client:
                 resp = client.post(
-                    f"{SUPABASE_URL}/rest/v1/expenses",
+                    f"{SUPABASE_URL}/rest/v1/transactions",
                     json={
                         "phone": tx["phone"], "amount": tx["amount"], "category": tx["category"],
-                        "note": tx.get("merchant", "SMS Auto-detected"),
-                        "type": tx["type"], "source": "sms", "date": tx["date"],
+                        "description": tx.get("merchant") or "SMS Auto-detected",
+                        "merchant": tx.get("merchant", ""),
+                        "type": tx["type"], "source": "sms",
                     },
                     headers={
                         "apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}",
@@ -143,7 +144,7 @@ class handler(BaseHTTPRequestHandler):
                     }
                 )
                 return resp.status_code in (200, 201)
-        except:
+        except Exception:
             return False
 
     def _respond(self, status, data):

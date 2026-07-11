@@ -52,6 +52,7 @@ const Community = lazy(() => import('./pages/Community'))
 const Profile = lazy(() => import('./pages/Profile'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Rewards = lazy(() => import('./pages/Rewards'))
+const Leaderboard = lazy(() => import('./pages/Leaderboard'))
 const PremiumUpgrade = lazy(() => import('./pages/PremiumUpgrade'))
 const NotificationSettings = lazy(() => import('./pages/NotificationSettings'))
 const ReferralProgram = lazy(() => import('./pages/ReferralProgram'))
@@ -144,6 +145,7 @@ function AppContent() {
             <Route path="profile" element={<Profile />} />
             <Route path="settings" element={<Settings />} />
             <Route path="rewards" element={<Rewards />} />
+            <Route path="leaderboard" element={<Leaderboard />} />
             <Route path="premium" element={<PremiumUpgrade />} />
             <Route path="notification-settings" element={<NotificationSettings />} />
             <Route path="referral" element={<ReferralProgram />} />

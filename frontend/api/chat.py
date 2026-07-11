@@ -422,14 +422,18 @@ def process_message(phone, message, history=None):
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        parsed = urlparse(self.path)
-        params = parse_qs(parsed.query)
-        phone = params.get("phone", [""])[0]
-        message = params.get("message", [""])[0]
-        if not message:
-            self._respond(400, {"error": "No message"}); return
-        reply, executed = process_message(phone, message)
-        self._respond(200, {"reply": reply, "actions_executed": executed, "success": True})
+        try:
+            parsed = urlparse(self.path)
+            params = parse_qs(parsed.query)
+            phone = params.get("phone", [""])[0]
+            message = params.get("message", [""])[0]
+            if not message:
+                self._respond(400, {"error": "No message"}); return
+            reply, executed = process_message(phone, message)
+            self._respond(200, {"reply": reply, "actions_executed": executed, "success": True})
+        except Exception as e:
+            print(f"[CHAT] do_GET failed: {e}")
+            self._respond(200, {"reply": "Something went wrong on my end — try that again in a moment.", "actions_executed": [], "success": False})
 
     def do_POST(self):
         try:

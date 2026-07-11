@@ -532,19 +532,9 @@ CREATE TABLE IF NOT EXISTS user_xp (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 2. Subscriptions (auto-detected recurring charges)
-CREATE TABLE IF NOT EXISTS subscriptions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  phone TEXT NOT NULL,
-  name TEXT NOT NULL,
-  amount DECIMAL(12,2) NOT NULL,
-  frequency TEXT DEFAULT 'monthly',
-  next_charge DATE,
-  category TEXT DEFAULT 'subscription',
-  detected_from TEXT DEFAULT 'sms',
-  is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+-- 2. Subscriptions table already created earlier in this file (see "===== SUBSCRIPTIONS ====="
+-- section near the top) — that definition wins under IF NOT EXISTS, so this duplicate
+-- (which had a conflicting id type and columns) was removed to stop the schema drift.
 
 -- 3. Split Bills
 CREATE TABLE IF NOT EXISTS splits (
@@ -568,17 +558,10 @@ CREATE TABLE IF NOT EXISTS journal (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 5. Medicine Schedule
-CREATE TABLE IF NOT EXISTS medicines (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  phone TEXT NOT NULL,
-  name TEXT NOT NULL,
-  dosage TEXT,
-  time TEXT NOT NULL,
-  frequency TEXT DEFAULT 'daily',
-  is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+-- 5. Medicine schedule table already created earlier in this file (see "-- 4. Medicines —
+-- Medication tracker" section) — that definition wins under IF NOT EXISTS and matches what
+-- the frontend actually queries (column `active`, not `is_active`), so this conflicting
+-- duplicate was removed.
 
 -- 6. Medicine Logs
 CREATE TABLE IF NOT EXISTS medicine_logs (
@@ -686,6 +669,8 @@ ALTER TABLE medicine_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sleep_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE meal_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_challenges ENABLE ROW LEVEL SECURITY;
+ALTER TABLE challenges ENABLE ROW LEVEL SECURITY;
+ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 
 -- 15. RLS Policies (allow authenticated users to manage their own data)
 -- DROP first to avoid "already exists" errors on re-run
@@ -718,6 +703,9 @@ CREATE POLICY "Users manage own challenges" ON user_challenges FOR ALL USING (tr
 
 DROP POLICY IF EXISTS "Challenges readable by all" ON challenges;
 CREATE POLICY "Challenges readable by all" ON challenges FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Users manage own expenses" ON expenses;
+CREATE POLICY "Users manage own expenses" ON expenses FOR ALL USING (true);
 
 SELECT 'Viya V3 migration complete ✅' AS status;
 

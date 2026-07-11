@@ -19,12 +19,12 @@ function SettingsToggle({ label, desc, value, onChange, icon: Icon }) {
         {desc && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{desc}</div>}
       </div>
       <div style={{
-        width: 46, height: 26, borderRadius: 13, padding: 2, cursor: 'pointer',
+        width: 40, height: 22, borderRadius: 11, padding: 2, cursor: 'pointer',
         background: value ? 'var(--viya-primary-500)' : 'var(--bg-secondary)',
         transition: 'background 0.2s',
       }}>
-        <motion.div animate={{ x: value ? 20 : 0 }} transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-          style={{ width: 22, height: 22, borderRadius: '50%', background: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
+        <motion.div animate={{ x: value ? 18 : 0 }} transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+          style={{ width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
       </div>
     </motion.div>
   )
