@@ -76,6 +76,9 @@ def _sb_insert_edges(rows):
 
 
 def build_edges_for_user(phone):
+    """Returns (edges, counts) — counts is a small diagnostic dict (rows seen
+    per source table) so the cron's response can explain a 0-edges result
+    (no bills/investments yet) instead of that looking like a failure."""
     goals = _sb_get(f"goals?phone=eq.{phone}&status=eq.active&select=id,name")
     bills = _sb_get(f"bills_and_dues?phone=eq.{phone}&frequency=neq.one_time&select=id,name,amount,frequency")
     investments = _sb_get(f"investments?phone=eq.{phone}&select=id,name,invested_amount")
@@ -102,7 +105,8 @@ def build_edges_for_user(phone):
             "weight": round(float(inv.get("invested_amount") or 0), 2),
         })
 
-    return edges
+    counts = {"goals": len(goals), "bills": len(bills), "investments": len(investments)}
+    return edges, counts
 
 
 class handler(BaseHTTPRequestHandler):
@@ -121,23 +125,22 @@ class handler(BaseHTTPRequestHandler):
             # grows well past this, this loop needs pagination/batching.
             users = _sb_get("users?select=phone&limit=500")
             users_processed, edges_built = 0, 0
-            debug_counts = {"goals": 0, "bills": 0, "investments": 0}
+            source_counts = {"goals": 0, "bills": 0, "investments": 0}
             for u in users:
                 phone = u.get("phone", "")
                 if not phone:
                     continue
                 _sb_delete_edges(phone)
-                goals = _sb_get(f"goals?phone=eq.{phone}&status=eq.active&select=id,name")
-                bills = _sb_get(f"bills_and_dues?phone=eq.{phone}&frequency=neq.one_time&select=id,name,amount,frequency")
-                investments = _sb_get(f"investments?phone=eq.{phone}&select=id,name,invested_amount")
-                debug_counts["goals"] += len(goals)
-                debug_counts["bills"] += len(bills)
-                debug_counts["investments"] += len(investments)
-                edges = build_edges_for_user(phone)
+                edges, counts = build_edges_for_user(phone)
                 edges_built += _sb_insert_edges(edges)
+                for k in source_counts:
+                    source_counts[k] += counts[k]
                 users_processed += 1
 
-            self._respond(200, {"status": "ok", "users_processed": users_processed, "edges_built": edges_built, "debug_counts": debug_counts})
+            self._respond(200, {
+                "status": "ok", "users_processed": users_processed, "edges_built": edges_built,
+                "source_rows_seen": source_counts,
+            })
         except Exception as e:
             print(f"[KG] {e}")
             self._respond(200, {"status": "error", "error": str(e)})
