@@ -60,7 +60,7 @@ export default function Expenses() {
     try {
       const reader = new FileReader()
       const base64 = await new Promise((res, rej) => { reader.readAsDataURL(file); reader.onload = () => res(reader.result.split(',')[1]); reader.onerror = rej })
-      const resp = await fetch(`/api/webhook?action=ocr_bill`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: base64, phone }) })
+      const resp = await fetch(`/api/chat?action=ocr_bill`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: base64, phone }) })
       const parsed = await resp.json()
       if (parsed.error) { toast.show('Could not read bill. Try clearer image.', 'warning'); setShowOCR(false) }
       else if (parsed.amount) { setOcrResult({ amount: parsed.amount, type: parsed.type || 'expense', category: CAT_MAP[parsed.category] || '💳 Other', description: parsed.description || parsed.merchant || '', merchant: parsed.merchant || '' }) }

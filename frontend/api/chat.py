@@ -430,6 +430,60 @@ def call_groq(messages):
         return None, f"AI unavailable: {str(e)[:120]}"
 
 
+def call_groq_vision(image_b64):
+    """Reads a bill/receipt photo via Groq's vision model, returns a parsed
+    dict (amount/type/category/merchant) or None. Used by the OCR bill-scan
+    feature in Expenses.jsx, which previously pointed at an endpoint
+    (/api/webhook?action=ocr_bill) that no longer exists anywhere in the
+    deployed backend — this restores the actual feature rather than just
+    removing the marketing claim for it."""
+    if not GROQ_API_KEY:
+        return None
+    prompt = (
+        "This is a photo of a bill or payment receipt. Extract the total amount, "
+        "whether it's an expense or income, a short category (Food, Transport, "
+        "Shopping, Bills, Health, Entertainment, Groceries, Education, or Other), "
+        "and the merchant/description. Reply with ONLY a JSON object, no other text: "
+        '{"amount": <number>, "type": "expense", "category": "...", "description": "..."}'
+    )
+    payload = json.dumps({
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "messages": [{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+            ],
+        }],
+        "temperature": 0.2,
+        "max_tokens": 300,
+    }).encode()
+    req = urllib.request.Request(
+        "https://api.groq.com/openai/v1/chat/completions",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (compatible; MoneyViya/1.0; +https://heyviya.vercel.app)",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=25) as r:
+            content = json.loads(r.read())["choices"][0]["message"]["content"].strip()
+        if content.startswith("```"):
+            content = content.strip("`")
+            if content.startswith("json"):
+                content = content[4:]
+        parsed = json.loads(content)
+        if parsed.get("amount"):
+            return parsed
+        return None
+    except Exception as e:
+        print(f"[OCR] vision call failed: {e}")
+        return None
+
+
 # ── Main processor ────────────────────────────────────────────────────────────
 
 def process_message(phone, message, history=None):
@@ -486,8 +540,21 @@ class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         try:
+            parsed = urlparse(self.path)
+            action = parse_qs(parsed.query).get("action", [None])[0]
             n = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(n)) if n else {}
+
+            if action == "ocr_bill":
+                image_b64 = body.get("image", "")
+                if not image_b64:
+                    self._respond(400, {"error": "No image"}); return
+                parsed_bill = call_groq_vision(image_b64)
+                if not parsed_bill:
+                    self._respond(200, {"error": "Could not read the bill — try a clearer photo"}); return
+                self._respond(200, parsed_bill)
+                return
+
             phone = body.get("phone", "")
             message = body.get("message", "")
             history = body.get("history", [])
