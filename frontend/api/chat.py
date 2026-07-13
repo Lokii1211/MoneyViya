@@ -431,44 +431,44 @@ def call_groq(messages):
 
 
 def call_groq_vision(image_b64):
-    """Reads a bill/receipt photo via Groq's vision model, returns a parsed
-    dict (amount/type/category/merchant) or None. Used by the OCR bill-scan
+    """Reads a bill/receipt photo via Groq's vision model, returns
+    (parsed_dict_or_None, error_detail_or_None). Used by the OCR bill-scan
     feature in Expenses.jsx, which previously pointed at an endpoint
     (/api/webhook?action=ocr_bill) that no longer exists anywhere in the
     deployed backend — this restores the actual feature rather than just
     removing the marketing claim for it."""
     if not GROQ_API_KEY:
-        return None
-    prompt = (
-        "This is a photo of a bill or payment receipt. Extract the total amount, "
-        "whether it's an expense or income, a short category (Food, Transport, "
-        "Shopping, Bills, Health, Entertainment, Groceries, Education, or Other), "
-        "and the merchant/description. Reply with ONLY a JSON object, no other text: "
-        '{"amount": <number>, "type": "expense", "category": "...", "description": "..."}'
-    )
-    payload = json.dumps({
-        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
-        "messages": [{
-            "role": "user",
-            "content": [
-                {"type": "text", "text": prompt},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
-            ],
-        }],
-        "temperature": 0.2,
-        "max_tokens": 300,
-    }).encode()
-    req = urllib.request.Request(
-        "https://api.groq.com/openai/v1/chat/completions",
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type": "application/json",
-            "User-Agent": "Mozilla/5.0 (compatible; MoneyViya/1.0; +https://heyviya.vercel.app)",
-        },
-        method="POST",
-    )
+        return None, "GROQ_API_KEY not set"
     try:
+        prompt = (
+            "This is a photo of a bill or payment receipt. Extract the total amount, "
+            "whether it's an expense or income, a short category (Food, Transport, "
+            "Shopping, Bills, Health, Entertainment, Groceries, Education, or Other), "
+            "and the merchant/description. Reply with ONLY a JSON object, no other text: "
+            '{"amount": <number>, "type": "expense", "category": "...", "description": "..."}'
+        )
+        payload = json.dumps({
+            "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+                ],
+            }],
+            "temperature": 0.2,
+            "max_tokens": 300,
+        }).encode()
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/chat/completions",
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (compatible; MoneyViya/1.0; +https://heyviya.vercel.app)",
+            },
+            method="POST",
+        )
         with urllib.request.urlopen(req, timeout=25) as r:
             content = json.loads(r.read())["choices"][0]["message"]["content"].strip()
         if content.startswith("```"):
@@ -477,11 +477,15 @@ def call_groq_vision(image_b64):
                 content = content[4:]
         parsed = json.loads(content)
         if parsed.get("amount"):
-            return parsed
-        return None
+            return parsed, None
+        return None, f"No amount in model output: {content[:200]}"
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")[:300]
+        print(f"[OCR] HTTP error {e.code}: {body}")
+        return None, f"HTTP {e.code}: {body}"
     except Exception as e:
         print(f"[OCR] vision call failed: {e}")
-        return None
+        return None, str(e)
 
 
 # ── Main processor ────────────────────────────────────────────────────────────
@@ -549,9 +553,12 @@ class handler(BaseHTTPRequestHandler):
                 image_b64 = body.get("image", "")
                 if not image_b64:
                     self._respond(400, {"error": "No image"}); return
-                parsed_bill = call_groq_vision(image_b64)
+                parsed_bill, ocr_error = call_groq_vision(image_b64)
                 if not parsed_bill:
-                    self._respond(200, {"error": "Could not read the bill — try a clearer photo"}); return
+                    resp = {"error": "Could not read the bill — try a clearer photo"}
+                    if ocr_error:
+                        resp["debug"] = ocr_error
+                    self._respond(200, resp); return
                 self._respond(200, parsed_bill)
                 return
 
