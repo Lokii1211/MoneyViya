@@ -32,7 +32,54 @@
     <meta name="twitter:title" content="Viya — Your Life, Automated" />
     <meta name="twitter:description" content="The only app to manage money, health, habits & productivity — powered by AI." />
     <meta name="twitter:image" content="/logo-512.png" />
+    <link rel="canonical" href="https://heyviya.vercel.app/" />
+    <meta name="robots" content="index, follow" />
     <title>Viya — Your Life, Automated | AI Life & Wealth Partner</title>
+    <!-- Structured data (SEO/GEO/AEO): describes what Viya is for search
+         engines and AI answer engines (ChatGPT, Perplexity, Google AI
+         Overviews) that parse JSON-LD when deciding what to cite. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Viya",
+      "alternateName": "Hey Viya",
+      "url": "https://heyviya.vercel.app",
+      "description": "Viya is an AI life assistant for India that manages money, health, and habits through natural conversation — in the app or on WhatsApp. It tracks expenses and income automatically, suggests daily budgets based on income and goals, nudges habit streaks, sends bill and EMI reminders, and gives grounded financial insight using real transaction data, not generic advice.",
+      "applicationCategory": ["FinanceApplication", "LifestyleApplication"],
+      "operatingSystem": "Web, Android, iOS (PWA)",
+      "inLanguage": ["en", "hi", "ta", "te", "kn", "ml"],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "INR"
+      },
+      "featureList": [
+        "Conversational expense and income tracking",
+        "AI-suggested daily and monthly budgets",
+        "Savings goals with deadlines",
+        "Habit tracking with streaks",
+        "Bill and EMI reminders",
+        "WhatsApp assistant with the same AI as the app",
+        "Health and vitals tracking",
+        "AI wealth advisor grounded in your real data"
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "How does Viya track my expenses?", "acceptedAnswer": { "@type": "Answer", "text": "You can add expenses manually in the app, or simply tell Viya in chat — e.g., \"spent ₹200 on food\" and it auto-logs it. Via WhatsApp, just send your expenses naturally." } },
+        { "@type": "Question", "name": "Is my financial data safe with Viya?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Viya uses bank-grade AES-256 encryption and Supabase Row Level Security. Data is never shared with third parties or advertisers." } },
+        { "@type": "Question", "name": "Can I use Viya in my own language?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Viya supports English, Hindi, Tamil, Telugu, Kannada, and Malayalam, and its AI chat mirrors whatever language or style you write in, including Hinglish and Tanglish." } },
+        { "@type": "Question", "name": "What AI model powers Viya?", "acceptedAnswer": { "@type": "Answer", "text": "Viya uses Groq-hosted LLaMA-3.3-70B for chat, combined with a hybrid retrieval system (BM25 keyword search plus vector search) over your own transactions, goals, bills, and habits — so answers are grounded in your real data, not generic." } },
+        { "@type": "Question", "name": "Is Viya free to use?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, Viya is free to use, with optional premium features." } },
+        { "@type": "Question", "name": "Does Viya work on WhatsApp?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Viya has a WhatsApp assistant powered by the same AI as the app — you can log expenses, mark habits done, and get reminders directly over WhatsApp." } }
+      ]
+    }
+    </script>
     <style>
       /* Offline Banner */
       #offline-banner {

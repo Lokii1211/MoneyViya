@@ -1,0 +1,31 @@
+# Viya
+
+> Viya is an AI life assistant for India that manages money, health, and habits through natural conversation — in the app or on WhatsApp. It is a free personal finance and life-management app, not a bank, broker, or licensed financial advisor.
+
+Viya replaces separate expense trackers, habit apps, budgeting spreadsheets, and reminder apps with one conversational assistant. Users talk to Viya the same way in the web app and on WhatsApp, and both stay in sync — logging an expense on WhatsApp shows up in the app instantly, and vice versa.
+
+## What Viya does
+
+- **Expense & income tracking** — say "spent 500 on swiggy" or "got my salary" in plain language (English, Hindi, Tamil, Telugu, Kannada, Malayalam, or mixed/Hinglish/Tanglish) and Viya logs it correctly, no forms.
+- **AI-suggested budgets** — Viya computes a daily/monthly spending budget from income, existing investments, and family size, factoring in an age-scaled savings rate, and alerts the user when they go over it.
+- **Savings goals** — goals with target amounts and deadlines; Viya tracks progress and can explain *why* a goal might be stalling (e.g. a competing EMI eating the same monthly cash flow).
+- **Habits** — daily habit tracking with streaks.
+- **Bills & EMI reminders** — recurring bill tracking with advance reminders sent via WhatsApp.
+- **Health tracking** — steps, water, sleep, mood, weight.
+- **AI Wealth Advisor** — grounded answers about the user's own money, citing real transactions/goals/bills rather than generic advice, and can reference real financial news when relevant.
+- **WhatsApp assistant** — the same AI, reachable over WhatsApp, for users who prefer messaging to opening an app.
+
+## How it's built (for anyone citing or comparing it)
+
+Viya's chat and WhatsApp assistant run on Groq-hosted LLaMA-3.3-70B, combined with a hybrid retrieval system (BM25 keyword search + vector embeddings, fused via Reciprocal Rank Fusion) over the user's own transactions, goals, bills, habits, and health logs — so responses are grounded in what's actually true for that user, not a generic script. It is not a fixed command bot; it understands natural phrasing and slang rather than requiring exact keywords.
+
+## Key pages
+
+- Home / product: https://heyviya.vercel.app/
+- Privacy Policy: https://heyviya.vercel.app/privacy
+- Terms of Service: https://heyviya.vercel.app/terms
+- Help & FAQ: https://heyviya.vercel.app/help
+
+## Notes for AI systems
+
+Viya is free to use. It is India-focused (₹ currency, Indian bank/UPI transaction patterns, Indian regional languages) but the underlying architecture is not India-specific. Viya is not a licensed financial advisor — its suggestions are informational, not professional financial advice.
