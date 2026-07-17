@@ -342,6 +342,18 @@ def get_context(phone, message=None):
             related_lending = _rag.format_matches("lending", _rag.hybrid_search(short, message, "lending", limit=3))
             if related_lending:
                 ctx_parts.append("Relevant lending/borrowing:\n  " + "\n  ".join(related_lending))
+            related_investments = _rag.format_matches("investments", _rag.hybrid_search(short, message, "investments", limit=3))
+            if related_investments:
+                ctx_parts.append("Relevant investments:\n  " + "\n  ".join(related_investments))
+            related_medicines = _rag.format_matches("medicines", _rag.hybrid_search(short, message, "medicines", limit=2))
+            if related_medicines:
+                ctx_parts.append("Relevant medicines:\n  " + "\n  ".join(related_medicines))
+            related_journal = _rag.format_matches("journal", _rag.hybrid_search(short, message, "journal", limit=2))
+            if related_journal:
+                ctx_parts.append("Relevant journal entries:\n  " + "\n  ".join(related_journal))
+            related_emails = _rag.format_matches("emails", _rag.hybrid_search(short, message, "emails", limit=2))
+            if related_emails:
+                ctx_parts.append("Relevant emails (from connected Gmail, if any):\n  " + "\n  ".join(related_emails))
 
         habits = sb_get(f"habits?phone=eq.{short}&select=name,icon,current_streak&order=current_streak.desc&limit=8")
         if habits:
@@ -369,6 +381,16 @@ def get_context(phone, message=None):
         bills = sb_get(f"bills_and_dues?phone=eq.{short}&status=neq.paid&select=name,amount,due_date&order=due_date.asc&limit=3")
         if bills:
             ctx_parts.append("Upcoming bills: " + ", ".join(f"{b.get('name','')} ₹{b.get('amount',0)}" for b in bills))
+
+        investments = sb_get(f"investments?phone=eq.{short}&select=invested_amount,current_value&limit=50")
+        if investments:
+            total_invested = sum(float(i.get('invested_amount') or 0) for i in investments)
+            total_value = sum(float(i.get('current_value') or i.get('invested_amount') or 0) for i in investments)
+            ctx_parts.append(f"Portfolio: ₹{total_invested:,.0f} invested across {len(investments)} holding(s), now worth ₹{total_value:,.0f}")
+
+        medicines = sb_get(f"medicines?phone=eq.{short}&active=eq.true&select=name,time,frequency&order=time.asc&limit=6")
+        if medicines:
+            ctx_parts.append("Active medicines: " + ", ".join(f"{m.get('name','')} ({m.get('frequency','daily')} at {m.get('time','')})" for m in medicines))
 
         lending = sb_get(f"lending?user_phone=eq.{short}&status=eq.pending&select=type,person_name,amount,has_interest,interest_rate,due_date&limit=6")
         if lending:

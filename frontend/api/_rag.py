@@ -96,6 +96,7 @@ class _TableConfig(NamedTuple):
     match_fn: str
     format_fn: Callable[[dict], str]
     phone_col: str = "phone"  # lending uses user_phone, not phone — see below
+    order_col: str = "created_at"  # emails uses received_at instead — see below
 
 
 # Per-table retrieval config: how to build the embeddable text, which columns
@@ -144,6 +145,31 @@ TABLE_CONFIG = {
         format_fn=lambda r: f"{'Lent to' if r.get('type')=='given' else 'Borrowed from'} {r.get('person_name','')}: ₹{r.get('amount',0)}" + (f" at {r.get('interest_rate')}%/{r.get('interest_type','monthly')}" if r.get('has_interest') else "") + f", due {r.get('due_date','?')}, {r.get('status','')}",
         phone_col="user_phone",
     ),
+    "investments": _TableConfig(
+        select="id,name,investment_type,invested_amount,current_value,is_sip,broker",
+        text_fn=lambda r: f"investment {r.get('name','')} {r.get('investment_type','')} {r.get('broker') or ''}",
+        match_fn="match_investments",
+        format_fn=lambda r: f"{r.get('name','')} ({r.get('investment_type','')}): invested ₹{r.get('invested_amount',0)}, now worth ₹{r.get('current_value',0)}" + (" (SIP)" if r.get('is_sip') else ""),
+    ),
+    "medicines": _TableConfig(
+        select="id,name,dosage,time,frequency,active",
+        text_fn=lambda r: f"medicine {r.get('name','')} {r.get('dosage') or ''}",
+        match_fn="match_medicines",
+        format_fn=lambda r: f"{r.get('name','')}" + (f" ({r.get('dosage')})" if r.get('dosage') else "") + f" — {r.get('frequency','daily')} at {r.get('time','')}",
+    ),
+    "journal": _TableConfig(
+        select="id,entry,mood,created_at",
+        text_fn=lambda r: f"journal {r.get('mood') or ''} {r.get('entry','')}",
+        match_fn="match_journal",
+        format_fn=lambda r: f"[{str(r.get('created_at',''))[:10]}] {('mood: ' + r.get('mood') + ' — ') if r.get('mood') else ''}{r.get('entry','')}",
+    ),
+    "emails": _TableConfig(
+        select="id,from_name,subject,snippet,category,action_required,received_at",
+        text_fn=lambda r: f"email {r.get('subject','')} {r.get('from_name') or ''} {r.get('category') or ''}",
+        match_fn="match_emails",
+        format_fn=lambda r: f"Email from {r.get('from_name') or 'unknown'}: \"{r.get('subject','')}\" ({r.get('category','other')})" + (" — needs action" if r.get('action_required') else ""),
+        order_col="received_at",
+    ),
 }
 
 
@@ -152,7 +178,7 @@ def backfill_embeddings(phone, table, limit=8):
     cfg = TABLE_CONFIG.get(table)
     if not cfg or not OPENAI_API_KEY:
         return
-    rows = _sb_get(f"{table}?{cfg.phone_col}=eq.{phone}&embedding=is.null&select={cfg.select}&order=created_at.desc&limit={limit}")
+    rows = _sb_get(f"{table}?{cfg.phone_col}=eq.{phone}&embedding=is.null&select={cfg.select}&order={cfg.order_col}.desc&limit={limit}")
     for row in rows:
         vec = embed(cfg.text_fn(row))
         if vec:

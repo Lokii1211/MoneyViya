@@ -218,6 +218,9 @@ def get_context(phone, message=None):
         lending = sb_get(f"lending?user_phone=eq.{short}&status=eq.pending&select=type,person_name,amount,due_date&limit=4")
         if lending:
             ctx.append("Lending: " + ", ".join(f"{'lent' if l.get('type')=='given' else 'borrowed'} ₹{l.get('amount',0)} {'to' if l.get('type')=='given' else 'from'} {l.get('person_name','')}" for l in lending))
+        medicines = sb_get(f"medicines?phone=eq.{short}&active=eq.true&select=name,time&limit=4")
+        if medicines:
+            ctx.append("Medicines: " + ", ".join(f"{m.get('name','')} ({m.get('time','')})" for m in medicines))
 
         # Hybrid retrieval (BM25 + vector) — same retriever chat.py uses, see
         # docs/AI_AGENTS_RAG_PRD.md. Degrades to lexical-only without OPENAI_API_KEY.

@@ -1505,3 +1505,104 @@ GRANT EXECUTE ON FUNCTION match_meals(vector, text, int) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION match_lending(vector, text, int) TO anon, authenticated;
 
 SELECT 'Phase 6 — meals + lending retrieval schema ready ✅' AS status;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- PHASE 7 — investments, medicines, journal, and emails join the retriever
+-- Completes the full-app coverage requested: "reminders, income, expense,
+-- health, wealth, portfolio, subscriptions, medicines, journal, email" —
+-- all of these now have both an ACTION path (see chat.py/whatsapp.py) and
+-- a retrieval path (grounded answers, not guesses) except reminders/income/
+-- expense/health which already had both from earlier phases.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE investments ADD COLUMN IF NOT EXISTS embedding vector(1536);
+ALTER TABLE medicines ADD COLUMN IF NOT EXISTS embedding vector(1536);
+ALTER TABLE journal ADD COLUMN IF NOT EXISTS embedding vector(1536);
+ALTER TABLE emails ADD COLUMN IF NOT EXISTS embedding vector(1536);
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='investments' AND column_name='fts') THEN
+    ALTER TABLE investments ADD COLUMN fts tsvector
+      GENERATED ALWAYS AS (to_tsvector('english', coalesce(name,'') || ' ' || coalesce(investment_type,'') || ' ' || coalesce(broker,''))) STORED;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_investments_fts ON investments USING gin (fts);
+CREATE INDEX IF NOT EXISTS idx_investments_embedding ON investments USING ivfflat (embedding vector_cosine_ops);
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='medicines' AND column_name='fts') THEN
+    ALTER TABLE medicines ADD COLUMN fts tsvector
+      GENERATED ALWAYS AS (to_tsvector('english', coalesce(name,'') || ' ' || coalesce(dosage,''))) STORED;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_medicines_fts ON medicines USING gin (fts);
+CREATE INDEX IF NOT EXISTS idx_medicines_embedding ON medicines USING ivfflat (embedding vector_cosine_ops);
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='journal' AND column_name='fts') THEN
+    ALTER TABLE journal ADD COLUMN fts tsvector
+      GENERATED ALWAYS AS (to_tsvector('english', coalesce(entry,'') || ' ' || coalesce(mood,''))) STORED;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_journal_fts ON journal USING gin (fts);
+CREATE INDEX IF NOT EXISTS idx_journal_embedding ON journal USING ivfflat (embedding vector_cosine_ops);
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='emails' AND column_name='fts') THEN
+    ALTER TABLE emails ADD COLUMN fts tsvector
+      GENERATED ALWAYS AS (to_tsvector('english', coalesce(subject,'') || ' ' || coalesce(snippet,'') || ' ' || coalesce(from_name,''))) STORED;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_emails_fts ON emails USING gin (fts);
+CREATE INDEX IF NOT EXISTS idx_emails_embedding ON emails USING ivfflat (embedding vector_cosine_ops);
+
+CREATE OR REPLACE FUNCTION match_investments(query_embedding vector(1536), match_phone text, match_count int DEFAULT 5)
+RETURNS TABLE(id uuid, name text, investment_type text, invested_amount numeric, current_value numeric, is_sip boolean, broker text, similarity float)
+LANGUAGE sql STABLE AS $$
+  SELECT id, name, investment_type, invested_amount, current_value, is_sip, broker,
+         1 - (embedding <=> query_embedding) AS similarity
+  FROM investments
+  WHERE phone = match_phone AND embedding IS NOT NULL
+  ORDER BY embedding <=> query_embedding
+  LIMIT match_count;
+$$;
+
+CREATE OR REPLACE FUNCTION match_medicines(query_embedding vector(1536), match_phone text, match_count int DEFAULT 5)
+RETURNS TABLE(id uuid, name text, dosage text, time text, frequency text, active boolean, similarity float)
+LANGUAGE sql STABLE AS $$
+  SELECT id, name, dosage, time, frequency, active,
+         1 - (embedding <=> query_embedding) AS similarity
+  FROM medicines
+  WHERE phone = match_phone AND embedding IS NOT NULL
+  ORDER BY embedding <=> query_embedding
+  LIMIT match_count;
+$$;
+
+CREATE OR REPLACE FUNCTION match_journal(query_embedding vector(1536), match_phone text, match_count int DEFAULT 5)
+RETURNS TABLE(id uuid, entry text, mood text, created_at timestamptz, similarity float)
+LANGUAGE sql STABLE AS $$
+  SELECT id, entry, mood, created_at,
+         1 - (embedding <=> query_embedding) AS similarity
+  FROM journal
+  WHERE phone = match_phone AND embedding IS NOT NULL
+  ORDER BY embedding <=> query_embedding
+  LIMIT match_count;
+$$;
+
+CREATE OR REPLACE FUNCTION match_emails(query_embedding vector(1536), match_phone text, match_count int DEFAULT 5)
+RETURNS TABLE(id uuid, from_name text, subject text, snippet text, category text, action_required boolean, received_at timestamptz, similarity float)
+LANGUAGE sql STABLE AS $$
+  SELECT id, from_name, subject, snippet, category, action_required, received_at,
+         1 - (embedding <=> query_embedding) AS similarity
+  FROM emails
+  WHERE phone = match_phone AND embedding IS NOT NULL
+  ORDER BY embedding <=> query_embedding
+  LIMIT match_count;
+$$;
+
+GRANT EXECUTE ON FUNCTION match_investments(vector, text, int) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION match_medicines(vector, text, int) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION match_journal(vector, text, int) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION match_emails(vector, text, int) TO anon, authenticated;
+
+SELECT 'Phase 7 — investments + medicines + journal + emails retrieval schema ready ✅' AS status;
