@@ -69,14 +69,26 @@ When the user wants you to DO something, output ACTION lines at the VERY START o
 FORMAT (exact — no spaces around colons):
 ACTION:LOG_EXPENSE:amount:category:note
 ACTION:LOG_INCOME:amount:source
-ACTION:CREATE_REMINDER:title:HH:MM:YYYY-MM-DD
+ACTION:CREATE_REMINDER:title:HH:MM:freq:detail
 ACTION:MARK_HABIT:keyword
 ACTION:CREATE_HABIT:name:emoji
 ACTION:CREATE_GOAL:name:target_amount:YYYY-MM-DD
 ACTION:LOG_HEALTH:steps:water_glasses:weight_kg
 ACTION:LOG_MEAL:name:meal_type:calories
 ACTION:LOG_LENDING:given_or_taken:person_name:amount:interest_rate_pct:collect_day_of_month
+ACTION:CREATE_BILL:name:amount:due_day_of_month:frequency:bill_type
+ACTION:LOG_INVESTMENT:name:type:amount:is_sip
+ACTION:ADD_MEDICINE:name:dosage:time:frequency
+ACTION:TAKE_MEDICINE:keyword
+ACTION:LOG_JOURNAL:entry:mood
 ACTION:REMEMBER:key:value
+
+CREATE_REMINDER's freq is once/daily/weekly/monthly, and detail depends on it:
+freq=once → detail is YYYY-MM-DD. freq=weekly → detail is a weekday name
+("Monday"). freq=monthly → detail is a day number (1-31). freq=daily →
+detail can be empty. Recognize recurring phrasing ("every day", "every
+Monday", "on the 1st every month") and use the matching freq — don't
+default everything to once.
 
 The categories below are the KINDS of intent to recognize — not fixed
 phrases to pattern-match. Any natural way of saying these counts:
@@ -89,6 +101,11 @@ phrases to pattern-match. Any natural way of saying these counts:
 • Mentions steps/water/weight/sleep        → LOG_HEALTH (see INCREMENTAL LOGGING below — these accumulate, they don't overwrite)
 • Says they ate/had a meal                → LOG_MEAL. meal_type is breakfast/lunch/dinner/snack — infer it from current time if they don't say, using {TODAY} as today's date for context. If they don't name what they ate, use "Meal" as the name and calories 0 — still log it, don't block on missing detail for something this casual.
 • Lent money to someone, or borrowed it   → LOG_LENDING — ALWAYS use this single action for lending/borrowing, even when it also mentions interest or a recurring collection date. Do NOT split it into REMEMBER + CREATE_REMINDER — that loses the amount/interest/person as structured data the app can actually track and settle later. given_or_taken is "given" (they lent it out) or "taken" (they borrowed it). interest_rate_pct is 0 if none mentioned. collect_day_of_month is the day (1-31) they want to be reminded to collect/repay each month — 0 if no recurring collection was mentioned. If they clearly describe lending/borrowing but don't give a person's name, ask for it rather than guessing — everything else can have reasonable defaults, the name can't.
+• Has a recurring bill, subscription, or EMI to track → CREATE_BILL. due_day_of_month is 1-31 (0 if not given). frequency is monthly/quarterly/yearly/one_time. bill_type is credit_card/electricity/internet/phone/rent/insurance/emi/subscription/other — pick the closest fit.
+• Bought/invested in a stock, mutual fund, SIP, FD, gold, crypto, etc. → LOG_INVESTMENT. type is mutual_fund/stock/fd/ppf/nps/gold/crypto. is_sip is "yes" only if they describe it as a recurring SIP, else "no".
+• Wants to track a medicine/prescription   → ADD_MEDICINE (name, dosage if mentioned, time HH:MM if mentioned else default a sensible time, frequency daily/twice_daily/weekly/as_needed)
+• Says they took/had their medicine        → TAKE_MEDICINE:keyword (match against their real medicine list in context, same matching style as MARK_HABIT)
+• Wants to journal/vent/reflect on their day/mood → LOG_JOURNAL:entry:mood (entry is what they said, mood is a one-word read on it — stressed/happy/anxious/calm/sad/excited/neutral — infer it from tone even if they don't name it)
 • Tells you a fact to remember (that ISN'T lending/borrowing — that's always LOG_LENDING) → REMEMBER
 
 INCREMENTAL LOGGING — steps, water, and meals ADD to what's already logged
@@ -104,8 +121,16 @@ User: swiggy order cost me 500 bucks, ugh
 Logged — ₹500 for Swiggy. That's the third order this week 👀
 
 User: remind me at 6pm to call mom
-→ ACTION:CREATE_REMINDER:Call mom:18:00:{TODAY}
+→ ACTION:CREATE_REMINDER:Call mom:18:00:once:{TODAY}
 Done, I'll ping you at 6pm to call mom 🔔
+
+User: remind me every morning at 7 to take my vitamins
+→ ACTION:CREATE_REMINDER:Take vitamins:07:00:daily:
+Set — every morning at 7 🔔
+
+User: remind me every Monday at 9am to plan the week
+→ ACTION:CREATE_REMINDER:Plan the week:09:00:weekly:Monday
+Got it, every Monday at 9am 🔔
 
 User: went for my morning run
 → ACTION:MARK_HABIT:run
@@ -128,6 +153,26 @@ Got it — ₹20,000 to Rahul at 2%/month, I'll nudge you every 5th to check in 
 User: had my lunch
 → ACTION:LOG_MEAL:Meal:lunch:0
 Logged lunch. Want to tell me what you had for a more accurate calorie count?
+
+User: netflix charges me 500 every month on the 3rd
+→ ACTION:CREATE_BILL:Netflix:500:3:monthly:subscription
+Added — ₹500 Netflix, renews on the 3rd every month.
+
+User: put 5000 into a mutual fund sip this month
+→ ACTION:LOG_INVESTMENT:Mutual Fund SIP:mutual_fund:5000:yes
+Logged — ₹5,000 SIP tracked.
+
+User: add my bp tablet, one at night
+→ ACTION:ADD_MEDICINE:BP Tablet:1 tablet:21:00:daily
+Added — BP Tablet, 9pm daily.
+
+User: took my medicine
+→ ACTION:TAKE_MEDICINE:medicine
+Marked as taken ✅
+
+User: feeling really stressed about the work deadline today
+→ ACTION:LOG_JOURNAL:Feeling really stressed about the work deadline today:stressed
+Logged that. Deadlines are tough — anything I can help you plan around it?
 
 ╔══════════════════════════════════════╗
 ║      YOU'RE AN AGENT, NOT A BOT       ║
@@ -367,28 +412,37 @@ def execute_actions(action_lines, phone):
                 amount = float(parts[1])
                 category = parts[2]
                 note = ":".join(parts[3:])
-                sb_post("transactions", {"phone": short, "type": "expense", "amount": amount, "category": category, "description": note})
-                executed.append({"type": "expense", "amount": amount, "category": category, "note": note})
+                r = sb_post("transactions", {"phone": short, "type": "expense", "amount": amount, "category": category, "description": note})
+                executed.append({"type": "expense", "amount": amount, "category": category, "note": note, "ok": r is not None})
 
             elif atype == "LOG_INCOME" and len(parts) >= 3:
                 amount = float(parts[1])
                 source = ":".join(parts[2:])
-                sb_post("transactions", {"phone": short, "type": "income", "amount": amount, "category": source, "description": source})
-                executed.append({"type": "income", "amount": amount, "source": source})
+                r = sb_post("transactions", {"phone": short, "type": "income", "amount": amount, "category": source, "description": source})
+                executed.append({"type": "income", "amount": amount, "source": source, "ok": r is not None})
 
             elif atype == "CREATE_REMINDER" and len(parts) >= 5:
+                # user_reminders columns: freq (once/daily/weekly/monthly), time,
+                # weekday (for weekly), month_date (for monthly), fire_date (for
+                # once), enabled. This used to POST reminder_date/is_active/source
+                # — none of which exist on this table — so every chat/WhatsApp
+                # reminder was silently failing to save while the AI confidently
+                # said "Done!". Fixed to match the real schema and support
+                # recurring frequency, not just one-time.
                 title = parts[1]
                 hour = parts[2].zfill(2)
                 minute = parts[3].zfill(2)
-                date_str = parts[4]
-                if not re.match(r"\d{4}-\d{2}-\d{2}", date_str):
-                    date_str = TODAY
-                sb_post("user_reminders", {
-                    "phone": short, "title": title,
-                    "time": f"{hour}:{minute}", "reminder_date": date_str,
-                    "is_active": True, "source": "viya_chat",
-                })
-                executed.append({"type": "reminder", "title": title, "time": f"{hour}:{minute}", "date": date_str})
+                freq = parts[4].lower() if parts[4].lower() in ("once", "daily", "weekly", "monthly") else "once"
+                detail = parts[5] if len(parts) > 5 else ""
+                data = {"phone": short, "title": title, "time": f"{hour}:{minute}", "freq": freq, "enabled": True}
+                if freq == "once":
+                    data["fire_date"] = detail if re.match(r"\d{4}-\d{2}-\d{2}", detail) else TODAY
+                elif freq == "weekly":
+                    data["weekday"] = detail if detail else _NOW.strftime("%A")
+                elif freq == "monthly":
+                    data["month_date"] = int(detail) if detail.isdigit() else _NOW.day
+                r = sb_post("user_reminders", data)
+                executed.append({"type": "reminder", "title": title, "time": f"{hour}:{minute}", "freq": freq, "ok": r is not None})
 
             elif atype == "MARK_HABIT" and len(parts) >= 2:
                 keyword = ":".join(parts[1:]).lower().strip()
@@ -403,30 +457,30 @@ def execute_actions(action_lines, phone):
                 if matched:
                     existing = sb_get(f"habit_checkins?habit_id=eq.{matched['id']}&checked_date=eq.{TODAY}&select=id")
                     if not existing:
-                        sb_post("habit_checkins", {"habit_id": matched["id"], "phone": short, "checked_date": TODAY, "status": "done"})
+                        r = sb_post("habit_checkins", {"habit_id": matched["id"], "phone": short, "checked_date": TODAY, "status": "done"})
                         yest = (_NOW - timedelta(days=1)).strftime("%Y-%m-%d")
                         prev = sb_get(f"habit_checkins?habit_id=eq.{matched['id']}&checked_date=eq.{yest}&select=id")
                         new_streak = (matched.get("current_streak") or 0) + 1 if prev else 1
                         longest = max(new_streak, matched.get("longest_streak") or 0)
                         sb_patch("habits", f"id=eq.{matched['id']}", {"current_streak": new_streak, "longest_streak": longest, "last_completed": TODAY})
-                        executed.append({"type": "habit", "name": matched["name"], "streak": new_streak})
+                        executed.append({"type": "habit", "name": matched["name"], "streak": new_streak, "ok": r is not None})
                     else:
-                        executed.append({"type": "habit_already", "name": matched["name"]})
+                        executed.append({"type": "habit_already", "name": matched["name"], "ok": True})
                 else:
-                    executed.append({"type": "habit_not_found", "keyword": keyword})
+                    executed.append({"type": "habit_not_found", "keyword": keyword, "ok": False})
 
             elif atype == "CREATE_GOAL" and len(parts) >= 4:
                 name = parts[1]
                 target = float(parts[2])
                 deadline = parts[3] if re.match(r"\d{4}-\d{2}-\d{2}", parts[3]) else "2025-12-31"
-                sb_post("goals", {"phone": short, "name": name, "icon": "🎯", "target_amount": target, "current_amount": 0, "deadline": deadline, "status": "active", "priority": "medium"})
-                executed.append({"type": "goal", "name": name, "target": target})
+                r = sb_post("goals", {"phone": short, "name": name, "icon": "🎯", "target_amount": target, "current_amount": 0, "deadline": deadline, "status": "active", "priority": "medium"})
+                executed.append({"type": "goal", "name": name, "target": target, "ok": r is not None})
 
             elif atype == "CREATE_HABIT" and len(parts) >= 3:
                 name = parts[1]
                 icon = parts[2] if len(parts) > 2 else "✅"
-                sb_post("habits", {"phone": short, "name": name, "icon": icon, "frequency": "daily", "current_streak": 0, "longest_streak": 0})
-                executed.append({"type": "new_habit", "name": name, "icon": icon})
+                r = sb_post("habits", {"phone": short, "name": name, "icon": icon, "frequency": "daily", "current_streak": 0, "longest_streak": 0})
+                executed.append({"type": "new_habit", "name": name, "icon": icon, "ok": r is not None})
 
             elif atype == "LOG_HEALTH" and len(parts) >= 4:
                 data = {"phone": short, "log_date": TODAY}
@@ -436,15 +490,15 @@ def execute_actions(action_lines, phone):
                 if steps: data["steps"] = steps
                 if water: data["water_glasses"] = water
                 if weight: data["weight"] = weight
-                sb_post("health_logs", data, upsert=True)
-                executed.append({"type": "health", "steps": steps, "water": water, "weight": weight})
+                r = sb_post("health_logs", data, upsert=True)
+                executed.append({"type": "health", "steps": steps, "water": water, "weight": weight, "ok": r is not None})
 
             elif atype == "LOG_MEAL" and len(parts) >= 2:
                 name = parts[1]
                 meal_type = parts[2] if len(parts) > 2 and parts[2] else "snack"
                 calories = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 0
-                sb_post("meals", {"phone": short, "meal_date": TODAY, "meal_type": meal_type, "name": name, "calories": calories})
-                executed.append({"type": "meal", "name": name, "meal_type": meal_type, "calories": calories})
+                r = sb_post("meals", {"phone": short, "meal_date": TODAY, "meal_type": meal_type, "name": name, "calories": calories})
+                executed.append({"type": "meal", "name": name, "meal_type": meal_type, "calories": calories, "ok": r is not None})
 
             elif atype == "LOG_LENDING" and len(parts) >= 3:
                 lend_type = parts[1].lower() if parts[1].lower() in ("given", "taken") else "given"
@@ -462,22 +516,91 @@ def execute_actions(action_lines, phone):
                         last_day = calendar.monthrange(year, month)[1]
                         candidate = datetime(year, month, min(collect_day, last_day))
                     due_date = candidate.strftime("%Y-%m-%d")
-                sb_post("lending", {
+                r = sb_post("lending", {
                     "user_phone": short, "type": lend_type, "person_name": person, "amount": amount,
                     "has_interest": interest_rate > 0, "interest_rate": interest_rate, "interest_type": "monthly",
                     "due_date": due_date, "reminder_enabled": bool(collect_day),
                     "reminder_frequency": "monthly" if collect_day else "weekly", "status": "pending",
                 })
-                executed.append({"type": "lending", "person": person, "amount": amount, "lend_type": lend_type})
+                executed.append({"type": "lending", "person": person, "amount": amount, "lend_type": lend_type, "ok": r is not None})
+
+            elif atype == "CREATE_BILL" and len(parts) >= 3:
+                name = parts[1]
+                amount = float(parts[2]) if len(parts) > 2 and parts[2] else 0
+                due_day = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() and parts[3] != "0" else None
+                frequency = parts[4] if len(parts) > 4 and parts[4] in ("monthly", "quarterly", "yearly", "one_time") else "monthly"
+                bill_type = parts[5] if len(parts) > 5 and parts[5] else "other"
+                due_date = None
+                if due_day:
+                    year, month = _NOW.year, _NOW.month
+                    last_day = calendar.monthrange(year, month)[1]
+                    candidate = datetime(year, month, min(due_day, last_day))
+                    if candidate.date() < _NOW.date():
+                        month, year = (month + 1, year) if month < 12 else (1, year + 1)
+                        last_day = calendar.monthrange(year, month)[1]
+                        candidate = datetime(year, month, min(due_day, last_day))
+                    due_date = candidate.strftime("%Y-%m-%d")
+                r = sb_post("bills_and_dues", {
+                    "phone": short, "name": name, "bill_type": bill_type, "amount": amount,
+                    "due_date": due_date, "frequency": frequency, "status": "pending",
+                })
+                executed.append({"type": "bill", "name": name, "amount": amount, "ok": r is not None})
+
+            elif atype == "LOG_INVESTMENT" and len(parts) >= 3:
+                name = parts[1]
+                inv_type = parts[2] if parts[2] in ("mutual_fund", "stock", "fd", "ppf", "nps", "gold", "crypto") else "mutual_fund"
+                amount = float(parts[3]) if len(parts) > 3 and parts[3] else 0
+                is_sip = len(parts) > 4 and parts[4].lower() in ("yes", "true", "1")
+                data = {"phone": short, "name": name, "investment_type": inv_type, "invested_amount": amount, "current_value": amount, "is_sip": is_sip}
+                if is_sip:
+                    data["sip_amount"] = amount
+                    data["sip_date"] = _NOW.day
+                r = sb_post("investments", data)
+                executed.append({"type": "investment", "name": name, "amount": amount, "ok": r is not None})
+
+            elif atype == "ADD_MEDICINE" and len(parts) >= 2:
+                name = parts[1]
+                dosage = parts[2] if len(parts) > 2 and parts[2] else ""
+                time_str = parts[3] if len(parts) > 3 and re.match(r"\d{1,2}:\d{2}", parts[3]) else "09:00"
+                frequency = parts[4] if len(parts) > 4 and parts[4] in ("daily", "twice_daily", "weekly", "as_needed") else "daily"
+                r = sb_post("medicines", {"phone": short, "name": name, "dosage": dosage, "time": time_str, "frequency": frequency, "active": True})
+                executed.append({"type": "new_medicine", "name": name, "ok": r is not None})
+
+            elif atype == "TAKE_MEDICINE" and len(parts) >= 2:
+                keyword = ":".join(parts[1:]).lower().strip()
+                meds = sb_get(f"medicines?phone=eq.{short}&active=eq.true&select=id,name")
+                matched = None
+                kwords = [w for w in keyword.split() if len(w) > 2]
+                for m in (meds or []):
+                    mname = (m.get("name") or "").lower()
+                    if keyword in mname or any(w in mname for w in kwords):
+                        matched = m
+                        break
+                # Generic "took my medicine" with no real name given and only
+                # one active medicine — no ambiguity to resolve, just log it.
+                if not matched and len(meds or []) == 1 and keyword in ("medicine", "meds", "medication", "tablet", "pill"):
+                    matched = meds[0]
+                if matched:
+                    r = sb_post("medicine_checkins", {"medicine_id": matched["id"], "phone": short, "checked_date": TODAY, "taken": True}, upsert=True)
+                    executed.append({"type": "medicine_taken", "name": matched["name"], "ok": r is not None})
+                else:
+                    executed.append({"type": "medicine_not_found", "keyword": keyword, "ok": False})
+
+            elif atype == "LOG_JOURNAL" and len(parts) >= 2:
+                entry = ":".join(parts[1:-1]) if len(parts) > 2 else parts[1]
+                mood = parts[-1] if len(parts) > 2 and parts[-1] else ""
+                r = sb_post("journal", {"phone": short, "entry": entry, "mood": mood})
+                executed.append({"type": "journal", "ok": r is not None})
 
             elif atype == "REMEMBER" and len(parts) >= 3:
                 key = parts[1]
                 val = ":".join(parts[2:])
-                sb_post("viya_memory", {"phone": short, "content": f"{key}: {val}", "memory_type": "fact", "category": "personal", "importance": 7})
-                executed.append({"type": "memory", "key": key, "value": val})
+                r = sb_post("viya_memory", {"phone": short, "content": f"{key}: {val}", "memory_type": "fact", "category": "personal", "importance": 7})
+                executed.append({"type": "memory", "key": key, "value": val, "ok": r is not None})
 
         except Exception as e:
             print(f"[ACTION] {atype} failed: {e}")
+            executed.append({"type": atype.lower(), "ok": False, "error": str(e)})
 
     return executed
 
@@ -603,6 +726,15 @@ def process_message(phone, message, history=None):
     clean_reply = "\n".join(clean_lines).strip()
 
     executed = execute_actions(action_lines, phone) if action_lines else []
+
+    # The reply text above was written by the LLM before we knew whether the
+    # DB write would actually succeed. If it silently failed (bad columns,
+    # RLS, network), say so instead of leaving a confident "Done!" standing
+    # uncorrected — this exact gap was why chat/WhatsApp reminders looked
+    # like they worked while never actually saving.
+    failed = [e for e in executed if e.get("ok") is False]
+    if failed:
+        clean_reply += "\n\n⚠️ Heads up — that didn't actually save (connection issue on my end). Try again in a moment?"
 
     # Persist to chat history
     try:

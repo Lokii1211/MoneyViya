@@ -55,14 +55,24 @@ When user wants you to DO something, output ACTION lines at the start (before me
 
 ACTION:LOG_EXPENSE:amount:category:note
 ACTION:LOG_INCOME:amount:source
-ACTION:CREATE_REMINDER:title:HH:MM:YYYY-MM-DD
+ACTION:CREATE_REMINDER:title:HH:MM:freq:detail
 ACTION:MARK_HABIT:keyword
 ACTION:CREATE_HABIT:name:emoji
 ACTION:CREATE_GOAL:name:target:YYYY-MM-DD
 ACTION:LOG_HEALTH:steps:water_glasses:weight_kg
 ACTION:LOG_MEAL:name:meal_type:calories
 ACTION:LOG_LENDING:given_or_taken:person_name:amount:interest_rate_pct:collect_day_of_month
+ACTION:CREATE_BILL:name:amount:due_day_of_month:frequency:bill_type
+ACTION:LOG_INVESTMENT:name:type:amount:is_sip
+ACTION:ADD_MEDICINE:name:dosage:time:frequency
+ACTION:TAKE_MEDICINE:keyword
+ACTION:LOG_JOURNAL:entry:mood
 ACTION:REMEMBER:key:value
+
+CREATE_REMINDER's freq is once/daily/weekly/monthly; detail is YYYY-MM-DD
+for once, a weekday name for weekly, a day number 1-31 for monthly, empty
+for daily. Recognize recurring phrasing ("every day", "every Monday", "on
+the 1st every month") and use the matching freq, don't default to once.
 
 Kinds of intent to recognize (any natural phrasing counts):
 Spent money → LOG_EXPENSE | Got paid → LOG_INCOME | Wants a future nudge (not lending-related) → CREATE_REMINDER
@@ -70,6 +80,11 @@ Did a habit (match against their real habit list in context even if worded diffe
 Wants to start a new habit → CREATE_HABIT | Wants to save toward something → CREATE_GOAL
 Ate/had a meal → LOG_MEAL (meal_type from time of day if unsaid; if they don't name the food, use "Meal" and 0 calories — still log it)
 Lent or borrowed money → LOG_LENDING, ALWAYS as one single action, even when it also mentions interest or a recurring collection date — never split this into REMEMBER + CREATE_REMINDER, that throws away the amount/interest as structured data the app can track and settle. (given = they lent it, taken = they borrowed it; interest 0 if unmentioned; collect_day 0 if no recurring collection mentioned — ask for the person's name if missing, everything else can default)
+Recurring bill/subscription/EMI → CREATE_BILL (due_day 1-31, 0 if unmentioned; frequency monthly/quarterly/yearly/one_time; bill_type credit_card/electricity/internet/phone/rent/insurance/emi/subscription/other)
+Invested in a stock/fund/SIP/FD/gold/crypto → LOG_INVESTMENT (type mutual_fund/stock/fd/ppf/nps/gold/crypto; is_sip yes only if they describe a recurring SIP)
+Wants to track a medicine → ADD_MEDICINE (dosage/time/frequency if given, else sensible defaults)
+Says they took their medicine → TAKE_MEDICINE:keyword (match their real medicine list in context, same style as MARK_HABIT)
+Wants to journal/vent/reflect → LOG_JOURNAL:entry:mood (mood inferred from tone if unsaid)
 Mentions a fact worth remembering (that isn't lending — that's always LOG_LENDING) → REMEMBER
 
 Steps/water/meals ADD to what's already logged today (see context below for
@@ -82,8 +97,12 @@ User: just finished my run
 Nice one 🔥 running's marked done, streak's alive
 
 User: remind tomorrow 10am call mom
-→ ACTION:CREATE_REMINDER:Call mom:10:00:{TOMORROW}
+→ ACTION:CREATE_REMINDER:Call mom:10:00:once:{TOMORROW}
 Got it — 10am tomorrow, call mom 🔔
+
+User: remind me every Monday 9am to plan the week
+→ ACTION:CREATE_REMINDER:Plan the week:09:00:weekly:Monday
+Every Monday at 9am, got it 🔔
 
 User: chai and snacks set me back 300
 → ACTION:LOG_EXPENSE:300:Food:chai and snacks
@@ -92,6 +111,14 @@ User: chai and snacks set me back 300
 User: gave 20000 to rahul at 2% interest, collect on the 5th every month
 → ACTION:LOG_LENDING:given:Rahul:20000:2:5
 Got it — ₹20k to Rahul at 2%/month. I'll nudge you every 5th.
+
+User: netflix charges 500 every month on the 3rd
+→ ACTION:CREATE_BILL:Netflix:500:3:monthly:subscription
+Added, ₹500 Netflix on the 3rd every month.
+
+User: took my medicine
+→ ACTION:TAKE_MEDICINE:medicine
+Marked as taken ✅
 
 LANGUAGE: Reply in the same language/script the user just texted in — Tamil script for Tamil, Tanglish for Tamil-in-Latin-letters, Hindi/Devanagari for Hindi, Hinglish for Hindi-in-Latin-letters, Kannada/Telugu/Malayalam/Bengali/Marathi the same way, English for English. Mirror them, don't default to English. ₹ amounts and category names can stay as-is mid-sentence.
 
@@ -221,17 +248,28 @@ def execute_actions(action_lines, phone):
         atype = parts[0].upper()
         try:
             if atype == "LOG_EXPENSE" and len(parts) >= 4:
-                sb_post("transactions", {"phone": short, "type": "expense", "amount": float(parts[1]), "category": parts[2], "description": ":".join(parts[3:])})
-                executed.append({"type": "expense", "amount": float(parts[1])})
+                r = sb_post("transactions", {"phone": short, "type": "expense", "amount": float(parts[1]), "category": parts[2], "description": ":".join(parts[3:])})
+                executed.append({"type": "expense", "amount": float(parts[1]), "ok": r is not None})
 
             elif atype == "LOG_INCOME" and len(parts) >= 3:
-                sb_post("transactions", {"phone": short, "type": "income", "amount": float(parts[1]), "category": ":".join(parts[2:]), "description": ":".join(parts[2:])})
-                executed.append({"type": "income", "amount": float(parts[1])})
+                r = sb_post("transactions", {"phone": short, "type": "income", "amount": float(parts[1]), "category": ":".join(parts[2:]), "description": ":".join(parts[2:])})
+                executed.append({"type": "income", "amount": float(parts[1]), "ok": r is not None})
 
             elif atype == "CREATE_REMINDER" and len(parts) >= 5:
-                date_str = parts[4] if re.match(r"\d{4}-\d{2}-\d{2}", parts[4]) else TODAY
-                sb_post("user_reminders", {"phone": short, "title": parts[1], "time": f"{parts[2].zfill(2)}:{parts[3].zfill(2)}", "reminder_date": date_str, "is_active": True, "source": "whatsapp"})
-                executed.append({"type": "reminder", "title": parts[1]})
+                # See chat.py's identical fix — this used to POST reminder_date/
+                # is_active/source, none of which exist on user_reminders, so
+                # every WhatsApp-created reminder silently failed to save.
+                freq = parts[4].lower() if parts[4].lower() in ("once", "daily", "weekly", "monthly") else "once"
+                detail = parts[5] if len(parts) > 5 else ""
+                data = {"phone": short, "title": parts[1], "time": f"{parts[2].zfill(2)}:{parts[3].zfill(2)}", "freq": freq, "enabled": True}
+                if freq == "once":
+                    data["fire_date"] = detail if re.match(r"\d{4}-\d{2}-\d{2}", detail) else TODAY
+                elif freq == "weekly":
+                    data["weekday"] = detail if detail else _NOW.strftime("%A")
+                elif freq == "monthly":
+                    data["month_date"] = int(detail) if detail.isdigit() else _NOW.day
+                r = sb_post("user_reminders", data)
+                executed.append({"type": "reminder", "title": parts[1], "freq": freq, "ok": r is not None})
 
             elif atype == "MARK_HABIT" and len(parts) >= 2:
                 keyword = ":".join(parts[1:]).lower().strip()
@@ -242,39 +280,39 @@ def execute_actions(action_lines, phone):
                     if keyword in hname or any(w in hname for w in kwords) or any(w in keyword for w in hname.split() if len(w) > 2):
                         existing = sb_get(f"habit_checkins?habit_id=eq.{h['id']}&checked_date=eq.{TODAY}&select=id")
                         if not existing:
-                            sb_post("habit_checkins", {"habit_id": h["id"], "phone": short, "checked_date": TODAY, "status": "done"})
+                            r = sb_post("habit_checkins", {"habit_id": h["id"], "phone": short, "checked_date": TODAY, "status": "done"})
                             yest = (_NOW - timedelta(days=1)).strftime("%Y-%m-%d")
                             prev = sb_get(f"habit_checkins?habit_id=eq.{h['id']}&checked_date=eq.{yest}&select=id")
                             new_streak = (h.get("current_streak") or 0) + 1 if prev else 1
                             longest = max(new_streak, h.get("longest_streak") or 0)
                             sb_patch("habits", f"id=eq.{h['id']}", {"current_streak": new_streak, "longest_streak": longest, "last_completed": TODAY})
-                            executed.append({"type": "habit", "name": h["name"], "streak": new_streak})
+                            executed.append({"type": "habit", "name": h["name"], "streak": new_streak, "ok": r is not None})
                         else:
-                            executed.append({"type": "habit_already", "name": h["name"]})
+                            executed.append({"type": "habit_already", "name": h["name"], "ok": True})
                         break
 
             elif atype == "CREATE_GOAL" and len(parts) >= 4:
                 deadline = parts[3] if re.match(r"\d{4}-\d{2}-\d{2}", parts[3]) else "2025-12-31"
-                sb_post("goals", {"phone": short, "name": parts[1], "icon": "🎯", "target_amount": float(parts[2]), "current_amount": 0, "deadline": deadline, "status": "active", "priority": "medium"})
-                executed.append({"type": "goal", "name": parts[1]})
+                r = sb_post("goals", {"phone": short, "name": parts[1], "icon": "🎯", "target_amount": float(parts[2]), "current_amount": 0, "deadline": deadline, "status": "active", "priority": "medium"})
+                executed.append({"type": "goal", "name": parts[1], "ok": r is not None})
 
             elif atype == "CREATE_HABIT" and len(parts) >= 3:
-                sb_post("habits", {"phone": short, "name": parts[1], "icon": parts[2] if len(parts) > 2 else "✅", "frequency": "daily", "current_streak": 0, "longest_streak": 0})
-                executed.append({"type": "new_habit", "name": parts[1]})
+                r = sb_post("habits", {"phone": short, "name": parts[1], "icon": parts[2] if len(parts) > 2 else "✅", "frequency": "daily", "current_streak": 0, "longest_streak": 0})
+                executed.append({"type": "new_habit", "name": parts[1], "ok": r is not None})
 
             elif atype == "LOG_HEALTH" and len(parts) >= 4:
                 data = {"phone": short, "log_date": TODAY}
                 if parts[1] and parts[1] != "0": data["steps"] = int(parts[1])
                 if parts[2] and parts[2] != "0": data["water_glasses"] = int(parts[2])
                 if parts[3] and parts[3] not in ("0", ""): data["weight"] = float(parts[3])
-                sb_post("health_logs", data, upsert=True)
-                executed.append({"type": "health"})
+                r = sb_post("health_logs", data, upsert=True)
+                executed.append({"type": "health", "ok": r is not None})
 
             elif atype == "LOG_MEAL" and len(parts) >= 2:
                 meal_type = parts[2] if len(parts) > 2 and parts[2] else "snack"
                 calories = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 0
-                sb_post("meals", {"phone": short, "meal_date": TODAY, "meal_type": meal_type, "name": parts[1], "calories": calories})
-                executed.append({"type": "meal", "name": parts[1]})
+                r = sb_post("meals", {"phone": short, "meal_date": TODAY, "meal_type": meal_type, "name": parts[1], "calories": calories})
+                executed.append({"type": "meal", "name": parts[1], "ok": r is not None})
 
             elif atype == "LOG_LENDING" and len(parts) >= 3:
                 lend_type = parts[1].lower() if parts[1].lower() in ("given", "taken") else "given"
@@ -291,20 +329,81 @@ def execute_actions(action_lines, phone):
                         last_day = calendar.monthrange(year, month)[1]
                         candidate = datetime(year, month, min(collect_day, last_day))
                     due_date = candidate.strftime("%Y-%m-%d")
-                sb_post("lending", {
+                r = sb_post("lending", {
                     "user_phone": short, "type": lend_type, "person_name": parts[2], "amount": amount,
                     "has_interest": interest_rate > 0, "interest_rate": interest_rate, "interest_type": "monthly",
                     "due_date": due_date, "reminder_enabled": bool(collect_day),
                     "reminder_frequency": "monthly" if collect_day else "weekly", "status": "pending",
                 })
-                executed.append({"type": "lending", "person": parts[2], "amount": amount})
+                executed.append({"type": "lending", "person": parts[2], "amount": amount, "ok": r is not None})
+
+            elif atype == "CREATE_BILL" and len(parts) >= 3:
+                amount = float(parts[2]) if len(parts) > 2 and parts[2] else 0
+                due_day = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() and parts[3] != "0" else None
+                frequency = parts[4] if len(parts) > 4 and parts[4] in ("monthly", "quarterly", "yearly", "one_time") else "monthly"
+                bill_type = parts[5] if len(parts) > 5 and parts[5] else "other"
+                due_date = None
+                if due_day:
+                    year, month = _NOW.year, _NOW.month
+                    last_day = calendar.monthrange(year, month)[1]
+                    candidate = datetime(year, month, min(due_day, last_day))
+                    if candidate.date() < _NOW.date():
+                        month, year = (month + 1, year) if month < 12 else (1, year + 1)
+                        last_day = calendar.monthrange(year, month)[1]
+                        candidate = datetime(year, month, min(due_day, last_day))
+                    due_date = candidate.strftime("%Y-%m-%d")
+                r = sb_post("bills_and_dues", {"phone": short, "name": parts[1], "bill_type": bill_type, "amount": amount, "due_date": due_date, "frequency": frequency, "status": "pending"})
+                executed.append({"type": "bill", "name": parts[1], "ok": r is not None})
+
+            elif atype == "LOG_INVESTMENT" and len(parts) >= 3:
+                inv_type = parts[2] if parts[2] in ("mutual_fund", "stock", "fd", "ppf", "nps", "gold", "crypto") else "mutual_fund"
+                amount = float(parts[3]) if len(parts) > 3 and parts[3] else 0
+                is_sip = len(parts) > 4 and parts[4].lower() in ("yes", "true", "1")
+                data = {"phone": short, "name": parts[1], "investment_type": inv_type, "invested_amount": amount, "current_value": amount, "is_sip": is_sip}
+                if is_sip:
+                    data["sip_amount"] = amount
+                    data["sip_date"] = _NOW.day
+                r = sb_post("investments", data)
+                executed.append({"type": "investment", "name": parts[1], "ok": r is not None})
+
+            elif atype == "ADD_MEDICINE" and len(parts) >= 2:
+                dosage = parts[2] if len(parts) > 2 and parts[2] else ""
+                time_str = parts[3] if len(parts) > 3 and re.match(r"\d{1,2}:\d{2}", parts[3]) else "09:00"
+                frequency = parts[4] if len(parts) > 4 and parts[4] in ("daily", "twice_daily", "weekly", "as_needed") else "daily"
+                r = sb_post("medicines", {"phone": short, "name": parts[1], "dosage": dosage, "time": time_str, "frequency": frequency, "active": True})
+                executed.append({"type": "new_medicine", "name": parts[1], "ok": r is not None})
+
+            elif atype == "TAKE_MEDICINE" and len(parts) >= 2:
+                keyword = ":".join(parts[1:]).lower().strip()
+                meds = sb_get(f"medicines?phone=eq.{short}&active=eq.true&select=id,name")
+                matched = None
+                kwords = [w for w in keyword.split() if len(w) > 2]
+                for m in (meds or []):
+                    mname = (m.get("name") or "").lower()
+                    if keyword in mname or any(w in mname for w in kwords):
+                        matched = m
+                        break
+                if not matched and len(meds or []) == 1 and keyword in ("medicine", "meds", "medication", "tablet", "pill"):
+                    matched = meds[0]
+                if matched:
+                    r = sb_post("medicine_checkins", {"medicine_id": matched["id"], "phone": short, "checked_date": TODAY, "taken": True}, upsert=True)
+                    executed.append({"type": "medicine_taken", "name": matched["name"], "ok": r is not None})
+                else:
+                    executed.append({"type": "medicine_not_found", "ok": False})
+
+            elif atype == "LOG_JOURNAL" and len(parts) >= 2:
+                entry = ":".join(parts[1:-1]) if len(parts) > 2 else parts[1]
+                mood = parts[-1] if len(parts) > 2 and parts[-1] else ""
+                r = sb_post("journal", {"phone": short, "entry": entry, "mood": mood})
+                executed.append({"type": "journal", "ok": r is not None})
 
             elif atype == "REMEMBER" and len(parts) >= 3:
-                sb_post("viya_memory", {"phone": short, "content": f"{parts[1]}: {':'.join(parts[2:])}", "memory_type": "fact", "category": "personal", "importance": 7})
-                executed.append({"type": "memory"})
+                r = sb_post("viya_memory", {"phone": short, "content": f"{parts[1]}: {':'.join(parts[2:])}", "memory_type": "fact", "category": "personal", "importance": 7})
+                executed.append({"type": "memory", "ok": r is not None})
 
         except Exception as e:
             print(f"[WA ACTION] {atype}: {e}")
+            executed.append({"type": atype.lower(), "ok": False})
 
     # Save to chat_history for app sync
     try:
@@ -350,9 +449,15 @@ def call_groq_wa(phone, text, wa_history=None):
             lines = raw.split("\n")
             action_lines = [l.strip() for l in lines if l.strip().startswith("ACTION:")]
             clean_lines = [l for l in lines if not l.strip().startswith("ACTION:")]
+            reply = "\n".join(clean_lines).strip()
             if action_lines:
-                execute_actions(action_lines, phone)
-            return "\n".join(clean_lines).strip()
+                executed = execute_actions(action_lines, phone)
+                # Same gap as chat.py: the reply text above was written before
+                # we knew the DB write would succeed. Say so if it didn't,
+                # instead of a confident "Done!" that quietly wasn't true.
+                if any(e.get("ok") is False for e in executed):
+                    reply += "\n\n⚠️ That didn't actually save — try again in a moment?"
+            return reply
     except Exception as e:
         print(f"[WA GROQ] {e}")
         return "Oops! Technical issue. Try again in a bit. Type *help* for quick commands."
