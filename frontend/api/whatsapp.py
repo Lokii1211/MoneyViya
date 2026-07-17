@@ -16,6 +16,7 @@ import sys
 import os
 import json
 import re
+import calendar
 import urllib.request
 import urllib.error
 from datetime import datetime, timedelta
@@ -59,13 +60,21 @@ ACTION:MARK_HABIT:keyword
 ACTION:CREATE_HABIT:name:emoji
 ACTION:CREATE_GOAL:name:target:YYYY-MM-DD
 ACTION:LOG_HEALTH:steps:water_glasses:weight_kg
+ACTION:LOG_MEAL:name:meal_type:calories
+ACTION:LOG_LENDING:given_or_taken:person_name:amount:interest_rate_pct:collect_day_of_month
 ACTION:REMEMBER:key:value
 
 Kinds of intent to recognize (any natural phrasing counts):
 Spent money → LOG_EXPENSE | Got paid → LOG_INCOME | Wants a future nudge → CREATE_REMINDER
 Did a habit (match against their real habit list in context even if worded differently) → MARK_HABIT
 Wants to start a new habit → CREATE_HABIT | Wants to save toward something → CREATE_GOAL
+Ate/had a meal → LOG_MEAL (meal_type from time of day if unsaid; if they don't name the food, use "Meal" and 0 calories — still log it)
+Lent or borrowed money → LOG_LENDING (given = they lent it, taken = they borrowed it; interest 0 if unmentioned; collect_day 0 if no recurring collection mentioned — ask for the person's name if missing, everything else can default)
 Mentions a fact worth remembering → REMEMBER
+
+Steps/water/meals ADD to what's already logged today (see context below for
+today's totals) — they don't overwrite. "2 more glasses" + 3 already logged
+= output 5, not 2.
 
 EXAMPLES (format only — vary your actual reply wording each time, don't recite these):
 User: just finished my run
@@ -79,6 +88,10 @@ Got it — 10am tomorrow, call mom 🔔
 User: chai and snacks set me back 300
 → ACTION:LOG_EXPENSE:300:Food:chai and snacks
 ₹300 logged for chai/snacks. Check the app for the full picture.
+
+User: gave 20000 to rahul at 2% interest, collect on the 5th every month
+→ ACTION:LOG_LENDING:given:Rahul:20000:2:5
+Got it — ₹20k to Rahul at 2%/month. I'll nudge you every 5th.
 
 LANGUAGE: Reply in the same language/script the user just texted in — Tamil script for Tamil, Tanglish for Tamil-in-Latin-letters, Hindi/Devanagari for Hindi, Hinglish for Hindi-in-Latin-letters, Kannada/Telugu/Malayalam/Bengali/Marathi the same way, English for English. Mirror them, don't default to English. ₹ amounts and category names can stay as-is mid-sentence.
 
@@ -175,6 +188,9 @@ def get_context(phone, message=None):
         memories = sb_get(f"viya_memory?phone=eq.{short}&select=content&order=importance.desc&limit=3")
         if memories:
             ctx.append("Know: " + " | ".join(m.get('content','') for m in memories))
+        lending = sb_get(f"lending?user_phone=eq.{short}&status=eq.pending&select=type,person_name,amount,due_date&limit=4")
+        if lending:
+            ctx.append("Lending: " + ", ".join(f"{'lent' if l.get('type')=='given' else 'borrowed'} ₹{l.get('amount',0)} {'to' if l.get('type')=='given' else 'from'} {l.get('person_name','')}" for l in lending))
 
         # Hybrid retrieval (BM25 + vector) — same retriever chat.py uses, see
         # docs/AI_AGENTS_RAG_PRD.md. Degrades to lexical-only without OPENAI_API_KEY.
@@ -253,6 +269,35 @@ def execute_actions(action_lines, phone):
                 if parts[3] and parts[3] not in ("0", ""): data["weight"] = float(parts[3])
                 sb_post("health_logs", data, upsert=True)
                 executed.append({"type": "health"})
+
+            elif atype == "LOG_MEAL" and len(parts) >= 2:
+                meal_type = parts[2] if len(parts) > 2 and parts[2] else "snack"
+                calories = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 0
+                sb_post("meals", {"phone": short, "meal_date": TODAY, "meal_type": meal_type, "name": parts[1], "calories": calories})
+                executed.append({"type": "meal", "name": parts[1]})
+
+            elif atype == "LOG_LENDING" and len(parts) >= 3:
+                lend_type = parts[1].lower() if parts[1].lower() in ("given", "taken") else "given"
+                amount = float(parts[3]) if len(parts) > 3 and parts[3] else 0
+                interest_rate = float(parts[4]) if len(parts) > 4 and parts[4] else 0
+                collect_day = int(parts[5]) if len(parts) > 5 and parts[5].isdigit() and parts[5] != "0" else None
+                due_date = None
+                if collect_day:
+                    year, month = _NOW.year, _NOW.month
+                    last_day = calendar.monthrange(year, month)[1]
+                    candidate = datetime(year, month, min(collect_day, last_day))
+                    if candidate.date() < _NOW.date():
+                        month, year = (month + 1, year) if month < 12 else (1, year + 1)
+                        last_day = calendar.monthrange(year, month)[1]
+                        candidate = datetime(year, month, min(collect_day, last_day))
+                    due_date = candidate.strftime("%Y-%m-%d")
+                sb_post("lending", {
+                    "user_phone": short, "type": lend_type, "person_name": parts[2], "amount": amount,
+                    "has_interest": interest_rate > 0, "interest_rate": interest_rate, "interest_type": "monthly",
+                    "due_date": due_date, "reminder_enabled": bool(collect_day),
+                    "reminder_frequency": "monthly" if collect_day else "weekly", "status": "pending",
+                })
+                executed.append({"type": "lending", "person": parts[2], "amount": amount})
 
             elif atype == "REMEMBER" and len(parts) >= 3:
                 sb_post("viya_memory", {"phone": short, "content": f"{parts[1]}: {':'.join(parts[2:])}", "memory_type": "fact", "category": "personal", "importance": 7})

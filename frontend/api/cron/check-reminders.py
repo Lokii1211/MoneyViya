@@ -226,6 +226,56 @@ class handler(BaseHTTPRequestHandler):
                 except Exception as e:
                     results["errors"].append(f"Monthly advance fetch: {str(e)}")
 
+            # ── Lending collection reminders ──
+            # Checks `lending` for pending entries whose reminder is due
+            # today, per reminder_frequency: daily fires every day, weekly
+            # every 7 days from due_date, monthly matches due_date's
+            # day-of-month (clamped like the user_reminders monthly logic
+            # above). Fires once/day at a fixed time; dedup via
+            # last_reminded_at, already a column on this table.
+            results["lending_reminded"] = 0
+            if current_time == "09:00":
+                try:
+                    lending_url = f"{SUPABASE_URL}/rest/v1/lending?status=eq.pending&reminder_enabled=eq.true&select=*"
+                    lending_resp = client.get(lending_url, headers=headers)
+                    if lending_resp.status_code == 200:
+                        for entry in lending_resp.json():
+                            try:
+                                due_date_str = entry.get("due_date")
+                                if not due_date_str:
+                                    continue
+                                due_dt = datetime.strptime(due_date_str[:10], "%Y-%m-%d")
+                                freq = entry.get("reminder_frequency", "weekly")
+                                should_fire = False
+                                if freq == "daily":
+                                    should_fire = True
+                                elif freq == "weekly":
+                                    days_since = (ist_now.date() - due_dt.date()).days
+                                    should_fire = days_since >= 0 and days_since % 7 == 0
+                                elif freq == "monthly":
+                                    target_day = min(due_dt.day, last_day_of_month)
+                                    should_fire = target_day == current_date
+
+                                last_reminded = entry.get("last_reminded_at", "") or ""
+                                if last_reminded.startswith(current_date_str):
+                                    should_fire = False
+                                if not should_fire:
+                                    continue
+
+                                verb = "lent" if entry.get("type") == "given" else "borrowed"
+                                interest_note = f" ({entry.get('interest_rate')}%/{entry.get('interest_type','monthly')})" if entry.get("has_interest") else ""
+                                amount = entry.get("amount", 0) or 0
+                                msg = f"💰 *Lending reminder*\nTime to check in with {entry.get('person_name','them')} about the ₹{amount:,.0f} you {verb}{interest_note}. Reply here to log a payment, or update it in the app."
+
+                                if self._send_whatsapp(entry.get("user_phone", ""), msg):
+                                    results["lending_reminded"] += 1
+                                    upd_url = f"{SUPABASE_URL}/rest/v1/lending?id=eq.{entry['id']}"
+                                    client.patch(upd_url, json={"last_reminded_at": ist_now.isoformat()}, headers={**headers, "Prefer": "return=minimal"})
+                            except Exception as e:
+                                results["errors"].append(f"Lending {entry.get('id')}: {str(e)}")
+                except Exception as e:
+                    results["errors"].append(f"Lending fetch: {str(e)}")
+
             # Evening log reminder — the morning brief is handled by the
             # separate cron/morning-brief.py Vercel-native cron (scheduled
             # for the same IST time), so only the evening side lives here.

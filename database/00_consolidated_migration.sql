@@ -1447,3 +1447,61 @@ GRANT EXECUTE ON FUNCTION match_health_logs(vector, text, int) TO anon, authenti
 GRANT EXECUTE ON FUNCTION match_habits(vector, text, int) TO anon, authenticated;
 
 SELECT 'Phase 5 — full life-OS retrieval schema ready ✅' AS status;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- PHASE 6 — Meals and Lending join the retriever
+-- Same hybrid BM25+vector pattern as everywhere else. Lending is the
+-- concrete feature requested: "gave 20000 to a friend at 2% interest,
+-- collect on the 5th every month" — the lending table already had every
+-- column this needs (interest_rate, due_date, reminder_frequency), this
+-- just makes it retrievable/groundable in chat answers like
+-- "who owes me money" or "what did I lend Rahul".
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE meals ADD COLUMN IF NOT EXISTS embedding vector(1536);
+ALTER TABLE lending ADD COLUMN IF NOT EXISTS embedding vector(1536);
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='meals' AND column_name='fts') THEN
+    ALTER TABLE meals ADD COLUMN fts tsvector
+      GENERATED ALWAYS AS (to_tsvector('english', coalesce(name,'') || ' ' || coalesce(meal_type,''))) STORED;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_meals_fts ON meals USING gin (fts);
+CREATE INDEX IF NOT EXISTS idx_meals_embedding ON meals USING ivfflat (embedding vector_cosine_ops);
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='lending' AND column_name='fts') THEN
+    ALTER TABLE lending ADD COLUMN fts tsvector
+      GENERATED ALWAYS AS (to_tsvector('english', coalesce(person_name,'') || ' ' || coalesce(reason,''))) STORED;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_lending_fts ON lending USING gin (fts);
+CREATE INDEX IF NOT EXISTS idx_lending_embedding ON lending USING ivfflat (embedding vector_cosine_ops);
+
+CREATE OR REPLACE FUNCTION match_meals(query_embedding vector(1536), match_phone text, match_count int DEFAULT 5)
+RETURNS TABLE(id uuid, name text, meal_type text, calories int, meal_date date, similarity float)
+LANGUAGE sql STABLE AS $$
+  SELECT id, name, meal_type, calories, meal_date,
+         1 - (embedding <=> query_embedding) AS similarity
+  FROM meals
+  WHERE phone = match_phone AND embedding IS NOT NULL
+  ORDER BY embedding <=> query_embedding
+  LIMIT match_count;
+$$;
+
+CREATE OR REPLACE FUNCTION match_lending(query_embedding vector(1536), match_phone text, match_count int DEFAULT 5)
+RETURNS TABLE(id uuid, type text, person_name text, amount numeric, has_interest boolean, interest_rate numeric, interest_type text, due_date date, status text, similarity float)
+LANGUAGE sql STABLE AS $$
+  SELECT id, type, person_name, amount, has_interest, interest_rate, interest_type, due_date, status,
+         1 - (embedding <=> query_embedding) AS similarity
+  FROM lending
+  WHERE user_phone = match_phone AND embedding IS NOT NULL
+  ORDER BY embedding <=> query_embedding
+  LIMIT match_count;
+$$;
+
+GRANT EXECUTE ON FUNCTION match_meals(vector, text, int) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION match_lending(vector, text, int) TO anon, authenticated;
+
+SELECT 'Phase 6 — meals + lending retrieval schema ready ✅' AS status;

@@ -95,6 +95,7 @@ class _TableConfig(NamedTuple):
     text_fn: Callable[[dict], str]
     match_fn: str
     format_fn: Callable[[dict], str]
+    phone_col: str = "phone"  # lending uses user_phone, not phone — see below
 
 
 # Per-table retrieval config: how to build the embeddable text, which columns
@@ -130,6 +131,19 @@ TABLE_CONFIG = {
         match_fn="match_habits",
         format_fn=lambda r: f"{r.get('icon','')} '{r.get('name','')}' — {r.get('current_streak',0)}-day streak ({r.get('frequency','daily')})",
     ),
+    "meals": _TableConfig(
+        select="id,name,meal_type,calories,meal_date",
+        text_fn=lambda r: f"meal {r.get('name','')} {r.get('meal_type','')}",
+        match_fn="match_meals",
+        format_fn=lambda r: f"{r.get('meal_type','meal').title()}: {r.get('name','')} ({r.get('calories',0)} cal) on {r.get('meal_date','')}",
+    ),
+    "lending": _TableConfig(
+        select="id,type,person_name,amount,has_interest,interest_rate,interest_type,due_date,status",
+        text_fn=lambda r: f"lending {r.get('person_name','')} {r.get('type','')}",
+        match_fn="match_lending",
+        format_fn=lambda r: f"{'Lent to' if r.get('type')=='given' else 'Borrowed from'} {r.get('person_name','')}: ₹{r.get('amount',0)}" + (f" at {r.get('interest_rate')}%/{r.get('interest_type','monthly')}" if r.get('has_interest') else "") + f", due {r.get('due_date','?')}, {r.get('status','')}",
+        phone_col="user_phone",
+    ),
 }
 
 
@@ -138,7 +152,7 @@ def backfill_embeddings(phone, table, limit=8):
     cfg = TABLE_CONFIG.get(table)
     if not cfg or not OPENAI_API_KEY:
         return
-    rows = _sb_get(f"{table}?phone=eq.{phone}&embedding=is.null&select={cfg.select}&order=created_at.desc&limit={limit}")
+    rows = _sb_get(f"{table}?{cfg.phone_col}=eq.{phone}&embedding=is.null&select={cfg.select}&order=created_at.desc&limit={limit}")
     for row in rows:
         vec = embed(cfg.text_fn(row))
         if vec:
@@ -147,7 +161,7 @@ def backfill_embeddings(phone, table, limit=8):
 
 def _lexical_search(phone, table, query, limit):
     cfg = TABLE_CONFIG[table]
-    return _sb_get(f"{table}?phone=eq.{phone}&fts=plfts.{quote(query)}&select={cfg.select}&limit={limit}")
+    return _sb_get(f"{table}?{cfg.phone_col}=eq.{phone}&fts=plfts.{quote(query)}&select={cfg.select}&limit={limit}")
 
 
 def _vector_search(phone, table, query_embedding, limit):

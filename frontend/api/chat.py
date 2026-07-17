@@ -12,6 +12,7 @@ import sys
 import os
 import json
 import re
+import calendar
 import urllib.request
 import urllib.error
 from datetime import datetime, timedelta
@@ -73,6 +74,8 @@ ACTION:MARK_HABIT:keyword
 ACTION:CREATE_HABIT:name:emoji
 ACTION:CREATE_GOAL:name:target_amount:YYYY-MM-DD
 ACTION:LOG_HEALTH:steps:water_glasses:weight_kg
+ACTION:LOG_MEAL:name:meal_type:calories
+ACTION:LOG_LENDING:given_or_taken:person_name:amount:interest_rate_pct:collect_day_of_month
 ACTION:REMEMBER:key:value
 
 The categories below are the KINDS of intent to recognize — not fixed
@@ -83,8 +86,17 @@ phrases to pattern-match. Any natural way of saying these counts:
 • Says they did/finished a habit          → MARK_HABIT (match against their real habit list in context, even if worded differently — "ran today", "went for a jog", "5k done" should all match a "Running" habit)
 • Wants to start tracking a new habit      → CREATE_HABIT
 • Wants to save toward something          → CREATE_GOAL
-• Mentions steps/water/weight/sleep        → LOG_HEALTH
+• Mentions steps/water/weight/sleep        → LOG_HEALTH (see INCREMENTAL LOGGING below — these accumulate, they don't overwrite)
+• Says they ate/had a meal                → LOG_MEAL. meal_type is breakfast/lunch/dinner/snack — infer it from current time if they don't say, using {TODAY} as today's date for context. If they don't name what they ate, use "Meal" as the name and calories 0 — still log it, don't block on missing detail for something this casual.
+• Lent money to someone, or borrowed it   → LOG_LENDING. given_or_taken is "given" (they lent it out) or "taken" (they borrowed it). interest_rate_pct is 0 if none mentioned. collect_day_of_month is the day (1-31) they want to be reminded to collect/repay each month — 0 if no recurring collection was mentioned. If they clearly describe lending/borrowing but don't give a person's name, ask for it rather than guessing — everything else can have reasonable defaults, the name can't.
 • Tells you a fact to remember             → REMEMBER
+
+INCREMENTAL LOGGING — steps, water, and meals ADD to what's already logged
+today, they don't replace it. USER CONTEXT below includes today's latest
+health log if one exists. If the user says "had 2 more glasses of water"
+and context shows 3 already logged today, output LOG_HEALTH with water=5
+(the new total), not 2. Same for steps. If nothing's logged yet today,
+their stated number IS the total.
 
 EXAMPLES (illustrating the ACTION format — don't copy the reply wording verbatim every time, vary it naturally like a real person would):
 User: swiggy order cost me 500 bucks, ugh
@@ -102,6 +114,19 @@ Nice, running's marked done 🔥 streak's still alive
 User: wanna save up for a goa trip, maybe 50k
 → ACTION:CREATE_GOAL:Goa Trip:50000:2025-12-31
 Goa Trip goal is up — ₹50k target. ~₹4,167/month gets you there by December.
+
+User: had 2 glasses of water
+→ ACTION:LOG_HEALTH:0:2:0
+(or the running total if context shows water already logged today — see INCREMENTAL LOGGING)
+Logged — 2 glasses down today 💧
+
+User: i gave 20000 to rahul at 2% interest, need to collect on the 5th every month
+→ ACTION:LOG_LENDING:given:Rahul:20000:2:5
+Got it — ₹20,000 to Rahul at 2%/month, I'll nudge you every 5th to check in on it.
+
+User: had my lunch
+→ ACTION:LOG_MEAL:Meal:lunch:0
+Logged lunch. Want to tell me what you had for a more accurate calorie count?
 
 ╔══════════════════════════════════════╗
 ║      YOU'RE AN AGENT, NOT A BOT       ║
@@ -265,6 +290,12 @@ def get_context(phone, message=None):
             related_health = _rag.format_matches("health_logs", _rag.hybrid_search(short, message, "health_logs", limit=2))
             if related_health:
                 ctx_parts.append("Relevant past health logs (matched to this question):\n  " + "\n  ".join(related_health))
+            related_meals = _rag.format_matches("meals", _rag.hybrid_search(short, message, "meals", limit=2))
+            if related_meals:
+                ctx_parts.append("Relevant meals:\n  " + "\n  ".join(related_meals))
+            related_lending = _rag.format_matches("lending", _rag.hybrid_search(short, message, "lending", limit=3))
+            if related_lending:
+                ctx_parts.append("Relevant lending/borrowing:\n  " + "\n  ".join(related_lending))
 
         habits = sb_get(f"habits?phone=eq.{short}&select=name,icon,current_streak&order=current_streak.desc&limit=8")
         if habits:
@@ -292,6 +323,15 @@ def get_context(phone, message=None):
         bills = sb_get(f"bills_and_dues?phone=eq.{short}&status=neq.paid&select=name,amount,due_date&order=due_date.asc&limit=3")
         if bills:
             ctx_parts.append("Upcoming bills: " + ", ".join(f"{b.get('name','')} ₹{b.get('amount',0)}" for b in bills))
+
+        lending = sb_get(f"lending?user_phone=eq.{short}&status=eq.pending&select=type,person_name,amount,has_interest,interest_rate,due_date&limit=6")
+        if lending:
+            lent = [l for l in lending if l.get("type") == "given"]
+            borrowed = [l for l in lending if l.get("type") == "taken"]
+            if lent:
+                ctx_parts.append("Money lent out (pending): " + ", ".join(f"₹{l.get('amount',0)} to {l.get('person_name','')}" + (f" ({l.get('interest_rate')}%)" if l.get('has_interest') else "") + (f", collect {l.get('due_date')}" if l.get('due_date') else "") for l in lent))
+            if borrowed:
+                ctx_parts.append("Money borrowed (pending): " + ", ".join(f"₹{l.get('amount',0)} from {l.get('person_name','')}" for l in borrowed))
 
         memories = sb_get(f"viya_memory?phone=eq.{short}&select=content&order=importance.desc&limit=5")
         if memories:
@@ -397,6 +437,37 @@ def execute_actions(action_lines, phone):
                 if weight: data["weight"] = weight
                 sb_post("health_logs", data, upsert=True)
                 executed.append({"type": "health", "steps": steps, "water": water, "weight": weight})
+
+            elif atype == "LOG_MEAL" and len(parts) >= 2:
+                name = parts[1]
+                meal_type = parts[2] if len(parts) > 2 and parts[2] else "snack"
+                calories = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 0
+                sb_post("meals", {"phone": short, "meal_date": TODAY, "meal_type": meal_type, "name": name, "calories": calories})
+                executed.append({"type": "meal", "name": name, "meal_type": meal_type, "calories": calories})
+
+            elif atype == "LOG_LENDING" and len(parts) >= 3:
+                lend_type = parts[1].lower() if parts[1].lower() in ("given", "taken") else "given"
+                person = parts[2]
+                amount = float(parts[3]) if len(parts) > 3 and parts[3] else 0
+                interest_rate = float(parts[4]) if len(parts) > 4 and parts[4] else 0
+                collect_day = int(parts[5]) if len(parts) > 5 and parts[5].isdigit() and parts[5] != "0" else None
+                due_date = None
+                if collect_day:
+                    year, month = _NOW.year, _NOW.month
+                    last_day = calendar.monthrange(year, month)[1]
+                    candidate = datetime(year, month, min(collect_day, last_day))
+                    if candidate.date() < _NOW.date():
+                        month, year = (month + 1, year) if month < 12 else (1, year + 1)
+                        last_day = calendar.monthrange(year, month)[1]
+                        candidate = datetime(year, month, min(collect_day, last_day))
+                    due_date = candidate.strftime("%Y-%m-%d")
+                sb_post("lending", {
+                    "user_phone": short, "type": lend_type, "person_name": person, "amount": amount,
+                    "has_interest": interest_rate > 0, "interest_rate": interest_rate, "interest_type": "monthly",
+                    "due_date": due_date, "reminder_enabled": bool(collect_day),
+                    "reminder_frequency": "monthly" if collect_day else "weekly", "status": "pending",
+                })
+                executed.append({"type": "lending", "person": person, "amount": amount, "lend_type": lend_type})
 
             elif atype == "REMEMBER" and len(parts) >= 3:
                 key = parts[1]
