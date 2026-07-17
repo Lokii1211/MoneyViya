@@ -190,11 +190,24 @@ def _lexical_search(phone, table, query, limit):
     return _sb_get(f"{table}?{cfg.phone_col}=eq.{phone}&fts=plfts.{quote(query)}&select={cfg.select}&limit={limit}")
 
 
+# Below this cosine similarity, a "match" is noise, not signal — nearest-
+# neighbor search always returns *something*, even when nothing in the
+# table is actually related to the query. Without this floor, the weakest
+# available row still wins and gets presented to the model as "relevant,"
+# which is exactly what caused a real bug: a portfolio question pulled in
+# unrelated news article entities because they were the closest vectors
+# available, not because they were actually close. Empirically, genuinely
+# related content with text-embedding-3-small tends to score well above
+# this; unrelated content clusters below it.
+MIN_SIMILARITY = 0.25
+
+
 def _vector_search(phone, table, query_embedding, limit):
     if not query_embedding:
         return []
     cfg = TABLE_CONFIG[table]
-    return _sb_rpc(cfg.match_fn, {"query_embedding": query_embedding, "match_phone": phone, "match_count": limit})
+    rows = _sb_rpc(cfg.match_fn, {"query_embedding": query_embedding, "match_phone": phone, "match_count": limit})
+    return [r for r in rows if (r.get("similarity") or 0) >= MIN_SIMILARITY]
 
 
 def _fuse(lexical, vector, k=60):
@@ -213,16 +226,24 @@ def _fuse(lexical, vector, k=60):
     return [rows_by_id[rid] for rid in ranked_ids]
 
 
-def hybrid_search(phone, query, table, limit=4, exclude_ids=None):
+def hybrid_search(phone, query, table, limit=4, exclude_ids=None, query_embedding=None):
     """
     Hybrid BM25 + vector retrieval for one table, scoped to a single user.
     Returns a list of raw rows (dicts), ranked by fused relevance.
+
+    `query_embedding`: pass the result of embed_query(message) once per chat
+    turn and reuse it across every hybrid_search()/news_search() call for
+    that turn. get_context() calls this for up to ~11 tables per message —
+    without reusing the embedding, that's up to 11 separate OpenAI calls to
+    embed the exact same text. If omitted, this embeds the query itself
+    (kept for any other caller), but every call site in chat.py/whatsapp.py
+    should pass it explicitly.
     """
     if not phone or not query or not query.strip() or table not in TABLE_CONFIG:
         return []
     try:
         backfill_embeddings(phone, table)
-        query_vec = embed(query)
+        query_vec = query_embedding if query_embedding is not None else embed(query)
         lexical = _lexical_search(phone, table, query, limit * 2)
         vector = _vector_search(phone, table, query_vec, limit * 2)
         fused = _fuse(lexical, vector)
@@ -232,6 +253,13 @@ def hybrid_search(phone, query, table, limit=4, exclude_ids=None):
     except Exception as e:
         print(f"[RAG hybrid_search] {table}: {e}")
         return []
+
+
+def embed_query(query):
+    """Call once per chat turn, pass the result to every hybrid_search()/
+    news_search() call for that turn instead of letting each one re-embed
+    the same text independently."""
+    return embed(query)
 
 
 def format_matches(table, rows):
@@ -245,12 +273,13 @@ def format_matches(table, rows):
 # ── News (Phase 2) — global, not scoped to one user, so it's a separate path
 # from the per-user hybrid_search() above rather than reusing TABLE_CONFIG. ──
 
-def news_search(query, limit=3):
-    """Hybrid BM25 + vector search over news_articles (ingested by cron/market-news.py)."""
+def news_search(query, limit=3, query_embedding=None):
+    """Hybrid BM25 + vector search over news_articles (ingested by cron/market-news.py).
+    Pass the same query_embedding used for hybrid_search() calls this turn — see embed_query()."""
     if not query or not query.strip():
         return []
     try:
-        query_vec = embed(query)
+        query_vec = query_embedding if query_embedding is not None else embed(query)
         lexical = _sb_get(f"news_articles?fts=plfts.{quote(query)}&select=id,title,summary,published_at,tags&order=published_at.desc&limit={limit*2}")
         vector = _vector_search_news(query_vec, limit * 2) if query_vec else []
         return _fuse(lexical, vector)[:limit]
@@ -262,7 +291,14 @@ def news_search(query, limit=3):
 def _vector_search_news(query_embedding, limit):
     if not query_embedding:
         return []
-    return _sb_rpc("match_news", {"query_embedding": query_embedding, "match_count": limit})
+    rows = _sb_rpc("match_news", {"query_embedding": query_embedding, "match_count": limit})
+    # News is a global, unscoped corpus (unlike per-user tables, where if
+    # anything matches at all it's usually at least tangentially relevant) —
+    # most articles are unrelated to any given question, so hold this one to
+    # a stricter floor than MIN_SIMILARITY to avoid the exact bug this was
+    # built to prevent (an unrelated stock name getting cited as the user's
+    # own holding just because it was the nearest available vector).
+    return [r for r in rows if (r.get("similarity") or 0) >= 0.30]
 
 
 def format_news(rows):

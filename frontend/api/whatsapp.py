@@ -227,11 +227,12 @@ def get_context(phone, message=None):
         # Hybrid retrieval (BM25 + vector) — same retriever chat.py uses, see
         # docs/AI_AGENTS_RAG_PRD.md. Degrades to lexical-only without OPENAI_API_KEY.
         if message:
+            q_vec = _rag.embed_query(message)  # reused across both calls below — see chat.py's identical fix
             recent_ids = {t.get("id") for t in txns}
-            related_txns = _rag.format_matches("transactions", _rag.hybrid_search(short, message, "transactions", limit=2, exclude_ids=recent_ids))
+            related_txns = _rag.format_matches("transactions", _rag.hybrid_search(short, message, "transactions", limit=2, exclude_ids=recent_ids, query_embedding=q_vec))
             if related_txns:
                 ctx.append("Relevant past: " + " | ".join(related_txns))
-            related_news = _rag.format_news(_rag.news_search(message, limit=1))
+            related_news = _rag.format_news(_rag.news_search(message, limit=1, query_embedding=q_vec))
             if related_news:
                 ctx.append("News: " + " | ".join(related_news))
     except Exception as e:

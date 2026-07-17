@@ -328,11 +328,18 @@ def get_context(phone, message=None):
         # beyond the "last 5" window above. Degrades to lexical-only without an
         # OPENAI_API_KEY, and no-ops entirely if `message` isn't passed.
         if message:
+            # Embed the query ONCE and reuse it across every table below —
+            # previously each of these ~11 hybrid_search/news_search calls
+            # independently re-embedded the identical message text, meaning
+            # a single chat turn fired up to 11 redundant OpenAI calls for
+            # the exact same embedding.
+            q_vec = _rag.embed_query(message)
+
             recent_ids = {t.get("id") for t in txns}
-            related_txns = _rag.format_matches("transactions", _rag.hybrid_search(short, message, "transactions", limit=3, exclude_ids=recent_ids))
+            related_txns = _rag.format_matches("transactions", _rag.hybrid_search(short, message, "transactions", limit=3, exclude_ids=recent_ids, query_embedding=q_vec))
             if related_txns:
                 ctx_parts.append("Relevant past transactions (matched to this question):\n  " + "\n  ".join(related_txns))
-            related_goal_rows = _rag.hybrid_search(short, message, "goals", limit=2)
+            related_goal_rows = _rag.hybrid_search(short, message, "goals", limit=2, query_embedding=q_vec)
             related_goals = _rag.format_matches("goals", related_goal_rows)
             if related_goals:
                 ctx_parts.append("Relevant goals:\n  " + "\n  ".join(related_goals))
@@ -340,34 +347,34 @@ def get_context(phone, message=None):
                     kg = _rag.format_kg(_rag.kg_walk(short, f"goal:{g.get('id')}"))
                     if kg:
                         ctx_parts.append(f"Why '{g.get('name','')}' may be stuck: " + "; ".join(kg))
-            related_bills = _rag.format_matches("bills_and_dues", _rag.hybrid_search(short, message, "bills_and_dues", limit=2))
+            related_bills = _rag.format_matches("bills_and_dues", _rag.hybrid_search(short, message, "bills_and_dues", limit=2, query_embedding=q_vec))
             if related_bills:
                 ctx_parts.append("Relevant bills:\n  " + "\n  ".join(related_bills))
-            related_news = _rag.format_news(_rag.news_search(message, limit=2))
+            related_news = _rag.format_news(_rag.news_search(message, limit=2, query_embedding=q_vec))
             if related_news:
                 ctx_parts.append("Relevant market news (cite naturally if it's actually useful here, don't force it):\n  " + "\n  ".join(related_news))
-            related_habits = _rag.format_matches("habits", _rag.hybrid_search(short, message, "habits", limit=2))
+            related_habits = _rag.format_matches("habits", _rag.hybrid_search(short, message, "habits", limit=2, query_embedding=q_vec))
             if related_habits:
                 ctx_parts.append("Relevant habits:\n  " + "\n  ".join(related_habits))
-            related_health = _rag.format_matches("health_logs", _rag.hybrid_search(short, message, "health_logs", limit=2))
+            related_health = _rag.format_matches("health_logs", _rag.hybrid_search(short, message, "health_logs", limit=2, query_embedding=q_vec))
             if related_health:
                 ctx_parts.append("Relevant past health logs (matched to this question):\n  " + "\n  ".join(related_health))
-            related_meals = _rag.format_matches("meals", _rag.hybrid_search(short, message, "meals", limit=2))
+            related_meals = _rag.format_matches("meals", _rag.hybrid_search(short, message, "meals", limit=2, query_embedding=q_vec))
             if related_meals:
                 ctx_parts.append("Relevant meals:\n  " + "\n  ".join(related_meals))
-            related_lending = _rag.format_matches("lending", _rag.hybrid_search(short, message, "lending", limit=3))
+            related_lending = _rag.format_matches("lending", _rag.hybrid_search(short, message, "lending", limit=3, query_embedding=q_vec))
             if related_lending:
                 ctx_parts.append("Relevant lending/borrowing:\n  " + "\n  ".join(related_lending))
-            related_investments = _rag.format_matches("investments", _rag.hybrid_search(short, message, "investments", limit=3))
+            related_investments = _rag.format_matches("investments", _rag.hybrid_search(short, message, "investments", limit=3, query_embedding=q_vec))
             if related_investments:
                 ctx_parts.append("Relevant investments:\n  " + "\n  ".join(related_investments))
-            related_medicines = _rag.format_matches("medicines", _rag.hybrid_search(short, message, "medicines", limit=2))
+            related_medicines = _rag.format_matches("medicines", _rag.hybrid_search(short, message, "medicines", limit=2, query_embedding=q_vec))
             if related_medicines:
                 ctx_parts.append("Relevant medicines:\n  " + "\n  ".join(related_medicines))
-            related_journal = _rag.format_matches("journal", _rag.hybrid_search(short, message, "journal", limit=2))
+            related_journal = _rag.format_matches("journal", _rag.hybrid_search(short, message, "journal", limit=2, query_embedding=q_vec))
             if related_journal:
                 ctx_parts.append("Relevant journal entries:\n  " + "\n  ".join(related_journal))
-            related_emails = _rag.format_matches("emails", _rag.hybrid_search(short, message, "emails", limit=2))
+            related_emails = _rag.format_matches("emails", _rag.hybrid_search(short, message, "emails", limit=2, query_embedding=q_vec))
             if related_emails:
                 ctx_parts.append("Relevant emails (from connected Gmail, if any):\n  " + "\n  ".join(related_emails))
 
