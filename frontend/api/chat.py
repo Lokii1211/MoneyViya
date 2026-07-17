@@ -435,6 +435,16 @@ def execute_actions(action_lines, phone):
         return []
     executed = []
 
+    # transactions/goals/habits all have FOREIGN KEY (phone) REFERENCES
+    # users(phone) — confirmed live: without a users row already existing,
+    # a first-time WhatsApp/chat user's very first expense/income/goal/habit
+    # silently failed (caught only because of the ok-tracking added above),
+    # while newer tables without this FK worked fine. phone is the PK on
+    # users, so this upsert only ever touches the phone column on conflict —
+    # it can't clobber name/income/etc. on an existing user. Idempotent,
+    # cheap, safe to run before every action batch.
+    sb_post("users", {"phone": short}, upsert=True)
+
     for raw_line in action_lines:
         line = raw_line.strip()
         if not line.startswith("ACTION:"):

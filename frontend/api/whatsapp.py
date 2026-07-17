@@ -245,6 +245,14 @@ def execute_actions(action_lines, phone):
     short = norm_phone(phone)
     if not short: return []
     executed = []
+
+    # See chat.py's identical fix — transactions/goals/habits have
+    # FOREIGN KEY (phone) REFERENCES users(phone); without this, a
+    # first-time WhatsApp user's very first expense/goal/habit silently
+    # failed. phone is the PK on users so this can't clobber an existing
+    # user's other fields.
+    sb_post("users", {"phone": short}, upsert=True)
+
     for raw_line in action_lines:
         line = raw_line.strip()
         if not line.startswith("ACTION:"): continue
