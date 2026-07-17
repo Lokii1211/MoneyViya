@@ -1568,9 +1568,9 @@ LANGUAGE sql STABLE AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION match_medicines(query_embedding vector(1536), match_phone text, match_count int DEFAULT 5)
-RETURNS TABLE(id uuid, name text, dosage text, time text, frequency text, active boolean, similarity float)
+RETURNS TABLE(id uuid, name text, dosage text, "time" text, frequency text, active boolean, similarity float)
 LANGUAGE sql STABLE AS $$
-  SELECT id, name, dosage, time, frequency, active,
+  SELECT id, name, dosage, medicines."time", frequency, active,
          1 - (embedding <=> query_embedding) AS similarity
   FROM medicines
   WHERE phone = match_phone AND embedding IS NOT NULL
