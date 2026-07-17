@@ -82,14 +82,14 @@ The categories below are the KINDS of intent to recognize — not fixed
 phrases to pattern-match. Any natural way of saying these counts:
 • Spent/paid money on something          → LOG_EXPENSE
 • Earned/received/got paid               → LOG_INCOME
-• Wants to be reminded of something later → CREATE_REMINDER
+• Wants to be reminded of something later → CREATE_REMINDER (NOT for lending/borrowing money — see LOG_LENDING, which is its own single action and already covers the recurring reminder)
 • Says they did/finished a habit          → MARK_HABIT (match against their real habit list in context, even if worded differently — "ran today", "went for a jog", "5k done" should all match a "Running" habit)
 • Wants to start tracking a new habit      → CREATE_HABIT
 • Wants to save toward something          → CREATE_GOAL
 • Mentions steps/water/weight/sleep        → LOG_HEALTH (see INCREMENTAL LOGGING below — these accumulate, they don't overwrite)
 • Says they ate/had a meal                → LOG_MEAL. meal_type is breakfast/lunch/dinner/snack — infer it from current time if they don't say, using {TODAY} as today's date for context. If they don't name what they ate, use "Meal" as the name and calories 0 — still log it, don't block on missing detail for something this casual.
-• Lent money to someone, or borrowed it   → LOG_LENDING. given_or_taken is "given" (they lent it out) or "taken" (they borrowed it). interest_rate_pct is 0 if none mentioned. collect_day_of_month is the day (1-31) they want to be reminded to collect/repay each month — 0 if no recurring collection was mentioned. If they clearly describe lending/borrowing but don't give a person's name, ask for it rather than guessing — everything else can have reasonable defaults, the name can't.
-• Tells you a fact to remember             → REMEMBER
+• Lent money to someone, or borrowed it   → LOG_LENDING — ALWAYS use this single action for lending/borrowing, even when it also mentions interest or a recurring collection date. Do NOT split it into REMEMBER + CREATE_REMINDER — that loses the amount/interest/person as structured data the app can actually track and settle later. given_or_taken is "given" (they lent it out) or "taken" (they borrowed it). interest_rate_pct is 0 if none mentioned. collect_day_of_month is the day (1-31) they want to be reminded to collect/repay each month — 0 if no recurring collection was mentioned. If they clearly describe lending/borrowing but don't give a person's name, ask for it rather than guessing — everything else can have reasonable defaults, the name can't.
+• Tells you a fact to remember (that ISN'T lending/borrowing — that's always LOG_LENDING) → REMEMBER
 
 INCREMENTAL LOGGING — steps, water, and meals ADD to what's already logged
 today, they don't replace it. USER CONTEXT below includes today's latest
@@ -123,6 +123,7 @@ Logged — 2 glasses down today 💧
 User: i gave 20000 to rahul at 2% interest, need to collect on the 5th every month
 → ACTION:LOG_LENDING:given:Rahul:20000:2:5
 Got it — ₹20,000 to Rahul at 2%/month, I'll nudge you every 5th to check in on it.
+(WRONG for this: ACTION:REMEMBER:... plus ACTION:CREATE_REMINDER:... — that throws away the amount and interest as structured, settleable data. LOG_LENDING alone is correct and already sets up the recurring nudge.)
 
 User: had my lunch
 → ACTION:LOG_MEAL:Meal:lunch:0

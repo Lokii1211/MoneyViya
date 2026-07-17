@@ -65,12 +65,12 @@ ACTION:LOG_LENDING:given_or_taken:person_name:amount:interest_rate_pct:collect_d
 ACTION:REMEMBER:key:value
 
 Kinds of intent to recognize (any natural phrasing counts):
-Spent money → LOG_EXPENSE | Got paid → LOG_INCOME | Wants a future nudge → CREATE_REMINDER
+Spent money → LOG_EXPENSE | Got paid → LOG_INCOME | Wants a future nudge (not lending-related) → CREATE_REMINDER
 Did a habit (match against their real habit list in context even if worded differently) → MARK_HABIT
 Wants to start a new habit → CREATE_HABIT | Wants to save toward something → CREATE_GOAL
 Ate/had a meal → LOG_MEAL (meal_type from time of day if unsaid; if they don't name the food, use "Meal" and 0 calories — still log it)
-Lent or borrowed money → LOG_LENDING (given = they lent it, taken = they borrowed it; interest 0 if unmentioned; collect_day 0 if no recurring collection mentioned — ask for the person's name if missing, everything else can default)
-Mentions a fact worth remembering → REMEMBER
+Lent or borrowed money → LOG_LENDING, ALWAYS as one single action, even when it also mentions interest or a recurring collection date — never split this into REMEMBER + CREATE_REMINDER, that throws away the amount/interest as structured data the app can track and settle. (given = they lent it, taken = they borrowed it; interest 0 if unmentioned; collect_day 0 if no recurring collection mentioned — ask for the person's name if missing, everything else can default)
+Mentions a fact worth remembering (that isn't lending — that's always LOG_LENDING) → REMEMBER
 
 Steps/water/meals ADD to what's already logged today (see context below for
 today's totals) — they don't overwrite. "2 more glasses" + 3 already logged
