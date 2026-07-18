@@ -46,6 +46,7 @@ export default function Home() {
   const [checkins, setCheckins] = useState([])
   const [goals, setGoals] = useState([])
   const [bills, setBills] = useState([])
+  const [reminders, setReminders] = useState([])
   const [loading, setLoading] = useState(true)
   const nav = useNavigate()
   const period = getPeriod()
@@ -57,11 +58,12 @@ export default function Home() {
     if (phone) {
       Promise.all([
         api.getUser(phone), api.getHabits(phone), api.getCheckins(phone),
-        api.getGoals(phone), api.getBills(phone),
-      ]).then(([d, h, c, g, b]) => {
+        api.getGoals(phone), api.getBills(phone), api.getUserReminders(phone),
+      ]).then(([d, h, c, g, b, r]) => {
         if (d) { setData(d); setUser(p => ({ ...p, ...d })) }
         if (h) setHabits(h); if (c) setCheckins(c)
         if (g) setGoals(g); if (b) setBills(b)
+        if (r) setReminders(r)
         setLoading(false)
       }).catch(() => setLoading(false))
     }
@@ -83,13 +85,31 @@ export default function Home() {
   const animatedIncome = useCountUp(income, 700)
   const animatedExpense = useCountUp(expense, 700)
 
+  // Reminders due today — same freq/weekday/month_date matching the WhatsApp
+  // cron uses server-side, so the brief agrees with what's about to fire.
+  const today = new Date()
+  const todayWeekday = today.toLocaleDateString('en-US', { weekday: 'long' })
+  const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+  const remindersToday = reminders.filter(r => {
+    if (!r.enabled) return false
+    if (r.freq === 'weekly') return r.weekday === todayWeekday
+    if (r.freq === 'monthly') return Math.min(r.month_date || 1, lastDayOfMonth) === today.getDate()
+    if (r.freq === 'once') return r.fire_date === today.toISOString().slice(0, 10)
+    return true // daily
+  })
+
   const briefItems = []
   if (moneyLeft < 0) briefItems.push({ icon: '\u{1F534}', text: `Over budget by ₹${Math.abs(moneyLeft)} — review expenses`, to: '/expenses' })
   else if (moneyLeft < 200) briefItems.push({ icon: '⚠️', text: `Only ₹${moneyLeft} left today — spend wisely!`, to: '/expenses' })
   const overdueBills = bills.filter(b => b.status !== 'paid' && b.due_date && new Date(b.due_date) < Date.now())
   const dueSoonBills = bills.filter(b => b.status !== 'paid' && b.due_date && !overdueBills.includes(b) && (new Date(b.due_date) - Date.now()) / 86400000 <= 2)
-  if (overdueBills.length) briefItems.push({ icon: '\u{1F9FE}', text: `${overdueBills.length} bill${overdueBills.length > 1 ? 's' : ''} overdue — pay now`, to: '/bills' })
+  const overdueEmis = overdueBills.filter(b => b.bill_type === 'emi')
+  const dueSoonEmis = dueSoonBills.filter(b => b.bill_type === 'emi')
+  if (overdueEmis.length) briefItems.push({ icon: '\u{1F3E6}', text: `${overdueEmis.length} EMI${overdueEmis.length > 1 ? 's' : ''} overdue — pay now`, to: '/bills' })
+  else if (overdueBills.length) briefItems.push({ icon: '\u{1F9FE}', text: `${overdueBills.length} bill${overdueBills.length > 1 ? 's' : ''} overdue — pay now`, to: '/bills' })
+  else if (dueSoonEmis.length) briefItems.push({ icon: '\u{1F3E6}', text: `${dueSoonEmis.map(b => b.name).slice(0, 2).join(', ')} EMI due soon`, to: '/bills' })
   else if (dueSoonBills.length) briefItems.push({ icon: '\u{1F9FE}', text: `${dueSoonBills.map(b => b.name).slice(0, 2).join(', ')} due soon`, to: '/bills' })
+  if (remindersToday.length) briefItems.push({ icon: '\u{1F514}', text: `${remindersToday.length} reminder${remindersToday.length > 1 ? 's' : ''} today: ${remindersToday.slice(0, 2).map(r => r.title).join(', ')}`, to: '/reminders' })
   if (totalHabits > 0 && todayDone < totalHabits) briefItems.push({ icon: '\u{1F525}', text: `${totalHabits - todayDone} habit${totalHabits - todayDone > 1 ? 's' : ''} left today${maxStreak > 0 ? ` — keep your ${maxStreak}-day streak!` : ''}`, to: '/habits' })
   else if (maxStreak > 0) briefItems.push({ icon: '\u{1F525}', text: `${maxStreak}-day streak — don't break it!`, to: '/habits' })
   if (goals.length > 0) {

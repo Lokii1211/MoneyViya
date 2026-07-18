@@ -193,17 +193,39 @@ export default function Reminders() {
   const [notifPerm, setNotifPerm] = useState(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   )
-  const timersRef = useRef({})
+  // Tracks which reminder IDs already fired today (id -> 'YYYY-MM-DD'), so
+  // the 30s poll below can't double-fire the same reminder across ticks.
+  const firedTodayRef = useRef({})
 
   /* Load on mount */
   useEffect(() => { if (phone) { load(); loadSmartAlerts() } }, [phone])
 
-  /* 30-second poll for due in-app notifications */
+  // Whether r is actually due *today* given its frequency — the old version
+  // of this check only looked at time-of-day and ignored freq entirely, so
+  // a "weekly" or "monthly" reminder would fire every single day at its set
+  // time instead of only on the configured weekday/day-of-month.
+  const isDueToday = (r, now) => {
+    if (r.freq === 'weekly') return r.weekday === now.toLocaleDateString('en-US', { weekday: 'long' })
+    if (r.freq === 'monthly') {
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+      return Math.min(r.month_date || 1, lastDay) === now.getDate()
+    }
+    if (r.freq === 'once') return r.fire_date === now.toISOString().slice(0, 10)
+    return true // daily
+  }
+
+  /* 30-second poll for due in-app notifications — only fires while this
+     tab/PWA is open and running (there is no real background push here),
+     so this is a best-effort convenience layer; WhatsApp is the channel
+     that still works with the app fully closed. */
   useEffect(() => {
     const id = setInterval(() => {
       if (!reminders.length || Notification.permission !== 'granted') return
       const now = new Date()
+      const todayStr = now.toISOString().slice(0, 10)
       reminders.filter(r => r.enabled).forEach(r => {
+        if (firedTodayRef.current[r.id] === todayStr) return
+        if (!isDueToday(r, now)) return
         const [h, m] = (r.time || '09:00').split(':').map(Number)
         const t = new Date(); t.setHours(h, m, 0, 0)
         if (t - now >= 0 && t - now < 60000) {
@@ -211,14 +233,12 @@ export default function Reminders() {
             body: r.description || r.desc || 'Time for your reminder!',
             icon: '/logo-192.png', tag: `rc-${r.id}`,
           })
+          firedTodayRef.current[r.id] = todayStr
         }
       })
     }, 30000)
     return () => clearInterval(id)
   }, [reminders])
-
-  /* Cleanup timers on unmount */
-  useEffect(() => () => Object.values(timersRef.current).forEach(clearTimeout), [])
 
   const load = async () => {
     setLoading(true)
@@ -241,37 +261,9 @@ export default function Reminders() {
     setSmartAlerts(prev => prev.filter(a => a.id !== id))
   }
 
-  const scheduleLocalNotif = (r) => {
-    if (Notification.permission !== 'granted' || !r.id) return
-    const [h, m] = (r.time || '09:00').split(':').map(Number)
-    const now = new Date(), t = new Date()
-
-    if (r.freq === 'once' && r.fire_date) {
-      const [yr, mo, da] = r.fire_date.split('-').map(Number)
-      t.setFullYear(yr, mo - 1, da)
-    }
-    t.setHours(h, m, 0, 0)
-    if (t <= now) {
-      if (r.freq !== 'once') t.setDate(t.getDate() + 1)
-      else return
-    }
-    const delay = t - now
-    if (delay > 0 && delay < 86400000) {
-      clearTimeout(timersRef.current[r.id])
-      timersRef.current[r.id] = setTimeout(() => {
-        new Notification(`${r.icon || '⏰'} ${r.title}`, {
-          body: r.description || 'Reminder from Viya!',
-          icon: '/logo-192.png', tag: `r-${r.id}`, requireInteraction: true,
-        })
-        if (r.freq === 'daily') scheduleLocalNotif(r)
-      }, delay)
-    }
-  }
-
   const requestNotif = async () => {
     const p = await Notification.requestPermission()
     setNotifPerm(p)
-    if (p === 'granted') reminders.filter(r => r.enabled).forEach(scheduleLocalNotif)
   }
 
   const addReminder = async (preset = null) => {
@@ -300,26 +292,20 @@ export default function Reminders() {
       setShowAdd(false); setForm(EMPTY_FORM); return
     }
     setSaving(true)
-    const created = await api.createUserReminder(data)
-    if (created) scheduleLocalNotif({ ...data, id: created.id })
+    await api.createUserReminder(data)
     setForm(EMPTY_FORM); setShowAdd(false); setSaving(false)
     load()
   }
 
   const removeReminder = async (id) => {
-    clearTimeout(timersRef.current[id]); delete timersRef.current[id]
+    delete firedTodayRef.current[id]
     await api.deleteUserReminder(id)
     load()
   }
 
   const toggleReminder = async (id, current) => {
-    clearTimeout(timersRef.current[id]); delete timersRef.current[id]
-    const updated = !current
-    await api.updateUserReminder(id, { enabled: updated })
-    if (updated) {
-      const r = reminders.find(x => x.id === id)
-      if (r) scheduleLocalNotif({ ...r, enabled: true })
-    }
+    delete firedTodayRef.current[id]
+    await api.updateUserReminder(id, { enabled: !current })
     load()
   }
 
@@ -492,7 +478,7 @@ export default function Reminders() {
 
                 <div className="rm-wa-hint">
                   <MessageCircle size={10} />
-                  Fires on WhatsApp at the exact minute — even when the app is closed
+                  Fires on WhatsApp within ~15 min — even when the app is closed
                 </div>
               </div>
             </motion.div>
@@ -545,11 +531,11 @@ export default function Reminders() {
           </div>
           <div className="rm-channel-pill">
             <Smartphone size={11} style={{ color: '#22D3EE' }} />
-            <span>Browser push</span>
+            <span>In-app alert</span>
           </div>
         </div>
         <p className="rm-stats-sub">
-          Reminders fire on WhatsApp to the exact minute — even when the app is closed.
+          Reminders fire on WhatsApp within ~15 min — even when the app is closed.
         </p>
       </motion.div>
 
@@ -600,7 +586,7 @@ export default function Reminders() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 13 }}>Enable browser notifications</div>
             <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
-              Get in-app push notifications even when this tab is in the background
+              Get an alert here while Viya is open — WhatsApp still reaches you when it's closed
             </div>
           </div>
           <button

@@ -1,26 +1,18 @@
 # Viya — https://heyviya.vercel.app
 # Public marketing/legal pages are open to all crawlers, including AI
 # answer-engine bots (GEO/AEO) — we want Viya cited and discoverable there.
-# Everything behind login (the actual app UI) is opted out since there's
-# nothing for a crawler to usefully index — it's a private per-user SPA.
+# Everything else is the private per-user app UI (behind login) — nothing
+# there is useful for a crawler to index, so it's blocked by default and
+# only the pages below are explicitly re-allowed. This is deny-by-default
+# rather than an enumerated Disallow list, so new app routes stay blocked
+# automatically without needing this file updated every time one is added.
 
 User-agent: *
+Disallow: /
 Allow: /$
 Allow: /privacy
 Allow: /terms
 Allow: /help
 Allow: /auth
-Disallow: /chat
-Disallow: /expenses
-Disallow: /budget
-Disallow: /goals
-Disallow: /bills
-Disallow: /wealth
-Disallow: /report
-Disallow: /profile
-Disallow: /settings
-Disallow: /onboarding
-Disallow: /notifications
-Disallow: /search
 
 Sitemap: https://heyviya.vercel.app/sitemap.xml

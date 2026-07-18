@@ -1,12 +1,13 @@
 import { HelpCircle, MessageCircle, Mail, ChevronRight, ExternalLink, Sparkles } from 'lucide-react'
 import { useState } from 'react'
+import { useDocumentMeta } from '../lib/useDocumentMeta'
 
 const FAQS = [
   { q: 'How does Viya track my expenses?', a: 'You can add expenses manually in the app, or simply tell Viya in chat — e.g., "spent ₹200 on food" and it auto-logs it. Via WhatsApp, just send your expenses naturally!' },
   { q: 'Is my financial data safe?', a: 'Absolutely! We use bank-grade encryption (AES-256) and Supabase Row Level Security. Your data is never shared with third parties or advertisers.' },
   { q: 'How does the streak system work?', a: 'Streaks count consecutive days you complete a habit. If you miss a day, the streak resets. Your best streak is always saved so you can try to beat your record!' },
   { q: 'Can I use Viya in my language?', a: 'Yes! During onboarding, select your preferred language. Viya supports English, Hindi, Tamil, Telugu, Kannada, and Malayalam. AI responses adapt to your choice.' },
-  { q: 'How do reminders work?', a: 'Set daily, weekly, or monthly reminders in the Reminders page. You\'ll get browser push notifications at your chosen time. WhatsApp reminders are also sent for critical items!' },
+  { q: 'How do reminders work?', a: 'Set daily, weekly, or monthly reminders in the Reminders page. WhatsApp reminders reach you even with the app closed; keep Viya open in your browser to also get an in-app alert.' },
   { q: 'What AI model does Viya use?', a: 'Viya uses Groq-powered LLaMA-3.3-70B for intelligent responses. It understands your financial context, habits, and goals to give personalized advice.' },
   { q: 'Can I delete my account?', a: 'Yes. Go to Privacy & Security → Data Deletion. Contact us and we\'ll permanently delete all your data within 48 hours.' },
   { q: 'Is Viya free?', a: 'Yes! Viya is completely free. We believe everyone deserves smart financial management tools.' },
@@ -15,6 +16,11 @@ const FAQS = [
 export default function Help() {
   const [expanded, setExpanded] = useState(null)
   const toggle = (id) => setExpanded(expanded === id ? null : id)
+  useDocumentMeta({
+    title: 'Help & FAQ | Viya',
+    description: 'Answers on how Viya tracks expenses, protects your data, and sends reminders — plus how to reach support.',
+    path: '/help',
+  })
 
   return (
     <div className="page">

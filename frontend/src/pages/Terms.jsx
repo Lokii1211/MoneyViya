@@ -1,8 +1,14 @@
 import { ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useDocumentMeta } from '../lib/useDocumentMeta'
 
 export default function Terms() {
   const nav = useNavigate()
+  useDocumentMeta({
+    title: 'Terms of Service | Viya',
+    description: 'The terms governing your use of Viya — an AI life assistant for money, health, and habits, available in the app and on WhatsApp.',
+    path: '/terms',
+  })
   return (
     <div className="page">
       <div className="page-header">

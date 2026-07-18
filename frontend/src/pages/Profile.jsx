@@ -244,13 +244,15 @@ export default function Profile() {
           {/* Profile Hero */}
           <div className="profile-hero">
             <div className="profile-avatar-lg" onClick={() => setShowAvatarPicker(!showAvatarPicker)} style={{cursor:'pointer', position:'relative'}}>
-              {selectedAvatar?.startsWith?.('data:image') ? (
-                <img src={selectedAvatar} alt={name} />
-              ) : selectedAvatar ? (
-                <span style={{fontSize:36}}>{selectedAvatar}</span>
-              ) : (
-                <span>{name.charAt(0).toUpperCase()}</span>
-              )}
+              <div className="profile-avatar-lg-inner">
+                {selectedAvatar?.startsWith?.('data:image') ? (
+                  <img src={selectedAvatar} alt={name} />
+                ) : selectedAvatar ? (
+                  <span style={{fontSize:36}}>{selectedAvatar}</span>
+                ) : (
+                  <span>{name.charAt(0).toUpperCase()}</span>
+                )}
+              </div>
               <div style={{position:'absolute', bottom:-2, right:-2, width:22, height:22, borderRadius:'50%', background:'var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--bg)'}}>
                 <Edit3 size={10} color="#fff"/>
               </div>

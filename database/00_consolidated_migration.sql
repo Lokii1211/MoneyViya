@@ -1621,3 +1621,16 @@ ALTER TABLE lending ADD COLUMN IF NOT EXISTS interest_paid_total NUMERIC DEFAULT
 ALTER TABLE lending ADD COLUMN IF NOT EXISTS last_interest_settled_at TIMESTAMPTZ;
 
 SELECT 'Phase 8 — lending interest-only settlement columns ready ✅' AS status;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- PHASE 9 — Bills/EMI due-date reminders. bills_and_dues already had
+-- due_date/frequency/status/reminder_days, but nothing tracked whether a
+-- reminder had already gone out today, so the cron had no way to dedup —
+-- this is why bill/EMI due dates were never wired into check-reminders.py
+-- at all (only `lending` and `user_reminders` were). Mirrors lending's
+-- last_reminded_at column exactly.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE bills_and_dues ADD COLUMN IF NOT EXISTS last_reminded_at TIMESTAMPTZ;
+
+SELECT 'Phase 9 — bills/EMI reminder dedup column ready ✅' AS status;

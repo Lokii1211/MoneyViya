@@ -455,6 +455,10 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
 .profile-avatar-lg {
   position:relative; display:inline-flex; margin-bottom:14px;
 }
+.profile-avatar-lg-inner {
+  width:80px; height:80px; border-radius:50%; overflow:hidden; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+}
 .profile-avatar-lg span {
   width:80px; height:80px; border-radius:50%;
   background:linear-gradient(135deg,var(--primary),var(--primary-light));

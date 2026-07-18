@@ -14,6 +14,61 @@ GMAIL_REDIRECT_URI = os.getenv("GMAIL_REDIRECT_URI", "https://heyviya.vercel.app
 SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("VITE_SUPABASE_URL", "")).strip()
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY", os.getenv("SUPABASE_KEY", os.getenv("VITE_SUPABASE_ANON_KEY", ""))).strip()
 APP_URL = os.getenv("APP_URL", "https://heyviya.vercel.app")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+
+
+def _categorize_emails(emails):
+    """Classify a batch of emails in ONE Groq call — the previous sync saved
+    every email as category='other'/priority='medium' with no extraction at
+    all (a leftover placeholder), so none of the "AI Insights"/action-item
+    UI in EmailIntelligence.jsx ever had real data to show. One batched call
+    (instead of one per email) keeps this well inside the 30s function
+    timeout. On any failure, callers fall back to the old generic values —
+    the raw email still saves either way."""
+    if not GROQ_API_KEY or not emails:
+        return {}
+    import urllib.request
+    listing = "\n".join(
+        f'{i}. from="{e["from_name"] or e["from_address"]}" subject="{e["subject"]}" snippet="{e["snippet"][:200]}"'
+        for i, e in enumerate(emails)
+    )
+    prompt = (
+        "Classify each email below. Reply with ONLY a JSON array (no prose), one object per line index, in this exact shape:\n"
+        '{"i": <index>, "category": "bill|meeting|delivery|investment|offer|personal|work", '
+        '"priority": "critical|high|medium|low", "action_required": true|false, '
+        '"action_type": "pay_bill|accept_meeting|track_delivery|none", '
+        '"amount": <number or null>, "dueDate": "<YYYY-MM-DD or null>"}\n\n'
+        f"Emails:\n{listing}"
+    )
+    try:
+        payload = json.dumps({
+            "model": "llama-3.3-70b-versatile",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.2,
+            "max_tokens": 1500,
+        }).encode()
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/chat/completions",
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (compatible; MoneyViya/1.0; +https://heyviya.vercel.app)",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=20) as r:
+            content = json.loads(r.read())["choices"][0]["message"]["content"]
+        # Model may wrap the array in prose/markdown fences despite
+        # instructions — pull out the first [...] block defensively.
+        start, end = content.find("["), content.rfind("]")
+        if start == -1 or end == -1:
+            return {}
+        parsed = json.loads(content[start:end + 1])
+        return {item["i"]: item for item in parsed if "i" in item}
+    except Exception as e:
+        print(f"[Gmail Categorize] Error: {e}")
+        return {}
 
 
 def _sb_headers():
@@ -123,9 +178,10 @@ class handler(BaseHTTPRequestHandler):
             self._redirect(f"{APP_URL}/email?error=server_error")
 
     def _sync_emails(self, access_token, phone):
-        """Fetch latest 20 emails and process through AEIE"""
+        """Fetch latest 20 emails, classify them in one batched Groq call, save"""
         try:
             import urllib.request
+            import re
 
             # Fetch message list
             list_req = urllib.request.Request(
@@ -138,9 +194,9 @@ class handler(BaseHTTPRequestHandler):
             messages = msg_list.get("messages", [])
             print(f"[Gmail Sync] Found {len(messages)} messages")
 
+            parsed_emails = []
             for msg_ref in messages[:15]:  # Process max 15
                 try:
-                    # Fetch full message
                     msg_req = urllib.request.Request(
                         f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_ref['id']}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date",
                         headers={"Authorization": f"Bearer {access_token}"},
@@ -148,44 +204,54 @@ class handler(BaseHTTPRequestHandler):
                     with urllib.request.urlopen(msg_req, timeout=10) as resp:
                         msg_data = json.loads(resp.read().decode())
 
-                    # Extract headers
                     headers = {h["name"]: h["value"] for h in msg_data.get("payload", {}).get("headers", [])}
                     subject = headers.get("Subject", "")
                     from_raw = headers.get("From", "")
                     snippet = msg_data.get("snippet", "")
                     gmail_id = msg_data.get("id", "")
-                    received_at = headers.get("Date", "")
 
-                    # Parse from name/email
-                    import re
                     from_match = re.match(r'"?([^"<]*)"?\s*<?([^>]*)>?', from_raw)
                     from_name = from_match.group(1).strip() if from_match else from_raw
                     from_address = from_match.group(2).strip() if from_match else from_raw
 
-                    self._save_email_raw(phone, from_name, from_address, subject, snippet, gmail_id)
-
+                    parsed_emails.append({
+                        "from_name": from_name, "from_address": from_address,
+                        "subject": subject, "snippet": snippet, "gmail_id": gmail_id,
+                    })
                 except Exception as msg_err:
                     print(f"[Gmail Sync] Message error: {msg_err}")
                     continue
 
-            print(f"[Gmail Sync] Processed {len(messages)} emails for {phone}")
+            classifications = _categorize_emails(parsed_emails)
+            for i, email in enumerate(parsed_emails):
+                self._save_email(phone, email, classifications.get(i, {}))
+
+            print(f"[Gmail Sync] Processed {len(parsed_emails)} emails for {phone}")
 
         except Exception as e:
             print(f"[Gmail Sync] Error: {e}")
 
-    def _save_email_raw(self, phone, from_name, from_address, subject, snippet, gmail_id):
-        """Save email directly to Supabase without AEIE"""
+    def _save_email(self, phone, email, classification):
+        """Save an email to Supabase with its (best-effort) AI classification"""
         try:
             import urllib.request
+            extracted = {}
+            if classification.get("amount") is not None:
+                extracted["amount"] = classification["amount"]
+            if classification.get("dueDate"):
+                extracted["dueDate"] = classification["dueDate"]
             data = json.dumps({
                 "phone": phone,
-                "from_name": from_name,
-                "from_address": from_address,
-                "subject": subject[:500],
-                "snippet": snippet[:500],
-                "gmail_id": gmail_id,
-                "category": "other",
-                "priority": "medium",
+                "from_name": email["from_name"],
+                "from_address": email["from_address"],
+                "subject": email["subject"][:500],
+                "snippet": email["snippet"][:500],
+                "gmail_id": email["gmail_id"],
+                "category": classification.get("category") or "other",
+                "priority": classification.get("priority") or "medium",
+                "action_required": bool(classification.get("action_required", False)),
+                "action_type": classification.get("action_type") if classification.get("action_type") != "none" else None,
+                "extracted_data": extracted,
             }).encode()
             req = urllib.request.Request(
                 f"{SUPABASE_URL}/rest/v1/emails",

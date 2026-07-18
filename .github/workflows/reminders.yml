@@ -1,18 +1,26 @@
 name: heyviya Reminders Cron
 
+# Was 2 fixed times/day (08:00 + 21:00 IST) — meant every reminder set for
+# any other time of day could never fire, despite check-reminders.py doing
+# exact-minute matching and the UI promising "fires at the exact minute".
+# Every 15 min gets real reminders (medicine, bills, habit check-ins etc.)
+# firing within 15 min of their set time instead of missing entirely.
+# GitHub Actions scheduled runs are best-effort and can slip a few minutes
+# under load — check-reminders.py now matches against a trailing window
+# instead of an exact HH:MM string so a late run still catches anything
+# due since the last one. For truly per-minute precision, point an
+# external scheduler like cron-job.org (free, no GitHub Actions minutes
+# used) at https://heyviya.vercel.app/api/cron/check-reminders instead.
 on:
   schedule:
-    # 8:00 AM IST = 2:30 AM UTC
-    - cron: '30 2 * * *'
-    # 9:00 PM IST = 3:30 PM UTC
-    - cron: '30 15 * * *'
+    - cron: '*/15 * * * *'
   workflow_dispatch: # Allow manual trigger
 
 jobs:
   send-reminders:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Morning/Evening Reminder
+      - name: Trigger Reminder Check
         run: |
           echo "Triggering heyviya reminder cron..."
           curl -s -o /dev/null -w "HTTP Status: %{http_code}" \

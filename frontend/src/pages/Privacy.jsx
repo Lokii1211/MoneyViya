@@ -1,9 +1,15 @@
 import { Shield, Lock, Eye, Database, Trash2, Download, Mail } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
+import { useDocumentMeta } from '../lib/useDocumentMeta'
 
 export default function Privacy() {
   const nav = useNavigate()
+  useDocumentMeta({
+    title: 'Privacy Policy | Viya',
+    description: 'How Viya stores, encrypts, and protects your financial data — Row Level Security, AES-256 encryption, and what Gmail access is used for.',
+    path: '/privacy',
+  })
 
   const sections = [
     {
