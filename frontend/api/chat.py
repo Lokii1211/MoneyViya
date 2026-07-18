@@ -30,6 +30,11 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("VITE_SUPABASE_URL", "")).strip()
 SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY", os.getenv("VITE_SUPABASE_ANON_KEY", "")).strip()
 
+# TEMP diagnostic only — see call_groq's 429 handler. Not persisted, not
+# shown to users; just a same-process scratch spot so a diagnostic curl
+# can read back the real Groq rate-limit detail. Remove once diagnosed.
+_LAST_429_DIAG = {"info": None}
+
 _NOW = datetime.now()
 TODAY = _NOW.strftime("%Y-%m-%d")
 TOMORROW = (_NOW + timedelta(days=1)).strftime("%Y-%m-%d")
@@ -689,8 +694,17 @@ def call_groq(messages):
             data = json.loads(r.read())
             return data["choices"][0]["message"]["content"], None
     except urllib.error.HTTPError as e:
-        body = e.read().decode()[:200]
+        body = e.read().decode()[:500]
         if e.code == 429:
+            # TEMP diagnostic (kept out of the user-visible reply — real
+            # users are actively hitting this error right now, so it stays
+            # friendly): capture the real Groq rate-limit body/headers
+            # (limit type, used/remaining, reset time) server-side so we can
+            # answer "why is this happening now" with evidence, not a guess.
+            retry_after = e.headers.get("retry-after", "?")
+            limit_hdrs = {k: v for k, v in e.headers.items() if "ratelimit" in k.lower()}
+            print(f"[GROQ 429] retry-after={retry_after} headers={limit_hdrs} body={body}")
+            _LAST_429_DIAG["info"] = f"retry_after={retry_after} {limit_hdrs} {body[:300]}"
             return None, "I'm getting a lot of messages right now — give me a few seconds and try again!"
         return None, f"Groq error {e.code}: {body}"
     except urllib.error.URLError as e:
@@ -814,8 +828,12 @@ class handler(BaseHTTPRequestHandler):
             message = params.get("message", [""])[0]
             if not message:
                 self._respond(400, {"error": "No message"}); return
+            _LAST_429_DIAG["info"] = None
             reply, executed = process_message(phone, message)
-            self._respond(200, {"reply": reply, "actions_executed": executed, "success": True})
+            resp = {"reply": reply, "actions_executed": executed, "success": True}
+            if _LAST_429_DIAG["info"]:
+                resp["debug_429"] = _LAST_429_DIAG["info"]
+            self._respond(200, resp)
         except Exception as e:
             print(f"[CHAT] do_GET failed: {e}")
             self._respond(200, {"reply": "Something went wrong on my end — try that again in a moment.", "actions_executed": [], "success": False})
@@ -845,8 +863,12 @@ class handler(BaseHTTPRequestHandler):
             history = body.get("history", [])
             if not message:
                 self._respond(400, {"error": "No message"}); return
+            _LAST_429_DIAG["info"] = None
             reply, executed = process_message(phone, message, history)
-            self._respond(200, {"reply": reply, "actions_executed": executed, "success": True})
+            resp = {"reply": reply, "actions_executed": executed, "success": True}
+            if _LAST_429_DIAG["info"]:
+                resp["debug_429"] = _LAST_429_DIAG["info"]
+            self._respond(200, resp)
         except Exception as e:
             print(f"[CHAT] do_POST failed: {e}")
             # Respond 200 with a real message instead of a bare 500 — the
