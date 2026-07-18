@@ -1606,3 +1606,18 @@ GRANT EXECUTE ON FUNCTION match_journal(vector, text, int) TO anon, authenticate
 GRANT EXECUTE ON FUNCTION match_emails(vector, text, int) TO anon, authenticated;
 
 SELECT 'Phase 7 — investments + medicines + journal + emails retrieval schema ready ✅' AS status;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- PHASE 8 — Lending: separate "settle this period's interest" from
+-- "settle the whole loan". Someone can pay just the monthly interest for
+-- 6 months and only hand back the principal at the end — until now the
+-- app only had one settle action that closed the entry outright, so there
+-- was no way to record an interest-only payment without losing the loan.
+-- interest now accrues from last_interest_settled_at (falls back to
+-- created_at the first time), not always from created_at.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE lending ADD COLUMN IF NOT EXISTS interest_paid_total NUMERIC DEFAULT 0;
+ALTER TABLE lending ADD COLUMN IF NOT EXISTS last_interest_settled_at TIMESTAMPTZ;
+
+SELECT 'Phase 8 — lending interest-only settlement columns ready ✅' AS status;

@@ -66,9 +66,13 @@ export default function Lending() {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 2500) }
 
+  // Interest accrues from the last time it was settled, not always from
+  // when the loan was created — otherwise settling interest today and
+  // asking again next month would double-count the months already paid.
   const calcInterest = (entry) => {
     if (!entry.has_interest || !entry.interest_rate) return 0
-    const months = Math.max(1, Math.round((Date.now() - new Date(entry.created_at).getTime()) / (1000 * 60 * 60 * 24 * 30)))
+    const since = entry.last_interest_settled_at || entry.created_at
+    const months = Math.max(1, Math.round((Date.now() - new Date(since).getTime()) / (1000 * 60 * 60 * 24 * 30)))
     if (entry.interest_type === 'monthly') {
       return Math.round(entry.amount * (entry.interest_rate / 100) * months)
     }
@@ -102,6 +106,41 @@ export default function Lending() {
   const markSettled = async (id) => {
     await api.settleLending(id)
     showToast('✅ Marked as settled!')
+    loadEntries()
+  }
+
+  // Record just this period's interest — the loan stays open, and the
+  // interest clock resets so next time only the new period is charged.
+  const settleInterestOnly = async (entry) => {
+    const amount = calcInterest(entry)
+    if (amount <= 0) return
+    const now = new Date().toISOString()
+    await api.updateLending(entry.id, {
+      interest_paid_total: Number(entry.interest_paid_total || 0) + amount,
+      last_interest_settled_at: now,
+    })
+    // Interest is real cash moving that nothing else tracks — log it so
+    // Budget/Reports reflect it too.
+    if (entry.type === 'given') await api.addIncome(phone, amount, `Interest from ${entry.person_name}`)
+    else await api.addExpense(phone, amount, '💸 Interest', `Interest paid to ${entry.person_name}`)
+    showToast(`✅ ₹${amount.toLocaleString()} interest settled`)
+    loadEntries()
+  }
+
+  // Settle everything owed right now (principal + any interest accrued
+  // since the last interest settlement) and close the entry.
+  const settleFull = async (entry) => {
+    const interest = calcInterest(entry)
+    const now = new Date().toISOString()
+    if (interest > 0) {
+      if (entry.type === 'given') await api.addIncome(phone, interest, `Interest from ${entry.person_name}`)
+      else await api.addExpense(phone, interest, '💸 Interest', `Interest paid to ${entry.person_name}`)
+    }
+    await api.updateLending(entry.id, {
+      status: 'settled', settled_at: now,
+      interest_paid_total: Number(entry.interest_paid_total || 0) + interest,
+    })
+    showToast('✅ Fully settled!')
     loadEntries()
   }
 
@@ -251,12 +290,32 @@ export default function Lending() {
                         </span>
                       </div>
 
+                      {Number(entry.interest_paid_total) > 0 && (
+                        <div className="lending-interest-paid">₹{Number(entry.interest_paid_total).toLocaleString()} interest settled so far</div>
+                      )}
+
                       {entry.status === 'pending' && (
-                        <motion.button whileTap={{ scale: 0.95 }}
-                          onClick={() => markSettled(entry.id)}
-                          className="btn-settle">
-                          <Check size={14} /> Mark as Settled
-                        </motion.button>
+                        entry.has_interest ? (
+                          <div className="lending-settle-row">
+                            <motion.button whileTap={{ scale: 0.95 }}
+                              onClick={() => settleInterestOnly(entry)}
+                              disabled={interest <= 0}
+                              className="btn-settle-interest">
+                              <Percent size={13} /> Settle Interest{interest > 0 ? ` (₹${interest.toLocaleString()})` : ''}
+                            </motion.button>
+                            <motion.button whileTap={{ scale: 0.95 }}
+                              onClick={() => settleFull(entry)}
+                              className="btn-settle">
+                              <Check size={14} /> Settle Full (₹{totalOwed.toLocaleString()})
+                            </motion.button>
+                          </div>
+                        ) : (
+                          <motion.button whileTap={{ scale: 0.95 }}
+                            onClick={() => markSettled(entry.id)}
+                            className="btn-settle">
+                            <Check size={14} /> Mark as Settled
+                          </motion.button>
+                        )
                       )}
                     </motion.div>
                   )
@@ -324,7 +383,7 @@ export default function Lending() {
                       <Percent size={16} color="var(--amber-500)" />
                       <span className="toggle-row-label">With Interest?</span>
                     </div>
-                    <button onClick={() => setForm(p => ({ ...p, hasInterest: !p.hasInterest }))}
+                    <button onClick={() => setForm(p => ({ ...p, hasInterest: !p.hasInterest, reminderFrequency: !p.hasInterest ? p.interestType : p.reminderFrequency }))}
                       className={`toggle-switch ${form.hasInterest ? 'on' : 'off'}`}>
                       <div className={`toggle-dot ${form.hasInterest ? 'on' : 'off'}`} />
                     </button>
@@ -341,7 +400,7 @@ export default function Lending() {
                       <div className="interest-col">
                         <label className="form-label-sm">Type</label>
                         <select className="form-input" value={form.interestType}
-                          onChange={e => setForm(p => ({ ...p, interestType: e.target.value }))}>
+                          onChange={e => setForm(p => ({ ...p, interestType: e.target.value, reminderFrequency: e.target.value }))}>
                           <option value="monthly">Monthly</option>
                           <option value="yearly">Yearly</option>
                         </select>
@@ -350,9 +409,12 @@ export default function Lending() {
                   )}
 
                   <div>
-                    <label className="form-label">Due Date (optional)</label>
+                    <label className="form-label">Due Date {form.hasInterest && form.interestType === 'monthly' ? '— collection day' : '(optional)'}</label>
                     <input className="form-input" type="date" value={form.dueDate}
                       onChange={e => setForm(p => ({ ...p, dueDate: e.target.value }))} />
+                    {form.hasInterest && form.interestType === 'monthly' && (
+                      <p className="lending-contact-hint">Viya will remind you every month on this date to collect the interest.</p>
+                    )}
                   </div>
 
                   {/* Reminder Toggle */}

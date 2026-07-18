@@ -5,7 +5,7 @@ import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useCountUp, getCurrentFestival, formatINR, getGreeting, getGreetingEmoji, getGreetingKey } from '../lib/utils'
 import { t } from '../lib/i18n'
-import { TrendingUp, TrendingDown, Plus, Flame, Target, BarChart3, Zap, Activity, CreditCard, MessageCircle, Link2, Bell, PieChart, ChevronRight, HandCoins } from 'lucide-react'
+import { TrendingUp, TrendingDown, Plus, Flame, Target, BarChart3, Activity, CreditCard, MessageCircle, Link2, Bell, PieChart, ChevronRight, HandCoins } from 'lucide-react'
 
 const BRIEF_ITEMS_POOL = {
   morning: [
@@ -285,16 +285,6 @@ export default function Home() {
               </div>
             </div>
           )}
-
-          {/* Ask Viya */}
-          <div className="card-press ask-viya-bar hero-card night clickable" onClick={() => nav('/chat')}>
-            <img src="/logo.png" alt="Viya AI" className="ask-viya-logo" />
-            <div className="flex-1">
-              <div className="ask-viya-title">Ask Viya anything</div>
-              <div className="ask-viya-sub">Create, update, delete, check-in — all in chat</div>
-            </div>
-            <Zap size={16} color="var(--viya-gold-500)" />
-          </div>
 
           {/* Quick Actions */}
           <div className="stagger-children home-section">
