@@ -336,7 +336,7 @@ class handler(BaseHTTPRequestHandler):
             # separate cron/morning-brief.py Vercel-native cron.
             if "21:00" in window:
                 results["briefing"] = "evening"
-                self._send_briefings("evening")
+                self._send_evening_checkin()
 
             self._respond(200, results)
 
@@ -379,13 +379,16 @@ class handler(BaseHTTPRequestHandler):
             print(f"[Reminders] WhatsApp send error for {phone}: {e}")
             return False
 
-    def _send_briefings(self, briefing_type):
-        """Send morning/evening briefings to all active users"""
+    def _send_evening_checkin(self):
+        """Evening WhatsApp check-in — actually checks what got logged today
+        (expenses, habits) instead of a blanket "log your expenses" message,
+        so it reads like Viya knows whether you kept up or not."""
         try:
             import httpx
 
             SUPABASE_URL = os.getenv("VITE_SUPABASE_URL", os.getenv("SUPABASE_URL", "")).strip()
             SUPABASE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY", "")).strip()
+            today_str = datetime.utcnow().strftime("%Y-%m-%d")
 
             headers = {
                 "apikey": SUPABASE_KEY,
@@ -394,7 +397,7 @@ class handler(BaseHTTPRequestHandler):
             }
 
             with httpx.Client(timeout=15.0) as client:
-                resp = client.get(f"{SUPABASE_URL}/rest/v1/users?select=phone,name,gender,monthly_income", headers=headers)
+                resp = client.get(f"{SUPABASE_URL}/rest/v1/users?select=phone,name,gender", headers=headers)
                 if resp.status_code != 200:
                     print(f"[Briefing] Users fetch failed: {resp.status_code}")
                     return
@@ -407,16 +410,36 @@ class handler(BaseHTTPRequestHandler):
                     if not phone:
                         continue
 
-                    tag = ""
-                    if gender == "male":
-                        tag = " bro"
-                    elif gender == "female":
-                        tag = " sis"
+                    tag = " bro" if gender == "male" else " sis" if gender == "female" else ""
 
-                    if briefing_type == "morning":
-                        msg = f"☀️ Morning{tag}! Ready to track today?\nJust text: \"200 chai\" 🔥"
+                    try:
+                        txns = client.get(
+                            f"{SUPABASE_URL}/rest/v1/transactions?phone=eq.{phone}&created_at=gte.{today_str}&select=amount,type",
+                            headers=headers,
+                        )
+                        txn_rows = txns.json() if txns.status_code == 200 else []
+                        expense_total = sum(float(t.get("amount", 0) or 0) for t in txn_rows if t.get("type") == "expense")
+
+                        habits = client.get(f"{SUPABASE_URL}/rest/v1/habits?phone=eq.{phone}&select=id", headers=headers)
+                        habit_rows = habits.json() if habits.status_code == 200 else []
+                        checkins = client.get(
+                            f"{SUPABASE_URL}/rest/v1/habit_checkins?phone=eq.{phone}&checked_date=eq.{today_str}&select=habit_id",
+                            headers=headers,
+                        )
+                        done_count = len(checkins.json()) if checkins.status_code == 200 else 0
+                        pending_habits = max(len(habit_rows) - done_count, 0)
+                    except Exception as e:
+                        print(f"[Briefing] per-user fetch failed for {phone}: {e}")
+                        txn_rows, expense_total, pending_habits = [], 0, 0
+
+                    if not txn_rows and not pending_habits and not habit_rows:
+                        msg = f"🌙 Hey {name}{tag}! Nothing logged today — got any expenses to add before bed?"
+                    elif not txn_rows:
+                        msg = f"🌙 Hey {name}{tag}! No expenses logged today — spend anything? Tell me and I'll log it."
+                    elif pending_habits:
+                        msg = f"🌙 Hey {name}{tag}! Logged ₹{int(expense_total):,} today, but {pending_habits} habit{'s' if pending_habits != 1 else ''} still pending — check in before you sleep?"
                     else:
-                        msg = f"🌙 Hey {name}! Log any remaining expenses.\nGood night{tag}! 💤"
+                        msg = f"🌙 Hey {name}{tag}! All logged for today — ₹{int(expense_total):,} tracked and habits done. Good night! 💤"
 
                     self._send_whatsapp(phone, msg)
         except Exception as e:

@@ -9,7 +9,7 @@ Sends personalized daily brief to all active users via WhatsApp
 import os
 import json
 from http.server import BaseHTTPRequestHandler
-from datetime import datetime
+from datetime import datetime, timedelta
 
 SUPABASE_URL = os.getenv("VITE_SUPABASE_URL", os.getenv("SUPABASE_URL", "")).strip()
 SUPABASE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY", "")).strip()
@@ -70,6 +70,20 @@ class handler(BaseHTTPRequestHandler):
         brief = f"🌅 *Good Morning, {name}!*\n"
         brief += f"📅 {day_name}, {date_str}\n\n"
 
+        # Yesterday recap — what actually happened, not just today's plan
+        y_spent = user.get("_yesterday_spent", 0)
+        y_habits_done = user.get("_yesterday_habits_done", 0)
+        y_habits_total = user.get("_yesterday_habits_total", 0)
+        if y_spent > 0 or y_habits_total > 0:
+            brief += "📊 *Yesterday:*\n"
+            if y_spent > 0:
+                brief += f"  💸 Spent ₹{int(y_spent):,}\n"
+            else:
+                brief += "  💸 Nothing logged\n"
+            if y_habits_total > 0:
+                brief += f"  ✅ {y_habits_done}/{y_habits_total} habits done\n"
+            brief += "\n"
+
         # Today's agenda
         brief += "📋 *Today's Agenda:*\n"
 
@@ -105,7 +119,10 @@ class handler(BaseHTTPRequestHandler):
             return []
         try:
             import httpx
-            today_str = datetime.now().strftime("%Y-%m-%d")
+            now = datetime.now()
+            today_str = now.strftime("%Y-%m-%d")
+            yesterday = now - timedelta(days=1)
+            yesterday_str = yesterday.strftime("%Y-%m-%d")
             headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
             with httpx.Client(timeout=10) as client:
                 resp = client.get(
@@ -147,6 +164,22 @@ class handler(BaseHTTPRequestHandler):
                         )
                         txn_rows = txns.json() if txns.status_code == 200 else []
                         user["_spent_today"] = sum(float(t.get("amount", 0) or 0) for t in txn_rows)
+
+                        # Yesterday — actual recap, not today's plan
+                        y_txns = client.get(
+                            f"{SUPABASE_URL}/rest/v1/transactions?phone=eq.{phone}&type=eq.expense&created_at=gte.{yesterday_str}&created_at=lt.{today_str}&select=amount",
+                            headers=headers,
+                        )
+                        y_txn_rows = y_txns.json() if y_txns.status_code == 200 else []
+                        user["_yesterday_spent"] = sum(float(t.get("amount", 0) or 0) for t in y_txn_rows)
+
+                        y_checkins = client.get(
+                            f"{SUPABASE_URL}/rest/v1/habit_checkins?phone=eq.{phone}&checked_date=eq.{yesterday_str}&select=habit_id",
+                            headers=headers,
+                        )
+                        y_done = len(y_checkins.json()) if y_checkins.status_code == 200 else 0
+                        user["_yesterday_habits_done"] = y_done
+                        user["_yesterday_habits_total"] = len(habit_rows)
                     except Exception as e:
                         print(f"[Morning Brief] per-user fetch failed for {phone}: {e}")
 

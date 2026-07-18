@@ -85,7 +85,7 @@ Invested in a stock/fund/SIP/FD/gold/crypto → LOG_INVESTMENT (type mutual_fund
 Wants to track a medicine → ADD_MEDICINE (dosage/time/frequency if given, else sensible defaults)
 Says they took their medicine → TAKE_MEDICINE:keyword (match their real medicine list in context, same style as MARK_HABIT)
 Wants to journal/vent/reflect → LOG_JOURNAL:entry:mood (mood inferred from tone if unsaid)
-Mentions a fact worth remembering (that isn't lending — that's always LOG_LENDING) → REMEMBER
+Mentions a fact worth remembering (that isn't lending — that's always LOG_LENDING) → REMEMBER. Don't wait for "remember that..." — also fire on significant facts mentioned in passing that matter later: a new job/income change, a dependent or family member, a recurring constraint (allergy, diet, city/relocation), or a stated priority not already covered by CREATE_GOAL. Skip small talk.
 
 Steps/water/meals ADD to what's already logged today (see context below for
 today's totals) — they don't overwrite. "2 more glasses" + 3 already logged
@@ -214,7 +214,7 @@ def get_context(phone, message=None):
             kg = _rag.format_kg(_rag.kg_walk(short, f"goal:{goals[0].get('id')}", limit=1))
             if kg:
                 ctx.append(f"Why '{goals[0].get('name','')}' may be stuck: " + "; ".join(kg))
-        memories = sb_get(f"viya_memory?phone=eq.{short}&select=content&order=importance.desc&limit=3")
+        memories = sb_get(f"viya_memory?phone=eq.{short}&select=content&order=importance.desc&limit=8")
         if memories:
             ctx.append("Know: " + " | ".join(m.get('content','') for m in memories))
         lending = sb_get(f"lending?user_phone=eq.{short}&status=eq.pending&select=type,person_name,amount,due_date&limit=4")
@@ -428,6 +428,137 @@ def execute_actions(action_lines, phone):
     return executed
 
 
+# ── Media handling — images/voice notes/documents sent on WhatsApp ────────────
+# Previously these just became the literal string "[image]" or "[voice_note]"
+# as the "message" text, so nothing was ever actually read — a photo of a
+# receipt or a spoken "spent 200 on lunch" voice note was silently ignored.
+
+def _download_wa_media(media_id):
+    """WhatsApp Cloud API media download is two-step: resolve the media ID
+    to a signed URL, then fetch the bytes from that URL — both need the
+    access token. Returns (bytes_or_None, mime_type_or_None)."""
+    try:
+        meta_req = urllib.request.Request(
+            f"https://graph.facebook.com/v21.0/{media_id}",
+            headers={"Authorization": f"Bearer {WHATSAPP_TOKEN}"},
+        )
+        with urllib.request.urlopen(meta_req, timeout=10) as r:
+            meta = json.loads(r.read())
+        media_url = meta.get("url")
+        mime_type = meta.get("mime_type", "")
+        if not media_url:
+            return None, None
+        data_req = urllib.request.Request(media_url, headers={"Authorization": f"Bearer {WHATSAPP_TOKEN}"})
+        with urllib.request.urlopen(data_req, timeout=20) as r:
+            return r.read(), mime_type
+    except Exception as e:
+        print(f"[WA Media] Download failed for {media_id}: {e}")
+        return None, None
+
+
+def _describe_wa_image(image_bytes, caption=""):
+    """Groq vision call — extracts amount/category if it looks like a bill
+    or receipt, otherwise gives a short factual description. Either way the
+    result becomes the "message" text fed into the normal chat pipeline, so
+    a receipt photo can still trigger LOG_EXPENSE like typing the amount
+    would."""
+    if not GROQ_API_KEY or not image_bytes:
+        return None
+    try:
+        import base64
+        image_b64 = base64.b64encode(image_bytes).decode()
+        prompt = (
+            "Someone sent this image over WhatsApp to their finance assistant"
+            + (f' with the caption "{caption}"' if caption else "")
+            + ". If it's a bill, receipt, or payment screenshot, reply with ONLY: "
+            'Bill: <merchant/description>, amount ₹<number>, category <Food/Transport/Shopping/Bills/Health/Entertainment/Groceries/Education/Other>. '
+            "Otherwise, reply with ONE short sentence describing what's in the image, factually, no speculation."
+        )
+        payload = json.dumps({
+            "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+                ],
+            }],
+            "temperature": 0.2,
+            "max_tokens": 200,
+        }).encode()
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/chat/completions",
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (compatible; MoneyViya/1.0; +https://heyviya.vercel.app)",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=25) as r:
+            return json.loads(r.read())["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        print(f"[WA Vision] Error: {e}")
+        return None
+
+
+def _transcribe_wa_audio(audio_bytes, mime_type):
+    """Groq's Whisper endpoint — real speech-to-text for voice notes,
+    replacing the old literal "[voice_note]" placeholder text."""
+    if not GROQ_API_KEY or not audio_bytes:
+        return None
+    try:
+        import uuid
+        boundary = uuid.uuid4().hex
+        ext = "ogg" if "ogg" in (mime_type or "") else "mp3" if "mpeg" in (mime_type or "") else "m4a"
+        parts = []
+        parts.append(f"--{boundary}\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\nwhisper-large-v3\r\n".encode())
+        parts.append(
+            f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"voice.{ext}\"\r\n"
+            f"Content-Type: {mime_type or 'audio/ogg'}\r\n\r\n".encode() + audio_bytes + b"\r\n"
+        )
+        parts.append(f"--{boundary}--\r\n".encode())
+        body = b"".join(parts)
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/audio/transcriptions",
+            data=body,
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": f"multipart/form-data; boundary={boundary}",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=25) as r:
+            result = json.loads(r.read())
+        return (result.get("text") or "").strip() or None
+    except Exception as e:
+        print(f"[WA Transcribe] Error: {e}")
+        return None
+
+
+def _extract_wa_document(doc_bytes, mime_type, filename=""):
+    """Extracts text from a PDF sent on WhatsApp. Only PDFs are supported —
+    Word/Excel would need extra parser libraries not worth the serverless
+    cold-start cost for a rarely-used path; those get an honest reply
+    instead of pretending to read them."""
+    if not doc_bytes:
+        return None
+    is_pdf = "pdf" in (mime_type or "").lower() or filename.lower().endswith(".pdf")
+    if not is_pdf:
+        return None
+    try:
+        import io
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(doc_bytes))
+        text = "\n".join((page.extract_text() or "") for page in reader.pages[:10])
+        text = text.strip()
+        return text[:4000] if text else None
+    except Exception as e:
+        print(f"[WA PDF] Error: {e}")
+        return None
+
+
 # ── Groq AI call ──────────────────────────────────────────────────────────────
 
 def call_groq_wa(phone, text, wa_history=None):
@@ -438,7 +569,7 @@ def call_groq_wa(phone, text, wa_history=None):
     system = WA_SYSTEM_PROMPT.replace("{context}", context)
 
     msgs = [{"role": "system", "content": system}]
-    for h in (wa_history or [])[-4:]:
+    for h in (wa_history or [])[-10:]:
         msgs.append({"role": h.get("role", "user"), "content": h.get("content", "")})
     msgs.append({"role": "user", "content": text})
 
@@ -552,7 +683,7 @@ def quick_lending(phone):
 def get_wa_history(phone):
     short = norm_phone(phone)
     if not short: return []
-    rows = sb_get(f"chat_history?phone=eq.{short}&source=eq.whatsapp&select=role,content&order=created_at.desc&limit=6")
+    rows = sb_get(f"chat_history?phone=eq.{short}&source=eq.whatsapp&select=role,content&order=created_at.desc&limit=10")
     return list(reversed(rows or []))
 
 
@@ -672,9 +803,26 @@ class handler(BaseHTTPRequestHandler):
                 iv = msg.get("interactive", {})
                 text = iv.get("button_reply", {}).get("title") or iv.get("list_reply", {}).get("title") or "[interactive]"
             elif msg_type == "image":
-                text = msg.get("image", {}).get("caption", "") or "[image]"
+                caption = msg.get("image", {}).get("caption", "")
+                media_id = msg.get("image", {}).get("id", "")
+                img_bytes, _ = _download_wa_media(media_id) if media_id else (None, None)
+                described = _describe_wa_image(img_bytes, caption) if img_bytes else None
+                text = described or caption or "I sent an image but couldn't read it — can you tell me what it says?"
             elif msg_type == "audio":
-                text = "[voice_note]"
+                media_id = msg.get("audio", {}).get("id", "")
+                audio_bytes, mime_type = _download_wa_media(media_id) if media_id else (None, None)
+                transcript = _transcribe_wa_audio(audio_bytes, mime_type) if audio_bytes else None
+                text = transcript or "I sent a voice note but it couldn't be transcribed — can you type that instead?"
+            elif msg_type == "document":
+                doc = msg.get("document", {})
+                media_id = doc.get("id", "")
+                filename = doc.get("filename", "")
+                doc_bytes, mime_type = _download_wa_media(media_id) if media_id else (None, None)
+                extracted = _extract_wa_document(doc_bytes, mime_type, filename) if doc_bytes else None
+                if extracted:
+                    text = f"I'm sharing a document called \"{filename or 'document'}\". Here's its content:\n\n{extracted}"
+                else:
+                    text = f"I sent a document ({filename or 'file'}) but only PDFs can be read for now — paste the key details as text instead?"
             else:
                 text = f"[{msg_type}]"
 

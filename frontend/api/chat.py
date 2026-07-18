@@ -111,7 +111,7 @@ phrases to pattern-match. Any natural way of saying these counts:
 • Wants to track a medicine/prescription   → ADD_MEDICINE (name, dosage if mentioned, time HH:MM if mentioned else default a sensible time, frequency daily/twice_daily/weekly/as_needed)
 • Says they took/had their medicine        → TAKE_MEDICINE:keyword (match against their real medicine list in context, same matching style as MARK_HABIT)
 • Wants to journal/vent/reflect on their day/mood → LOG_JOURNAL:entry:mood (entry is what they said, mood is a one-word read on it — stressed/happy/anxious/calm/sad/excited/neutral — infer it from tone even if they don't name it)
-• Tells you a fact to remember (that ISN'T lending/borrowing — that's always LOG_LENDING) → REMEMBER
+• Tells you a fact to remember (that ISN'T lending/borrowing — that's always LOG_LENDING) → REMEMBER. Don't wait for "remember that..." — also fire this on significant facts mentioned in passing that would matter in a future conversation: a new job or income change, a dependent or family member, a recurring constraint (allergy, dietary preference, city/relocation), or a stated financial goal/priority not already covered by CREATE_GOAL. Skip small talk and anything already captured by another action above.
 
 INCREMENTAL LOGGING — steps, water, and meals ADD to what's already logged
 today, they don't replace it. USER CONTEXT below includes today's latest
@@ -429,7 +429,7 @@ def get_context(phone, message=None):
             if borrowed:
                 ctx_parts.append("Money borrowed (pending): " + ", ".join(f"₹{l.get('amount',0)} from {l.get('person_name','')}" for l in borrowed))
 
-        memories = sb_get(f"viya_memory?phone=eq.{short}&select=content&order=importance.desc&limit=5")
+        memories = sb_get(f"viya_memory?phone=eq.{short}&select=content&order=importance.desc&limit=8")
         if memories:
             ctx_parts.append("Remembered: " + " | ".join(m.get('content','') for m in memories))
 
@@ -771,6 +771,71 @@ def call_groq_vision(image_b64):
         return None, str(e)
 
 
+def describe_image_general(image_b64):
+    """General-purpose vision read for images dropped into chat (not just the
+    dedicated bill-scanner above) — Chat.jsx previously told users it "can't
+    read image content yet" for every image, even receipts. Extracts a bill
+    if it looks like one, otherwise a short factual description; either way
+    the result is fed back into the normal chat pipeline as if the user had
+    typed it, so LOG_EXPENSE etc. can still fire on a receipt photo."""
+    if not GROQ_API_KEY:
+        return None, "GROQ_API_KEY not set"
+    try:
+        prompt = (
+            "Someone shared this image in a chat with their finance assistant. "
+            "If it's a bill, receipt, or payment screenshot, reply with ONLY: "
+            "Bill: <merchant/description>, amount ₹<number>, category <Food/Transport/Shopping/Bills/Health/Entertainment/Groceries/Education/Other>. "
+            "Otherwise, reply with ONE short factual sentence describing what's in the image — no speculation."
+        )
+        payload = json.dumps({
+            "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+                ],
+            }],
+            "temperature": 0.2,
+            "max_tokens": 200,
+        }).encode()
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/chat/completions",
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (compatible; MoneyViya/1.0; +https://heyviya.vercel.app)",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=25) as r:
+            content = json.loads(r.read())["choices"][0]["message"]["content"].strip()
+        return content, None
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")[:300]
+        return None, f"HTTP {e.code}: {body}"
+    except Exception as e:
+        print(f"[Vision] describe failed: {e}")
+        return None, str(e)
+
+
+def extract_pdf_text(pdf_b64):
+    """Extracts text from a PDF uploaded in chat — previously PDFs (and any
+    non-text file) got a flat "can't read this yet" reply."""
+    try:
+        import base64
+        import io
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(base64.b64decode(pdf_b64)))
+        text = "\n".join((page.extract_text() or "") for page in reader.pages[:10])
+        text = text.strip()
+        return (text[:4000], None) if text else (None, "No extractable text found in that PDF")
+    except Exception as e:
+        print(f"[PDF] extract failed: {e}")
+        return None, str(e)
+
+
 # ── Main processor ────────────────────────────────────────────────────────────
 
 def process_message(phone, message, history=None):
@@ -778,7 +843,7 @@ def process_message(phone, message, history=None):
     system = SYSTEM_PROMPT.replace("{context}", context)
 
     msgs = [{"role": "system", "content": system}]
-    for h in (history or [])[-6:]:
+    for h in (history or [])[-10:]:
         role = h.get("role", "user")
         if role in ("user", "assistant"):
             msgs.append({"role": role, "content": h.get("content", "")})
@@ -856,6 +921,26 @@ class handler(BaseHTTPRequestHandler):
                         resp["debug"] = ocr_error
                     self._respond(200, resp); return
                 self._respond(200, parsed_bill)
+                return
+
+            if action == "extract_image":
+                image_b64 = body.get("image", "")
+                if not image_b64:
+                    self._respond(400, {"error": "No image"}); return
+                description, err = describe_image_general(image_b64)
+                if not description:
+                    self._respond(200, {"error": err or "Could not read that image"}); return
+                self._respond(200, {"description": description})
+                return
+
+            if action == "extract_pdf":
+                pdf_b64 = body.get("pdf", "")
+                if not pdf_b64:
+                    self._respond(400, {"error": "No PDF"}); return
+                text, err = extract_pdf_text(pdf_b64)
+                if not text:
+                    self._respond(200, {"error": err or "Could not read that PDF"}); return
+                self._respond(200, {"text": text})
                 return
 
             phone = body.get("phone", "")

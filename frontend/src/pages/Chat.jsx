@@ -217,6 +217,13 @@ export default function Chat() {
   }
 
   const TEXT_FILE_TYPES = ['text/plain', 'text/csv', 'application/json']
+  const fileToBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result.split(',')[1] || '')
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+
   const handleFile = async (e) => {
     const file = e.target.files?.[0]
     e.target.value = ''
@@ -229,10 +236,47 @@ export default function Chat() {
       return
     }
 
-    // Images/PDFs/Word docs aren't parsed yet — say so instead of pretending it worked
+    if (file.type.startsWith('image/')) {
+      setMessages(prev => [...prev, { role: 'assistant', content: '🔍 Reading your image…', time: new Date().toISOString(), transient: true }])
+      try {
+        const image = await fileToBase64(file)
+        const resp = await fetch('/api/chat?action=extract_image', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image, phone }),
+        })
+        const data = await resp.json()
+        setMessages(prev => prev.filter(m => !m.transient))
+        sendMsg(data.description || "I couldn't read that image clearly — can you describe what's in it?")
+      } catch {
+        setMessages(prev => prev.filter(m => !m.transient))
+        sendMsg("I couldn't read that image — can you describe what's in it?")
+      }
+      return
+    }
+
+    if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
+      setMessages(prev => [...prev, { role: 'assistant', content: '📄 Reading your PDF…', time: new Date().toISOString(), transient: true }])
+      try {
+        const pdf = await fileToBase64(file)
+        const resp = await fetch('/api/chat?action=extract_pdf', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pdf, phone }),
+        })
+        const data = await resp.json()
+        setMessages(prev => prev.filter(m => !m.transient))
+        if (data.text) sendMsg(`I'm sharing a file called "${file.name}". Here's its content:\n\n${data.text}`)
+        else sendMsg(`I couldn't read "${file.name}" — ${data.error || 'try a different file'}.`)
+      } catch {
+        setMessages(prev => prev.filter(m => !m.transient))
+        sendMsg(`I couldn't read "${file.name}" — try a different file.`)
+      }
+      return
+    }
+
+    // Word/Excel docs aren't parsed yet — say so instead of pretending it worked
     setMessages(prev => [...prev, {
       role: 'assistant',
-      content: `I can't read ${file.name.split('.').pop().toUpperCase()} files yet — only plain text, CSV, and JSON for now. Paste the text directly, or describe what's in it and I'll help.`,
+      content: `I can't read ${file.name.split('.').pop().toUpperCase()} files yet — only images, PDFs, plain text, CSV, and JSON for now. Paste the text directly, or describe what's in it and I'll help.`,
       time: new Date().toISOString(),
     }])
   }
@@ -421,15 +465,25 @@ export default function Chat() {
             rows={1}
             onChange={e => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px' }}
             onKeyDown={handleKey}
-            onPaste={e => {
+            onPaste={async e => {
               const imgItem = Array.from(e.clipboardData?.items || []).find(i => i.type.startsWith('image/'))
-              if (imgItem) {
-                e.preventDefault()
-                setMessages(prev => [...prev, {
-                  role: 'assistant',
-                  content: "I can see you pasted an image — I can't read image content yet, but you can describe what's in it and I'll help from there.",
-                  time: new Date().toISOString(),
-                }])
+              if (!imgItem) return
+              e.preventDefault()
+              const file = imgItem.getAsFile()
+              if (!file) return
+              setMessages(prev => [...prev, { role: 'assistant', content: '🔍 Reading your image…', time: new Date().toISOString(), transient: true }])
+              try {
+                const image = await fileToBase64(file)
+                const resp = await fetch('/api/chat?action=extract_image', {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ image, phone }),
+                })
+                const data = await resp.json()
+                setMessages(prev => prev.filter(m => !m.transient))
+                sendMsg(data.description || "I couldn't read that image clearly — can you describe what's in it?")
+              } catch {
+                setMessages(prev => prev.filter(m => !m.transient))
+                sendMsg("I couldn't read that image — can you describe what's in it?")
               }
             }}
           />
