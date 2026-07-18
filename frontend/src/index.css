@@ -194,7 +194,7 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit
   border:1px solid var(--border); transition:all 0.25s var(--ease);
 }
 .txn-item:hover { border-color:var(--border2); transform:translateX(2px); }
-.txn-icon { font-size:22px; width:40px; height:40px; border-radius:var(--radius-sm); background:var(--surface2); display:flex; align-items:center; justify-content:center; }
+.txn-icon { font-size:22px; width:40px; height:40px; border-radius:var(--radius-sm); background:var(--surface2); display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; white-space:nowrap; }
 .txn-info { flex:1; }
 .txn-name { font-size:14px; font-weight:700; }
 .txn-cat { font-size:12px; color:var(--text3); margin-top:1px; }
@@ -2234,6 +2234,18 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
 .life-module-btn:hover { transform:translateY(-2px); }
 .life-module-emoji { font-size:22px; margin-bottom:4px; }
 .life-module-label { font-size:11px; font-weight:700; letter-spacing:0.3px; }
+/* Three consistent tones (built from the app's own theme colors) instead of a
+   different hand-picked hue per tile, so the grid reads as one palette. */
+.life-module-btn.tone-0 { background:linear-gradient(145deg, var(--primary-light), var(--primary)); }
+.life-module-btn.tone-1 { background:linear-gradient(145deg, var(--violet), #8B5CF6); }
+.life-module-btn.tone-2 { background:linear-gradient(145deg, #B83815, var(--rose)); }
+
+.section-label-toggle {
+  display:flex; align-items:center; justify-content:space-between; width:100%;
+  background:none; border:none; padding:0; cursor:pointer; font-family:inherit;
+}
+.slt-chevron { color:var(--text3); transition:transform 0.2s; }
+.slt-chevron.open { transform:rotate(180deg); }
 
 /* --- PROFILE: Referral Card --- */
 .referral-card {
@@ -3280,6 +3292,30 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
 .hb-hero-stat-val { font-size: 26px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
 .hb-hero-stat-unit { font-size: 14px; }
 .hb-hero-stat-label { font-size: 11px; color: rgba(255,255,255,0.5); }
+
+/* Daily vitals (steps/water) row */
+.hb-vitals-row {
+  display: flex; gap: 8px; margin-bottom: 12px;
+}
+.hb-vital-chip {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 10px 12px; cursor: pointer;
+  font-family: inherit; text-align: left; min-width: 0;
+}
+.hb-vital-body { min-width: 0; flex: 1; }
+.hb-vital-val { font-size: 14px; font-weight: 800; color: var(--text1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hb-vital-goal { font-size: 11px; font-weight: 600; color: var(--text3); }
+.hb-vital-label { font-size: 11px; color: var(--text3); font-weight: 600; }
+.hb-vital-add {
+  font-size: 11px; font-weight: 700; color: var(--primary);
+  background: var(--primary-dim); padding: 4px 8px; border-radius: 99px; flex-shrink: 0;
+}
+.hb-vital-more {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; color: var(--text3); cursor: pointer;
+}
 
 /* Week row */
 .hb-week-row {

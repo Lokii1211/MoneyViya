@@ -3,7 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
-import { Plus, Flame, Check, Trash2, Snowflake, MessageCircle, X, Zap, Trophy, Calendar } from 'lucide-react'
+import { Plus, Flame, Check, Trash2, Snowflake, MessageCircle, X, Zap, Trophy, Calendar, Footprints, Droplets, ChevronRight } from 'lucide-react'
+
+const STEPS_GOAL = 10000
+const WATER_GOAL = 8
 
 const PRESETS = [
   { icon: '💰', name: 'Track expenses' },
@@ -94,12 +97,18 @@ export default function Habits() {
   const [freeze, setFreeze] = useState(loadFreeze)
   const [tab, setTab] = useState('today') // 'today' | 'all'
 
+  // Steps & water are daily vitals just like any other habit check-in, so they're
+  // logged right here instead of forcing a trip to the separate Health page —
+  // Health still owns the deeper metrics (sleep, calories, weight, mood, trends).
+  const [vitals, setVitals] = useState({ steps: 0, water_glasses: 0 })
+
   const loadData = useCallback(async () => {
-    const [h, c] = await Promise.all([api.getHabits(phone), api.getCheckins(phone)])
+    const [h, c, v] = await Promise.all([api.getHabits(phone), api.getCheckins(phone), api.getHealthLog(phone)])
     setHabits(h || [])
     const map = {}
     ;(c || []).forEach(ci => { map[ci.habit_id] = true })
     setCheckins(map)
+    if (v) setVitals({ steps: v.steps || 0, water_glasses: v.water_glasses || 0 })
     setLoading(false)
   }, [phone])
 
@@ -156,6 +165,22 @@ export default function Habits() {
     await api.deleteHabit(id)
     showT('Habit removed', 'warn')
     loadData()
+  }
+
+  const addWater = async () => {
+    const next = vitals.water_glasses + 1
+    setVitals(v => ({ ...v, water_glasses: next }))
+    const ok = await api.upsertHealthLog(phone, { water_glasses: next })
+    if (!ok) { showT('Save failed', 'warn'); return }
+    showT(`💧 +1 glass (${next} today)`)
+  }
+
+  const addSteps = async () => {
+    const next = vitals.steps + 1000
+    setVitals(v => ({ ...v, steps: next }))
+    const ok = await api.upsertHealthLog(phone, { steps: next })
+    if (!ok) { showT('Save failed', 'warn'); return }
+    showT(`🏃 +1,000 steps (${next.toLocaleString('en-IN')} today)`)
   }
 
   const useFreeze = (habitId, habitName, habitIcon) => {
@@ -323,6 +348,29 @@ export default function Habits() {
                 <div className="hb-hero-stat-label">Freezes Left</div>
               </div>
             </div>
+          </motion.div>
+
+          {/* Daily vitals — steps & water live here since they're logged daily too */}
+          <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.04}} className="hb-vitals-row">
+            <button className="hb-vital-chip" onClick={addSteps}>
+              <Footprints size={16} color="#FF7062" />
+              <div className="hb-vital-body">
+                <div className="hb-vital-val">{vitals.steps.toLocaleString('en-IN')}<span className="hb-vital-goal"> / {STEPS_GOAL.toLocaleString('en-IN')}</span></div>
+                <div className="hb-vital-label">Steps</div>
+              </div>
+              <span className="hb-vital-add">+1k</span>
+            </button>
+            <button className="hb-vital-chip" onClick={addWater}>
+              <Droplets size={16} color="#38bdf8" />
+              <div className="hb-vital-body">
+                <div className="hb-vital-val">{vitals.water_glasses}<span className="hb-vital-goal"> / {WATER_GOAL} glasses</span></div>
+                <div className="hb-vital-label">Water</div>
+              </div>
+              <span className="hb-vital-add">+1</span>
+            </button>
+            <button className="hb-vital-more" onClick={() => nav('/health')} title="Sleep, calories, weight & mood">
+              <ChevronRight size={16} />
+            </button>
           </motion.div>
 
           {/* Week mini-calendar */}

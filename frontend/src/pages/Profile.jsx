@@ -4,7 +4,7 @@ import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { formatINR } from '../lib/utils'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown, Clock, FileText, Lock, Smartphone, Mail, ImageUp, Settings } from 'lucide-react'
+import { LogOut, Moon, Sun, Shield, Bell, HelpCircle, ChevronRight, ChevronDown, Target, Flame, Wallet, TrendingUp, Edit3, Check, X, MapPin, Briefcase, Calendar, User, Sparkles, Star, Award, Crown, Clock, FileText, Lock, Smartphone, Mail, ImageUp, Settings } from 'lucide-react'
 import { LANGUAGES, setLang, t, getLang } from '../lib/i18n'
 
 const AVATARS = ['😎','🦊','🐱','🐶','🦁','🐼','🐨','🦄','🐸','🐵','🦋','🌺','🌈','⭐','🔥','💎','🎯','🚀','🎓','💼']
@@ -37,6 +37,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showMoreTools, setShowMoreTools] = useState(false)
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [selectedAvatar, setSelectedAvatar] = useState(localStorage.getItem('mv_avatar') || '')
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -417,15 +418,15 @@ export default function Profile() {
             <div className="section-label" style={{ marginBottom: 10, paddingLeft: 2 }}>Life Modules</div>
             <div className="life-modules-grid">
               {[
-                { path: '/health', emoji: '❤️', label: 'Health', gradient: 'linear-gradient(145deg, #B83815, #D4451A)' },
-                { path: '/bills', emoji: '📋', label: 'Bills', gradient: 'linear-gradient(145deg, #0F172A, #1E293B)' },
-                { path: '/wealth', emoji: '📈', label: 'Wealth', gradient: 'linear-gradient(145deg, #0A6E4E, #0D9B6A)' },
-                { path: '/lending', emoji: '🤝', label: 'Lending', gradient: 'linear-gradient(145deg, #6D28D9, #A78BFA)' },
-                { path: '/email', emoji: '📧', label: 'Email AI', gradient: 'linear-gradient(145deg, #0052CC, #0066FF)' },
-                { path: '/calendar', emoji: '📅', label: 'Calendar', gradient: 'linear-gradient(145deg, #3308A0, #5514FF)' },
-                { path: '/chat', emoji: '🧠', label: 'Viya AI', gradient: 'linear-gradient(145deg, #0A6E4E, #5514FF)' },
+                { path: '/health', emoji: '❤️', label: 'Health' },
+                { path: '/bills', emoji: '📋', label: 'Bills' },
+                { path: '/wealth', emoji: '📈', label: 'Wealth' },
+                { path: '/lending', emoji: '🤝', label: 'Lending' },
+                { path: '/email', emoji: '📧', label: 'Email AI' },
+                { path: '/calendar', emoji: '📅', label: 'Calendar' },
+                { path: '/chat', emoji: '🧠', label: 'Viya AI' },
               ].map((mod, i) => (
-                <button key={i} onClick={() => nav(mod.path)} className="life-module-btn" style={{ background: mod.gradient }}>
+                <button key={i} onClick={() => nav(mod.path)} className={`life-module-btn tone-${i % 3}`}>
                   <div className="life-module-emoji">{mod.emoji}</div>
                   <div className="life-module-label">{mod.label}</div>
                 </button>
@@ -435,28 +436,37 @@ export default function Profile() {
 
           {/* More Tools */}
           <div className="mb-16">
-            <div className="section-label" style={{ marginBottom: 10, paddingLeft: 2 }}>More Tools</div>
-            <div className="life-modules-grid">
-              {[
-                { path: '/journal', emoji: '📓', label: 'Journal', gradient: 'linear-gradient(145deg, #5B21B6, #8B5CF6)' },
-                { path: '/medicine', emoji: '💊', label: 'Medicine', gradient: 'linear-gradient(145deg, #B91C1C, #EF4444)' },
-                { path: '/sleep', emoji: '😴', label: 'Sleep', gradient: 'linear-gradient(145deg, #1E3A8A, #3B82F6)' },
-                { path: '/meals', emoji: '🍽️', label: 'Meals', gradient: 'linear-gradient(145deg, #B45309, #F59E0B)' },
-                { path: '/subscriptions', emoji: '🔁', label: 'Subscriptions', gradient: 'linear-gradient(145deg, #0F172A, #334155)' },
-                { path: '/splits', emoji: '🧾', label: 'Splits', gradient: 'linear-gradient(145deg, #0369A1, #0EA5E9)' },
-                { path: '/portfolio', emoji: '💹', label: 'Portfolio', gradient: 'linear-gradient(145deg, #065F46, #10B981)' },
-                { path: '/predictions', emoji: '🔮', label: 'Predictions', gradient: 'linear-gradient(145deg, #4C1D95, #7C3AED)' },
-                { path: '/community', emoji: '👥', label: 'Community', gradient: 'linear-gradient(145deg, #9D174D, #EC4899)' },
-                { path: '/review', emoji: '⭐', label: 'Year in Review', gradient: 'linear-gradient(145deg, #78350F, #D97706)' },
-                { path: '/morning-brief', emoji: '☀️', label: 'Morning Brief', gradient: 'linear-gradient(145deg, #92400E, #FBBF24)' },
-                { path: '/weekly-report', emoji: '📊', label: 'Weekly Report', gradient: 'linear-gradient(145deg, #164E63, #06B6D4)' },
-              ].map((mod, i) => (
-                <button key={i} onClick={() => nav(mod.path)} className="life-module-btn" style={{ background: mod.gradient }}>
-                  <div className="life-module-emoji">{mod.emoji}</div>
-                  <div className="life-module-label">{mod.label}</div>
-                </button>
-              ))}
-            </div>
+            <button
+              className="section-label-toggle"
+              onClick={() => setShowMoreTools(v => !v)}
+              aria-expanded={showMoreTools}
+            >
+              <span className="section-label" style={{ paddingLeft: 2 }}>More Tools</span>
+              <ChevronDown size={16} className={`slt-chevron${showMoreTools ? ' open' : ''}`} />
+            </button>
+            {showMoreTools && (
+              <div className="life-modules-grid" style={{ marginTop: 10 }}>
+                {[
+                  { path: '/journal', emoji: '📓', label: 'Journal' },
+                  { path: '/medicine', emoji: '💊', label: 'Medicine' },
+                  { path: '/sleep', emoji: '😴', label: 'Sleep' },
+                  { path: '/meals', emoji: '🍽️', label: 'Meals' },
+                  { path: '/subscriptions', emoji: '🔁', label: 'Subscriptions' },
+                  { path: '/splits', emoji: '🧾', label: 'Splits' },
+                  { path: '/portfolio', emoji: '💹', label: 'Portfolio' },
+                  { path: '/predictions', emoji: '🔮', label: 'Predictions' },
+                  { path: '/community', emoji: '👥', label: 'Community' },
+                  { path: '/review', emoji: '⭐', label: 'Year in Review' },
+                  { path: '/morning-brief', emoji: '☀️', label: 'Morning Brief' },
+                  { path: '/weekly-report', emoji: '📊', label: 'Weekly Report' },
+                ].map((mod, i) => (
+                  <button key={i} onClick={() => nav(mod.path)} className={`life-module-btn tone-${i % 3}`}>
+                    <div className="life-module-emoji">{mod.emoji}</div>
+                    <div className="life-module-label">{mod.label}</div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Connected Accounts */}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
-import { formatINR, useCountUp } from '../lib/utils'
+import { formatINR, useCountUp, getCategoryIcon } from '../lib/utils'
 import { useToast } from '../components/Toast'
 import { Plus, TrendingDown, TrendingUp, Trash2, Camera, X, Check, Sparkles } from 'lucide-react'
 
@@ -10,6 +10,26 @@ const INCOME_CATS = ['💼 Salary', '🏦 Investment', '💸 Freelance', '🎁 G
 const QUICK_AMOUNTS = [50, 100, 200, 500, 1000, 2000]
 
 const CAT_MAP = { Food: '🍔 Food', Transport: '🚗 Transport', Shopping: '🛍️ Shopping', Rent: '📱 Bills', Bills: '📱 Bills', Health: '💊 Health', Entertainment: '🎬 Entertainment', Recharge: '📱 Bills', Education: '📚 Education', Work: '💳 Other', Salary: '💼 Salary', Investment: '🏦 Investment', Other: '💳 Other' }
+
+// Category strings come in two shapes depending on where they were logged:
+// "🍔 Food" (manual add / OCR / SMS import, built from CAT_MAP above) or
+// plain "Food" (chat/WhatsApp — the AI logs a bare category name, no emoji
+// prefix). Splitting on a space and assuming the first token is always an
+// emoji only holds for the first shape — for the second, the whole word
+// rendered as the "icon", overflowing its circle. Detect which shape it is
+// instead of assuming one.
+function txnIcon(t) {
+  const first = t.category?.split(' ')[0] || ''
+  const looksLikeEmoji = first && /\p{Extended_Pictographic}/u.test(first) && first.length <= 4
+  if (looksLikeEmoji) return first
+  return getCategoryIcon(t.category) || (t.type === 'income' ? '💰' : '🛒')
+}
+function txnName(t) {
+  if (t.description) return t.description
+  const first = t.category?.split(' ')[0] || ''
+  const looksLikeEmoji = first && /\p{Extended_Pictographic}/u.test(first) && first.length <= 4
+  return looksLikeEmoji ? t.category.split(' ').slice(1).join(' ') : (t.category || '')
+}
 
 export default function Expenses() {
   const { phone, user } = useApp()
@@ -290,9 +310,9 @@ export default function Expenses() {
             </div>
           ) : txns.map(t => (
             <div key={t.id} className="txn-item">
-              <div className="txn-icon">{t.category?.split(' ')[0] || (t.type === 'income' ? '💰' : '🛒')}</div>
+              <div className="txn-icon">{txnIcon(t)}</div>
               <div className="txn-info">
-                <div className="txn-name">{t.description || t.category?.split(' ').slice(1).join(' ') || t.category}</div>
+                <div className="txn-name">{txnName(t)}</div>
                 <div className="txn-cat">{formatDate(t.created_at)}</div>
               </div>
               <div className="flex items-center gap-2">
