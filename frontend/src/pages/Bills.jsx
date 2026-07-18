@@ -5,7 +5,7 @@ import { api } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { formatINR } from '../lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CreditCard, Zap, Wifi, Phone, Home, ShieldCheck, Calendar, Plus, TrendingUp, Trash2 } from 'lucide-react'
+import { CreditCard, Zap, Wifi, Phone, Home, ShieldCheck, Calendar, Plus, TrendingUp, Trash2, ArrowLeft } from 'lucide-react'
 
 const BILL_ICONS = {
   credit_card: { icon: <CreditCard size={18} />, color: '#E91E63', emoji: '💳' },
@@ -152,9 +152,12 @@ export default function Bills() {
     <div className="page">
       {/* Header */}
       <div className="page-header">
-        <div>
-          <h2 style={{ fontSize: 22 }}>Bills & Payments</h2>
-          <p className="body-s text-secondary">Never miss a due date</p>
+        <div className="header-left">
+          <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+          <div>
+            <h2 style={{ fontSize: 22 }}>Bills & Payments</h2>
+            <p className="body-s text-secondary">Never miss a due date</p>
+          </div>
         </div>
         <button className="btn-primary" onClick={() => setShowForm(!showForm)}
           style={{ width: 40, height: 40, borderRadius: '50%', padding: 0 }}>

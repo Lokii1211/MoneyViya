@@ -4,14 +4,19 @@
 // the connect flow is hidden for now rather than exposing an OAuth screen
 // that would confuse people or fail. The backend (api/auth/gmail/*) is left
 // intact and working — this only gates the entry point in the UI.
-import { Mail, CreditCard, Calendar, Package, Clock } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Mail, CreditCard, Calendar, Package, Clock, ArrowLeft } from 'lucide-react'
 
 export default function EmailIntelligence() {
+  const nav = useNavigate()
   return (
     <div className="page" style={{ paddingTop: 8 }}>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 24, letterSpacing: -0.3 }}>Email Intelligence</h1>
-        <p className="body-s text-secondary">Your inbox, decoded by AI ✨</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+        <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+        <div>
+          <h1 style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 24, letterSpacing: -0.3 }}>Email Intelligence</h1>
+          <p className="body-s text-secondary">Your inbox, decoded by AI ✨</p>
+        </div>
       </div>
 
       <div style={{

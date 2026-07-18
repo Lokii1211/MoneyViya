@@ -1,8 +1,9 @@
 // Meals — Food log with calorie estimation
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { listItem } from '../animations/pageVariants'
-import { UtensilsCrossed, Plus, Droplets, Flame as FireIcon, Loader, Trash2 } from 'lucide-react'
+import { UtensilsCrossed, Plus, Droplets, Flame as FireIcon, Loader, Trash2, ArrowLeft } from 'lucide-react'
 import PageTransition from '../components/PageTransition'
 import HapticButton from '../components/HapticButton'
 import BottomSheet from '../components/BottomSheet'
@@ -24,6 +25,7 @@ const getMealIcon = (type) => {
 
 export default function Meals() {
   const { phone } = useApp()
+  const nav = useNavigate()
   const toast = useToast()
   const [meals, setMeals] = useState([])
   const [loading, setLoading] = useState(true)
@@ -127,9 +129,12 @@ export default function Meals() {
     <PageTransition>
       <div className="page" style={{ paddingTop: 8, paddingBottom: 100 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div>
-            <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24 }}>Meals</h1>
-            <p className="body-s text-secondary">Track what you eat</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+            <div>
+              <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24 }}>Meals</h1>
+              <p className="body-s text-secondary">Track what you eat</p>
+            </div>
           </div>
           <HapticButton size="sm" onClick={() => { setNewMeal({ type: '', name: '', calories: '' }); setShowAdd(true) }}>
             <Plus size={16} /> Log

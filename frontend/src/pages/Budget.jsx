@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { formatINR } from '../lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle, TrendingDown, TrendingUp, Wallet, PieChart, Edit3, Check, X, RefreshCw, Sparkles, Sliders } from 'lucide-react'
+import { AlertTriangle, TrendingDown, TrendingUp, Wallet, PieChart, Edit3, Check, X, RefreshCw, Sparkles, Sliders, ArrowLeft } from 'lucide-react'
 
 // Suggests a daily spending budget from real inputs — a deterministic
 // calculation, not an LLM guess, so the number is actually trustworthy.
@@ -76,6 +77,7 @@ const stagger = { animate: { transition: { staggerChildren: 0.06 } } }
 
 export default function Budget() {
   const { phone } = useApp()
+  const nav = useNavigate()
   const toast = useToast()
 
   const [loading, setLoading] = useState(true)
@@ -261,7 +263,10 @@ export default function Budget() {
     return (
       <div className="page">
         <header className="page-header">
-          <div className="header-left"><h2>Budget</h2></div>
+          <div className="header-left">
+            <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+            <h2>Budget</h2>
+          </div>
         </header>
         <div className="budget-overview">
           <div className="budget-ring-wrap">
@@ -298,7 +303,10 @@ export default function Budget() {
     return (
       <div className="page">
         <header className="page-header">
-          <div className="header-left"><h2>Budget</h2></div>
+          <div className="header-left">
+            <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+            <h2>Budget</h2>
+          </div>
         </header>
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <AlertTriangle size={48} color="var(--red)" style={{ marginBottom: 16 }} />

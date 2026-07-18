@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { motion } from 'framer-motion'
+import { ArrowLeft } from 'lucide-react'
 
 const getEPFProjection = async () => null
 
@@ -154,8 +155,13 @@ export default function PortfolioDashboard() {
   return (
     <div className="page" id="portfolio-page">
       <div className="page-header">
-        <h1 className="page-title">Portfolio</h1>
-        <p className="page-subtitle">Investment command center</p>
+        <div className="header-left">
+          <button className="back-btn" onClick={() => navigate(-1)}><ArrowLeft size={20}/></button>
+          <div>
+            <h1 className="page-title">Portfolio</h1>
+            <p className="page-subtitle">Investment command center</p>
+          </div>
+        </div>
       </div>
 
       {loading && <PortfolioSkeleton />}

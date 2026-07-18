@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { formatINR, useCountUp, getCategoryIcon } from '../lib/utils'
 import { useToast } from '../components/Toast'
-import { Plus, TrendingDown, TrendingUp, Trash2, Camera, X, Check, Sparkles } from 'lucide-react'
+import { Plus, TrendingDown, TrendingUp, Trash2, Camera, X, Check, Sparkles, ArrowLeft } from 'lucide-react'
 
 const CATEGORIES = ['🍔 Food', '🚗 Transport', '🛍️ Shopping', '📱 Bills', '💊 Health', '🎬 Entertainment', '📚 Education', '💳 Other']
 const INCOME_CATS = ['💼 Salary', '🏦 Investment', '💸 Freelance', '🎁 Gift', '📱 Cashback', '💳 Other']
@@ -33,6 +34,7 @@ function txnName(t) {
 
 export default function Expenses() {
   const { phone, user } = useApp()
+  const nav = useNavigate()
   const toast = useToast()
   const [txns, setTxns] = useState([])
   const [loading, setLoading] = useState(true)
@@ -153,7 +155,10 @@ export default function Expenses() {
       <input type="file" ref={fileRef} accept="image/*" capture="environment" className="sr-hidden" onChange={handleImageUpload} />
 
       <div className="page-header">
-        <h2 style={{ fontSize: 22, fontWeight: 800 }}>Money</h2>
+        <div className="header-left">
+          <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+          <h2 style={{ fontSize: 22, fontWeight: 800 }}>Money</h2>
+        </div>
         <div className="flex gap-2">
           <button className="btn-secondary btn-sm ripple" onClick={() => fileRef.current?.click()}><Camera size={15}/> Scan</button>
           <button className="btn-secondary btn-sm ripple" onClick={() => setShowSMS(!showSMS)}>📱 SMS</button>

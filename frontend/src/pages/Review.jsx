@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
-import { Calendar, TrendingUp, TrendingDown, Zap, Target, Flame, Star } from 'lucide-react'
+import { Calendar, TrendingUp, TrendingDown, Zap, Target, Flame, Star, ArrowLeft } from 'lucide-react'
 
 export default function Review() {
   const { phone } = useApp()
+  const nav = useNavigate()
   const [review, setReview] = useState(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('weekly')
@@ -26,7 +28,7 @@ export default function Review() {
 
   return (
     <div className="page">
-      <header className="page-header"><div className="header-left"><h2>Life Review</h2></div></header>
+      <header className="page-header"><div className="header-left"><button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button><h2>Life Review</h2></div></header>
       <div className="type-tabs">
         <button className={'type-tab' + (tab === 'weekly' ? ' active expense' : '')} onClick={() => setTab('weekly')}><Calendar size={16} /> Weekly</button>
         <button className={'type-tab' + (tab === 'monthly' ? ' active income' : '')} onClick={() => setTab('monthly')}><Calendar size={16} /> Monthly</button>

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
-import { Calendar as CalIcon, Clock, MapPin, Users, Video, Plus, ChevronLeft, ChevronRight, Zap } from 'lucide-react'
+import { Calendar as CalIcon, Clock, MapPin, Users, Video, Plus, ChevronLeft, ChevronRight, Zap, ArrowLeft } from 'lucide-react'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const EVENT_COLORS = {
@@ -65,9 +65,12 @@ export default function CalendarScreen() {
     <div className="page" style={{ paddingTop: 8 }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div>
-          <h1 style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 24, letterSpacing: -0.3 }}>Calendar</h1>
-          <p className="body-s text-secondary">{today.toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+          <div>
+            <h1 style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 24, letterSpacing: -0.3 }}>Calendar</h1>
+            <p className="body-s text-secondary">{today.toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+          </div>
         </div>
         <button onClick={() => nav('/chat?q=schedule+meeting')} style={{
           width: 40, height: 40, borderRadius: '50%', background: 'var(--gradient-primary)', color: 'white',

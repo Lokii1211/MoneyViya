@@ -1,8 +1,9 @@
 // Splits — Track who owes you, send reminders
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { listItem } from '../animations/pageVariants'
-import { Users, Plus, Check, Clock, Send, Loader, ArrowUpRight, ArrowDownLeft, Minus, X } from 'lucide-react'
+import { Users, Plus, Check, Clock, Send, Loader, ArrowUpRight, ArrowDownLeft, Minus, X, ArrowLeft } from 'lucide-react'
 import PageTransition from '../components/PageTransition'
 import HapticButton from '../components/HapticButton'
 import BottomSheet from '../components/BottomSheet'
@@ -12,6 +13,7 @@ import { useApp } from '../lib/store'
 
 export default function Splits() {
   const { phone } = useApp()
+  const nav = useNavigate()
   const toast = useToast()
   const [lendings, setLendings] = useState([])
   const [loading, setLoading] = useState(true)
@@ -26,6 +28,7 @@ export default function Splits() {
   const [splitMode, setSplitMode] = useState('equal') // 'equal' | 'custom'
   const [members, setMembers] = useState([]) // [{key, name, shares, customAmount}]
   const [customName, setCustomName] = useState('')
+  const [friendSearch, setFriendSearch] = useState('')
   const [savingSplit, setSavingSplit] = useState(false)
 
   useEffect(() => {
@@ -111,6 +114,13 @@ export default function Splits() {
   const customTotal = members.reduce((s, m) => s + (Number(m.customAmount) || 0), 0)
   const customRemaining = Math.round((total - customTotal) * 100) / 100
 
+  // Search by name OR phone number, so a long friends list is still fast to
+  // find someone in.
+  const friendSearchQuery = friendSearch.trim().toLowerCase()
+  const filteredFriends = friendSearchQuery
+    ? friends.filter(f => f.name.toLowerCase().includes(friendSearchQuery) || f.phone.includes(friendSearchQuery.replace(/\D/g, '')))
+    : friends
+
   const handleSettle = async (id) => {
     setSettling(id)
     try {
@@ -190,9 +200,12 @@ export default function Splits() {
     <PageTransition>
       <div className="page" style={{ paddingTop: 8, paddingBottom: 100 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div>
-            <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24 }}>Split Bills</h1>
-            <p className="body-s text-secondary">Track shared expenses</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+            <div>
+              <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24 }}>Split Bills</h1>
+              <p className="body-s text-secondary">Track shared expenses</p>
+            </div>
           </div>
           <HapticButton size="sm" onClick={() => setShowAdd(true)}>
             <Plus size={16} /> New
@@ -375,18 +388,30 @@ export default function Splits() {
             <div className="form-group">
               <label>Split with</label>
               {friends.length > 0 && (
-                <div className="lending-contact-chips">
-                  {friends.map(f => (
-                    <button
-                      key={f.phone}
-                      type="button"
-                      className={`lending-contact-chip${members.some(m => m.phone === f.phone) ? ' active' : ''}`}
-                      onClick={() => toggleFriend(f)}
-                    >
-                      {f.name}
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <input
+                    className="form-input"
+                    type="text"
+                    value={friendSearch}
+                    onChange={e => setFriendSearch(e.target.value)}
+                    placeholder="Search friends by name or phone"
+                    style={{ marginBottom: 8 }}
+                  />
+                  <div className="lending-contact-chips">
+                    {filteredFriends.length > 0 ? filteredFriends.map(f => (
+                      <button
+                        key={f.phone}
+                        type="button"
+                        className={`lending-contact-chip${members.some(m => m.phone === f.phone) ? ' active' : ''}`}
+                        onClick={() => toggleFriend(f)}
+                      >
+                        {f.name}
+                      </button>
+                    )) : (
+                      <p className="lending-contact-hint">No friend matches "{friendSearch}" — add them below instead.</p>
+                    )}
+                  </div>
+                </>
               )}
               <div style={{ display: 'flex', gap: 8 }}>
                 <input

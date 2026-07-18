@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Activity, Droplets, Moon, Footprints, Flame, Plus, Heart, Scale, X, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react'
+import { Activity, Droplets, Moon, Footprints, Flame, Plus, Heart, Scale, X, ChevronRight, TrendingUp, TrendingDown, ArrowLeft } from 'lucide-react'
 
 const MOODS = [
   { emoji: '😄', label: 'Great',  value: 'great' },
@@ -87,6 +88,7 @@ function WeekBar({ history, field, color, max }) {
 
 export default function Health() {
   const { phone } = useApp()
+  const nav = useNavigate()
   const toast = useToast()
   const [tab, setTab] = useState('today')
   const [data, setData] = useState({ steps:0, water_glasses:0, sleep_hours:0, calories:0, weight:0, heart_rate:0, mood:null, health_score:50 })
@@ -276,9 +278,12 @@ export default function Health() {
 
       {/* Header */}
       <div className="page-header">
-        <div>
-          <h2>Health</h2>
-          <p className="body-s text-secondary">Your daily wellness log</p>
+        <div className="header-left">
+          <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+          <div>
+            <h2>Health</h2>
+            <p className="body-s text-secondary">Your daily wellness log</p>
+          </div>
         </div>
         <button className="hl-score-badge" style={{ background: score >= 70 ? 'rgba(0,229,176,0.15)' : score >= 40 ? 'rgba(255,149,0,0.15)' : 'rgba(255,112,98,0.15)', color: score >= 70 ? '#00E5B0' : score >= 40 ? '#FF9500' : '#FF7062' }}>
           {score} score

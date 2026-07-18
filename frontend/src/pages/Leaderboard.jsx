@@ -1,7 +1,8 @@
 // Leaderboard — Rankings based on real user achievements
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Trophy, Medal, TrendingUp, Crown, Loader } from 'lucide-react'
+import { Trophy, Medal, TrendingUp, Crown, Loader, ArrowLeft } from 'lucide-react'
 import PageTransition from '../components/PageTransition'
 import { listItem } from '../animations/pageVariants'
 import { useApp } from '../lib/store'
@@ -21,6 +22,7 @@ function calcScore({ totalSaved, streakDays, goalsCompleted, transactionsLogged 
 
 export default function Leaderboard() {
   const { phone } = useApp()
+  const nav = useNavigate()
   const [loading, setLoading] = useState(true)
   const [userStats, setUserStats] = useState(null)
   const [leaderboard, setLeaderboard] = useState([])
@@ -72,9 +74,12 @@ export default function Leaderboard() {
   return (
     <PageTransition>
       <div className="page" style={{ paddingTop: 8, paddingBottom: 100 }}>
-        <div style={{ marginBottom: 20 }}>
-          <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24 }}>Leaderboard</h1>
-          <p className="body-s text-secondary">Your financial achievements</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+          <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+          <div>
+            <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24 }}>Leaderboard</h1>
+            <p className="body-s text-secondary">Your financial achievements</p>
+          </div>
         </div>
 
         {/* Loading */}

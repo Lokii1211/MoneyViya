@@ -1,7 +1,7 @@
 // Settings — Full settings hub with toggles
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Bell, Moon, Shield, Smartphone, Mail, MessageCircle, Globe, Trash2, LogOut, ChevronRight, Volume2, Crown, Gift, BellRing } from 'lucide-react'
+import { Bell, Moon, Shield, Smartphone, Mail, MessageCircle, Globe, Trash2, LogOut, ChevronRight, Volume2, Crown, Gift, BellRing, ArrowLeft } from 'lucide-react'
 import PageTransition from '../components/PageTransition'
 import { useApp } from '../lib/store'
 import { useNavigate } from 'react-router-dom'
@@ -65,9 +65,12 @@ export default function Settings() {
   return (
     <PageTransition>
       <div className="page" style={{ paddingTop: 8, paddingBottom: 100 }}>
-        <div style={{ marginBottom: 20 }}>
-          <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24 }}>Settings</h1>
-          <p className="body-s text-secondary">Customize your Viya ⚙️</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+          <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+          <div>
+            <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24 }}>Settings</h1>
+            <p className="body-s text-secondary">Customize your Viya ⚙️</p>
+          </div>
         </div>
 
         {/* Premium & Growth */}

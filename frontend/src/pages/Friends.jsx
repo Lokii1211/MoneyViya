@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
-import { UserPlus, Send, Check, X, Trash2 } from 'lucide-react'
+import { UserPlus, Send, Check, X, Trash2, ArrowLeft } from 'lucide-react'
 
 export default function Friends() {
   const { phone, user } = useApp()
+  const nav = useNavigate()
   const [friends, setFriends] = useState([])
   const [pendingReceived, setPendingReceived] = useState([])
   const [pendingSent, setPendingSent] = useState([])
@@ -93,7 +95,10 @@ export default function Friends() {
     return (
       <div className="page">
         <div className="page-header">
-          <h2 style={{fontSize:20, fontWeight:800}}>Friends</h2>
+          <div className="header-left">
+            <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+            <h2 style={{fontSize:20, fontWeight:800}}>Friends</h2>
+          </div>
         </div>
         {[1,2,3].map(i => <div key={i} className="skeleton" style={{height:72, marginBottom:8, borderRadius:'var(--radius)'}} />)}
       </div>
@@ -106,6 +111,7 @@ export default function Friends() {
 
       <div className="page-header">
         <div className="header-left">
+          <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
           <h2 style={{fontSize:20, fontWeight:800}}>Friends</h2>
         </div>
         <button className="btn-primary" style={{padding:'8px 14px', fontSize:12, minHeight:36}} onClick={() => setShowAdd(!showAdd)}>

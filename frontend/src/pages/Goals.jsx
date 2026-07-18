@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { formatINR } from '../lib/utils'
-import { Target, Plus, Trash2, TrendingUp, Trophy, Share2, Star } from 'lucide-react'
+import { Target, Plus, Trash2, TrendingUp, Trophy, Share2, Star, ArrowLeft } from 'lucide-react'
 
 const ICONS = ['🏍️','💻','🏠','✈️','📱','🎓','💍','🚗','👶','💊','💎','🎸','📷','🏋️','🎮']
 
@@ -19,6 +20,7 @@ const MILESTONES = [
 
 export default function Goals() {
   const { phone } = useApp()
+  const nav = useNavigate()
   const [goals, setGoals] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
@@ -147,7 +149,10 @@ export default function Goals() {
       )}
 
       <div className="page-header">
-        <h2 style={{fontSize:22, fontWeight:800}}>Savings Goals</h2>
+        <div className="header-left">
+          <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+          <h2 style={{fontSize:22, fontWeight:800}}>Savings Goals</h2>
+        </div>
         <button className="btn-primary" style={{padding:'8px 16px', fontSize:13, borderRadius:10}} onClick={() => setShowAdd(!showAdd)}>
           <Plus size={16} style={{marginRight:4}} /> New Goal
         </button>

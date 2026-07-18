@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search as SearchIcon, X, Clock, ArrowRight, Loader2 } from 'lucide-react'
+import { Search as SearchIcon, X, Clock, ArrowRight, Loader2, ArrowLeft } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '../lib/supabase'
 import { useApp } from '../lib/store'
@@ -139,7 +139,9 @@ export default function Search() {
   return (
     <div className="page" style={{ paddingTop: 8, paddingBottom: 100 }}>
       {/* Search Bar */}
-      <div className="search-bar" style={{ position: 'relative', marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+        <button className="back-btn" onClick={() => nav(-1)} style={{ flexShrink: 0 }}><ArrowLeft size={20}/></button>
+        <div className="search-bar" style={{ position: 'relative', flex: 1 }}>
         <SearchIcon size={18} className="search-icon" style={{
           position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
           color: 'var(--text-tertiary)', pointerEvents: 'none',
@@ -163,6 +165,7 @@ export default function Search() {
             <X size={14} />
           </button>
         )}
+        </div>
       </div>
 
       {/* Loading */}

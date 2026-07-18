@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
-import { Send, Mic, Paperclip, X, ChevronDown, Zap, CheckCircle, AlertTriangle, TrendingUp, Target, BarChart3, Bell, Plus, Trash2, Clock } from 'lucide-react'
+import { Send, Mic, Paperclip, X, ChevronDown, Zap, CheckCircle, AlertTriangle, TrendingUp, Target, BarChart3, Bell, Plus, Trash2, Clock, ArrowLeft } from 'lucide-react'
 import { timeAgo } from '../lib/utils'
 
 // ── Suggestion chips ──────────────────────────────────────────────────────────
@@ -101,6 +102,7 @@ function getQuickReplies(last) {
 // ── Main Chat component ───────────────────────────────────────────────────────
 export default function Chat() {
   const { phone, user } = useApp()
+  const nav = useNavigate()
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -292,6 +294,7 @@ export default function Chat() {
 
       {/* Header */}
       <div className="chat-hdr">
+        <button className="back-btn" onClick={() => nav(-1)} style={{ flexShrink: 0 }}><ArrowLeft size={20}/></button>
         <div className="chat-hdr-avatar">
           <img src="/logo.png" alt="Viya" className="chat-hdr-img" />
           <div className="chat-hdr-dot" />

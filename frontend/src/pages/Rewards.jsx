@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Award, Target, Loader2, Trophy } from 'lucide-react'
+import { Award, Target, Loader2, Trophy, ArrowLeft } from 'lucide-react'
 import PageTransition from '../components/PageTransition'
 import { cardPop } from '../animations/pageVariants'
 import { api } from '../lib/supabase'
@@ -207,9 +207,12 @@ export default function Rewards() {
         </AnimatePresence>
 
         <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div>
-            <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24 }}>Rewards</h1>
-            <p className="body-s text-secondary">Level up your life 🏆</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+            <div>
+              <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24 }}>Rewards</h1>
+              <p className="body-s text-secondary">Level up your life 🏆</p>
+            </div>
           </div>
           <button onClick={() => nav('/leaderboard')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', background: 'var(--primary-dim)', border: '1px solid rgba(0,208,132,0.2)', borderRadius: 10, color: 'var(--primary)', fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             <Trophy size={14} /> Leaderboard

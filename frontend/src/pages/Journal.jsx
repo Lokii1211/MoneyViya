@@ -1,8 +1,9 @@
 // Journal — Daily reflection + AI mood analysis
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { listItem } from '../animations/pageVariants'
-import { BookOpen, Plus, Smile, Frown, Meh, Heart, Zap, Loader } from 'lucide-react'
+import { BookOpen, Plus, Smile, Frown, Meh, Heart, Zap, Loader, ArrowLeft } from 'lucide-react'
 import PageTransition from '../components/PageTransition'
 import HapticButton from '../components/HapticButton'
 import BottomSheet from '../components/BottomSheet'
@@ -20,6 +21,7 @@ const MOODS = [
 
 export default function Journal() {
   const { phone } = useApp()
+  const nav = useNavigate()
   const toast = useToast()
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
@@ -86,9 +88,12 @@ export default function Journal() {
     <PageTransition>
       <div className="page" style={{ paddingTop: 8, paddingBottom: 100 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div>
-            <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24 }}>Journal</h1>
-            <p className="body-s text-secondary">Daily reflections & insights</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+            <div>
+              <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24 }}>Journal</h1>
+              <p className="body-s text-secondary">Daily reflections & insights</p>
+            </div>
           </div>
           <HapticButton size="sm" onClick={() => setShowNew(true)}>
             <Plus size={16} /> Write

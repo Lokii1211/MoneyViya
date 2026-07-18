@@ -1,8 +1,9 @@
 // Subscriptions — Auto-detected recurring charges
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { listItem } from '../animations/pageVariants'
-import { CreditCard, Plus, Trash2, Bell, TrendingUp, Loader } from 'lucide-react'
+import { CreditCard, Plus, Trash2, Bell, TrendingUp, Loader, ArrowLeft } from 'lucide-react'
 import PageTransition from '../components/PageTransition'
 import { useToast } from '../components/Toast'
 import { api } from '../lib/supabase'
@@ -10,6 +11,7 @@ import { useApp } from '../lib/store'
 
 export default function Subscriptions() {
   const { phone } = useApp()
+  const nav = useNavigate()
   const toast = useToast()
   const [subs, setSubs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -77,9 +79,12 @@ export default function Subscriptions() {
   return (
     <PageTransition>
       <div className="page" style={{ paddingTop: 8, paddingBottom: 100 }}>
-        <div style={{ marginBottom: 20 }}>
-          <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24, letterSpacing: -0.3 }}>Subscriptions</h1>
-          <p className="body-s text-secondary">Auto-detected recurring charges</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+          <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+          <div>
+            <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24, letterSpacing: -0.3 }}>Subscriptions</h1>
+            <p className="body-s text-secondary">Auto-detected recurring charges</p>
+          </div>
         </div>
 
         {/* Summary Cards */}

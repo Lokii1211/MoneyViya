@@ -1,7 +1,8 @@
 // SleepTracker — Sleep tracking with quality score
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Moon, Sun, TrendingUp, Clock, Loader } from 'lucide-react'
+import { Moon, Sun, TrendingUp, Clock, Loader, ArrowLeft } from 'lucide-react'
 import PageTransition from '../components/PageTransition'
 import HapticButton from '../components/HapticButton'
 import BottomSheet from '../components/BottomSheet'
@@ -30,6 +31,7 @@ const QUALITY_OPTIONS = [
 
 export default function SleepTracker() {
   const { phone } = useApp()
+  const nav = useNavigate()
   const toast = useToast()
   const [sleepData, setSleepData] = useState([])
   const [loading, setLoading] = useState(true)
@@ -104,9 +106,12 @@ export default function SleepTracker() {
     <PageTransition>
       <div className="page" style={{ paddingTop: 8, paddingBottom: 100 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div>
-            <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24 }}>Sleep Tracker</h1>
-            <p className="body-s text-secondary">Track your rest, improve your life</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+            <div>
+              <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24 }}>Sleep Tracker</h1>
+              <p className="body-s text-secondary">Track your rest, improve your life</p>
+            </div>
           </div>
           <HapticButton size="sm" onClick={() => setShowLog(true)}>
             <Moon size={14} /> Log

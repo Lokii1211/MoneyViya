@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Brain, TrendingUp, TrendingDown, Calendar, Loader2, AlertTriangle, Zap } from 'lucide-react'
+import { Brain, TrendingUp, TrendingDown, Calendar, Loader2, AlertTriangle, Zap, ArrowLeft } from 'lucide-react'
 import PageTransition from '../components/PageTransition'
 import { cardPop, listItem } from '../animations/pageVariants'
 import { api } from '../lib/supabase'
@@ -67,6 +68,7 @@ function buildCategoryPredictions(transactions) {
 
 export default function Predictions() {
   const { phone } = useApp()
+  const nav = useNavigate()
   const [loading, setLoading] = useState(true)
   const [transactions, setTransactions] = useState([])
   const [bills, setBills] = useState([])
@@ -178,9 +180,12 @@ export default function Predictions() {
   return (
     <PageTransition>
       <div className="page" style={{ paddingTop: 8, paddingBottom: 100 }}>
-        <div style={{ marginBottom: 20 }}>
-          <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24 }}>Predictions</h1>
-          <p className="body-s text-secondary">AI forecasts for this month 🔮</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+          <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+          <div>
+            <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24 }}>Predictions</h1>
+            <p className="body-s text-secondary">AI forecasts for this month 🔮</p>
+          </div>
         </div>
 
         {!hasData ? (

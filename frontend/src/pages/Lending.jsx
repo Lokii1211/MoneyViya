@@ -1,10 +1,11 @@
 // Lending — Track money given/taken with interest and reminders
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { formatINR } from '../lib/utils'
-import { Plus, ArrowUpRight, ArrowDownLeft, Clock, Bell, Percent, User, Calendar, Check, X, Users } from 'lucide-react'
+import { Plus, ArrowUpRight, ArrowDownLeft, Clock, Bell, Percent, User, Calendar, Check, X, Users, ArrowLeft } from 'lucide-react'
 import PageTransition from '../components/PageTransition'
 
 /* §6.2 Brand-compliant colors:
@@ -21,6 +22,7 @@ const TABS = [
 
 export default function Lending() {
   const { phone } = useApp()
+  const nav = useNavigate()
   const [tab, setTab] = useState('given')
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
@@ -159,9 +161,12 @@ export default function Lending() {
         {toast && <div className="toast">{toast}</div>}
 
         <div className="page-header-lending">
-          <div>
-            <h1>Lending</h1>
-            <p className="body-s text-secondary">Track money given & taken 💰</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+            <div>
+              <h1>Lending</h1>
+              <p className="body-s text-secondary">Track money given & taken 💰</p>
+            </div>
           </div>
           <motion.button whileTap={{ scale: 0.92 }}
             onClick={() => setShowAdd(true)}

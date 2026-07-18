@@ -63,6 +63,38 @@ const GOAL_ICONS = [
 ]
 
 
+/* ─── Expandable lending/split bucket row — tap to reveal per-person amounts ─── */
+function WealthBucketRow({ label, total, sign, color, bg, isOpen, onToggle, people, formatINR }) {
+  return (
+    <>
+      <button
+        onClick={onToggle}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
+          background: 'none', border: 'none', cursor: 'pointer', padding: '8px 0', font: 'inherit',
+        }}
+      >
+        <div className="info-icon" style={{ background: bg, color }}><HandCoins size={16} /></div>
+        <div className="info-body">
+          <div className="info-title" style={{ fontSize: 12 }}>{label}</div>
+          <div className="info-value" style={{ fontSize: 13, color }}>{sign}{formatINR(total)}</div>
+        </div>
+        <ChevronRight size={14} color="var(--text3)" style={{ transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }} />
+      </button>
+      {isOpen && (
+        <div style={{ paddingLeft: 44, marginBottom: 6 }}>
+          {people.map((p, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: 12.5 }}>
+              <span style={{ color: 'var(--text2)' }}>{p.name}</span>
+              <span style={{ fontWeight: 700, color }}>{formatINR(p.total)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
 function LoadingSkeleton() {
   return (
     <div>
@@ -96,6 +128,7 @@ export default function Wealth() {
   const [timeRange, setTimeRange] = useState('ALL')
   const [goals, setGoals] = useState([])
   const [lendings, setLendings] = useState([])
+  const [expandedBucket, setExpandedBucket] = useState(null) // 'lent' | 'borrowed' | 'split' | null
 
   // Add Investment form
   const [showAddForm, setShowAddForm] = useState(false)
@@ -257,10 +290,30 @@ export default function Wealth() {
   // Lending/Splits live under Wealth too — money lent out is still yours
   // (an asset owed back to you), money borrowed is a liability — so net
   // worth here should reflect both, not just the investment portfolio.
+  // Splits write to the same `lending` table (tagged via the reason field),
+  // so they're split out here to show as their own bucket rather than
+  // getting lumped silently into general lending.
   const pendingLendings = lendings.filter(l => l.status !== 'settled')
-  const totalLentOut = pendingLendings.filter(l => l.type === 'given').reduce((s, l) => s + Number(l.amount || 0), 0)
-  const totalBorrowed = pendingLendings.filter(l => l.type === 'taken').reduce((s, l) => s + Number(l.amount || 0), 0)
-  const netWorth = currentValue + totalLentOut - totalBorrowed
+  const splitEntries = pendingLendings.filter(l => l.reason?.startsWith('Split:'))
+  const plainLendings = pendingLendings.filter(l => !l.reason?.startsWith('Split:'))
+  const totalLentOut = plainLendings.filter(l => l.type === 'given').reduce((s, l) => s + Number(l.amount || 0), 0)
+  const totalBorrowed = plainLendings.filter(l => l.type === 'taken').reduce((s, l) => s + Number(l.amount || 0), 0)
+  const totalSplitOwed = splitEntries.reduce((s, l) => s + Number(l.amount || 0), 0)
+  const netWorth = currentValue + totalLentOut - totalBorrowed + totalSplitOwed
+
+  // Per-person breakdown for the expandable buckets below — grouped so one
+  // person with multiple entries shows as a single line, not one per entry.
+  const groupByPerson = (entries) => {
+    const byName = {}
+    entries.forEach(l => {
+      const name = l.person_name || 'Unknown'
+      byName[name] = (byName[name] || 0) + Number(l.amount || 0)
+    })
+    return Object.entries(byName).map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total)
+  }
+  const lentByPerson = groupByPerson(plainLendings.filter(l => l.type === 'given'))
+  const borrowedByPerson = groupByPerson(plainLendings.filter(l => l.type === 'taken'))
+  const splitByPerson = groupByPerson(splitEntries)
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
@@ -444,44 +497,47 @@ export default function Wealth() {
             </div>
           </div>
 
-          {/* Total Savings — portfolio plus lending, since money lent out is
-              still yours (owed back) and money borrowed is a liability.
-              Tapping Lent Out/Borrowed jumps straight to Lending/Splits. */}
-          {(totalLentOut > 0 || totalBorrowed > 0) && (
+          {/* Total Savings — portfolio plus lending, since money lent out
+              (green) is still yours and owed back, money borrowed (red) is
+              a liability, and Splits money owed to you (green, same table
+              tagged separately) is the same thing under another name.
+              Tapping a bucket expands it in place to show each person. */}
+          {(totalLentOut > 0 || totalBorrowed > 0 || totalSplitOwed > 0) && (
             <div className="card mb-4" style={{ padding: 16 }}>
               <div className="flex items-center justify-between mb-2">
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text2)' }}>Total Savings (Portfolio + Lending)</span>
               </div>
-              <div className="currency" style={{ fontSize: 26, fontWeight: 800, marginBottom: 12 }}>{formatINR(netWorth)}</div>
-              <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-                <div className="info-row" style={{ flex: 1, minWidth: 140 }}>
-                  <div className="info-icon" style={{ background: 'var(--primary-dim, rgba(0,229,176,0.1))', color: 'var(--primary)' }}><PiggyBank size={16} /></div>
-                  <div className="info-body">
-                    <div className="info-title" style={{ fontSize: 12 }}>Portfolio</div>
-                    <div className="info-value" style={{ fontSize: 13 }}>{formatINR(currentValue)}</div>
-                  </div>
+              <div className="currency" style={{ fontSize: 26, fontWeight: 800, marginBottom: 8 }}>{formatINR(netWorth)}</div>
+
+              <div className="info-row" style={{ padding: '8px 0' }}>
+                <div className="info-icon" style={{ background: 'var(--primary-dim, rgba(0,229,176,0.1))', color: 'var(--primary)' }}><PiggyBank size={16} /></div>
+                <div className="info-body">
+                  <div className="info-title" style={{ fontSize: 12 }}>Portfolio</div>
+                  <div className="info-value" style={{ fontSize: 13 }}>{formatINR(currentValue)}</div>
                 </div>
-                {totalLentOut > 0 && (
-                  <div className="info-row" style={{ flex: 1, minWidth: 140, cursor: 'pointer' }} onClick={() => nav('/lending')}>
-                    <div className="info-icon" style={{ background: 'rgba(0,232,126,0.1)', color: 'var(--viya-success, #00E87E)' }}><HandCoins size={16} /></div>
-                    <div className="info-body">
-                      <div className="info-title" style={{ fontSize: 12 }}>Lent Out</div>
-                      <div className="info-value" style={{ fontSize: 13, color: 'var(--viya-success, #00E87E)' }}>+{formatINR(totalLentOut)}</div>
-                    </div>
-                    <ChevronRight size={14} color="var(--text3)" />
-                  </div>
-                )}
-                {totalBorrowed > 0 && (
-                  <div className="info-row" style={{ flex: 1, minWidth: 140, cursor: 'pointer' }} onClick={() => nav('/lending')}>
-                    <div className="info-icon" style={{ background: 'rgba(255,80,64,0.1)', color: 'var(--coral-500, #FF5040)' }}><HandCoins size={16} /></div>
-                    <div className="info-body">
-                      <div className="info-title" style={{ fontSize: 12 }}>Borrowed</div>
-                      <div className="info-value" style={{ fontSize: 13, color: 'var(--coral-500, #FF5040)' }}>-{formatINR(totalBorrowed)}</div>
-                    </div>
-                    <ChevronRight size={14} color="var(--text3)" />
-                  </div>
-                )}
               </div>
+
+              {totalLentOut > 0 && (
+                <WealthBucketRow
+                  label="Lent Out" total={totalLentOut} sign="+" color="var(--viya-success, #00E87E)" bg="rgba(0,232,126,0.1)"
+                  isOpen={expandedBucket === 'lent'} onToggle={() => setExpandedBucket(b => b === 'lent' ? null : 'lent')}
+                  people={lentByPerson} formatINR={formatINR}
+                />
+              )}
+              {totalBorrowed > 0 && (
+                <WealthBucketRow
+                  label="Borrowed" total={totalBorrowed} sign="-" color="var(--coral-500, #FF5040)" bg="rgba(255,80,64,0.1)"
+                  isOpen={expandedBucket === 'borrowed'} onToggle={() => setExpandedBucket(b => b === 'borrowed' ? null : 'borrowed')}
+                  people={borrowedByPerson} formatINR={formatINR}
+                />
+              )}
+              {totalSplitOwed > 0 && (
+                <WealthBucketRow
+                  label="Splits Owed to You" total={totalSplitOwed} sign="+" color="var(--viya-success, #00E87E)" bg="rgba(0,232,126,0.1)"
+                  isOpen={expandedBucket === 'split'} onToggle={() => setExpandedBucket(b => b === 'split' ? null : 'split')}
+                  people={splitByPerson} formatINR={formatINR}
+                />
+              )}
             </div>
           )}
 

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useNotificationStore } from '../stores'
 import { timeAgo } from '../lib/utils'
-import { Bell, CheckCheck, Trash2, Sparkles, TrendingUp, AlertTriangle, Target, Flame } from 'lucide-react'
+import { Bell, CheckCheck, Trash2, Sparkles, TrendingUp, AlertTriangle, Target, Flame, ArrowLeft } from 'lucide-react'
 
 const ICON_MAP = {
   'finance': { icon: '💰', color: 'var(--viya-success)' },
@@ -16,6 +17,7 @@ const ICON_MAP = {
 
 export default function Notifications() {
   const { phone } = useApp()
+  const nav = useNavigate()
   const { notifications, setNotifications, markRead, clearAll } = useNotificationStore()
   const [loading, setLoading] = useState(true)
 
@@ -41,7 +43,10 @@ export default function Notifications() {
   return (
     <div className="page" style={{ paddingTop: 8 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h2 className="display-m">Notifications</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+          <h2 className="display-m">Notifications</h2>
+        </div>
         {notifications.length > 0 && (
           <button className="btn btn-ghost btn-sm" onClick={handleClearAll} style={{ gap: 4 }}>
             <Trash2 size={14} /> Clear

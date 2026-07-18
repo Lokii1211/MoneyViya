@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useToast } from '../components/Toast'
-import { Pill, Plus, Check, Clock, Trash2, X } from 'lucide-react'
+import { Pill, Plus, Check, Clock, Trash2, X, ArrowLeft } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const TIME_OPTIONS = ['Morning', 'Afternoon', 'Evening', 'Night']
 
 export default function Medicine() {
   const { phone } = useApp()
+  const nav = useNavigate()
   const toast = useToast()
   const [medicines, setMedicines] = useState([])
   const [checkins, setCheckins] = useState([])
@@ -64,7 +66,12 @@ export default function Medicine() {
   if (loading) {
     return (
       <div className="page">
-        <div className="page-header"><h2 style={{ fontSize: 22, fontWeight: 800 }}>Medicine</h2></div>
+        <div className="page-header">
+          <div className="header-left">
+            <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
+            <h2 style={{ fontSize: 22, fontWeight: 800 }}>Medicine</h2>
+          </div>
+        </div>
         {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 72, marginBottom: 8, borderRadius: 'var(--radius)' }} />)}
       </div>
     )
@@ -74,6 +81,7 @@ export default function Medicine() {
     <div className="page">
       <div className="page-header">
         <div className="header-left">
+          <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
           <Pill size={22} style={{ color: 'var(--coral-400)' }} />
           <h2 style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.5 }}>Medicine</h2>
         </div>
