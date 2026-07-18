@@ -10,7 +10,7 @@ function getNavItems() {
   return [
     { to: '/', icon: Home, label: t('home'), end: true },
     { to: '/reminders', icon: AlarmClock, label: 'Reminders' },
-    { to: '/wealth', icon: Wallet, label: 'Wealth', center: true },
+    { to: '/wealth', icon: Wallet, label: 'Wealth' },
     { to: '/habits', icon: Flame, label: 'Habits' },
     { to: '/profile', icon: User, label: t('profile') },
   ]
@@ -45,30 +45,11 @@ function AnimatedTabBar() {
           end={item.end}
           className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
           onClick={() => haptics.light()}
-          style={item.center ? { position: 'relative' } : {}}
         >
-          {item.center ? (
-            <motion.div
-              whileTap={{ scale: 0.9 }}
-              transition={{ type: 'spring', damping: 15, stiffness: 300 }}
-              style={{
-                width: 48, height: 48, borderRadius: '50%',
-                background: 'var(--gradient-primary)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: 'var(--shadow-teal)',
-                marginTop: -16,
-              }}
-            >
-              <item.icon size={22} color="white" />
-            </motion.div>
-          ) : (
-            <>
-              <motion.div whileTap={{ scale: 0.85 }} transition={{ duration: 0.1 }}>
-                <item.icon size={22} className="nav-icon" />
-              </motion.div>
-              <span className="nav-label">{item.label}</span>
-            </>
-          )}
+          <motion.div whileTap={{ scale: 0.85 }} transition={{ duration: 0.1 }}>
+            <item.icon size={22} className="nav-icon" />
+          </motion.div>
+          <span className="nav-label">{item.label}</span>
         </NavLink>
       ))}
     </nav>
