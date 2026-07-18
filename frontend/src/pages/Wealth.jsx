@@ -5,7 +5,7 @@ import { api } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { formatINR } from '../lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
-import { TrendingUp, TrendingDown, PiggyBank, Plus, BarChart3, Shield, X, ChevronRight, Smartphone, Target, Calendar } from 'lucide-react'
+import { TrendingUp, TrendingDown, PiggyBank, Plus, BarChart3, Shield, X, ChevronRight, Smartphone, Target, Calendar, HandCoins, Users } from 'lucide-react'
 
 /* ─── Premium toggle (matches BankConnect/Reminders) ─── */
 function Toggle({ on, onToggle }) {
@@ -95,6 +95,7 @@ export default function Wealth() {
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState('ALL')
   const [goals, setGoals] = useState([])
+  const [lendings, setLendings] = useState([])
 
   // Add Investment form
   const [showAddForm, setShowAddForm] = useState(false)
@@ -120,14 +121,16 @@ export default function Wealth() {
     if (!phone) return
     setLoading(true)
     try {
-      const [invData, txnData, goalData] = await Promise.all([
+      const [invData, txnData, goalData, lendData] = await Promise.all([
         api.getInvestments(phone),
         api.getTransactions(phone),
         api.getGoals(phone),
+        api.getLendings(phone),
       ])
       if (invData?.length) setInvestments(invData)
       if (txnData?.length) setTransactions(txnData)
       if (goalData?.length) setGoals(goalData)
+      if (lendData?.length) setLendings(lendData)
     } catch (e) { console.error('Wealth load error:', e) }
     setLoading(false)
   }, [phone])
@@ -250,6 +253,14 @@ export default function Wealth() {
   const sipInvestments = investments.filter(i => i.is_sip)
   const totalSIP = sipInvestments.reduce((s, i) => s + Number(i.sip_amount || 0), 0)
   const isEmpty = investments.length === 0 && !loading
+
+  // Lending/Splits live under Wealth too — money lent out is still yours
+  // (an asset owed back to you), money borrowed is a liability — so net
+  // worth here should reflect both, not just the investment portfolio.
+  const pendingLendings = lendings.filter(l => l.status !== 'settled')
+  const totalLentOut = pendingLendings.filter(l => l.type === 'given').reduce((s, l) => s + Number(l.amount || 0), 0)
+  const totalBorrowed = pendingLendings.filter(l => l.type === 'taken').reduce((s, l) => s + Number(l.amount || 0), 0)
+  const netWorth = currentValue + totalLentOut - totalBorrowed
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
@@ -384,12 +395,18 @@ export default function Wealth() {
       <div className="card mb-4" style={{ padding: 16 }}>
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Track your portfolio</div>
         <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 12 }}>Add investments manually to track your net worth</div>
-        <div className="flex gap-2">
+        <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
           <button className="pill-btn active" onClick={() => setShowAddForm(!showAddForm)}>
             <Plus size={14} /> Add Investment
           </button>
           <button className="pill-btn" onClick={() => nav('/bank-connect')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <Smartphone size={14} /> Connect Bank
+          </button>
+          <button className="pill-btn" onClick={() => nav('/lending')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <HandCoins size={14} /> Lending
+          </button>
+          <button className="pill-btn" onClick={() => nav('/splits')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Users size={14} /> Splits
           </button>
         </div>
       </div>
@@ -426,6 +443,47 @@ export default function Wealth() {
               </div>
             </div>
           </div>
+
+          {/* Total Savings — portfolio plus lending, since money lent out is
+              still yours (owed back) and money borrowed is a liability.
+              Tapping Lent Out/Borrowed jumps straight to Lending/Splits. */}
+          {(totalLentOut > 0 || totalBorrowed > 0) && (
+            <div className="card mb-4" style={{ padding: 16 }}>
+              <div className="flex items-center justify-between mb-2">
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text2)' }}>Total Savings (Portfolio + Lending)</span>
+              </div>
+              <div className="currency" style={{ fontSize: 26, fontWeight: 800, marginBottom: 12 }}>{formatINR(netWorth)}</div>
+              <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                <div className="info-row" style={{ flex: 1, minWidth: 140 }}>
+                  <div className="info-icon" style={{ background: 'var(--primary-dim, rgba(0,229,176,0.1))', color: 'var(--primary)' }}><PiggyBank size={16} /></div>
+                  <div className="info-body">
+                    <div className="info-title" style={{ fontSize: 12 }}>Portfolio</div>
+                    <div className="info-value" style={{ fontSize: 13 }}>{formatINR(currentValue)}</div>
+                  </div>
+                </div>
+                {totalLentOut > 0 && (
+                  <div className="info-row" style={{ flex: 1, minWidth: 140, cursor: 'pointer' }} onClick={() => nav('/lending')}>
+                    <div className="info-icon" style={{ background: 'rgba(0,232,126,0.1)', color: 'var(--viya-success, #00E87E)' }}><HandCoins size={16} /></div>
+                    <div className="info-body">
+                      <div className="info-title" style={{ fontSize: 12 }}>Lent Out</div>
+                      <div className="info-value" style={{ fontSize: 13, color: 'var(--viya-success, #00E87E)' }}>+{formatINR(totalLentOut)}</div>
+                    </div>
+                    <ChevronRight size={14} color="var(--text3)" />
+                  </div>
+                )}
+                {totalBorrowed > 0 && (
+                  <div className="info-row" style={{ flex: 1, minWidth: 140, cursor: 'pointer' }} onClick={() => nav('/lending')}>
+                    <div className="info-icon" style={{ background: 'rgba(255,80,64,0.1)', color: 'var(--coral-500, #FF5040)' }}><HandCoins size={16} /></div>
+                    <div className="info-body">
+                      <div className="info-title" style={{ fontSize: 12 }}>Borrowed</div>
+                      <div className="info-value" style={{ fontSize: 13, color: 'var(--coral-500, #FF5040)' }}>-{formatINR(totalBorrowed)}</div>
+                    </div>
+                    <ChevronRight size={14} color="var(--text3)" />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Quick Stats */}
           <div className="stat-grid">
