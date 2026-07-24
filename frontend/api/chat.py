@@ -25,6 +25,7 @@ from urllib.parse import parse_qs, urlparse, quote
 # at import time (confirmed live: this took down every /api/chat request).
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _rag
+import _intent_gate
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("VITE_SUPABASE_URL", "")).strip()
@@ -930,7 +931,25 @@ def process_message(phone, message, history=None):
     clean_lines = [l for l in lines if not l.strip().startswith("ACTION:")]
     clean_reply = "\n".join(clean_lines).strip()
 
+    # Intent gate — our own trained model (see frontend/api/_intent_gate.py) as
+    # a conservative second opinion on the LOG-vs-ASK call. It only fires when
+    # it's high-confidence (>=95% precise at its threshold) that this message is
+    # a question/confirmation, not a new event. If it disagrees with the LLM
+    # (LLM emitted a logging action, gate says "not an action"), we suppress
+    # the write — the irreversible harm — and only rewrite the reply if the LLM
+    # falsely claimed it logged, so a genuine answer is never clobbered.
+    gated = bool(action_lines) and _intent_gate.not_an_action(message)
+    if gated:
+        action_lines = []
+
     executed = execute_actions(action_lines, phone) if action_lines else []
+
+    if gated:
+        low = clean_reply.lower()
+        if any(w in low for w in ("logged", "added", "saved", "recorded", "tracked", "noted")):
+            clean_reply = ("I didn't add anything new — that read like you're checking on existing "
+                           "data, not logging something. If you did mean to log it, just say it "
+                           "again like \"spent 500 on food\" and I'll add it. 👍")
 
     # The reply text above was written by the LLM before we knew whether the
     # DB write would actually succeed. If it silently failed (bad columns,

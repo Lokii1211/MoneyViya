@@ -118,10 +118,15 @@ parses them, writes to Supabase, then strips them from the visible text. Every
 handler records whether the DB write actually succeeded, and the reply is
 corrected if it didn't.
 
-Two guardrails worth calling out:
-- **LOG vs ASK** — a logging action only fires when the message reports a NEW
-  event. Questions/confirmations ("did you log my 500?", "how much did I spend?")
-  never log — this is enforced in the prompt.
+Three independent guardrails against phantom logs:
+- **LOG vs ASK (prompt)** — a logging action only fires when the message reports
+  a NEW event. Questions/confirmations ("did you log my 500?", "how much did I
+  spend?") never log — enforced in the prompt.
+- **Intent gate (our own trained model)** — a linear classifier we train on
+  `tests/data/intent_dataset.jsonl` (see `ml/`) gives a second opinion: if it's
+  high-confidence the message is a question but the LLM emitted a logging action,
+  the write is suppressed. sklearn is used offline only; production runs the
+  exported weights in **pure Python, no dependency, no API call**.
 - **Duplicate guard** — `recent_duplicate()` skips a near-identical
   expense/income/meal written in the last 3 minutes, so a repeat or a mis-read
   question can't create a phantom second row.

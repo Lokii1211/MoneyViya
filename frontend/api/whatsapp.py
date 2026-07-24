@@ -27,6 +27,7 @@ from urllib.parse import urlparse, parse_qs, quote
 # directory on sys.path for a plain sibling import.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _rag
+import _intent_gate
 
 VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "viya_verify_2026").strip()
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "").strip()
@@ -638,6 +639,14 @@ def call_groq_wa(phone, text, wa_history=None):
             action_lines = [l.strip() for l in lines if l.strip().startswith("ACTION:")]
             clean_lines = [l for l in lines if not l.strip().startswith("ACTION:")]
             reply = "\n".join(clean_lines).strip()
+            # Intent gate (our own trained model) — conservative second opinion:
+            # if it's high-confidence this message is a question/confirmation but
+            # the LLM emitted a logging action, suppress the write and fix a
+            # false "logged" reply. See chat.py / _intent_gate.py.
+            if action_lines and _intent_gate.not_an_action(text):
+                action_lines = []
+                if any(w in reply.lower() for w in ("logged", "added", "saved", "recorded", "tracked", "noted")):
+                    reply = "I didn't add anything new — that looked like you're checking existing data, not logging something. If you meant to log it, just say it again like \"spent 500 on food\" 👍"
             if action_lines:
                 executed = execute_actions(action_lines, phone)
                 # Same gap as chat.py: the reply text above was written before
