@@ -1,148 +1,192 @@
-# MoneyViya 💰
+# Viya 💚 — your AI second brain for money, health & life
 
-**Your Personal AI Financial Manager & Advisor**
+Viya (MoneyViya) is an AI life assistant for Indian users. Talk to it in the
+**app** or on **WhatsApp** in plain language — "spent 500 on food", "had lunch",
+"gave 20000 to Rahul at 2% collect on the 5th", "should I do ELSS or PPF?" — and
+it logs the right thing to the right place, reminds you on time, and gives
+advice grounded in your **real data** and a **curated financial knowledge base**,
+not generic filler.
 
-MoneyViya is an AI-powered WhatsApp bot that helps you manage your finances, track expenses, achieve goals, and grow wealth.
+**Live:** https://heyviya.vercel.app
 
----
-
-## ✨ Features
-
-### 💬 Natural Conversation
-- No menus or numbered options
-- Just chat naturally: "Spent 500 on food", "Earned 10000"
-- Available in English, Hindi, Tamil, Telugu, Kannada
-
-### 📊 Complete Financial Tracking
-- Track income and expenses with categories
-- Daily budget management
-- Real-time balance summaries
-
-### 🎯 Multi-Goal Management
-- Add unlimited financial goals
-- Track progress with percentages
-- Get motivated to achieve targets
-
-### 📈 Stock Market Analysis
-- Daily market updates at 9 AM
-- NIFTY, SENSEX, Bank Nifty
-- Personalized investment recommendations
-
-### ⏰ Smart Reminders
-- **6 AM**: Morning briefing with yesterday's summary
-- **9 AM**: Market analysis and investment tips
-- **8 PM**: Evening check-in to close the day
-- **Sunday**: Weekly report with % comparisons
-- **1st of Month**: Monthly detailed report
-
-### 🌐 Live Dashboard
-- Web-based dashboard synced with WhatsApp
-- View transactions, goals, reports
-- Real-time updates
+> This README describes the current architecture. An older version described a
+> Baileys + n8n + Railway + FastAPI stack — that's long gone; none of it is used.
 
 ---
 
-## 🚀 Quick Start
+## What it does
 
-### 1. Start Baileys Bot
+- **Conversational logging** — expenses, income, meals, health (steps/water/
+  weight), habits, lending/borrowing, bills & EMIs, investments, medicines,
+  journal — all from natural language, in the app chat or over WhatsApp, in
+  English / Hindi / Tamil / Telugu / Kannada / Malayalam (and Hinglish/Tanglish).
+- **Reminders that actually fire** — one-time, daily, weekly, monthly, with
+  advance nudges, delivered on WhatsApp even when the app is closed, plus
+  automatic reminders for bill/EMI due dates and lending collection days.
+- **Daily brief & evening check-in** — a morning WhatsApp brief (yesterday's
+  recap + today's agenda) and an evening check-in that knows what you did/didn't
+  log today.
+- **Grounded AI advice** — answers come from a hybrid retrieval system over
+  *your own* transactions/goals/bills/etc. **and** a curated knowledge base of
+  vetted Indian personal-finance knowledge — see [The RAG](#the-rag-our-own-not-just-api-answers).
+- **Dashboards** — expenses, budget, wealth (portfolio + lending + splits with a
+  signed net-worth view), goals, habits, health, and more.
+- **Media understanding** — bill/receipt photos and (on WhatsApp) images are
+  read via a vision model and turned into logged transactions.
+
+---
+
+## Architecture
+
+| Layer | Tech |
+|---|---|
+| Frontend | React 19 + Vite (SPA), deployed on Vercel — root dir `frontend/` |
+| Backend | Python serverless functions on Vercel (`frontend/api/*.py`, `http.server` handlers) |
+| Database | Supabase Postgres + **pgvector** |
+| Chat LLM | Groq — LLaMA 3.3 70B (`llama-3.3-70b-versatile`) |
+| Vision/OCR | Groq — `meta-llama/llama-4-scout-17b-16e-instruct` |
+| Embeddings | OpenAI `text-embedding-3-small` (1536-dim) |
+| WhatsApp | Meta WhatsApp Cloud API (webhook at `frontend/api/whatsapp.py`) |
+| Reminder cron | GitHub Actions every 15 min → `/api/cron/check-reminders` |
+| Daily/weekly cron | Vercel Cron → `/api/cron/morning-brief`, `/api/cron/weekly-summary` |
+
+The frontend talks to Supabase directly (anon key + RLS) for CRUD, and to the
+Python functions for anything needing the LLM/RAG (chat, OCR) or server secrets.
+
+```
+frontend/
+├── src/                     # React app (pages/, components/, lib/)
+├── api/                     # Python serverless functions
+│   ├── chat.py              #   app chat: RAG context + Groq + ACTION execution
+│   ├── whatsapp.py          #   WhatsApp Cloud API webhook (same agent, mirrored)
+│   ├── _rag.py              #   hybrid retriever (BM25 + vector + RRF + KG + KB)
+│   ├── bank-connect.py, sms/, auth/gmail/
+│   └── cron/                #   check-reminders, morning-brief, weekly-summary, …
+├── public/                  # PWA manifest, icons, robots.txt, sitemap.xml, og-image
+└── index.html
+database/
+└── 00_consolidated_migration.sql   # one idempotent file — the whole schema
+tests/
+├── data/intent_dataset.jsonl       # 151 labelled agent test cases
+├── test_actions_offline.py         # deterministic action/dup-guard test (no quota)
+└── eval_rag.py                     # live intent + grounding + dup accuracy
+```
+
+---
+
+## The RAG (our own, not just API answers)
+
+A common misconception: "we're just getting answers from an API." We're not.
+Groq is only the final text-generation step. The **grounding** — the part that
+makes an answer *about you and correct* — is our own retrieval layer in
+`frontend/api/_rag.py`:
+
+- **Hybrid retrieval** per source: BM25/full-text (`plfts`) **+** vector search
+  (pgvector, cosine) fused with **Reciprocal Rank Fusion**. A similarity floor
+  discards weak "nearest but unrelated" matches.
+- **Over your own data** — transactions, goals, bills, habits, health logs,
+  meals, lending, investments, medicines, journal, emails — each with its own
+  `match_*` SQL function and lazy embedding backfill.
+- **Knowledge graph** — a nightly 1-hop walk over `kg_edges` so the agent can
+  explain *why* (e.g. a goal stalling because of a competing EMI), not just
+  report numbers.
+- **Curated knowledge base** (`knowledge_base` table) — vetted Indian
+  personal-finance knowledge we author (emergency fund, SIP, ELSS vs PPF, 80C,
+  term vs endowment, credit-card interest trap, tax regimes, …), retrieved via
+  the same hybrid path and injected into the prompt so **advice is grounded in
+  our own corpus**, prefer-over-generic. Grow it by `INSERT`ing rows — no code
+  change. It works on BM25 alone immediately; vector search activates once
+  embeddings backfill (needs `OPENAI_API_KEY`, degrades to lexical-only without).
+
+The whole thing degrades gracefully: no `OPENAI_API_KEY` → lexical-only retrieval
+still works; the agent just loses the vector half.
+
+### On "train our own model"
+The chat model is Groq-hosted LLaMA — an API, not something we fine-tune — and
+the embeddings are OpenAI's. Fine-tuning a model wouldn't fix accuracy here (the
+failure modes are prompt + retrieval + guard logic) and would cost a lot for no
+gain. For an agent built this way, "training" is the **dataset → measure → fix
+the prompt/guards/KB → re-measure** loop below. That's what actually moves and
+holds accuracy.
+
+---
+
+## The agent action system
+
+The LLM emits `ACTION:TYPE:params` lines at the start of its reply; the server
+parses them, writes to Supabase, then strips them from the visible text. Every
+handler records whether the DB write actually succeeded, and the reply is
+corrected if it didn't.
+
+Two guardrails worth calling out:
+- **LOG vs ASK** — a logging action only fires when the message reports a NEW
+  event. Questions/confirmations ("did you log my 500?", "how much did I spend?")
+  never log — this is enforced in the prompt.
+- **Duplicate guard** — `recent_duplicate()` skips a near-identical
+  expense/income/meal written in the last 3 minutes, so a repeat or a mis-read
+  question can't create a phantom second row.
+
+---
+
+## Setup & deploy
+
+### 1. Database
+Run `database/00_consolidated_migration.sql` in the Supabase SQL editor. It's
+idempotent — safe to re-run whenever you pull new schema (it ends with a series
+of `Phase N … ready ✅` notices).
+
+### 2. Environment variables (Vercel project)
+```
+# Supabase (frontend + functions)
+VITE_SUPABASE_URL / SUPABASE_URL
+VITE_SUPABASE_ANON_KEY / SUPABASE_ANON_KEY
+
+# AI
+GROQ_API_KEY            # chat + vision — free at console.groq.com/keys
+OPENAI_API_KEY          # embeddings for vector search (optional; lexical works without)
+
+# WhatsApp Cloud API
+WHATSAPP_ACCESS_TOKEN
+WHATSAPP_PHONE_NUMBER_ID
+WHATSAPP_VERIFY_TOKEN
+
+# Cron auth
+CRON_SECRET             # shared secret for the reminder cron endpoints
+```
+
+### 3. Frontend
 ```bash
-cd whatsapp-bot
+cd frontend
 npm install
-npm start
+npm run dev          # local
+npm run build        # production build (Vercel runs this)
 ```
-Scan QR code with WhatsApp.
 
-### 2. Import n8n Workflow
-Import `n8n/workflows/MoneyViya_complete_workflow.json`
+### 4. Reminder cron
+`/api/cron/check-reminders` is triggered every 15 min by
+`.github/workflows/reminders.yml` (Vercel Hobby can't run native cron more than
+once/day). For per-minute precision instead, point an external scheduler
+(cron-job.org, free) at the same URL. `morning-brief` and `weekly-summary` run
+via Vercel Cron (`frontend/vercel.json`).
 
-### 3. Deploy API (Railway)
+---
+
+## Testing & the accuracy loop
+
 ```bash
-git push
-```
-Railway auto-deploys the MoneyViya API.
+# Deterministic — runs now, no network/Groq quota. 20/20 currently.
+python3 tests/test_actions_offline.py
 
-### 4. Start Chatting!
-Send "Hi" to the WhatsApp bot.
+# Live intent + grounding + duplicate accuracy against the deployed API.
+python3 tests/eval_rag.py
+VIYA_API_BASE=http://localhost:5173 python3 tests/eval_rag.py   # or a local build
+```
+
+The loop to hit and hold 95%+: run the live eval → read its per-intent
+breakdown + failure list → fix the prompt/guard/KB and add the failing message
+to `tests/data/intent_dataset.jsonl` → re-run the offline test (instant) and the
+live eval. See `tests/README.md`.
 
 ---
 
-## 📁 Project Structure
-
-```
-MoneyViya/
-├── agents/
-│   └── MoneyViya_agent.py    # AI Financial Agent
-├── services/
-│   └── stock_market_service.py # Market Analysis
-├── MoneyViya_api.py          # API Endpoints
-├── app.py                     # FastAPI Main
-├── n8n/
-│   └── workflows/
-│       └── MoneyViya_complete_workflow.json
-├── whatsapp-bot/
-│   ├── index.js              # Baileys Bot
-│   └── package.json
-├── static/
-│   └── index.html            # Web Dashboard
-└── requirements.txt
-```
-
----
-
-## 💬 Example Conversation
-
-```
-User: Hi
-MoneyViya: 👋 Welcome to MoneyViya!
-           Which language do you prefer?
-           (Just type: English, Hindi, Tamil...)
-
-User: English
-MoneyViya: Perfect! What's your name?
-
-User: Lokesh
-MoneyViya: Nice to meet you, Lokesh! What do you do?
-
-User: I'm a freelancer
-MoneyViya: Great! What's your monthly income?
-
-... [Complete onboarding] ...
-
-User: Spent 500 on lunch
-MoneyViya: ✅ Expense Logged!
-           💸 ₹500 on Food
-           💰 Budget Left: ₹833
-           
-User: Balance
-MoneyViya: 📊 Lokesh's Summary
-           💵 Income: ₹0
-           💸 Spent: ₹500
-           💰 Remaining: ₹833
-```
-
----
-
-## 🔧 Configuration
-
-### Environment Variables
-```
-OPENAI_API_KEY=sk-xxx          # For AI responses
-ALPHA_VANTAGE_API_KEY=xxx      # For market data
-```
-
-### Baileys Bot
-```javascript
-// whatsapp-bot/index.js
-const N8N_WEBHOOK_URL = 'http://localhost:5678/webhook/MoneyViya-webhook';
-const RAILWAY_API_URL = 'https://your-app.up.railway.app';
-```
-
----
-
-## 📞 Support
-
-Built with ❤️ for the n8n AI Agents Hackathon 2025
-
----
-
-*MoneyViya - Your Personal Finance Partner* 💰
+*Viya — your money, health, and habits, on autopilot.* 💚

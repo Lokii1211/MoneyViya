@@ -305,6 +305,56 @@ def format_news(rows):
     return [f"{r.get('title','')} — {r.get('summary','')}" for r in rows if r.get("title") or r.get("summary")]
 
 
+# ── Knowledge base (Phase 10) — curated, vetted financial knowledge we author,
+# retrieved via the SAME hybrid path as everything else so advice is grounded
+# in OUR corpus, not just the model's parametric knowledge. Global/unscoped
+# (not per-user), like news. Works on lexical/BM25 alone the moment the seed
+# is loaded; vector search activates once embeddings backfill. ──
+
+def backfill_knowledge_embeddings(limit=8):
+    """Embed up to `limit` knowledge_base rows that don't have an embedding
+    yet. Global (no phone) twin of backfill_embeddings(); bounded so it's
+    cheap to call on a chat turn. No-op without OPENAI_API_KEY — lexical
+    retrieval still works in that case."""
+    if not OPENAI_API_KEY:
+        return
+    rows = _sb_get(f"knowledge_base?embedding=is.null&select=id,title,content,tags&limit={limit}")
+    for row in rows:
+        vec = embed(f"{row.get('title','')} {row.get('content','')} {row.get('tags') or ''}")
+        if vec:
+            _sb_patch("knowledge_base", f"id=eq.{row['id']}", {"embedding": vec})
+
+
+def knowledge_search(query, limit=3, query_embedding=None):
+    """Hybrid BM25 + vector search over the curated knowledge_base. Pass the
+    turn's shared query_embedding (see embed_query()) to avoid re-embedding."""
+    if not query or not query.strip():
+        return []
+    try:
+        backfill_knowledge_embeddings()
+        query_vec = query_embedding if query_embedding is not None else embed(query)
+        lexical = _sb_get(f"knowledge_base?fts=plfts.{quote(query)}&select=id,topic,title,content&limit={limit*2}")
+        vector = _vector_search_knowledge(query_vec, limit * 2) if query_vec else []
+        return _fuse(lexical, vector)[:limit]
+    except Exception as e:
+        print(f"[RAG knowledge_search] {e}")
+        return []
+
+
+def _vector_search_knowledge(query_embedding, limit):
+    if not query_embedding:
+        return []
+    rows = _sb_rpc("match_knowledge", {"query_embedding": query_embedding, "match_count": limit})
+    # Curated but still a global corpus — most entries are unrelated to any
+    # given question, so hold to the same stricter floor as news to avoid
+    # surfacing a tangential fact just because it was the nearest vector.
+    return [r for r in rows if (r.get("similarity") or 0) >= 0.30]
+
+
+def format_knowledge(rows):
+    return [f"{r.get('title','')}: {r.get('content','')}" for r in rows if r.get("content")]
+
+
 # ── Knowledge graph (Phase 3) — 1-hop walk over kg_edges, built nightly by
 # cron/knowledge-graph.py from the user's own goals/bills/investments. This
 # is what lets the agent explain *why*, not just report numbers — e.g. a

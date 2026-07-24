@@ -1634,3 +1634,81 @@ SELECT 'Phase 8 — lending interest-only settlement columns ready ✅' AS statu
 ALTER TABLE bills_and_dues ADD COLUMN IF NOT EXISTS last_reminded_at TIMESTAMPTZ;
 
 SELECT 'Phase 9 — bills/EMI reminder dedup column ready ✅' AS status;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- PHASE 10 — Curated financial KNOWLEDGE BASE (our own RAG, not API answers)
+-- Until now retrieval only covered the user's OWN rows (transactions, goals,
+-- …). When someone asks "should I do ELSS or PPF?" the *advice* came purely
+-- from the LLM's parametric knowledge — un-auditable, un-versioned, and not
+-- ours. This adds a curated corpus of vetted Indian personal-finance
+-- knowledge that Viya retrieves from (same hybrid BM25 + vector path as
+-- news) and is told to prefer over generic model knowledge. fts is a
+-- generated column, so lexical/BM25 retrieval works the moment this runs;
+-- vector search activates automatically once embeddings backfill (needs
+-- OPENAI_API_KEY — degrades to lexical-only without it, like everything else
+-- in _rag.py). Grow it by INSERTing more rows — no code change needed.
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS knowledge_base (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  topic TEXT NOT NULL,          -- investing, tax, budgeting, debt, insurance, savings, credit
+  title TEXT NOT NULL UNIQUE,   -- UNIQUE so the seed below is idempotent
+  content TEXT NOT NULL,
+  tags TEXT,
+  embedding vector(1536),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='knowledge_base' AND column_name='fts') THEN
+    ALTER TABLE knowledge_base ADD COLUMN fts tsvector
+      GENERATED ALWAYS AS (to_tsvector('english', coalesce(title,'') || ' ' || coalesce(content,'') || ' ' || coalesce(tags,''))) STORED;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_kb_fts ON knowledge_base USING gin (fts);
+CREATE INDEX IF NOT EXISTS idx_kb_embedding ON knowledge_base USING ivfflat (embedding vector_cosine_ops);
+
+ALTER TABLE knowledge_base ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS kb_read_policy ON knowledge_base;
+CREATE POLICY kb_read_policy ON knowledge_base FOR ALL USING (true) WITH CHECK (true);
+
+CREATE OR REPLACE FUNCTION match_knowledge(query_embedding vector(1536), match_count int DEFAULT 4)
+RETURNS TABLE(id uuid, topic text, title text, content text, similarity float)
+LANGUAGE sql STABLE AS $$
+  SELECT id, topic, title, content, 1 - (embedding <=> query_embedding) AS similarity
+  FROM knowledge_base
+  WHERE embedding IS NOT NULL
+  ORDER BY embedding <=> query_embedding
+  LIMIT match_count;
+$$;
+GRANT EXECUTE ON FUNCTION match_knowledge(vector, int) TO anon, authenticated;
+
+-- Seed — vetted Indian personal-finance knowledge. ON CONFLICT keeps it
+-- idempotent (title is UNIQUE). Rates are phrased as "around/revised" on
+-- purpose — never hard-code a number that drifts.
+INSERT INTO knowledge_base (topic, title, content, tags) VALUES
+('savings','Emergency fund','Keep 3–6 months of essential expenses in a liquid place (savings account, sweep-in FD, or liquid fund) before investing for growth. It stops one job loss or medical bill from becoming debt. Aim for 6 months if your income is irregular (freelancers, commission).','emergency fund safety buffer liquid'),
+('budgeting','50/30/20 rule','A simple monthly budget: ~50% of take-home to needs (rent, food, bills, EMIs), ~30% to wants, ~20% to savings and investments. Adjust the ratios to your reality — the point is to pay your future self first, automatically, on salary day.','budget 50 30 20 rule allocation'),
+('investing','SIP and rupee-cost averaging','A SIP invests a fixed amount every month regardless of market level, so you buy more units when prices are low and fewer when high — averaging your cost and removing the need to time the market. Consistency over years matters far more than the entry point.','sip mutual fund rupee cost averaging'),
+('investing','Index funds vs active funds','Index funds track a benchmark (e.g. Nifty 50) at very low cost. Most active funds fail to beat their index over 10+ years after fees. For a core long-term equity allocation, a low-cost index fund is a sensible default; active funds are a bet that a manager will outperform.','index fund active nifty expense ratio'),
+('tax','ELSS funds','ELSS (Equity Linked Savings Scheme) are tax-saving equity mutual funds that qualify for Section 80C (up to ₹1.5 lakh/year) and have the shortest lock-in of all 80C options — 3 years. Returns are market-linked, so treat them as equity, not a guaranteed FD.','elss 80c tax saving equity lock-in'),
+('tax','PPF (Public Provident Fund)','PPF is a government-backed 15-year savings scheme, fully tax-free (EEE), interest revised quarterly (around 7% recently). Great for a debt/safe portion of long-term goals like retirement. Illiquid by design — partial withdrawals only after year 6.','ppf 80c tax free retirement safe eee'),
+('tax','Section 80C basics','Section 80C lets you deduct up to ₹1.5 lakh/year from taxable income (old regime) via EPF, PPF, ELSS, life insurance premiums, principal on a home loan, and 5-year tax-saver FDs. It only helps under the OLD tax regime — the new regime removes most deductions for lower slabs.','80c deduction old regime 1.5 lakh'),
+('tax','Old vs new tax regime','The new regime has lower slab rates but removes most deductions (80C, 80D, HRA). The old regime has higher rates but lets you claim them. Roughly: if you actively use deductions (rent, 80C, insurance), the old regime often wins; if you don''t, the new one usually does. Compare both on your actual numbers each year.','tax regime old new deductions slabs'),
+('tax','Section 80D health insurance','Premiums for health insurance are deductible under 80D — up to ₹25,000 for yourself/family and an extra ₹25,000 (₹50,000 if senior citizens) for parents. This is separate from the 80C ₹1.5 lakh limit.','80d health insurance premium deduction'),
+('insurance','Term vs endowment insurance','Buy pure term insurance for life cover — it''s cheap and pays a large sum if you die during the term. Avoid endowment/ULIP "insurance + investment" combos: they give poor cover and poor returns. Keep insurance and investing separate. A common cover target is 10–15× annual income.','term insurance endowment ulip life cover'),
+('insurance','Health insurance is non-negotiable','Even if young and healthy, hold a health policy — a single hospitalisation can wipe out years of savings. A family floater of at least ₹5–10 lakh is a common starting point in metros; add a super top-up for cheap extra cover.','health insurance mediclaim floater hospitalisation'),
+('debt','Credit card minimum-payment trap','Paying only the "minimum due" keeps the card active but the rest rolls over at ~36–42% annual interest — one of the most expensive debts there is. Always pay the FULL statement balance. If you can''t, treat clearing card debt as priority #1 before any investing.','credit card minimum due interest debt trap'),
+('debt','Avalanche vs snowball','Two ways to clear multiple debts: avalanche pays the highest interest rate first (cheapest overall), snowball pays the smallest balance first (fastest wins for motivation). Avalanche saves more money; snowball keeps you going. Either beats paying only minimums.','debt payoff avalanche snowball strategy'),
+('debt','Home loan prepayment','Prepaying a home loan early (when most of the EMI is interest) saves a lot of total interest. Compare the loan rate against what you''d earn investing instead — if the loan rate is higher than your expected safe return, prepaying is effectively a guaranteed, tax-free return.','home loan prepayment emi interest'),
+('credit','Credit score (CIBIL)','A CIBIL score (300–900, aim for 750+) reflects how reliably you repay. Biggest drivers: paying every EMI/card bill on time and keeping credit-card usage below ~30% of the limit. Check it free once a year; a good score gets you cheaper loans.','cibil credit score utilisation on-time'),
+('investing','Rule of 72','A quick mental shortcut: divide 72 by the annual return to estimate years to double your money. At 12% ≈ 6 years, at 8% ≈ 9 years. Useful for sanity-checking whether a goal timeline is realistic.','rule of 72 compounding double returns'),
+('investing','Inflation erodes idle cash','Money sitting in a savings account (~3%) loses value against inflation (~5–6%). That''s fine for your emergency fund, but for long-term goals you need investments that beat inflation (equity, over 7+ year horizons) or your buying power shrinks every year.','inflation cash savings account real return'),
+('investing','Match investment to goal horizon','Short-term goals (0–3 yrs) → safe/liquid (FD, liquid fund); medium (3–5 yrs) → hybrid/debt; long (7+ yrs) → mostly equity. Don''t put next year''s rent in stocks, or a 20-year retirement corpus entirely in FDs.','goal horizon asset allocation equity debt'),
+('savings','Sinking funds for known expenses','For predictable irregular costs (insurance renewals, festivals, annual subscriptions), set aside a little every month into a separate pot so they never become a shock. It turns a lumpy ₹12,000 annual bill into a painless ₹1,000/month.','sinking fund irregular expenses planning'),
+('investing','Diversification','Don''t put everything in one stock, one fund, or one asset. Spread across asset classes (equity, debt, gold) and within equity across companies/sectors so a single bad bet can''t sink you. A simple index fund is already diversified across its whole benchmark.','diversification asset allocation risk'),
+('retirement','Start early — compounding','₹5,000/month invested from age 25 typically ends up far larger by 60 than ₹10,000/month started at 35, because the early money compounds for longer. Time in the market is the biggest lever most people underuse. Start with whatever you can, now.','retirement compounding start early nps'),
+('budgeting','Pay yourself first','Automate your savings/SIP on salary day BEFORE you start spending, not with whatever''s left at month-end (usually nothing). Treat investing like a fixed bill. This one habit does more than any amount of expense-tracking.','pay yourself first automate sip savings')
+ON CONFLICT (title) DO NOTHING;
+
+SELECT 'Phase 10 — curated financial knowledge base ready ✅' AS status;

@@ -266,6 +266,9 @@ def get_context(phone, message=None):
             related_news = _rag.format_news(_rag.news_search(message, limit=1, query_embedding=q_vec))
             if related_news:
                 ctx.append("News: " + " | ".join(related_news))
+            related_kb = _rag.format_knowledge(_rag.knowledge_search(message, limit=2, query_embedding=q_vec))
+            if related_kb:
+                ctx.append("Vetted financial knowledge (Viya's own KB — ground any advice in these, prefer over generic knowledge):\n  " + "\n  ".join(related_kb))
     except Exception as e:
         ctx.append(f"(error: {e})")
     return "\n".join(ctx) or "No data."

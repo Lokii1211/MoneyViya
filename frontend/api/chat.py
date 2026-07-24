@@ -417,6 +417,9 @@ def get_context(phone, message=None):
             related_news = _rag.format_news(_rag.news_search(message, limit=2, query_embedding=q_vec))
             if related_news:
                 ctx_parts.append("Relevant market news (cite naturally if it's actually useful here, don't force it):\n  " + "\n  ".join(related_news))
+            related_kb = _rag.format_knowledge(_rag.knowledge_search(message, limit=2, query_embedding=q_vec))
+            if related_kb:
+                ctx_parts.append("Vetted financial knowledge (Viya's own curated knowledge base — when giving advice or an explanation, ground it in these facts and prefer them over generic knowledge; if the KB doesn't cover what they asked, answer from general knowledge but don't contradict it):\n  " + "\n  ".join(related_kb))
             related_habits = _rag.format_matches("habits", _rag.hybrid_search(short, message, "habits", limit=2, query_embedding=q_vec))
             if related_habits:
                 ctx_parts.append("Relevant habits:\n  " + "\n  ".join(related_habits))
