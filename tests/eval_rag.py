@@ -62,134 +62,28 @@ TYPE_TO_INTENT = {
     "medicine_taken": "TAKE_MEDICINE", "medicine_not_found": "TAKE_MEDICINE", "journal": "LOG_JOURNAL",
 }
 
-# ── Golden set — hand-labeled (message, expected_intent) pairs. None means
-# plain conversation; no action should fire. Deliberately varied phrasing,
-# slang, and language (Hinglish/Tanglish included) — this is a natural-
-# language-understanding system, not a keyword matcher, per the system
-# prompt in chat.py, so the eval set has to reflect that. ──
-GOLDEN_SET = [
-    # LOG_EXPENSE
-    ("spent 500 on swiggy", "LOG_EXPENSE"),
-    ("just blew 300 bucks on a movie", "LOG_EXPENSE"),
-    ("paid 1200 for electricity bill", "LOG_EXPENSE"),
-    ("swiggy order cost me 450rs", "LOG_EXPENSE"),
-    ("damn uber took 220 from me", "LOG_EXPENSE"),
-    ("bought groceries for 800", "LOG_EXPENSE"),
-    ("2000 rupees gone on rent today", "LOG_EXPENSE"),
-    ("paid the phone bill, 399", "LOG_EXPENSE"),
-    ("spent five hundred on food", "LOG_EXPENSE"),
-    ("100 rs auto fare", "LOG_EXPENSE"),
-    ("dropped 999 on a new shirt from myntra", "LOG_EXPENSE"),
-    ("chai pe 20 rupaye kharch kiye", "LOG_EXPENSE"),
-    ("paid 5000 towards my credit card bill", "LOG_EXPENSE"),
-    ("swiggy pe 350 kharch hue", "LOG_EXPENSE"),
-    ("naan food ku 200 rooba selavu pannen", "LOG_EXPENSE"),
-    ("gave 150 to the cab guy", "LOG_EXPENSE"),
-    ("blew 3000 on a new pair of shoes", "LOG_EXPENSE"),
-    ("bill vந்து 600 pay pannen electricity ku", "LOG_EXPENSE"),
-    ("recharge ke liye 199 diye", "LOG_EXPENSE"),
-    ("ordered zomato, 320 bucks", "LOG_EXPENSE"),
+# ── Golden set — hand-labeled (message, expected_intent) pairs, loaded from
+# tests/data/intent_dataset.jsonl (intent null = plain conversation, no action
+# should fire). Kept as an external dataset file so it's easy to grow without
+# touching this harness. Deliberately varied phrasing, slang, and language
+# (Hinglish/Tanglish included) — this is a natural-language-understanding
+# system, not a keyword matcher. ──
+DATASET_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "intent_dataset.jsonl")
 
-    # LOG_INCOME
-    ("got my salary, 45000", "LOG_INCOME"),
-    ("received 2000 as a freelance payment", "LOG_INCOME"),
-    ("earned 500 bucks doing a side gig", "LOG_INCOME"),
-    ("mujhe 10000 mile hai bonus mein", "LOG_INCOME"),
-    ("client paid me 15000 today", "LOG_INCOME"),
-    ("got a refund of 300 from amazon", "LOG_INCOME"),
-    ("credited 5000 rupees today, freelance work", "LOG_INCOME"),
-    ("dad sent me 2000", "LOG_INCOME"),
-    ("got paid 800 for the tuition class", "LOG_INCOME"),
 
-    # CREATE_REMINDER
-    ("remind me at 6pm to call mom", "CREATE_REMINDER"),
-    ("set a reminder for tomorrow 9am to pay rent", "CREATE_REMINDER"),
-    ("don't let me forget the dentist appointment at 3", "CREATE_REMINDER"),
-    ("ping me at 10 to take my medicine", "CREATE_REMINDER"),
-    ("nudge me tonight at 8 to log my expenses", "CREATE_REMINDER"),
-    ("mujhe 7 baje yaad dilana bill pay karne ke liye", "CREATE_REMINDER"),
-    ("wake me up at 6am reminder", "CREATE_REMINDER"),
-    ("alert me at 11 to submit the form", "CREATE_REMINDER"),
-    ("can you remind me tomorrow morning to call the bank", "CREATE_REMINDER"),
+def load_golden_set():
+    pairs = []
+    with open(DATASET_PATH, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            row = json.loads(line)
+            pairs.append((row["message"], row.get("intent")))
+    return pairs
 
-    # MARK_HABIT
-    ("went for my morning run", "MARK_HABIT"),
-    ("done with workout", "MARK_HABIT"),
-    ("finished meditating today", "MARK_HABIT"),
-    ("5k done", "MARK_HABIT"),
-    ("did my reading for today", "MARK_HABIT"),
-    ("completed yoga session", "MARK_HABIT"),
-    ("gym done for today", "MARK_HABIT"),
-    ("i journaled today", "MARK_HABIT"),
 
-    # CREATE_HABIT
-    ("i want to start tracking drinking water daily", "CREATE_HABIT"),
-    ("let's add a new habit for journaling", "CREATE_HABIT"),
-    ("track my daily pushups from now on", "CREATE_HABIT"),
-    ("i want to build a habit of reading every day", "CREATE_HABIT"),
-    ("start tracking my sleep habit", "CREATE_HABIT"),
-
-    # CREATE_GOAL
-    ("i want to save 50000 for a trip to goa by december", "CREATE_GOAL"),
-    ("help me save up for a new laptop, target 60000", "CREATE_GOAL"),
-    ("create a goal to save 100000 for emergency fund", "CREATE_GOAL"),
-    ("mujhe shaadi ke liye 200000 bachana hai", "CREATE_GOAL"),
-    ("set up a savings goal of 25000 for a new phone", "CREATE_GOAL"),
-    ("i need to save 15000 for my sister's birthday gift", "CREATE_GOAL"),
-
-    # LOG_HEALTH
-    ("walked 8000 steps today", "LOG_HEALTH"),
-    ("drank 6 glasses of water", "LOG_HEALTH"),
-    ("my weight today is 72 kg", "LOG_HEALTH"),
-    ("logged 10000 steps", "LOG_HEALTH"),
-    ("weighed myself, 65kg", "LOG_HEALTH"),
-
-    # REMEMBER
-    ("remember that my rent is due on the 5th every month", "REMEMBER"),
-    ("just so you know, my landlord's name is Suresh", "REMEMBER"),
-    ("note that i'm allergic to peanuts", "REMEMBER"),
-    ("keep in mind my anniversary is on the 14th", "REMEMBER"),
-    ("remember my bank is HDFC", "REMEMBER"),
-
-    # NONE — plain conversation, no action should fire
-    ("how am i doing this month financially", None),
-    ("what should i invest in", None),
-    ("give me some tips to save more", None),
-    ("hi", None),
-    ("how's the market today", None),
-    ("what's my current streak on my habits", None),
-    ("thank you", None),
-    ("can you explain what a mutual fund is", None),
-    ("what's the difference between a mutual fund and a fixed deposit", None),
-    ("how much have i spent this week", None),
-    ("am i on track with my goals", None),
-    ("what's a good savings rate for my age", None),
-    ("hello viya", None),
-    ("what can you help me with", None),
-    ("is now a good time to buy gold", None),
-
-    # NONE — the LOG-vs-ASK trap: these all contain amounts / food / money
-    # words but are QUESTIONS or CONFIRMATIONS about existing data, NOT new
-    # events. Firing any logging ACTION here is the exact bug this guards.
-    ("did you log my 500 for food?", None),
-    ("is my lunch saved?", None),
-    ("how much did i spend on food today", None),
-    ("what did i log today", None),
-    ("show me my expenses", None),
-    ("did i already add the 500 swiggy expense", None),
-    ("so the 2000 rent is logged right?", None),
-    ("was that 300 movie expense saved", None),
-    ("can you check if i logged my salary this month", None),
-    ("how much have i lent to rahul", None),
-    ("is my water intake logged for today", None),
-    ("what's my total spent on food this week", None),
-    ("should i spend 5000 on this phone?", None),
-    ("if i invest 10000 in this fund what happens", None),
-    ("i'm planning to save 50000 next year", None),
-    ("delete my last expense", None),
-    ("actually that food expense was 400 not 500", None),
-    ("remind me what i spent on groceries", None),
-]
+GOLDEN_SET = load_golden_set()
 
 # ── Grounding cases — seed known fixture rows, ask a question that should
 # require quoting them back, check the reply contains the real number. ──
