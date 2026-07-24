@@ -17,7 +17,7 @@ import urllib.request
 import urllib.error
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlparse, quote
 
 # Vercel's Python bundler doesn't reliably put this file's own directory on
 # sys.path for a plain sibling import — cron/*.py already had to work around
@@ -119,6 +119,43 @@ health log if one exists. If the user says "had 2 more glasses of water"
 and context shows 3 already logged today, output LOG_HEALTH with water=5
 (the new total), not 2. Same for steps. If nothing's logged yet today,
 their stated number IS the total.
+
+╔══════════════════════════════════════╗
+║   LOG vs ASK — THE #1 THING TO GET RIGHT   ║
+╚══════════════════════════════════════╝
+An ACTION means the user is telling you something JUST HAPPENED that you
+should record. Only fire a logging ACTION when the message reports a NEW,
+real event in the user's own words ("spent 500 on food", "had lunch", "paid
+the rent"). NEVER fire a logging ACTION when the user is:
+• ASKING about existing data — "did you log my 500?", "is my lunch saved?",
+  "how much did I spend on food?", "what did I log today?", "show my
+  expenses", "did I already add that?"
+• CONFIRMING / REFERRING BACK to something already done — "yes that one",
+  "the 500 food from earlier", "so it's logged right?", "cool, thanks"
+• ASKING you to change/remove — "delete that", "that was wrong, it was 400"
+  (that's an edit, not a fresh log — acknowledge, don't re-log the same thing)
+• Speaking hypothetically / in the future — "should I spend 500 on this?",
+  "if I buy this it's 500", "planning to invest 5k next month"
+When it's a question, just ANSWER it from USER CONTEXT — do not emit any
+ACTION. A number appearing in the sentence is NOT permission to log; the
+intent has to be "record this now". When genuinely unsure whether they're
+logging or asking, ASK one short clarifying question instead of logging.
+
+Also: the context already shows what's logged today. If the user restates
+something that's clearly already in today's data (same amount + same thing),
+don't log it again — treat it as them referring to the existing entry.
+
+WRONG vs RIGHT:
+User: did you log my 500 for food?
+→ (NO action) Yep — ₹500 on Food is logged, from earlier today. ✅
+  (WRONG: ACTION:LOG_EXPENSE:500:Food — that double-logs a question)
+User: is my lunch saved?
+→ (NO action) Yes, lunch is logged for today. 🍽️
+  (WRONG: ACTION:LOG_MEAL:Meal:lunch:0)
+User: how much did I spend on food today?
+→ (NO action) You've spent ₹500 on Food today. (use the real number from context)
+User: actually make that 500, not 400
+→ (NO action) Got it — noting it's ₹500. (an edit/clarification, not a new expense)
 
 EXAMPLES (illustrating the ACTION format — don't copy the reply wording verbatim every time, vary it naturally like a real person would):
 User: swiggy order cost me 500 bucks, ugh
@@ -297,6 +334,28 @@ def sb_patch(table, filt, data):
         return None
 
 
+def recent_duplicate(table, phone_col, short, conditions, window_min=3):
+    """True if a row matching `conditions` was created for this user within
+    the last `window_min` minutes. The safety net behind the LOG-vs-ASK
+    prompt rule: if the model re-fires an action for a message that was
+    really a question/confirmation about an existing entry, or the user
+    repeats/double-sends, we skip the duplicate write instead of logging the
+    same thing twice. created_at is stored in UTC (Postgres now()), so the
+    threshold is computed in UTC too. Fail-open (return False) — a missed
+    dedup is far less bad than blocking a genuine log on a transient error."""
+    if not short:
+        return False
+    try:
+        threshold = (datetime.utcnow() - timedelta(minutes=window_min)).strftime("%Y-%m-%dT%H:%M:%S")
+        q = f"{table}?{phone_col}=eq.{short}&created_at=gte.{quote(threshold)}&select=id&limit=1"
+        for k, v in conditions.items():
+            q += f"&{k}=eq.{quote(str(v))}"
+        return bool(sb_get(q))
+    except Exception as e:
+        print(f"[DUP CHECK] {table}: {e}")
+        return False
+
+
 def norm_phone(phone):
     c = re.sub(r"[^\d]", "", phone or "")
     if c.startswith("91") and len(c) > 10:
@@ -472,14 +531,20 @@ def execute_actions(action_lines, phone):
                 amount = float(parts[1])
                 category = parts[2]
                 note = ":".join(parts[3:])
-                r = sb_post("transactions", {"phone": short, "type": "expense", "amount": amount, "category": category, "description": note})
-                executed.append({"type": "expense", "amount": amount, "category": category, "note": note, "ok": r is not None})
+                if recent_duplicate("transactions", "phone", short, {"type": "expense", "amount": amount, "category": category}):
+                    executed.append({"type": "expense", "amount": amount, "category": category, "note": note, "ok": True, "duplicate": True})
+                else:
+                    r = sb_post("transactions", {"phone": short, "type": "expense", "amount": amount, "category": category, "description": note})
+                    executed.append({"type": "expense", "amount": amount, "category": category, "note": note, "ok": r is not None})
 
             elif atype == "LOG_INCOME" and len(parts) >= 3:
                 amount = float(parts[1])
                 source = ":".join(parts[2:])
-                r = sb_post("transactions", {"phone": short, "type": "income", "amount": amount, "category": source, "description": source})
-                executed.append({"type": "income", "amount": amount, "source": source, "ok": r is not None})
+                if recent_duplicate("transactions", "phone", short, {"type": "income", "amount": amount, "category": source}):
+                    executed.append({"type": "income", "amount": amount, "source": source, "ok": True, "duplicate": True})
+                else:
+                    r = sb_post("transactions", {"phone": short, "type": "income", "amount": amount, "category": source, "description": source})
+                    executed.append({"type": "income", "amount": amount, "source": source, "ok": r is not None})
 
             elif atype == "CREATE_REMINDER" and len(parts) >= 5:
                 # user_reminders columns: freq (once/daily/weekly/monthly), time,
@@ -557,8 +622,11 @@ def execute_actions(action_lines, phone):
                 name = parts[1]
                 meal_type = parts[2] if len(parts) > 2 and parts[2] else "snack"
                 calories = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 0
-                r = sb_post("meals", {"phone": short, "meal_date": TODAY, "meal_type": meal_type, "name": name, "calories": calories})
-                executed.append({"type": "meal", "name": name, "meal_type": meal_type, "calories": calories, "ok": r is not None})
+                if recent_duplicate("meals", "phone", short, {"meal_date": TODAY, "meal_type": meal_type, "name": name}):
+                    executed.append({"type": "meal", "name": name, "meal_type": meal_type, "calories": calories, "ok": True, "duplicate": True})
+                else:
+                    r = sb_post("meals", {"phone": short, "meal_date": TODAY, "meal_type": meal_type, "name": name, "calories": calories})
+                    executed.append({"type": "meal", "name": name, "meal_type": meal_type, "calories": calories, "ok": r is not None})
 
             elif atype == "LOG_LENDING" and len(parts) >= 3:
                 lend_type = parts[1].lower() if parts[1].lower() in ("given", "taken") else "given"
@@ -869,6 +937,14 @@ def process_message(phone, message, history=None):
     failed = [e for e in executed if e.get("ok") is False]
     if failed:
         clean_reply += "\n\n⚠️ Heads up — that didn't actually save (connection issue on my end). Try again in a moment?"
+
+    # The model wrote a fresh "Logged!" confirmation, but the duplicate guard
+    # skipped the write because the same thing was logged moments ago (usually
+    # the user asking/confirming about an existing entry, mis-read as a new
+    # log). Replace the misleading confirmation with the truth.
+    duplicated = [e for e in executed if e.get("duplicate")]
+    if duplicated and not any(e for e in executed if not e.get("duplicate") and e.get("ok")):
+        clean_reply = "You've already got that logged from a moment ago — I didn't add it again. 👍"
 
     # Persist to chat history
     try:

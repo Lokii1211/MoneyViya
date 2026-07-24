@@ -511,8 +511,15 @@ export default function Wealth() {
 
               <div className="info-row" style={{ padding: '8px 0' }}>
                 <div className="info-icon" style={{ background: 'var(--primary-dim, rgba(0,229,176,0.1))', color: 'var(--primary)' }}><PiggyBank size={16} /></div>
-                <div className="info-body">
-                  <div className="info-title" style={{ fontSize: 12 }}>Portfolio</div>
+                <div className="info-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div className="info-title" style={{ fontSize: 12 }}>Portfolio</div>
+                    {totalInvested > 0 && (
+                      <div style={{ fontSize: 11, fontWeight: 700, color: returns >= 0 ? 'var(--viya-success, #00E87E)' : 'var(--coral-500, #FF5040)' }}>
+                        {returns >= 0 ? '+' : '−'}{formatINR(Math.abs(returns))} ({returns >= 0 ? '+' : '−'}{Math.abs(returnPct)}%)
+                      </div>
+                    )}
+                  </div>
                   <div className="info-value" style={{ fontSize: 13 }}>{formatINR(currentValue)}</div>
                 </div>
               </div>

@@ -8,10 +8,15 @@ docs/AI_AGENTS_RAG_PRD.md section 3:
 
   1. Intent accuracy — for each hand-labeled message below, does the agent
      fire the right ACTION (or correctly fire none for plain conversation)?
+     Includes the LOG-vs-ASK trap set: questions/confirmations that mention
+     amounts or food but must NOT log ("did you log my 500?", "is my lunch
+     saved?") — the mis-logging bug this suite exists to catch.
   2. Grounding rate  — for a few retrieval-dependent questions seeded with
      known fixture data, does the reply quote the REAL number, not an
      invented one? This is the failure mode that actually matters for a
      fintech app.
+  3. Duplicate guard  — log a thing, then repeat/ask about it, and assert the
+     DB still has exactly one row (the recent_duplicate() safety net).
 
 Retrieval precision (the third metric from the PRD) needs labeled relevance
 judgments over real production data, and there isn't enough of that yet
@@ -52,7 +57,9 @@ TYPE_TO_INTENT = {
     "expense": "LOG_EXPENSE", "income": "LOG_INCOME", "reminder": "CREATE_REMINDER",
     "habit": "MARK_HABIT", "habit_already": "MARK_HABIT", "habit_not_found": "MARK_HABIT",
     "goal": "CREATE_GOAL", "new_habit": "CREATE_HABIT", "health": "LOG_HEALTH",
-    "memory": "REMEMBER",
+    "memory": "REMEMBER", "meal": "LOG_MEAL", "lending": "LOG_LENDING", "bill": "CREATE_BILL",
+    "investment": "LOG_INVESTMENT", "new_medicine": "ADD_MEDICINE",
+    "medicine_taken": "TAKE_MEDICINE", "medicine_not_found": "TAKE_MEDICINE", "journal": "LOG_JOURNAL",
 }
 
 # ── Golden set — hand-labeled (message, expected_intent) pairs. None means
@@ -160,6 +167,28 @@ GOLDEN_SET = [
     ("hello viya", None),
     ("what can you help me with", None),
     ("is now a good time to buy gold", None),
+
+    # NONE — the LOG-vs-ASK trap: these all contain amounts / food / money
+    # words but are QUESTIONS or CONFIRMATIONS about existing data, NOT new
+    # events. Firing any logging ACTION here is the exact bug this guards.
+    ("did you log my 500 for food?", None),
+    ("is my lunch saved?", None),
+    ("how much did i spend on food today", None),
+    ("what did i log today", None),
+    ("show me my expenses", None),
+    ("did i already add the 500 swiggy expense", None),
+    ("so the 2000 rent is logged right?", None),
+    ("was that 300 movie expense saved", None),
+    ("can you check if i logged my salary this month", None),
+    ("how much have i lent to rahul", None),
+    ("is my water intake logged for today", None),
+    ("what's my total spent on food this week", None),
+    ("should i spend 5000 on this phone?", None),
+    ("if i invest 10000 in this fund what happens", None),
+    ("i'm planning to save 50000 next year", None),
+    ("delete my last expense", None),
+    ("actually that food expense was 400 not 500", None),
+    ("remind me what i spent on groceries", None),
 ]
 
 # ── Grounding cases — seed known fixture rows, ask a question that should
@@ -291,6 +320,39 @@ def run_grounding():
     return passed, total
 
 
+def _count_expense_rows(amount, category):
+    rows = sb_get(f"transactions?phone=eq.{EVAL_PHONE}&type=eq.expense&amount=eq.{amount}&category=eq.{urllib.parse.quote(category)}&select=id")
+    return len(rows)
+
+
+def run_duplicate_guard():
+    """The exact scenario the user called out: a thing is logged, then the
+    user restates or ASKS about it — the system must NOT create a second row.
+    Verified against the real DB, not just the reply text: exactly one row
+    must exist after all three sends. Cleans up before it starts so a prior
+    run can't skew the count."""
+    print("\n=== Duplicate-logging guard — 3 sends, must end with exactly 1 row ===")
+    sb_delete("transactions", f"phone=eq.{EVAL_PHONE}&category=eq.{urllib.parse.quote('Food')}")
+    time.sleep(0.5)
+
+    steps = [
+        ("spent 500 on food", "first log — should create the row"),
+        ("spent 500 on food", "immediate repeat — guard should skip"),
+        ("did you log my 500 for food?", "question about it — must not log"),
+    ]
+    for msg, note in steps:
+        resp = call_chat(msg)
+        executed = resp.get("actions_executed") or []
+        dup = any(a.get("duplicate") for a in executed)
+        print(f"  sent: {msg!r:40} actions={[a.get('type') for a in executed]} duplicate={dup}  ({note})")
+        time.sleep(REQUEST_DELAY)
+
+    final = _count_expense_rows(500, "Food")
+    ok = final == 1
+    print(f"\n  Rows in DB after 3 sends: {final} (expected 1)  ->  {'PASS' if ok else 'FAIL'}")
+    return (1 if ok else 0), 1
+
+
 def main():
     if not SUPABASE_URL or not SUPABASE_KEY:
         print("SUPABASE_URL and SUPABASE_ANON_KEY (or VITE_ variants) must be set in the environment.")
@@ -301,6 +363,7 @@ def main():
     try:
         intent_passed, intent_total = run_intent_accuracy()
         ground_passed, ground_total = run_grounding()
+        dup_passed, dup_total = run_duplicate_guard()
     finally:
         print("\nCleaning up eval data...")
         cleanup_eval_data()
@@ -309,7 +372,8 @@ def main():
     print(f"Intent accuracy:  {intent_passed}/{intent_total} = {100*intent_passed/intent_total:.1f}%")
     if ground_total:
         print(f"Grounding rate:   {ground_passed}/{ground_total} = {100*ground_passed/ground_total:.1f}%")
-    print("\nTarget from docs/AI_AGENTS_RAG_PRD.md: track both over time as prompt/retrieval changes ship.")
+    print(f"Duplicate guard:  {dup_passed}/{dup_total} = {100*dup_passed/dup_total:.0f}%")
+    print("\nTarget from docs/AI_AGENTS_RAG_PRD.md: track all three over time as prompt/retrieval changes ship.")
 
 
 if __name__ == "__main__":
