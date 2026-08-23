@@ -7,14 +7,7 @@
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/((?!api).*)", "destination": "/index.html" }
   ],
-  "functions": {
-    "api/**/*.py": {
-      "maxDuration": 60
-    },
-    "api/*.py": {
-      "maxDuration": 60
-    }
-  },
+
   "crons": [
     {
       "path": "/api/cron/morning-brief",
