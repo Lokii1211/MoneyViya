@@ -5,8 +5,6 @@ import { api } from '../lib/supabase'
 import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 
-const getEPFProjection = async () => null
-
 const TABS = [
   { key: 'overview', label: '📊 Overview' },
   { key: 'holdings', label: '📈 Holdings' },
@@ -90,26 +88,20 @@ export default function PortfolioDashboard() {
     fetchData()
   }, [phone])
 
-  // Fetch EPF projection from API when inputs change
+  // Compute EPF projection when inputs change
   useEffect(() => {
-    async function fetchEPF() {
-      try {
-        const res = await getEPFProjection(epfBasic, epfBalance, epfAge)
-        if (res?.data) {
-          setEpfResult(res.data)
-          return
-        }
-      } catch { /* offline — compute locally */ }
-      // Local fallback
-      const years = 60 - epfAge
-      if (years <= 0) { setEpfResult(null); return }
-      const monthly = epfBasic * 0.24
-      const mr = 8.25 / 100 / 12
-      let bal = epfBalance
-      for (let i = 0; i < years * 12; i++) bal = (bal + monthly) * (1 + mr)
-      setEpfResult({ projected_corpus: Math.round(bal), monthly_contribution: Math.round(monthly), monthly_pension_estimate: Math.round(bal * 0.004), years_to_retirement: years })
-    }
-    fetchEPF()
+    const years = 60 - epfAge
+    if (years <= 0) { setEpfResult(null); return }
+    const monthly = epfBasic * 0.24
+    const mr = 8.25 / 100 / 12
+    let bal = epfBalance
+    for (let i = 0; i < years * 12; i++) bal = (bal + monthly) * (1 + mr)
+    setEpfResult({
+      projected_corpus: Math.round(bal),
+      monthly_contribution: Math.round(monthly),
+      monthly_pension_estimate: Math.round(bal * 0.004),
+      years_to_retirement: years,
+    })
   }, [epfBasic, epfBalance, epfAge])
 
   const fmt = (n) => '₹' + Math.abs(n).toLocaleString('en-IN', { maximumFractionDigits: 0 })

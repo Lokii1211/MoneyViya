@@ -23,6 +23,12 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         """Send weekly summary to all active users"""
         try:
+            auth = self.headers.get("Authorization", "")
+            cron_secret = os.getenv("CRON_SECRET", "")
+            if cron_secret and auth != f"Bearer {cron_secret}":
+                self._respond(401, {"error": "Unauthorized"})
+                return
+
             sent = 0
             users = self._get_users()
             
