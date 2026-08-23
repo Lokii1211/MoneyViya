@@ -769,80 +769,33 @@ def execute_actions(action_lines, phone):
 
 # ── Groq call ─────────────────────────────────────────────────────────────────
 
+GROQ_TEXT_MODELS = [
+    os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+    "llama-3.1-70b-versatile",
+    "llama-3.1-8b-instant",
+    "llama3-70b-8192",
+    "llama3-8b-8192",
+    "mixtral-8x7b-32768",
+]
+
+GROQ_VISION_MODELS = [
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+    "llama-3.2-11b-vision-preview",
+    "llama-3.2-90b-vision-preview",
+]
+
+
 def call_groq(messages):
     if not GROQ_API_KEY:
         return None, "Add GROQ_API_KEY to Vercel environment variables (free at console.groq.com/keys)"
-    payload = json.dumps({
-        "model": "llama-3.3-70b-versatile",
-        "messages": messages,
-        "temperature": 0.8,
-        "max_tokens": 600,
-    }).encode()
-    req = urllib.request.Request(
-        "https://api.groq.com/openai/v1/chat/completions",
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type": "application/json",
-            # Cloudflare (fronting Groq's API) blocks the default bare
-            # "Python-urllib/3.x" User-Agent as bot traffic (403, CF error
-            # 1010) — a normal-looking UA clears it.
-            "User-Agent": "Mozilla/5.0 (compatible; MoneyViya/1.0; +https://heyviya.vercel.app)",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=15) as r:
-            data = json.loads(r.read())
-            return data["choices"][0]["message"]["content"], None
-    except urllib.error.HTTPError as e:
-        body = e.read().decode()[:500]
-        if e.code == 429:
-            # TEMP diagnostic (kept out of the user-visible reply — real
-            # users are actively hitting this error right now, so it stays
-            # friendly): capture the real Groq rate-limit body/headers
-            # (limit type, used/remaining, reset time) server-side so we can
-            # answer "why is this happening now" with evidence, not a guess.
-            retry_after = e.headers.get("retry-after", "?")
-            limit_hdrs = {k: v for k, v in e.headers.items() if "ratelimit" in k.lower()}
-            print(f"[GROQ 429] retry-after={retry_after} headers={limit_hdrs} body={body}")
-            _LAST_429_DIAG["info"] = f"retry_after={retry_after} {limit_hdrs} {body[:300]}"
-            return None, "I'm getting a lot of messages right now — give me a few seconds and try again!"
-        return None, f"Groq error {e.code}: {body}"
-    except urllib.error.URLError as e:
-        return None, f"Couldn't reach the AI service: {str(e.reason)[:100]}"
-    except Exception as e:
-        return None, f"AI unavailable: {str(e)[:120]}"
 
-
-def call_groq_vision(image_b64):
-    """Reads a bill/receipt photo via Groq's vision model, returns
-    (parsed_dict_or_None, error_detail_or_None). Used by the OCR bill-scan
-    feature in Expenses.jsx, which previously pointed at an endpoint
-    (/api/webhook?action=ocr_bill) that no longer exists anywhere in the
-    deployed backend — this restores the actual feature rather than just
-    removing the marketing claim for it."""
-    if not GROQ_API_KEY:
-        return None, "GROQ_API_KEY not set"
-    try:
-        prompt = (
-            "This is a photo of a bill or payment receipt. Extract the total amount, "
-            "whether it's an expense or income, a short category (Food, Transport, "
-            "Shopping, Bills, Health, Entertainment, Groceries, Education, or Other), "
-            "and the merchant/description. Reply with ONLY a JSON object, no other text: "
-            '{"amount": <number>, "type": "expense", "category": "...", "description": "..."}'
-        )
+    last_error = None
+    for model_name in GROQ_TEXT_MODELS:
         payload = json.dumps({
-            "model": "meta-llama/llama-4-scout-17b-16e-instruct",
-            "messages": [{
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
-                ],
-            }],
-            "temperature": 0.2,
-            "max_tokens": 300,
+            "model": model_name,
+            "messages": messages,
+            "temperature": 0.8,
+            "max_tokens": 600,
         }).encode()
         req = urllib.request.Request(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -854,23 +807,90 @@ def call_groq_vision(image_b64):
             },
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=25) as r:
-            content = json.loads(r.read())["choices"][0]["message"]["content"].strip()
-        if content.startswith("```"):
-            content = content.strip("`")
+        try:
+            with urllib.request.urlopen(req, timeout=15) as r:
+                data = json.loads(r.read())
+                return data["choices"][0]["message"]["content"], None
+        except urllib.error.HTTPError as e:
+            body = e.read().decode()[:500]
+            if e.code == 404 and "model_not_found" in body:
+                last_error = f"Model {model_name} not available, trying next..."
+                continue
+            if e.code == 429:
+                retry_after = e.headers.get("retry-after", "?")
+                limit_hdrs = {k: v for k, v in e.headers.items() if "ratelimit" in k.lower()}
+                print(f"[GROQ 429] retry-after={retry_after} headers={limit_hdrs} body={body}")
+                _LAST_429_DIAG["info"] = f"retry_after={retry_after} {limit_hdrs} {body[:300]}"
+                return None, "I'm getting a lot of messages right now — give me a few seconds and try again!"
+            return None, f"Groq error {e.code}: {body}"
+        except urllib.error.URLError as e:
+            return None, f"Couldn't reach the AI service: {str(e.reason)[:100]}"
+        except Exception as e:
+            return None, f"AI unavailable: {str(e)[:120]}"
+
+    return None, f"AI service error: {last_error or 'No compatible Groq model available'}"
+
+
+def call_groq_vision(image_b64):
+    """Reads a bill/receipt photo via Groq's vision model, returns
+    (parsed_dict_or_None, error_detail_or_None)."""
+    if not GROQ_API_KEY:
+        return None, "GROQ_API_KEY not set"
+
+    prompt = (
+        "This is a photo of a bill or payment receipt. Extract the total amount, "
+        "whether it's an expense or income, a short category (Food, Transport, "
+        "Shopping, Bills, Health, Entertainment, Groceries, Education, or Other), "
+        "and the merchant/description. Reply with ONLY a JSON object, no other text: "
+        '{"amount": <number>, "type": "expense", "category": "...", "description": "..."}'
+    )
+
+    last_error = None
+    for model_name in GROQ_VISION_MODELS:
+        try:
+            payload = json.dumps({
+                "model": model_name,
+                "messages": [{
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+                    ],
+                }],
+                "temperature": 0.2,
+                "max_tokens": 300,
+            }).encode()
+            req = urllib.request.Request(
+                "https://api.groq.com/openai/v1/chat/completions",
+                data=payload,
+                headers={
+                    "Authorization": f"Bearer {GROQ_API_KEY}",
+                    "Content-Type": "application/json",
+                    "User-Agent": "Mozilla/5.0 (compatible; MoneyViya/1.0; +https://heyviya.vercel.app)",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=25) as r:
+                content = json.loads(r.read())["choices"][0]["message"]["content"].strip()
+            if content.startswith("```"):
+                content = content.strip("`")
             if content.startswith("json"):
-                content = content[4:]
-        parsed = json.loads(content)
-        if parsed.get("amount"):
-            return parsed, None
-        return None, f"No amount in model output: {content[:200]}"
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace")[:300]
-        print(f"[OCR] HTTP error {e.code}: {body}")
-        return None, f"HTTP {e.code}: {body}"
-    except Exception as e:
-        print(f"[OCR] vision call failed: {e}")
-        return None, str(e)
+                content = content[4:].strip()
+            parsed = json.loads(content)
+            if parsed.get("amount"):
+                return parsed, None
+            last_error = f"No amount in model output: {content[:200]}"
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")[:300]
+            if e.code == 404 and "model_not_found" in body:
+                last_error = f"Model {model_name} not available, trying next..."
+                continue
+            return None, f"HTTP {e.code}: {body}"
+        except Exception as e:
+            last_error = str(e)
+            continue
+
+    return None, f"Vision AI error: {last_error or 'Could not process receipt image'}"
 
 
 def describe_image_general(image_b64):
