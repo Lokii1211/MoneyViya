@@ -689,24 +689,31 @@ def execute_actions(action_lines, phone):
             elif atype == "CREATE_BILL" and len(parts) >= 3:
                 name = parts[1]
                 amount = float(parts[2]) if len(parts) > 2 and parts[2] else 0
-                due_day = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() and parts[3] != "0" else None
+                due_val = parts[3].strip() if len(parts) > 3 else ""
                 frequency = parts[4] if len(parts) > 4 and parts[4] in ("monthly", "quarterly", "yearly", "one_time") else "monthly"
                 bill_type = parts[5] if len(parts) > 5 and parts[5] else "other"
                 due_date = None
-                if due_day:
-                    year, month = _NOW.year, _NOW.month
-                    last_day = calendar.monthrange(year, month)[1]
-                    candidate = datetime(year, month, min(due_day, last_day))
-                    if candidate.date() < _NOW.date():
-                        month, year = (month + 1, year) if month < 12 else (1, year + 1)
+                if re.match(r"^\d{4}-\d{2}-\d{2}$", due_val):
+                    due_date = due_val
+                elif due_val.isdigit() and int(due_val) > 0:
+                    val = int(due_val)
+                    if val <= 31:
+                        year, month = _NOW.year, _NOW.month
                         last_day = calendar.monthrange(year, month)[1]
-                        candidate = datetime(year, month, min(due_day, last_day))
-                    due_date = candidate.strftime("%Y-%m-%d")
+                        candidate = datetime(year, month, min(val, last_day))
+                        if candidate.date() < _NOW.date():
+                            month, year = (month + 1, year) if month < 12 else (1, year + 1)
+                            last_day = calendar.monthrange(year, month)[1]
+                            candidate = datetime(year, month, min(val, last_day))
+                        due_date = candidate.strftime("%Y-%m-%d")
+                    else:
+                        candidate = _NOW + timedelta(days=val)
+                        due_date = candidate.strftime("%Y-%m-%d")
                 r = sb_post("bills_and_dues", {
                     "phone": short, "name": name, "bill_type": bill_type, "amount": amount,
-                    "due_date": due_date, "frequency": frequency, "status": "pending",
+                    "due_date": due_date, "frequency": frequency, "reminder_days": 3, "status": "pending",
                 })
-                executed.append({"type": "bill", "name": name, "amount": amount, "ok": r is not None})
+                executed.append({"type": "bill", "name": name, "amount": amount, "due_date": due_date, "ok": r is not None})
 
             elif atype == "LOG_INVESTMENT" and len(parts) >= 3:
                 name = parts[1]

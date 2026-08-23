@@ -24,23 +24,47 @@ export default function Friends() {
     const sentF = (sent || []).filter(c => c.connection_type === 'friend')
     const recvF = (received || []).filter(c => c.connection_type === 'friend')
 
-    // Build accepted friends with overview stats
+    // Build accepted friends with overview stats & monthly expenses
+    const now = new Date()
+    const currentMonth = now.getMonth()
+    const currentYear = now.getFullYear()
+
+    const buildFriendData = async (c, targetPhone) => {
+      const [u, habits, goals, txns] = await Promise.all([
+        api.getUser(targetPhone),
+        api.getHabits(targetPhone),
+        api.getGoals(targetPhone),
+        api.getTransactions(targetPhone, 100),
+      ])
+      const maxStreak = (habits || []).reduce((m, h) => Math.max(m, h.current_streak || 0), 0)
+      const totalSaved = (goals || []).reduce((s, g) => s + Number(g.current_amount || 0), 0)
+      
+      const thisMonthTxns = (txns || []).filter(t => {
+        if (t.type !== 'expense') return false
+        const d = new Date(t.created_at || t.date)
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear
+      })
+      const monthlySpent = thisMonthTxns.reduce((s, t) => s + Number(t.amount || 0), 0) || Number(u?.monthly_expenses || 0)
+
+      return {
+        ...c,
+        friendPhone: targetPhone,
+        name: u?.name || targetPhone,
+        maxStreak,
+        totalSaved,
+        monthlySpent,
+        monthlyIncome: Number(u?.monthly_income || 0),
+        totalHabits: (habits || []).length,
+        recentTxns: thisMonthTxns.slice(0, 3),
+      }
+    }
+
     const accepted = []
     for (const c of sentF.filter(c => c.status === 'accepted')) {
-      const u = await api.getUser(c.member_phone)
-      const habits = await api.getHabits(c.member_phone)
-      const maxStreak = (habits || []).reduce((m, h) => Math.max(m, h.current_streak || 0), 0)
-      const goals = await api.getGoals(c.member_phone)
-      const totalSaved = (goals || []).reduce((s, g) => s + Number(g.current_amount || 0), 0)
-      accepted.push({ ...c, friendPhone: c.member_phone, name: u?.name || c.member_phone, maxStreak, totalSaved, totalHabits: (habits || []).length })
+      accepted.push(await buildFriendData(c, c.member_phone))
     }
     for (const c of recvF.filter(c => c.status === 'accepted')) {
-      const u = await api.getUser(c.owner_phone)
-      const habits = await api.getHabits(c.owner_phone)
-      const maxStreak = (habits || []).reduce((m, h) => Math.max(m, h.current_streak || 0), 0)
-      const goals = await api.getGoals(c.owner_phone)
-      const totalSaved = (goals || []).reduce((s, g) => s + Number(g.current_amount || 0), 0)
-      accepted.push({ ...c, friendPhone: c.owner_phone, name: u?.name || c.owner_phone, maxStreak, totalSaved, totalHabits: (habits || []).length })
+      accepted.push(await buildFriendData(c, c.owner_phone))
     }
     setFriends(accepted)
 
@@ -179,9 +203,10 @@ export default function Friends() {
                   </div>
                   <div>
                     <div style={{fontSize:14, fontWeight:700}}>{f.name}</div>
-                    <div style={{display:'flex', gap:12, marginTop:2}}>
-                      <span style={{fontSize:12, color:'var(--gold)', fontWeight:700}}>🔥 {f.maxStreak} streak</span>
-                      <span style={{fontSize:12, color:'var(--primary)', fontWeight:700}}>💰 ₹{f.totalSaved > 999 ? Math.round(f.totalSaved/1000) + 'K' : f.totalSaved} saved</span>
+                    <div style={{display:'flex', flexWrap:'wrap', gap:8, marginTop:4}}>
+                      <span style={{fontSize:11, color:'var(--gold)', fontWeight:700, background:'rgba(255,215,0,0.1)', padding:'2px 6px', borderRadius:6}}>🔥 {f.maxStreak} streak</span>
+                      <span style={{fontSize:11, color:'var(--primary)', fontWeight:700, background:'rgba(0,229,176,0.1)', padding:'2px 6px', borderRadius:6}}>💰 ₹{f.totalSaved > 999 ? Math.round(f.totalSaved/1000) + 'K' : f.totalSaved} saved</span>
+                      <span style={{fontSize:11, color:'#60A5FA', fontWeight:700, background:'rgba(96,165,250,0.1)', padding:'2px 6px', borderRadius:6}}>💳 ₹{Number(f.monthlySpent || 0).toLocaleString('en-IN')} this mo.</span>
                     </div>
                   </div>
                 </div>

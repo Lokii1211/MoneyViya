@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useApp } from '../lib/store'
 import { ArrowLeft, Copy, Share2, Gift, Users, TrendingUp, CheckCircle, ExternalLink } from 'lucide-react'
 
-const REFERRAL_CODE = 'VIYA-RAHUL2026'
 const REWARD_AMOUNT = 50
 
 const REFERRAL_STATS = {
@@ -21,22 +21,29 @@ const REFERRAL_HISTORY = [
 ]
 
 export default function ReferralProgram() {
+  const { phone, user } = useApp()
   const nav = useNavigate()
   const [copied, setCopied] = useState(false)
 
+  const referralCode = 'VIYA' + (phone ? phone.slice(-4) : (user?.name ? user.name.slice(0, 4).toUpperCase() : '2026'))
+  const shareUrl = `https://heyviya.vercel.app/?ref=${referralCode}`
+
   const copyCode = () => {
-    navigator.clipboard?.writeText(REFERRAL_CODE)
+    navigator.clipboard?.writeText(referralCode)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
   const shareViya = () => {
+    const msg = `🎁 Join me on Viya — your AI second brain for money, health & life! Use my referral link: ${shareUrl} to get started and we both earn ₹${REWARD_AMOUNT}!`
     if (navigator.share) {
       navigator.share({
         title: 'Try Viya AI',
-        text: `I use Viya to manage my finances, health & emails — all in one AI app. Use my code ${REFERRAL_CODE} and we both get ₹${REWARD_AMOUNT}!`,
-        url: `https://viya.app/ref/${REFERRAL_CODE}`,
+        text: msg,
+        url: shareUrl,
       })
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
     }
   }
 
@@ -82,7 +89,7 @@ export default function ReferralProgram() {
           <div style={{
             fontSize: 22, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace",
             letterSpacing: 3, color: 'var(--gold-500)', marginBottom: 12,
-          }}>{REFERRAL_CODE}</div>
+          }}>{referralCode}</div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
             <button onClick={copyCode} style={{
               padding: '10px 20px', borderRadius: 'var(--r-full)', fontSize: 13, fontWeight: 600,
