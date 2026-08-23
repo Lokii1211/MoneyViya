@@ -38,7 +38,7 @@ Viya is an intelligent personal life operating system designed for Indian users.
 |---|---|
 | **Frontend** | React 19 (`19.2.4`), Vite (`8.0.4`), Zustand (`5.0.12`), Framer Motion, Vanilla CSS Design System |
 | **Mobile** | Capacitor (`8.3.3`) for Android & iOS (`com.viyanexus.viya`) |
-| **Backend & API** | Python Serverless Functions on Vercel (`frontend/api/*.py`, `@vercel/python@4.5.0`) |
+| **Backend & API** | Python Serverless Functions on Vercel (`frontend/api/*.py`, `@vercel/python`) |
 | **Database** | Supabase PostgreSQL + **pgvector** (1536-dim cosine similarity) |
 | **Chat LLM** | Groq — LLaMA 3.3 70B (`llama-3.3-70b-versatile`) |
 | **Vision / OCR** | Groq — `meta-llama/llama-4-scout-17b-16e-instruct` |
