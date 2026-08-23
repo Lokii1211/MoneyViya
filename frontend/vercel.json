@@ -8,52 +8,10 @@
     { "source": "/((?!api).*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/chat.py": {
-      "runtime": "@vercel/python",
-      "maxDuration": 30
-    },
-    "api/whatsapp.py": {
-      "runtime": "@vercel/python",
+    "api/**/*.py": {
       "maxDuration": 60
     },
-    "api/bank-connect.py": {
-      "runtime": "@vercel/python",
-      "maxDuration": 30
-    },
-    "api/cron/check-reminders.py": {
-      "runtime": "@vercel/python",
-      "maxDuration": 60
-    },
-    "api/cron/morning-brief.py": {
-      "runtime": "@vercel/python",
-      "maxDuration": 60
-    },
-    "api/cron/weekly-summary.py": {
-      "runtime": "@vercel/python",
-      "maxDuration": 60
-    },
-    "api/sms/process.py": {
-      "runtime": "@vercel/python",
-      "maxDuration": 30
-    },
-    "api/auth/index.py": {
-      "runtime": "@vercel/python",
-      "maxDuration": 30
-    },
-    "api/auth/gmail/index.py": {
-      "runtime": "@vercel/python",
-      "maxDuration": 30
-    },
-    "api/auth/gmail/callback.py": {
-      "runtime": "@vercel/python",
-      "maxDuration": 30
-    },
-    "api/cron/market-news.py": {
-      "runtime": "@vercel/python",
-      "maxDuration": 60
-    },
-    "api/cron/knowledge-graph.py": {
-      "runtime": "@vercel/python",
+    "api/*.py": {
       "maxDuration": 60
     }
   },
