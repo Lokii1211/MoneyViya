@@ -1,188 +1,146 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useApp } from '../lib/store'
-import { api } from '../lib/supabase'
-import { Mail, CreditCard, Calendar, Package, Clock, ArrowLeft, RefreshCw, CheckCircle, ExternalLink, ShieldCheck } from 'lucide-react'
-import { formatDate } from '../lib/utils'
+import { motion } from 'framer-motion'
+import { Mail, CreditCard, Calendar, Package, Clock, ArrowLeft, ShieldCheck, Sparkles, MessageSquare, BellRing, CheckCircle2 } from 'lucide-react'
+import PageTransition from '../components/PageTransition'
 
 export default function EmailIntelligence() {
-  const { phone, user } = useApp()
   const nav = useNavigate()
-  const [emails, setEmails] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('all')
+  const [notified, setNotified] = useState(false)
 
-  useEffect(() => {
-    if (phone) loadEmails()
-  }, [phone])
-
-  const loadEmails = async () => {
-    setLoading(true)
-    try {
-      const res = await api.getEmails(phone, 30)
-      setEmails(res || [])
-    } catch (e) {
-      console.error('Error loading emails:', e)
-    } finally {
-      setLoading(false)
-    }
+  const handleNotify = () => {
+    setNotified(true)
   }
 
-  const connectGmail = () => {
-    window.location.href = `/api/auth/gmail?phone=${encodeURIComponent(phone || '')}`
-  }
-
-  const isConnected = Boolean(user?.gmail_connected || emails.length > 0)
-  const filtered = filter === 'all' ? emails : emails.filter(e => e.category === filter)
+  const features = [
+    { icon: <CreditCard size={20} color="#FF6B6B" />, title: 'Credit Card & Utility Bills', desc: 'Auto-extracts total amount, due date, and minimum due so you never pay late fees.', tag: 'Auto-detected', color: '#FF6B6B' },
+    { icon: <Package size={20} color="#FBBF24" />, title: 'Deliveries & Order Tracking', desc: 'Tracks Amazon, Flipkart, Swiggy Instamart and courier packages with real-time status.', tag: 'Live tracking', color: '#FBBF24' },
+    { icon: <Calendar size={20} color="#60A5FA" />, title: 'Calendar & Meeting Invites', desc: 'Detects Zoom, Google Meet & doctor appointment invites and adds them to your daily schedule.', tag: 'Schedule sync', color: '#60A5FA' },
+    { icon: <Mail size={20} color="#34D399" />, title: 'Investment & Mutual Fund CAS', desc: 'Parses monthly CAMS/KFintech statements to keep your net worth cockpit always updated.', tag: 'Wealth auto-sync', color: '#34D399' },
+  ]
 
   return (
-    <div className="page" style={{ paddingTop: 8, paddingBottom: 100 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <PageTransition>
+      <div className="page" style={{ paddingTop: 8, paddingBottom: 100 }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
           <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
           <div>
-            <h1 style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 24, letterSpacing: -0.3 }}>Email Intelligence</h1>
-            <p className="body-s text-secondary">Your inbox decoded into bills, meetings & orders ✨</p>
-          </div>
-        </div>
-        {isConnected && (
-          <button className="btn-secondary" style={{ padding: '6px 12px', fontSize: 12 }} onClick={loadEmails}>
-            <RefreshCw size={14} />
-          </button>
-        )}
-      </div>
-
-      {/* Connection Banner */}
-      {!isConnected ? (
-        <div style={{
-          background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #4338CA 100%)',
-          borderRadius: 'var(--radius-2xl)', padding: 24,
-          marginBottom: 20, color: 'white', textAlign: 'center',
-          boxShadow: '0 8px 32px rgba(30,27,75,0.4)',
-        }}>
-          <div style={{ fontSize: 44, marginBottom: 10 }}>📬</div>
-          <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 20, marginBottom: 8 }}>
-            Connect Your Gmail
-          </h2>
-          <p style={{ fontSize: 13, opacity: 0.85, lineHeight: 1.5, maxWidth: 320, margin: '0 auto 16px' }}>
-            Viya securely scans your inbox using bank-grade AES encryption to auto-detect credit card bills, Amazon packages, and meeting links.
-          </p>
-          <button
-            onClick={connectGmail}
-            style={{
-              padding: '12px 24px', borderRadius: 'var(--radius-full)',
-              background: '#FFFFFF', color: '#1E1B4B', fontWeight: 700, fontSize: 14,
-              border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
-              boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
-            }}
-          >
-            <Mail size={16} color="#4338CA" /> Connect with Google
-          </button>
-          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, opacity: 0.75 }}>
-            <ShieldCheck size={14} /> Bank-grade encryption • Read-only access
-          </div>
-        </div>
-      ) : (
-        <div style={{
-          background: 'rgba(0,229,176,0.08)', border: '1px solid rgba(0,229,176,0.3)',
-          borderRadius: 14, padding: 14, marginBottom: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <CheckCircle size={20} color="var(--primary)" />
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700 }}>Gmail Connected</div>
-              <div style={{ fontSize: 11, color: 'var(--text3)' }}>{user?.gmail_address || 'Inbox active & scanning'}</div>
-            </div>
-          </div>
-          <button onClick={connectGmail} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-            Re-sync
-          </button>
-        </div>
-      )}
-
-      {/* Feature Pills */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
-          ⚡ Auto-Detected Categories
-        </div>
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-          {[
-            { key: 'all', label: 'All', emoji: '📬' },
-            { key: 'bill', label: 'Bills', emoji: '💳' },
-            { key: 'delivery', label: 'Deliveries', emoji: '📦' },
-            { key: 'meeting', label: 'Meetings', emoji: '📅' },
-            { key: 'subscription', label: 'Subscriptions', emoji: '📈' },
-          ].map(c => (
-            <button
-              key={c.key}
-              onClick={() => setFilter(c.key)}
-              style={{
-                padding: '8px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700,
-                border: filter === c.key ? '1px solid var(--primary)' : '1px solid var(--border)',
-                background: filter === c.key ? 'var(--primary-dim)' : 'var(--surface)',
-                color: filter === c.key ? 'var(--primary)' : 'var(--text2)',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap'
-              }}
-            >
-              <span>{c.emoji}</span> {c.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Live Synced Email List */}
-      {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 72, borderRadius: 14 }} />)}
-        </div>
-      ) : filtered.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {filtered.map(e => (
-            <div
-              key={e.id}
-              style={{
-                background: 'var(--surface)', border: '1px solid var(--border2)',
-                borderRadius: 14, padding: 14, display: 'flex', gap: 12, alignItems: 'flex-start'
-              }}
-            >
-              <div style={{
-                width: 36, height: 36, borderRadius: 10,
-                background: e.category === 'bill' ? 'rgba(239,68,68,0.1)' : e.category === 'delivery' ? 'rgba(245,158,11,0.1)' : 'rgba(59,130,246,0.1)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h1 style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: 24, letterSpacing: -0.5 }}>
+                Email Intelligence
+              </h1>
+              <span style={{
+                background: 'rgba(245, 166, 35, 0.15)', color: '#F5A623',
+                fontSize: 11, fontWeight: 800, padding: '3px 8px', borderRadius: 20,
+                border: '1px solid rgba(245, 166, 35, 0.3)', textTransform: 'uppercase', letterSpacing: 0.5
               }}>
-                {e.category === 'bill' ? '💳' : e.category === 'delivery' ? '📦' : e.category === 'meeting' ? '📅' : '✉️'}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{e.sender || 'Unknown'}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text3)' }}>{formatDate(e.received_at)}</div>
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {e.subject}
-                </div>
-                {e.snippet && (
-                  <div style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                    {e.snippet}
-                  </div>
-                )}
-                {e.extracted_amount && (
-                  <div style={{ marginTop: 6, display: 'inline-block', padding: '2px 8px', borderRadius: 6, background: 'rgba(0,229,176,0.1)', color: 'var(--primary)', fontSize: 11, fontWeight: 700 }}>
-                    ₹{Number(e.extracted_amount).toLocaleString('en-IN')}
-                  </div>
-                )}
-              </div>
+                Coming Soon
+              </span>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ textAlign: 'center', padding: '30px 16px', background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)' }}>
-          <div style={{ fontSize: 36, marginBottom: 8 }}>✨</div>
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>No emails detected yet</div>
-          <div style={{ fontSize: 12, color: 'var(--text3)', maxWidth: 260, margin: '0 auto' }}>
-            Connect your Gmail or tell Viya in chat about your upcoming bills & orders!
+            <p className="body-s text-secondary">Your inbox, decoded by AI ✨</p>
           </div>
         </div>
-      )}
-    </div>
+
+        {/* Hero Card */}
+        <div style={{
+          background: 'linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #312E81 100%)',
+          borderRadius: 24, padding: 28, marginBottom: 24, color: 'white', textAlign: 'center',
+          boxShadow: '0 12px 36px rgba(15, 23, 42, 0.5)', border: '1px solid rgba(255, 255, 255, 0.1)',
+          position: 'relative', overflow: 'hidden'
+        }}>
+          <div style={{
+            position: 'absolute', top: -30, right: -30, width: 140, height: 140,
+            background: 'radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, rgba(99, 102, 241, 0) 70%)',
+            borderRadius: '50%'
+          }} />
+
+          <div style={{ fontSize: 50, marginBottom: 12 }}>📬</div>
+          <h2 style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: 22, marginBottom: 8, color: '#FFFFFF' }}>
+            Zero-Effort Inbox Automation
+          </h2>
+          <p style={{ fontSize: 13, color: 'rgba(255, 255, 255, 0.8)', lineHeight: 1.6, maxWidth: 330, margin: '0 auto 20px' }}>
+            Gmail integration is currently undergoing Google's sensitive-scope CASA Tier-2 security review. Once approved, Viya will securely read receipts, deliveries, and meeting invites.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+            <button
+              onClick={handleNotify}
+              disabled={notified}
+              style={{
+                padding: '12px 24px', borderRadius: 30, fontSize: 13, fontWeight: 800,
+                background: notified ? 'rgba(52, 211, 153, 0.2)' : 'linear-gradient(135deg, #00E5B0 0%, #00B4D8 100%)',
+                color: notified ? '#34D399' : '#050508', border: notified ? '1px solid #34D399' : 'none',
+                cursor: notified ? 'default' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
+                boxShadow: notified ? 'none' : '0 4px 16px rgba(0, 229, 176, 0.3)', transition: 'all 0.3s ease'
+              }}
+            >
+              {notified ? <><CheckCircle2 size={16} /> Notification Enabled</> : <><BellRing size={16} /> Notify Me When Live</>}
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'rgba(255, 255, 255, 0.6)' }}>
+              <ShieldCheck size={14} color="#34D399" /> Bank-grade AES-256 encryption • Read-only access
+            </div>
+          </div>
+        </div>
+
+        {/* Feature Preview List */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12 }}>
+            ⚡ What Viya Will Detect For You
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {features.map((f, i) => (
+              <div
+                key={i}
+                style={{
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 18, padding: 16, display: 'flex', gap: 14, alignItems: 'flex-start'
+                }}
+              >
+                <div style={{
+                  width: 44, height: 44, borderRadius: 12,
+                  background: f.color + '15', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  {f.icon}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{f.title}</div>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: f.color, background: f.color + '18', padding: '2px 6px', borderRadius: 6 }}>
+                      {f.tag}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.5 }}>
+                    {f.desc}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Alternative Action Card */}
+        <div style={{
+          background: 'var(--surface)', border: '1px dashed var(--primary)',
+          borderRadius: 18, padding: 18, textAlign: 'center'
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 6 }}>
+            💬 Log Bills & Events Instantly in Chat
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.5, marginBottom: 14, maxWidth: 300, margin: '0 auto 14px' }}>
+            You can already tell Viya e.g. <span style={{ color: 'var(--text)', fontWeight: 600 }}>"Electricity bill ₹1200 due on 15th"</span> or scan a receipt photo!
+          </div>
+          <button
+            className="btn-primary"
+            onClick={() => nav('/chat')}
+            style={{ padding: '10px 20px', borderRadius: 20, fontSize: 13, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <MessageSquare size={14} /> Open AI Chat
+          </button>
+        </div>
+      </div>
+    </PageTransition>
   )
 }

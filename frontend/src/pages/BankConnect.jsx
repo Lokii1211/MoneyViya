@@ -220,25 +220,10 @@ export default function BankConnect() {
     setLoading(false)
   }, [phone])
 
-  /* ─── Bank / Account Aggregator Connect ─── */
-  const connectBank = async (bankName) => {
-    toast.show(`Initializing Account Aggregator for ${bankName}...`, 'info')
-    try {
-      const r = await fetch('/api/bank-connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'create_consent', phone, bank_name: bankName }),
-      })
-      const data = await r.json()
-      if (data.redirect_url) {
-        window.open(data.redirect_url, '_blank')
-        toast.show(`Redirecting to ${bankName} verification...`, 'success')
-      } else {
-        toast.show(`Account Aggregator sandbox consent active for ${bankName}`, 'success')
-      }
-    } catch {
-      toast.show(`${bankName} connected in sandbox mode! Use "Import Transactions" below to add SMS/CSV statements.`, 'info')
-    }
+  /* ─── Bank / Account Aggregator Coming Soon ─── */
+  const connectBank = (bankName) => {
+    toast.show(`${bankName} direct connect is Coming Soon! RBI Account Aggregator sync is undergoing regulatory certification. Use "Import Transactions" below right now.`, 'info')
+    document.getElementById('bc2-import')?.scrollIntoView({ behavior: 'smooth' })
   }
 
   /* ─── Investment ─── */
@@ -385,7 +370,7 @@ export default function BankConnect() {
 
         <div className="bc2-bank-grid" style={{ maxHeight: showAllBanks ? 'none' : 210, overflow: 'hidden', transition: 'max-height 0.4s ease' }}>
           {visibleBanks.map(b => (
-            <button key={b.name} className="bc2-bank-card" onClick={() => connectBank(b.name)}>
+            <button key={b.name} className="bc2-bank-card bc2-bank-card--soon" onClick={() => connectBank(b.name)}>
               <span className="bc2-bank-icon">{b.icon}</span>
               <span className="bc2-bank-name">{b.name}</span>
             </button>
