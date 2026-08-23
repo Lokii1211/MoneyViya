@@ -134,6 +134,10 @@ def test_parser():
         {"name": "Dosa", "meal_type": "breakfast", "calories": 250})
     one("ACTION:LOG_LENDING:given:Rahul:20000:2:5", "lending",
         {"type": "given", "person_name": "Rahul", "amount": 20000.0, "interest_rate": 2.0})
+    one("ACTION:SETTLE_LENDING:Rahul:20000:no", "transactions",
+        {"type": "income", "amount": 20000.0, "category": "Loan Repayment"})
+    one("ACTION:SETTLE_LENDING:Rahul:400:yes", "transactions",
+        {"type": "income", "amount": 400.0, "category": "Interest Income"})
     one("ACTION:CREATE_BILL:Netflix:500:3:monthly:subscription", "bills_and_dues",
         {"name": "Netflix", "bill_type": "subscription", "amount": 500.0})
     one("ACTION:LOG_INVESTMENT:Axis Bluechip:mutual_fund:5000:yes", "investments",

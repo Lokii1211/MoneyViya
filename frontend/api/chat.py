@@ -82,6 +82,7 @@ ACTION:CREATE_GOAL:name:target_amount:YYYY-MM-DD
 ACTION:LOG_HEALTH:steps:water_glasses:weight_kg
 ACTION:LOG_MEAL:name:meal_type:calories
 ACTION:LOG_LENDING:given_or_taken:person_name:amount:interest_rate_pct:collect_day_of_month
+ACTION:SETTLE_LENDING:person_name:amount_settled:is_interest_only
 ACTION:CREATE_BILL:name:amount:due_day_of_month:frequency:bill_type
 ACTION:LOG_INVESTMENT:name:type:amount:is_sip
 ACTION:ADD_MEDICINE:name:dosage:time:frequency
@@ -98,21 +99,26 @@ default everything to once.
 
 The categories below are the KINDS of intent to recognize — not fixed
 phrases to pattern-match. Any natural way of saying these counts:
-• Spent/paid money on something          → LOG_EXPENSE
-• Earned/received/got paid               → LOG_INCOME
-• Wants to be reminded of something later → CREATE_REMINDER (NOT for lending/borrowing money — see LOG_LENDING, which is its own single action and already covers the recurring reminder)
-• Says they did/finished a habit          → MARK_HABIT (match against their real habit list in context, even if worded differently — "ran today", "went for a jog", "5k done" should all match a "Running" habit)
-• Wants to start tracking a new habit      → CREATE_HABIT
-• Wants to save toward something          → CREATE_GOAL
-• Mentions steps/water/weight/sleep        → LOG_HEALTH (see INCREMENTAL LOGGING below — these accumulate, they don't overwrite)
-• Says they ate/had a meal                → LOG_MEAL. meal_type is breakfast/lunch/dinner/snack — infer it from current time if they don't say, using {TODAY} as today's date for context. If they don't name what they ate, use "Meal" as the name and calories 0 — still log it, don't block on missing detail for something this casual.
-• Lent money to someone, or borrowed it   → LOG_LENDING — ALWAYS use this single action for lending/borrowing, even when it also mentions interest or a recurring collection date. Do NOT split it into REMEMBER + CREATE_REMINDER — that loses the amount/interest/person as structured data the app can actually track and settle later. given_or_taken is "given" (they lent it out) or "taken" (they borrowed it). interest_rate_pct is 0 if none mentioned. collect_day_of_month is the day (1-31) they want to be reminded to collect/repay each month — 0 if no recurring collection was mentioned. If they clearly describe lending/borrowing but don't give a person's name, ask for it rather than guessing — everything else can have reasonable defaults, the name can't.
-• Has a recurring bill, subscription, or EMI to track → CREATE_BILL. due_day_of_month is 1-31 (0 if not given). frequency is monthly/quarterly/yearly/one_time. bill_type is credit_card/electricity/internet/phone/rent/insurance/emi/subscription/other — pick the closest fit.
+• Spent/paid money on something          → LOG_EXPENSE (If user marks an expense as unwanted, impulse, guilt buy, or wasting money, append [Impulse] or [Unwanted] in the note so they can track mindful spending).
+• Earned/received/got paid               → LOG_INCOME (Salary, freelance, bonus, cashback, gifts, dividends).
+• Wants to be reminded of something later → CREATE_REMINDER (e.g. "remind me to collect interest from Rahul on 5th", "remind me at 8pm for medicine").
+• Says they did/finished a habit          → MARK_HABIT (match against their real habit list in context, even if worded differently — "ran today", "went for a jog", "5k done" should all match a "Running" habit).
+• Wants to start tracking a new habit      → CREATE_HABIT.
+• Wants to save toward something          → CREATE_GOAL.
+• Mentions steps/water/weight/sleep        → LOG_HEALTH (see INCREMENTAL LOGGING below — these accumulate, they don't overwrite).
+• Says they ate/had a meal                → LOG_MEAL. meal_type is breakfast/lunch/dinner/snack — infer it from current time if they don't say.
+• Lent money to someone, or borrowed it   → LOG_LENDING. given_or_taken is "given" (they lent it out) or "taken" (they borrowed it). interest_rate_pct is 0 if none mentioned. collect_day_of_month is the day (1-31) they want to be reminded to collect/repay each month — 0 if no recurring collection was mentioned.
+• Lent money or interest received back    → SETTLE_LENDING:person_name:amount:is_interest_only (is_interest_only is "yes" if it's monthly interest received on a loan, "no" if it's principal repayment or settling the loan).
+• Has a recurring bill, subscription, or EMI to track → CREATE_BILL. due_day_of_month is 1-31 (0 if not given). frequency is monthly/quarterly/yearly/one_time. bill_type is credit_card/electricity/internet/phone/rent/insurance/emi/subscription/other.
 • Bought/invested in a stock, mutual fund, SIP, FD, gold, crypto, etc. → LOG_INVESTMENT. type is mutual_fund/stock/fd/ppf/nps/gold/crypto. is_sip is "yes" only if they describe it as a recurring SIP, else "no".
-• Wants to track a medicine/prescription   → ADD_MEDICINE (name, dosage if mentioned, time HH:MM if mentioned else default a sensible time, frequency daily/twice_daily/weekly/as_needed)
-• Says they took/had their medicine        → TAKE_MEDICINE:keyword (match against their real medicine list in context, same matching style as MARK_HABIT)
-• Wants to journal/vent/reflect on their day/mood → LOG_JOURNAL:entry:mood (entry is what they said, mood is a one-word read on it — stressed/happy/anxious/calm/sad/excited/neutral — infer it from tone even if they don't name it)
-• Tells you a fact to remember (that ISN'T lending/borrowing — that's always LOG_LENDING) → REMEMBER. Don't wait for "remember that..." — also fire this on significant facts mentioned in passing that would matter in a future conversation: a new job or income change, a dependent or family member, a recurring constraint (allergy, dietary preference, city/relocation), or a stated financial goal/priority not already covered by CREATE_GOAL. Skip small talk and anything already captured by another action above.
+• Wants to track a medicine/prescription   → ADD_MEDICINE (name, dosage, time HH:MM, frequency daily/twice_daily/weekly/as_needed).
+• Says they took/had their medicine        → TAKE_MEDICINE:keyword.
+• Wants to journal/vent/reflect on their day/mood → LOG_JOURNAL:entry:mood.
+• Tells you a fact to remember             → REMEMBER.
+
+GREETINGS, DAILY TARGETS & REVIEWS:
+• Morning greeting ("good morning", "morning", "aaj ka plan"): Warm, enthusiastic Indian morning greeting. Give a quick snapshot of yesterday's recap, today's budget left, pending bills/EMIs, and 1 motivating daily target.
+• Night review ("good night", "shubh ratri", "night review"): Check what got logged today (expenses, water, steps, meals, habits), gently ask if anything got missed, and give a calming sign-off.
 
 INCREMENTAL LOGGING — steps, water, and meals ADD to what's already logged
 today, they don't replace it. USER CONTEXT below includes today's latest
@@ -655,6 +661,30 @@ def execute_actions(action_lines, phone):
                     "reminder_frequency": "monthly" if collect_day else "weekly", "status": "pending",
                 })
                 executed.append({"type": "lending", "person": person, "amount": amount, "lend_type": lend_type, "ok": r is not None})
+
+            elif atype == "SETTLE_LENDING" and len(parts) >= 2:
+                person = parts[1]
+                amount = float(parts[2]) if len(parts) > 2 and parts[2] else 0
+                is_interest = parts[3].lower() == "yes" if len(parts) > 3 else False
+                if is_interest:
+                    r = sb_post("transactions", {
+                        "phone": short, "amount": amount, "category": "Interest Income",
+                        "description": f"Loan interest from {person}", "type": "income", "source": "chat"
+                    })
+                else:
+                    existing = sb_get(f"lending?user_phone=eq.{short}&person_name=eq.{quote(person)}&status=eq.pending&order=created_at.desc&limit=1")
+                    if existing:
+                        lend_id = existing[0].get("id")
+                        orig_amt = float(existing[0].get("amount") or 0)
+                        if amount >= orig_amt or amount == 0:
+                            sb_patch("lending", f"id=eq.{lend_id}", {"status": "settled"})
+                        else:
+                            sb_patch("lending", f"id=eq.{lend_id}", {"amount": max(orig_amt - amount, 0)})
+                    r = sb_post("transactions", {
+                        "phone": short, "amount": amount, "category": "Loan Repayment",
+                        "description": f"Loan repayment from {person}", "type": "income", "source": "chat"
+                    })
+                executed.append({"type": "settle_lending", "person": person, "amount": amount, "is_interest": is_interest, "ok": r is not None})
 
             elif atype == "CREATE_BILL" and len(parts) >= 3:
                 name = parts[1]

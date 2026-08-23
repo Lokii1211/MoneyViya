@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
-import { Send, Mic, Paperclip, X, ChevronDown, Zap, CheckCircle, AlertTriangle, TrendingUp, Target, BarChart3, Bell, Plus, Trash2, Clock, ArrowLeft } from 'lucide-react'
+import { Send, Mic, Paperclip, X, ChevronDown, Zap, CheckCircle, AlertTriangle, TrendingUp, Target, BarChart3, Bell, Plus, Trash2, Clock, ArrowLeft, Volume2, VolumeX } from 'lucide-react'
 import { timeAgo } from '../lib/utils'
 
 // ── Suggestion chips ──────────────────────────────────────────────────────────
@@ -114,12 +114,52 @@ export default function Chat() {
   const [voiceTranscript, setVoiceTranscript] = useState('')
   const [voiceSupported] = useState(() => typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition))
   const [showScrollBtn, setShowScrollBtn] = useState(false)
+  const [speakingIndex, setSpeakingIndex] = useState(null)
   const endRef = useRef(null)
   const inputRef = useRef(null)
   const fileRef = useRef(null)
   const scrollAreaRef = useRef(null)
   const recTimerRef = useRef(null)
   const recognitionRef = useRef(null)
+
+  const speakText = (text, idx) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return
+    if (speakingIndex === idx) {
+      window.speechSynthesis.cancel()
+      setSpeakingIndex(null)
+      return
+    }
+    window.speechSynthesis.cancel()
+    const cleanText = (text || '')
+      .replace(/[*_`#]/g, '')
+      .replace(/<[^>]*>/g, '')
+      .replace(/https?:\/\/\S+/g, '')
+      .trim()
+    if (!cleanText) return
+
+    const utter = new SpeechSynthesisUtterance(cleanText)
+    utter.rate = 1.0
+    utter.pitch = 1.0
+
+    try {
+      const voices = window.speechSynthesis.getVoices()
+      const inVoice = voices.find(v => v.lang === 'en-IN' || v.name.includes('India') || v.lang.startsWith('en'))
+      if (inVoice) utter.voice = inVoice
+    } catch { /* use default voice */ }
+
+    utter.onend = () => setSpeakingIndex(null)
+    utter.onerror = () => setSpeakingIndex(null)
+    setSpeakingIndex(idx)
+    window.speechSynthesis.speak(utter)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel()
+      }
+    }
+  }, [])
 
   const name = user?.name || 'there'
   const hour = new Date().getHours()
@@ -356,8 +396,33 @@ export default function Chat() {
                   )}
                   <div dangerouslySetInnerHTML={{ __html: fmt(m.content) }} />
                 </div>
-                <div className={`chat-time ${m.role}`}>
-                  {m.time ? timeAgo(m.time) : ''}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: m.role === 'assistant' ? 'flex-start' : 'flex-end', gap: 8 }}>
+                  <div className={`chat-time ${m.role}`}>
+                    {m.time ? timeAgo(m.time) : ''}
+                  </div>
+                  {m.role === 'assistant' && (
+                    <button
+                      onClick={() => speakText(m.content, i)}
+                      title={speakingIndex === i ? 'Stop listening' : 'Listen to message'}
+                      aria-label="Read message aloud"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '2px 6px',
+                        color: speakingIndex === i ? 'var(--primary, #00E5B0)' : 'var(--text3, #888)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 3,
+                        fontSize: 11,
+                        borderRadius: 6,
+                        transition: 'color 0.2s',
+                      }}
+                    >
+                      {speakingIndex === i ? <VolumeX size={12} /> : <Volume2 size={12} />}
+                      <span style={{ fontSize: 10 }}>{speakingIndex === i ? 'Stop' : 'Listen'}</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
