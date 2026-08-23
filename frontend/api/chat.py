@@ -378,35 +378,75 @@ def get_context(phone, message=None):
         return "New user — no data yet."
     ctx_parts = []
     try:
-        users = sb_get(f"users?phone=eq.{short}&select=name,monthly_income,monthly_expenses,daily_budget")
-        if users:
-            u = users[0]
-            ctx_parts.append(f"Name: {u.get('name','User')} | Income: ₹{u.get('monthly_income',0):,.0f}/mo | Daily budget: ₹{u.get('daily_budget',1000):,.0f}")
+        # Fast single-query RPC context consolidation
+        rpc_data = None
+        try:
+            rpc_res = sb_post("rpc/get_user_chat_context", {"p_phone": short, "p_query": message or ""})
+            if rpc_res and isinstance(rpc_res, dict):
+                rpc_data = rpc_res
+        except Exception:
+            rpc_data = None
 
-        today_exp = sb_get(f"transactions?phone=eq.{short}&type=eq.expense&select=amount&order=created_at.desc&limit=20")
-        # Only count today's
-        today_spent = sum(float(t.get('amount', 0)) for t in today_exp[:10])
-        if today_spent:
-            ctx_parts.append(f"Spent today: ₹{today_spent:,.0f}")
+        if rpc_data:
+            u = rpc_data.get("user") or {}
+            m_exp = rpc_data.get("month_expenses", 0) or 0
+            m_inc = rpc_data.get("month_income", 0) or 0
+            ctx_parts.append(f"Name: {u.get('name','User')} | Income: ₹{u.get('monthly_income', m_inc):,.0f}/mo | Spent this month: ₹{m_exp:,.0f} | Daily budget: ₹{u.get('daily_budget',1000):,.0f}")
+            
+            txns = rpc_data.get("recent_transactions") or []
+            if txns:
+                lines = [f"  {t.get('type','')}: ₹{t.get('amount',0)} ({t.get('category','')}) {t.get('description','')}" for t in txns[:5]]
+                ctx_parts.append("Recent txns:\n" + "\n".join(lines))
+            
+            habits = rpc_data.get("habits") or []
+            if habits:
+                h_lines = [f"  {h.get('name','')} (streak: {h.get('current_streak',0)})" for h in habits[:4]]
+                ctx_parts.append("Active habits:\n" + "\n".join(h_lines))
 
-        txns = sb_get(f"transactions?phone=eq.{short}&select=id,type,amount,category,description&order=created_at.desc&limit=5")
-        if txns:
-            lines = [f"  {t.get('type','')}: ₹{t.get('amount',0)} ({t.get('category','')}) {t.get('description','')}" for t in txns]
-            ctx_parts.append("Recent txns:\n" + "\n".join(lines))
+            goals = rpc_data.get("goals") or []
+            if goals:
+                g_lines = [f"  {g.get('title','')}: ₹{g.get('current_amount',0):,.0f}/₹{g.get('target_amount',0):,.0f}" for g in goals[:3]]
+                ctx_parts.append("Active goals:\n" + "\n".join(g_lines))
 
-        # Hybrid retrieval (BM25 + vector, see docs/AI_AGENTS_RAG_PRD.md) — pulls
-        # in older/less-recent rows genuinely relevant to what the user just asked,
-        # beyond the "last 5" window above. Degrades to lexical-only without an
-        # OPENAI_API_KEY, and no-ops entirely if `message` isn't passed.
+            bills = rpc_data.get("bills") or []
+            if bills:
+                b_lines = [f"  {b.get('name','')}: ₹{b.get('amount',0):,.0f} due {b.get('due_date','')}" for b in bills[:3]]
+                ctx_parts.append("Upcoming bills/EMIs:\n" + "\n".join(b_lines))
+
+            lending = rpc_data.get("lending") or []
+            if lending:
+                l_lines = [f"  {l.get('person_name','')}: ₹{l.get('amount',0):,.0f} ({l.get('type','')})" for l in lending[:3]]
+                ctx_parts.append("Active lending/debt:\n" + "\n".join(l_lines))
+
+            health = rpc_data.get("today_health") or {}
+            if health and (health.get("steps") or health.get("water_glasses")):
+                ctx_parts.append(f"Today's vitals: {health.get('steps',0)} steps, {health.get('water_glasses',0)} water glasses, {health.get('sleep_hours',0)}h sleep")
+
+            mems = rpc_data.get("memories") or []
+            if mems:
+                m_lines = [f"  • {m.get('content','')}" for m in mems[:4]]
+                ctx_parts.append("User facts & preferences:\n" + "\n".join(m_lines))
+        else:
+            # Fallback direct queries
+            users = sb_get(f"users?phone=eq.{short}&select=name,monthly_income,monthly_expenses,daily_budget")
+            if users:
+                u = users[0]
+                ctx_parts.append(f"Name: {u.get('name','User')} | Income: ₹{u.get('monthly_income',0):,.0f}/mo | Daily budget: ₹{u.get('daily_budget',1000):,.0f}")
+
+            today_exp = sb_get(f"transactions?phone=eq.{short}&type=eq.expense&select=amount&order=created_at.desc&limit=20")
+            today_spent = sum(float(t.get('amount', 0)) for t in today_exp[:10]) if today_exp else 0
+            if today_spent:
+                ctx_parts.append(f"Spent today: ₹{today_spent:,.0f}")
+
+            txns = sb_get(f"transactions?phone=eq.{short}&select=id,type,amount,category,description&order=created_at.desc&limit=5")
+            if txns:
+                lines = [f"  {t.get('type','')}: ₹{t.get('amount',0)} ({t.get('category','')}) {t.get('description','')}" for t in txns]
+                ctx_parts.append("Recent txns:\n" + "\n".join(lines))
+
+        # Hybrid retrieval (BM25 + vector) for question-specific context
         if message:
-            # Embed the query ONCE and reuse it across every table below —
-            # previously each of these ~11 hybrid_search/news_search calls
-            # independently re-embedded the identical message text, meaning
-            # a single chat turn fired up to 11 redundant OpenAI calls for
-            # the exact same embedding.
             q_vec = _rag.embed_query(message)
-
-            recent_ids = {t.get("id") for t in txns}
+            recent_ids = {t.get("id") for t in (txns if 'txns' in locals() and txns else [])}
             related_txns = _rag.format_matches("transactions", _rag.hybrid_search(short, message, "transactions", limit=3, exclude_ids=recent_ids, query_embedding=q_vec))
             if related_txns:
                 ctx_parts.append("Relevant past transactions (matched to this question):\n  " + "\n  ".join(related_txns))
@@ -414,19 +454,12 @@ def get_context(phone, message=None):
             related_goals = _rag.format_matches("goals", related_goal_rows)
             if related_goals:
                 ctx_parts.append("Relevant goals:\n  " + "\n  ".join(related_goals))
-                for g in related_goal_rows:
-                    kg = _rag.format_kg(_rag.kg_walk(short, f"goal:{g.get('id')}"))
-                    if kg:
-                        ctx_parts.append(f"Why '{g.get('name','')}' may be stuck: " + "; ".join(kg))
             related_bills = _rag.format_matches("bills_and_dues", _rag.hybrid_search(short, message, "bills_and_dues", limit=2, query_embedding=q_vec))
             if related_bills:
                 ctx_parts.append("Relevant bills:\n  " + "\n  ".join(related_bills))
-            related_news = _rag.format_news(_rag.news_search(message, limit=2, query_embedding=q_vec))
-            if related_news:
-                ctx_parts.append("Relevant market news (cite naturally if it's actually useful here, don't force it):\n  " + "\n  ".join(related_news))
             related_kb = _rag.format_knowledge(_rag.knowledge_search(message, limit=2, query_embedding=q_vec))
             if related_kb:
-                ctx_parts.append("Vetted financial knowledge (Viya's own curated knowledge base — when giving advice or an explanation, ground it in these facts and prefer them over generic knowledge; if the KB doesn't cover what they asked, answer from general knowledge but don't contradict it):\n  " + "\n  ".join(related_kb))
+                ctx_parts.append("Vetted financial knowledge (ground advice in these facts):\n  " + "\n  ".join(related_kb))
             related_habits = _rag.format_matches("habits", _rag.hybrid_search(short, message, "habits", limit=2, query_embedding=q_vec))
             if related_habits:
                 ctx_parts.append("Relevant habits:\n  " + "\n  ".join(related_habits))
@@ -1120,11 +1153,13 @@ class handler(BaseHTTPRequestHandler):
         self._respond(200, {})
 
     def _respond(self, status, data):
+        origin = self.headers.get("Origin", "") if hasattr(self, "headers") and self.headers else ""
+        allowed = origin if (origin in {"https://heyviya.vercel.app", "http://localhost:5173", "http://localhost:3000", "capacitor://localhost"} or origin.endswith(".vercel.app")) else "https://heyviya.vercel.app"
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Origin", allowed)
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
 

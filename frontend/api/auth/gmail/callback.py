@@ -144,12 +144,19 @@ class handler(BaseHTTPRequestHandler):
             gmail_address = profile.get("emailAddress", "")
             print(f"[Gmail Callback] Connected: {gmail_address}")
 
-            # Store tokens in Supabase (users table)
+            # Store encrypted tokens in Supabase (users table)
             if phone and SUPABASE_URL:
+                try:
+                    import sys
+                    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+                    from crypto_utils import encrypt_token
+                except Exception:
+                    def encrypt_token(t): return t
+
                 update_data = json.dumps({
                     "gmail_address": gmail_address,
-                    "gmail_access_token": access_token,
-                    "gmail_refresh_token": refresh_token,
+                    "gmail_access_token": encrypt_token(access_token),
+                    "gmail_refresh_token": encrypt_token(refresh_token) if refresh_token else "",
                     "gmail_connected": True,
                 }).encode()
 
@@ -161,7 +168,7 @@ class handler(BaseHTTPRequestHandler):
                 )
                 try:
                     urllib.request.urlopen(update_req, timeout=10)
-                    print(f"[Gmail Callback] Tokens saved for {phone}")
+                    print(f"[Gmail Callback] Encrypted tokens saved for {phone}")
                 except Exception as e:
                     print(f"[Gmail Callback] Token save error: {e}")
 

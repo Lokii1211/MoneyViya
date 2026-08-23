@@ -145,11 +145,13 @@ class handler(BaseHTTPRequestHandler):
             self._respond(500, {"error": str(e)})
 
     def _respond(self, status, data):
+        origin = self.headers.get("Origin", "") if hasattr(self, "headers") and self.headers else ""
+        allowed = origin if (origin in {"https://heyviya.vercel.app", "http://localhost:5173", "http://localhost:3000", "capacitor://localhost"} or origin.endswith(".vercel.app")) else "https://heyviya.vercel.app"
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Origin", allowed)
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
 

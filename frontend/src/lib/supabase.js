@@ -78,6 +78,28 @@ export const api = {
   async login(phone, password) {
     try {
       const cleanPhone = phone.replace(/[^\d]/g, '').replace(/^91/, '').slice(-10)
+      // Call serverless auth endpoint
+      try {
+        const resp = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'login', phone: cleanPhone, password }),
+        })
+        if (resp.ok) {
+          const data = await resp.json()
+          if (data.ok && data.user) {
+            const token = data.token || generateToken()
+            localStorage.setItem('mv_token', token)
+            localStorage.setItem('mv_phone', data.user.phone)
+            localStorage.setItem('mv_user', JSON.stringify(data.user))
+            return { success: true, token, user: data.user }
+          }
+          if (data.error) return { success: false, message: data.error }
+        }
+      } catch {
+        /* Fallback to direct client auth */
+      }
+
       let users = await query('users', `?phone=eq.${cleanPhone}&select=*`)
       if (!users.length) users = await query('users', `?phone=eq.91${cleanPhone}&select=*`)
       if (!users.length) users = await query('users', `?phone=eq.${phone}&select=*`)
@@ -96,6 +118,28 @@ export const api = {
   async register(phone, password, name = 'User') {
     try {
       const cleanPhone = phone.replace(/[^\d]/g, '').replace(/^91/, '').slice(-10)
+      // Call serverless auth endpoint
+      try {
+        const resp = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'register', phone: cleanPhone, password, name }),
+        })
+        if (resp.ok) {
+          const data = await resp.json()
+          if (data.ok && data.user) {
+            const token = data.token || generateToken()
+            localStorage.setItem('mv_token', token)
+            localStorage.setItem('mv_phone', data.user.phone)
+            localStorage.setItem('mv_user', JSON.stringify(data.user))
+            return { success: true, message: 'Account created! Sign in now.', user: data.user, token }
+          }
+          if (data.error) return { success: false, message: data.error }
+        }
+      } catch {
+        /* Fallback to direct client registration */
+      }
+
       const existing = await query('users', `?phone=eq.${cleanPhone}&select=phone`)
       if (existing.length) return { success: false, message: 'Account exists. Sign in.' }
       const hashed = await hashPassword(password, cleanPhone)
