@@ -53,14 +53,44 @@ export default function Leaderboard() {
 
       setUserStats({ ...stats, score, name: userName })
 
-      // Build leaderboard: real user + anonymized comparison users
-      const avgScore = Math.round(score * 0.72)
-      const board = [
-        { rank: 1, name: userName, score, streak: streakDays, avatar: '😎', isYou: true },
-        { rank: 2, name: 'Average Viya User', score: avgScore, streak: Math.max(Math.round(streakDays * 0.6), 2), avatar: '👤', isYou: false },
-        { rank: 3, name: 'New Saver', score: Math.round(avgScore * 0.55), streak: 1, avatar: '🌱', isYou: false },
+      // Fetch real friends if connected
+      const friends = await api.getFamilyConnections(phone)
+      const friendEntries = []
+      for (const f of (friends || []).filter(c => c.connection_type === 'friend' && c.status === 'accepted')) {
+        const target = f.member_phone === phone ? f.owner_phone : f.member_phone
+        try {
+          const [u, gh, gg, gt] = await Promise.all([
+            api.getUser(target),
+            api.getHabits(target),
+            api.getGoals(target),
+            api.getTransactions(target, 50),
+          ])
+          const fSaved = (gg || []).reduce((s, g) => s + (Number(g.current_amount) || 0), 0)
+          const fStreak = (gh || []).reduce((max, h) => Math.max(max, Number(h.current_streak) || 0), 0)
+          const fGoals = (gg || []).filter(g => g.status === 'completed').length
+          const fTxns = (gt || []).length
+          const fScore = calcScore({ totalSaved: fSaved, streakDays: fStreak, goalsCompleted: fGoals, transactionsLogged: fTxns })
+          friendEntries.push({ name: u?.name || target, score: fScore, streak: fStreak, avatar: '🤝', isYou: false })
+        } catch { /* skip offline friend */ }
+      }
+
+      // Build combined leaderboard
+      const allEntries = [
+        { name: userName, score, streak: streakDays, avatar: '😎', isYou: true },
+        ...friendEntries,
       ]
-      setLeaderboard(board)
+
+      if (friendEntries.length === 0) {
+        allEntries.push(
+          { name: 'Average Viya User', score: Math.round(score * 0.72), streak: Math.max(Math.round(streakDays * 0.6), 2), avatar: '👤', isYou: false },
+          { name: 'Top 10% Benchmark', score: Math.round(Math.max(score * 1.35, 1200)), streak: Math.max(streakDays + 5, 14), avatar: '⭐', isYou: false },
+        )
+      }
+
+      allEntries.sort((a, b) => b.score - a.score)
+      const rankedBoard = allEntries.map((item, idx) => ({ ...item, rank: idx + 1 }))
+
+      setLeaderboard(rankedBoard)
     } catch (e) {
       console.error('Failed to load leaderboard data:', e)
     } finally {

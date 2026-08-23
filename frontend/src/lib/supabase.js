@@ -179,7 +179,7 @@ export const api = {
       'transactions', 'goals', 'habits', 'habit_checkins', 'notifications',
       'chat_history', 'user_reminders', 'health_logs', 'meals', 'medicines',
       'medicine_checkins', 'bills_and_dues', 'investments', 'emails',
-      'calendar_events', 'viya_memory', 'reviews',
+      'calendar_events', 'viya_memory', 'reviews', 'journal', 'subscriptions',
     ]
     for (const table of byPhone) {
       await remove(table, `phone=in.(${clean},${long})`)

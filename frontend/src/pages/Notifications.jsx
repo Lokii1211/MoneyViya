@@ -4,7 +4,7 @@ import { useApp } from '../lib/store'
 import { api } from '../lib/supabase'
 import { useNotificationStore } from '../stores'
 import { timeAgo } from '../lib/utils'
-import { Bell, CheckCheck, Trash2, Sparkles, TrendingUp, AlertTriangle, Target, Flame, ArrowLeft } from 'lucide-react'
+import { Bell, CheckCheck, Trash2, Sparkles, TrendingUp, AlertTriangle, Target, Flame, ArrowLeft, Settings } from 'lucide-react'
 
 const ICON_MAP = {
   'finance': { icon: '💰', color: 'var(--viya-success)' },
@@ -47,11 +47,16 @@ export default function Notifications() {
           <button className="back-btn" onClick={() => nav(-1)}><ArrowLeft size={20}/></button>
           <h2 className="display-m">Notifications</h2>
         </div>
-        {notifications.length > 0 && (
-          <button className="btn btn-ghost btn-sm" onClick={handleClearAll} style={{ gap: 4 }}>
-            <Trash2 size={14} /> Clear
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => nav('/notification-settings')} title="Settings" style={{ padding: '6px 8px' }}>
+            <Settings size={16} />
           </button>
-        )}
+          {notifications.length > 0 && (
+            <button className="btn btn-ghost btn-sm" onClick={handleClearAll} style={{ gap: 4 }}>
+              <Trash2 size={14} /> Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (

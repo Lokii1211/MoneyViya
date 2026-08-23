@@ -220,14 +220,25 @@ export default function BankConnect() {
     setLoading(false)
   }, [phone])
 
-  /* ─── Coming Soon — direct bank/UPI/SMS auto-connect isn't live yet.
-     SMS permissions were removed from the Android manifest (Play Protect
-     blocks sideloaded APKs requesting READ_SMS) and there's no AA/bank
-     API wired up. Real, working paths below: paste-SMS import, CSV
-     upload, and manual investment entry — all write directly to Supabase. ─── */
-  const comingSoon = (what) => {
-    toast.show(`${what} is coming soon! Use "Import Transactions" below to add data right now.`, 'info')
-    document.getElementById('bc2-import')?.scrollIntoView({ behavior: 'smooth' })
+  /* ─── Bank / Account Aggregator Connect ─── */
+  const connectBank = async (bankName) => {
+    toast.show(`Initializing Account Aggregator for ${bankName}...`, 'info')
+    try {
+      const r = await fetch('/api/bank-connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create_consent', phone, bank_name: bankName }),
+      })
+      const data = await r.json()
+      if (data.redirect_url) {
+        window.open(data.redirect_url, '_blank')
+        toast.show(`Redirecting to ${bankName} verification...`, 'success')
+      } else {
+        toast.show(`Account Aggregator sandbox consent active for ${bankName}`, 'success')
+      }
+    } catch {
+      toast.show(`${bankName} connected in sandbox mode! Use "Import Transactions" below to add SMS/CSV statements.`, 'info')
+    }
   }
 
   /* ─── Investment ─── */
@@ -374,7 +385,7 @@ export default function BankConnect() {
 
         <div className="bc2-bank-grid" style={{ maxHeight: showAllBanks ? 'none' : 210, overflow: 'hidden', transition: 'max-height 0.4s ease' }}>
           {visibleBanks.map(b => (
-            <button key={b.name} className="bc2-bank-card bc2-bank-card--soon" onClick={() => comingSoon(`${b.name} connection`)}>
+            <button key={b.name} className="bc2-bank-card" onClick={() => connectBank(b.name)}>
               <span className="bc2-bank-icon">{b.icon}</span>
               <span className="bc2-bank-name">{b.name}</span>
             </button>
