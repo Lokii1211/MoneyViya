@@ -67,15 +67,15 @@ def build_vocab(feats_list, min_df):
 
 
 def build_matrix(feats_list, vocab, idf):
-    x = np.zeros((len(feats_list), len(vocab)))
+    x = np.zeros((len(feats_list), len(vocab)), dtype=np.float64)
     for i, feats in enumerate(feats_list):
         for tok, cnt in feats.items():
             j = vocab.get(tok)
             if j is not None:
                 x[i, j] = cnt * idf[j]
     norms = np.linalg.norm(x, axis=1, keepdims=True)
-    norms[norms == 0] = 1.0
-    return x / norms
+    norms[norms == 0.0] = 1.0
+    return np.divide(x, norms)
 
 
 def main():

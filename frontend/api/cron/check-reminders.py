@@ -343,38 +343,19 @@ class handler(BaseHTTPRequestHandler):
         except Exception as e:
             self._respond(500, {"error": str(e)})
 
+    # Centralised WhatsApp send – uses whatsapp_client which handles env vars and phone formatting.
     def _send_whatsapp(self, phone, message):
-        """Send WhatsApp message via Cloud API"""
+        """Send a WhatsApp message via the shared client.
+
+        Returns ``True`` on success, ``False`` otherwise.  All error handling is
+        performed inside :func:`whatsapp_client.send_message`.
+        """
         try:
-            import httpx
-
-            token = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
-            phone_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
-
-            if not token or not phone_id:
-                print("[Reminders] WhatsApp not sent — WHATSAPP_ACCESS_TOKEN/WHATSAPP_PHONE_NUMBER_ID not configured")
-                return False
-
-            clean_phone = phone.replace("+", "").replace(" ", "")
-            if not clean_phone.startswith("91"):
-                clean_phone = "91" + clean_phone
-
-            url = f"https://graph.facebook.com/v21.0/{phone_id}/messages"
-
-            with httpx.Client(timeout=10.0) as client:
-                resp = client.post(url, json={
-                    "messaging_product": "whatsapp",
-                    "to": clean_phone,
-                    "type": "text",
-                    "text": {"body": message}
-                }, headers={
-                    "Authorization": f"Bearer {token}",
-                    "Content-Type": "application/json"
-                })
-
-                if resp.status_code != 200:
-                    print(f"[Reminders] WhatsApp send failed for {clean_phone}: {resp.status_code} {resp.text[:300]}")
-                return resp.status_code == 200
+            try:
+                from whatsapp_client import send_message
+            except ImportError:
+                from .whatsapp_client import send_message
+            return send_message(phone, message)
         except Exception as e:
             print(f"[Reminders] WhatsApp send error for {phone}: {e}")
             return False

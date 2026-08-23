@@ -87,17 +87,23 @@ def parse_sms(sms_text):
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
-        """Process batch SMS messages"""
+        """Process single or batch SMS messages"""
         try:
             content_length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(content_length)
             data = json.loads(body) if body else {}
             
             phone = data.get("phone", "")
-            messages = data.get("messages", [])
             
+            # Normalize messages list from various payload formats
+            messages = data.get("messages") or data.get("batch") or []
+            if not messages:
+                single_body = data.get("sms_body") or data.get("body") or data.get("message")
+                if single_body:
+                    messages = [{"body": single_body, "sender": data.get("sender", ""), "received_at": data.get("received_at")}]
+
             if not phone or not messages:
-                self._respond(400, {"error": "phone and messages required"})
+                self._respond(400, {"error": "phone and message(s) required"})
                 return
             
             results = []
@@ -147,8 +153,14 @@ class handler(BaseHTTPRequestHandler):
         except Exception:
             return False
 
+    def do_OPTIONS(self):
+        self._respond(200, {})
+
     def _respond(self, status, data):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())

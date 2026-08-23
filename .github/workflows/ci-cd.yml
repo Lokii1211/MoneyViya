@@ -28,10 +28,10 @@ jobs:
         run: pip install ruff bandit
 
       - name: Run Ruff (Python lint)
-        run: ruff check . --config pyproject.toml || true
+        run: ruff check frontend/api ml tests --config pyproject.toml || true
 
       - name: Run Bandit (security scan)
-        run: bandit -r app.py services/ routes/ -ll || true
+        run: bandit -r frontend/api -ll || true
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -44,7 +44,7 @@ jobs:
         run: cd frontend && npm ci
 
       - name: ESLint
-        run: cd frontend && npx eslint src/ --ext .js,.jsx || true
+        run: cd frontend && npx eslint src/ || true
 
   # ─── Stage 2: Backend Tests ───
   backend-test:
@@ -61,23 +61,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
-          pip install pytest pytest-cov pytest-asyncio httpx
+          pip install -r frontend/requirements.txt
+          pip install pytest pytest-cov pytest-asyncio scikit-learn numpy
 
-      - name: Run tests
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          python -m pytest tests/ -v --tb=short --cov=. --cov-report=xml || true
+      - name: Run Offline Actions Validation
+        run: python3 tests/test_actions_offline.py
 
-      - name: Upload coverage
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-coverage
-          path: coverage.xml
+      - name: Train Intent Gate Verification
+        run: python3 ml/train_intent_gate.py
 
   # ─── Stage 3: Frontend Build ───
   frontend-build:
@@ -98,7 +89,7 @@ jobs:
         run: cd frontend && npm ci
 
       - name: Build
-        run: cd frontend && npx vite build
+        run: cd frontend && npm run build
 
       - name: Upload build
         uses: actions/upload-artifact@v4
@@ -122,7 +113,7 @@ jobs:
       - name: Python security (Safety)
         run: |
           pip install safety
-          safety check -r requirements.txt || true
+          safety check -r frontend/requirements.txt || true
 
       - name: Node security audit
         run: cd frontend && npm audit --production || true

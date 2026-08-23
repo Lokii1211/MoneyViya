@@ -5,10 +5,13 @@ Schedule: Every Sunday at 8:00 PM IST
 Sends visual weekly summary to all active users
 """
 
+import sys
 import os
 import json
 from http.server import BaseHTTPRequestHandler
 from datetime import datetime, timedelta
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 SUPABASE_URL = os.getenv("VITE_SUPABASE_URL", os.getenv("SUPABASE_URL", "")).strip()
 SUPABASE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY", "")).strip()
@@ -103,18 +106,21 @@ class handler(BaseHTTPRequestHandler):
             return []
 
     def _send_whatsapp(self, phone, message):
-        if not WA_TOKEN or not WA_PHONE_ID:
-            return
-        import httpx
-        clean = phone.replace("+", "").replace(" ", "")
-        if not clean.startswith("91"):
-            clean = "91" + clean
-        with httpx.Client(timeout=10) as client:
-            client.post(
-                f"https://graph.facebook.com/v21.0/{WA_PHONE_ID}/messages",
-                json={"messaging_product": "whatsapp", "to": clean, "type": "text", "text": {"body": message}},
-                headers={"Authorization": f"Bearer {WA_TOKEN}", "Content-Type": "application/json"}
-            )
+        """Send WhatsApp message via shared client.
+
+        The previous implementation duplicated credential handling and phone
+        formatting.  This version delegates to ``whatsapp_client.send_message``
+        which centralises those concerns.
+        """
+        try:
+            try:
+                from whatsapp_client import send_message
+            except ImportError:
+                from .whatsapp_client import send_message
+            return send_message(phone, message)
+        except Exception as e:
+            print(f"[Weekly Summary] WhatsApp send error for {phone}: {e}")
+            return False
 
     def _respond(self, status, data):
         self.send_response(status)

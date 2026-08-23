@@ -14,14 +14,26 @@
 
 import { Capacitor } from '@capacitor/core';
 const API_URL = import.meta.env.VITE_API_URL || '';
+
 async function ingestSMS(body, sender, receivedAt) {
   const phone = localStorage.getItem('mv_phone') || '';
-  const r = await fetch(`${API_URL}/api/sms/process`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, sms_body: body, sender, received_at: receivedAt }) });
+  if (!phone) return null;
+  const r = await fetch(`${API_URL}/api/sms/process`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone, messages: [{ body, sender, received_at: receivedAt }] })
+  });
   return r.ok ? { data: await r.json() } : null;
 }
+
 async function ingestSMSBatch(messages) {
   const phone = localStorage.getItem('mv_phone') || '';
-  const r = await fetch(`${API_URL}/api/sms/process`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, batch: messages }) });
+  if (!phone) return null;
+  const r = await fetch(`${API_URL}/api/sms/process`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone, messages })
+  });
   return r.ok ? { data: await r.json() } : null;
 }
 
@@ -141,17 +153,17 @@ export async function syncHistoricalSMS() {
 
 // ── Helpers ──
 
-function showTransactionNotification(parsed) {
+async function showTransactionNotification(parsed) {
   if (!parsed) return;
   try {
-    const { LocalNotifications } = require('@capacitor/local-notifications');
+    const { LocalNotifications } = await import('@capacitor/local-notifications');
     const type = parsed.type === 'debit' ? '💸' : '💰';
     const merchant = parsed.merchant_normalized || 'Unknown';
-    LocalNotifications.schedule({
+    await LocalNotifications.schedule({
       notifications: [{
         title: `${type} ₹${parsed.amount?.toLocaleString('en-IN')} ${parsed.type === 'debit' ? 'spent' : 'received'}`,
         body: `${merchant} — auto-logged ✅`,
-        id: Date.now(),
+        id: Math.floor(Date.now() % 1000000000),
       }],
     });
   } catch { /* notification plugin not available */ }
